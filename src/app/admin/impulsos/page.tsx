@@ -11,6 +11,7 @@ import {
   TestarGoogleAds,
 } from "@/components/admin/impulsos";
 import { CorrendoAgora, type Cliente } from "@/components/admin/impulsos-correndo";
+import { VisaoGlobal } from "@/components/admin/impulsos-global";
 import { ListaDeAjustes, type AjusteDoAdmin } from "@/components/admin/impulsos-ajustes";
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
 import { ehCorrendo, quemPediu } from "@/components/admin/impulsos-nomes";
@@ -68,6 +69,7 @@ type Dados = {
 
 const ABAS = [
   { valor: "agora", nome: "Agora" },
+  { valor: "global", nome: "Visão global" },
   { valor: "novo", nome: "Novo impulso" },
   { valor: "historico", nome: "Histórico" },
   { valor: "regras", nome: "Regras" },
@@ -212,6 +214,14 @@ async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
           <AjustesDiarios ligado={d.config.motor_ligado} />
           <CaminhoDoAnuncio cliques={new Map(d.impulsos.map((i) => [i.id, i.totais.cliques]))} />
         </>
+      )}
+      {aba === "global" && (
+        <Secao
+          titulo="Visão global"
+          descricao="Cada cliente com impulso correndo: quanto gastou da verba, quantas vagas estão no ar e o que trouxe. Toque no nome da coluna para ordenar."
+        >
+          <VisaoGlobal clientes={clientesCorrendo(d)} />
+        </Secao>
       )}
       {aba === "novo" && <Novo d={d} conta={conta} ligado={g.ligado} />}
       {aba === "historico" && (

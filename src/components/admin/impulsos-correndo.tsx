@@ -161,6 +161,17 @@ export function CorrendoAgora({ clientes, agora }: { clientes: Cliente[]; agora:
   );
 }
 
+/** As contas do cliente: a soma das vagas, a verba (a campanha dele mais as vagas sozinhas), a % gasta e a de cliques. */
+export function numerosDoCliente(c: Cliente) {
+  const todas = [...c.vagas, ...c.avulsos];
+  const soma = somaDos(todas);
+  const verba = Number(c.campanha?.verba ?? 0) + c.avulsos.reduce((t, i) => t + Number(i.verba ?? 0), 0);
+  const parte = verba > 0 ? Math.min(100, (100 * soma.gasto) / verba) : 0;
+  const taxa = soma.impressoes > 0 ? (100 * soma.cliques) / soma.impressoes : null;
+  const noAr = todas.filter((i) => i.situacao === "no_ar").length;
+  return { soma, verba, parte, taxa, noAr, vagas: todas.length };
+}
+
 function somaDos(vagas: ImpulsoDoAdmin[]) {
   return vagas.reduce(
     (t, i) => ({
@@ -188,11 +199,7 @@ function situacaoDaCampanha(k: CampanhaDoAdmin) {
  * vistas, os cliques (com a taxa de clique), as curtidas e quanto custou cada clique e cada curtida.
  */
 function NumerosDoCliente({ c }: { c: Cliente }) {
-  const soma = somaDos([...c.vagas, ...c.avulsos]);
-  const verba =
-    Number(c.campanha?.verba ?? 0) + c.avulsos.reduce((t, i) => t + Number(i.verba ?? 0), 0);
-  const parte = verba > 0 ? Math.min(100, (100 * soma.gasto) / verba) : 0;
-  const taxa = soma.impressoes > 0 ? (100 * soma.cliques) / soma.impressoes : null;
+  const { soma, verba, parte, taxa } = numerosDoCliente(c);
   const numeros: { rotulo: string; valor: string; detalhe?: string }[] = [
     { rotulo: "Vistas", valor: formatarNumero(soma.impressoes) },
     {
