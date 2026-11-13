@@ -38,5 +38,24 @@ igual("grupo da vaga", nomeDoGrupo({ vaga: "Padeiro", bairro: "Setor Bueno" }), 
 igual("grupo sem bairro", nomeDoGrupo({ vaga: "Padeiro", bairro: "" }), "Padeiro");
 igual("grupo na campanha do cliente", nomeDoGrupo({ vaga: "Analista Fiscal", bairro: "Centro", codigo: "e253c34388" }), "Analista Fiscal · Centro · e253c34388");
 
+igual(
+  "vaga comprida: corta no fim da palavra, sem a vírgula",
+  nomeDaCampanhaDaVaga({
+    cliente: "Rhesultai - Recrutamento & Seleção",
+    origem: "cortesia",
+    automatico: true,
+    dias: 3,
+    vaga: "Instalador e Reparador, Ramo: Software e Internet, com experiência em redes",
+    codigo: "d0b5d95a1c",
+  }),
+  "Impulso · Rhesultai - Recrutamento & Seleção · Automático · Instalador e Reparador, Ramo: Software e Internet · d0b5d95a1c",
+);
+igual(
+  "palavra só, comprida: corta no limite",
+  nomeDoGrupo({ vaga: "A".repeat(70) }),
+  "A".repeat(60),
+);
+igual("pontuação sobrando no fim sai", nomeDoGrupo({ vaga: "Auxiliar de cozinha -", bairro: "Centro," }), "Auxiliar de cozinha · Centro");
+
 console.log(falhas ? `${falhas} de ${total} falharam` : `${total} conferências, todas certas`);
 process.exit(falhas ? 1 : 0);

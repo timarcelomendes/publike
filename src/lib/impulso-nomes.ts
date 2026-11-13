@@ -14,14 +14,21 @@ const NOME_DO_TIPO: Record<OrigemDoImpulso, string> = {
   admin: "Presente",
 };
 
-/** O que o Google Ads aceita no nome, sem quebra de linha nem espaço sobrando, até `n` letras. */
+/**
+ * O que o Google Ads aceita no nome, sem quebra de linha nem espaço sobrando, até `n` letras. O nome comprido é cortado
+ * no fim de uma palavra e sem a pontuação que sobra ("Instalador e Reparador, Ramo: Software e Internet," vira
+ * "Instalador e Reparador, Ramo: Software e Internet").
+ */
 function limpo(s: string | null | undefined, n: number) {
-  return (s ?? "")
+  let t = (s ?? "")
     .replace(/[\r\n\t]+/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, n)
     .trim();
+  if (t.length > n) {
+    const corte = t.slice(0, n + 1).lastIndexOf(" ");
+    t = corte >= n * 0.6 ? t.slice(0, corte) : t.slice(0, n);
+  }
+  return t.replace(/[\s,;:.·\-–—/|(]+$/u, "");
 }
 
 /** O tipo no nome: "Automático", "Pago 7 dias", "Presente", "Grátis" ou "Crédito". */
