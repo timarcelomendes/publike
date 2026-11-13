@@ -21,6 +21,11 @@ import {
   cidadesNoGoogle,
   type LugarDoGoogle,
 } from "@/lib/impulso-cidades";
+import {
+  nomeDaCampanhaDaVaga,
+  nomeDaCampanhaDoCliente,
+  nomeDoGrupo,
+} from "@/lib/impulso-nomes";
 import { pracaDaCidade } from "@/lib/pracas";
 import {
   buscasComARevisao,
@@ -87,6 +92,8 @@ type Tarefa = {
   origem: "compra" | "credito" | "cortesia" | "admin";
   /** o automático do Publike (migração 20270430120000; antes dela, não vem) */
   automatico?: boolean;
+  /** o nome da conta do cliente, para o nome da campanha no Google (migração 20270517120000; antes dela, não vem) */
+  cliente?: string | null;
   acao:
     | "criar"
     | "olhar"
@@ -259,9 +266,12 @@ function fimNoGoogle(ate: string) {
 }
 
 type LinhaDoGrupo = {
-  campaign?: { endDateTime?: string; biddingStrategyType?: string };
-  adGroup?: { resourceName?: string; cpcBidMicros?: string | number };
+  campaign?: { endDateTime?: string; biddingStrategyType?: string; name?: string };
+  adGroup?: { resourceName?: string; cpcBidMicros?: string | number; id?: string; name?: string };
 };
+
+/** Os nomes que a campanha e o grupo da vaga devem ter (`grupoId`: o grupo da vaga na campanha do cliente). */
+type NomesNoGoogle = { campanha: string; grupo: string; grupoId: string | null };
 
 /**
  * Na medição, a campanha igual ao banco: o fim no Google fica o do banco (13/11/2026: o prazo estendido no banco não
@@ -269,16 +279,19 @@ type LinhaDoGrupo = {
  * robô, com 0 vistas) passa para o "Maximizar cliques", até o teto do clique das Regras, uma vez. Os outros jeitos ficam
  * como estão no Google: quem muda à mão no Google Ads (CPC manual) não é desfeito. No CPC manual, o grupo sem lance
  * ganha o teto do clique das Regras (o Google põe R$ 0,01 no grupo criado sem lance, e no CPC manual é esse o lance de
- * cada clique). Uma consulta só; o mutate, só quando algo mudou.
+ * cada clique). Os nomes da campanha e do grupo da vaga ficam os de hoje (`nomes`, lib/impulso-nomes.ts): os de antes de
+ * 13/11/2026 mudam na primeira medida. Uma consulta só; o mutate, só quando algo mudou.
  */
 async function acertarCampanha(
   campanhaId: string,
   conta: string,
   ate: string | null,
+  nomes: NomesNoGoogle | null = null,
 ) {
   const id = Number(campanhaId);
   const linhas = await consultar<LinhaDoGrupo>(
-    `SELECT campaign.end_date_time, campaign.bidding_strategy_type, ad_group.resource_name, ad_group.cpc_bid_micros ` +
+    `SELECT campaign.end_date_time, campaign.bidding_strategy_type, campaign.name, ad_group.resource_name, ` +
+      `ad_group.cpc_bid_micros, ad_group.id, ad_group.name ` +
       `FROM ad_group WHERE campaign.id = ${id} AND ad_group.status != 'REMOVED'`,
     conta,
   );
@@ -287,9 +300,10 @@ async function acertarCampanha(
     ? linhas[0].campaign
     : (
         await consultar<{
-          campaign?: { endDateTime?: string; biddingStrategyType?: string };
+          campaign?: { endDateTime?: string; biddingStrategyType?: string; name?: string };
         }>(
-          `SELECT campaign.end_date_time, campaign.bidding_strategy_type FROM campaign WHERE campaign.id = ${id}`,
+          `SELECT campaign.end_date_time, campaign.bidding_strategy_type, campaign.name FROM campaign ` +
+            `WHERE campaign.id = ${id}`,
           conta,
         )
       )[0]?.campaign;
@@ -310,15 +324,37 @@ async function acertarCampanha(
     campos.push("targetSpend.cpcBidCeilingMicros");
     Object.assign(mudar, lance());
   }
-  if (campos.length) {
+  if (nomes && campanha?.name !== undefined && campanha.name !== nomes.campanha) {
+    campos.push("name");
+    mudar.name = nomes.campanha;
+  }
+  // o grupo da vaga: na campanha do cliente, o dela; na de uma vaga, o único
+  const grupos = linhas.filter((l) => l.adGroup?.resourceName);
+  const grupo = !nomes
+    ? undefined
+    : nomes.grupoId
+      ? grupos.find((l) => String(l.adGroup!.id) === String(nomes.grupoId))
+      : grupos.length === 1
+        ? grupos[0]
+        : undefined;
+  const renomearGrupo =
+    grupo && nomes && grupo.adGroup!.name !== undefined && grupo.adGroup!.name !== nomes.grupo;
+  if (campos.length || renomearGrupo) {
     await mutar(
       [
-        {
-          campaignOperation: {
-            updateMask: campos.join(","),
-            update: mudar,
-          },
-        },
+        ...(campos.length
+          ? [{ campaignOperation: { updateMask: campos.join(","), update: mudar } }]
+          : []),
+        ...(renomearGrupo
+          ? [
+              {
+                adGroupOperation: {
+                  updateMask: "name",
+                  update: { resourceName: grupo!.adGroup!.resourceName, name: nomes!.grupo },
+                },
+              },
+            ]
+          : []),
       ],
       conta,
     );
@@ -326,6 +362,8 @@ async function acertarCampanha(
       console.info(
         `Publike: a campanha ${campanhaId} passou para "Maximizar cliques", até R$ ${volta.teto.toFixed(2)} por clique.`,
       );
+    if (mudar.name || renomearGrupo)
+      console.info(`Publike: a campanha ${campanhaId} ganhou o nome de hoje (${nomes!.campanha}).`);
   }
   if (!usaLanceDoGrupo(campanha?.biddingStrategyType)) return;
   const semLance = gruposSemLance(
@@ -951,21 +989,40 @@ function operacoesDoGrupo(o: {
   return ops;
 }
 
-const NOME_DA_ORIGEM: Record<Tarefa["origem"], string> = {
-  compra: "Impulso pago",
-  cortesia: "Impulso grátis",
-  credito: "Impulso com crédito",
-  admin: "Impulso pelo admin",
-};
+/** O nome da campanha de uma vaga no Google (`nomeDaCampanhaDaVaga`, em lib/impulso-nomes.ts). */
+function nomeDaCampanha(t: Tarefa) {
+  return nomeDaCampanhaDaVaga({
+    cliente: t.cliente,
+    origem: t.origem,
+    automatico: t.automatico,
+    dias: t.dias,
+    vaga: t.vaga?.titulo ?? "",
+    codigo: t.codigo,
+  });
+}
 
 /**
- * O começo do nome da campanha no Google: de onde o impulso veio ("Impulso automático", "Impulso pago"…), para separar
- * no Google Ads o que o robô escolheu do que alguém pediu. Sem saber se é automático (a função do banco de antes), só
- * "Impulso".
+ * Os nomes que a campanha e o grupo da vaga devem ter no Google; null sem o nome do cliente (a função do banco de antes
+ * da migração 20270517120000: os nomes ficam como estão).
  */
-function nomeDaOrigem(t: Tarefa) {
-  if (t.automatico === undefined) return "Impulso";
-  return t.automatico ? "Impulso automático" : NOME_DA_ORIGEM[t.origem];
+function nomesNoGoogle(t: Tarefa): NomesNoGoogle | null {
+  if (t.cliente === undefined || !t.vaga) return null;
+  return {
+    campanha: t.campanha_cliente
+      ? nomeDaCampanhaDoCliente({ cliente: t.cliente, codigo: t.campanha_cliente.codigo })
+      : nomeDaCampanha(t),
+    grupo: nomeDoGrupoDaVaga(t),
+    grupoId: t.campanha_cliente ? t.grupo_id : null,
+  };
+}
+
+/** O nome do grupo da vaga: a função e o bairro (na campanha do cliente, com o código do impulso). */
+function nomeDoGrupoDaVaga(t: Tarefa) {
+  return nomeDoGrupo({
+    vaga: t.vaga?.titulo ?? "",
+    bairro: t.vaga?.bairro,
+    codigo: t.campanha_cliente ? t.codigo : undefined,
+  });
 }
 
 /** A campanha inteira de uma vez (tudo ou nada): o orçamento, a campanha, o lugar, a língua, o grupo, as palavras e o anúncio. */
@@ -978,7 +1035,7 @@ function operacoesDaCampanha(
   const conta = contaDeAnuncios();
   const base = operacoesDaBaseDaCampanha({
     codigo: t.codigo,
-    nome: `${nomeDaOrigem(t)} · ${v.titulo.slice(0, 60)} · ${t.codigo}`,
+    nome: nomeDaCampanha(t),
     porDia: Math.round((t.verba / t.dias) * 100) / 100,
     lugares: lugaresDaCampanhaNova([lugarDaVaga(v)], v.cidade, geo),
     conta,
@@ -988,7 +1045,7 @@ function operacoesDaCampanha(
     ...operacoesDoGrupo({
       grupo: recurso("adGroups", -3, conta),
       campanha: base.campanha,
-      nome: "Vaga",
+      nome: nomeDoGrupoDaVaga(t),
       url: paginaDaVaga(v.id),
       texto,
     }),
@@ -1636,7 +1693,7 @@ async function criarGrupo(a: Acesso, t: Tarefa) {
     ...operacoesDoGrupo({
       grupo: recurso("adGroups", -1, conta),
       campanha,
-      nome: `${t.vaga!.titulo.slice(0, 60)} · ${t.codigo}`,
+      nome: nomeDoGrupoDaVaga(t),
       url: paginaDaVaga(t.vaga!.id),
       texto: texto(t, simples),
       sufixo: sufixoDoImpulso(t.codigo),
@@ -1884,7 +1941,7 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
   if (!t.campanha_id || !t.medir_desde) return;
   if (t.acao === "medir" && t.situacao === "no_ar") {
     try {
-      await acertarCampanha(t.campanha_id, conta, t.ate);
+      await acertarCampanha(t.campanha_id, conta, t.ate, nomesNoGoogle(t));
     } catch (e) {
       // o lance fica para a próxima medida; os números não esperam por ele
       console.error(
@@ -1999,12 +2056,20 @@ async function fazer(a: Acesso, t: Tarefa) {
       });
       break;
     case "encerrar":
+      // acabou: para, guarda os números e sai da lista do Google Ads (13/11/2026: a campanha acabada ficava parada lá,
+      // e a lista crescia; o Google guarda os números da removida, e o Publike também)
       if (doCliente && t.grupo_id) {
         await pausarNoGoogle("adGroups", t.grupo_id, conta);
         if (t.situacao === "no_ar") await medir(a, t, conta, true);
+        await removerGrupo(t.grupo_id, conta);
       } else if (!doCliente && t.campanha_id) {
         await pausarNoGoogle("campaigns", t.campanha_id, conta);
         await medir(a, t, conta, true);
+        await removerCampanha(t.campanha_id, conta);
+        await a.cliente.rpc("servidor_impulso_removido", {
+          p_chave: a.chave,
+          p_id: t.id,
+        });
       }
       await a.cliente.rpc("servidor_impulso_encerrado", {
         p_chave: a.chave,
@@ -2040,7 +2105,7 @@ async function criarCampanhaDoCliente(a: Acesso, k: TarefaDaCampanha) {
   const geo = await cidadesDoGoogle(conta);
   const base = operacoesDaBaseDaCampanha({
     codigo: k.codigo,
-    nome: `Impulso do cliente · ${k.nome.slice(0, 60)} · ${k.codigo}`,
+    nome: nomeDaCampanhaDoCliente({ cliente: k.nome, codigo: k.codigo }),
     porDia: k.verba_dia,
     lugares: lugaresDaCampanhaNova(k.lugares, null, geo),
     conta,
@@ -2102,12 +2167,9 @@ async function fazerNaCampanha(a: Acesso, k: TarefaDaCampanha) {
       });
       break;
     case "encerrar":
-      // nenhuma vaga correndo: a que entrou no ar fica parada no Google (com os números); a que nunca entrou sai
-      if (k.campanha_id) {
-        if (k.aprovado_em)
-          await pausarNoGoogle("campaigns", k.campanha_id, conta);
-        else await removerCampanha(k.campanha_id, conta);
-      }
+      // nenhuma vaga correndo: a campanha sai do Google Ads (os números de cada vaga já estão no Publike, e o Google
+      // guarda os da removida)
+      if (k.campanha_id) await removerCampanha(k.campanha_id, conta);
       await a.cliente.rpc("servidor_campanha_encerrada", {
         p_chave: a.chave,
         p_id: k.id,
