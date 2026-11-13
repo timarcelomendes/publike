@@ -25,7 +25,7 @@ import { UUID } from "@/lib/validacao";
 export const metadata: Metadata = { title: "Impulsionar no Google", robots: { index: false } };
 
 // O impulso da vaga (claude/plano-impulsionar-vaga.md; migração 20270423120000): a vaga anunciada no Google para quem
-// está perto, por 7 ou 15 dias, com o relatório no fim. Tudo automático: pagou, o robô cria o anúncio; aprovou, os dias
+// está perto, por 3, 7 ou 15 dias, com o relatório no fim. Tudo automático: pagou, o robô cria o anúncio; aprovou, os dias
 // contam; acabou, chega o relatório. Dentro do Publike nada muda (regra de 24/10).
 
 type Impulso = {
@@ -59,7 +59,7 @@ type DoImpulso = {
   vaga: VagaDoImpulso & { status: string; preenchida: boolean };
   motivo: string | null;
   pode_pagar: boolean;
-  precos: { dias: number; valor: number; verba: number }[];
+  precos: { dias: number; valor: number; verba: number; dias_rapido?: number | null }[];
   credito: number;
   cortesia: { dias: number } | null;
   raio: number | null;
@@ -100,7 +100,7 @@ async function Conteudo({
       voltar={{ href: `/painel/anuncio/${id}`, nome: "Vaga" }}
       titulo="Impulsionar no Google"
       selo={<Selo variante="novo">Novo</Selo>}
-      descricao="Sua vaga anunciada no Google para quem procura emprego perto dela, por 7 ou 15 dias. No fim, você recebe quantos viram, clicaram e curtiram. Dentro do Publike nada muda: a vaga aparece para todos do mesmo jeito."
+      descricao="Sua vaga anunciada no Google para quem procura emprego perto dela, por 3, 7 ou 15 dias. No fim, você recebe quantos viram, clicaram e curtiram. Dentro do Publike nada muda: a vaga aparece para todos do mesmo jeito."
     />
   );
   if (error) {
@@ -193,7 +193,7 @@ async function Conteudo({
             </h3>
             <ol className="flex flex-col gap-2.5 text-body-sm">
               {[
-                "Você escolhe 7 ou 15 dias e paga no Pix ou no cartão.",
+                "Você escolhe 3, 7 ou 15 dias e paga no Pix ou no cartão. No Rápido, o mesmo valor vai para o Google em menos dias: mais gente por dia.",
                 "O Publike cria o anúncio no Google, com a função, o salário e o bairro da vaga.",
                 "O Google revisa em até 1 dia útil. Aprovou, os dias começam a contar.",
                 "Quem pesquisa a função perto da vaga vê o anúncio e abre a vaga no Publike.",

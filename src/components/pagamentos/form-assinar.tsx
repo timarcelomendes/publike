@@ -45,7 +45,12 @@ type Modo =
   | { tipo: "trinta" }
   | { tipo: "faixa"; assinatura: string; diferenca: number; dias: number; ate: string | null; renovacao: number }
   /** o impulso da vaga no Google (migração 20270423120000): os dias e o preço de cada opção */
-  | { tipo: "impulso"; anuncio: string; opcoes: { dias: number; valor: number; verba: number }[] };
+  | {
+      tipo: "impulso";
+      anuncio: string;
+      /** dias_rapido: o Rápido do plano, a mesma verba em menos dias (migração 20270516120000) */
+      opcoes: { dias: number; valor: number; verba: number; dias_rapido?: number | null }[];
+    };
 
 export function FormAssinar({
   recurso,
@@ -81,6 +86,10 @@ export function FormAssinar({
   const [forma, setForma] = useState<"cartao" | "pix">("cartao");
   const [dias, setDias] = useState(modo.tipo === "impulso" ? (modo.opcoes[0]?.dias ?? 0) : 0);
   const opcaoImpulso = modo.tipo === "impulso" ? modo.opcoes.find((o) => o.dias === dias) : undefined;
+  // o Rápido: os mesmos reais no Google em menos dias, mais gente por dia
+  const [rapido, setRapido] = useState(false);
+  const comRapido = Boolean(opcaoImpulso?.dias_rapido);
+  const diasDoImpulso = comRapido && rapido ? opcaoImpulso!.dias_rapido! : dias;
   const [documento, setDocumento] = useState(formatarDocumento(inicial.documento));
   const [nome, setNome] = useState(inicial.nome);
   const [email, setEmail] = useState(inicial.email);
@@ -131,7 +140,7 @@ export function FormAssinar({
       const pagador = { forma: f, documento, nome, email, endereco: f === "cartao" ? { telefone, ...end } : undefined };
       const r: ResultadoAssinar = await chamarAcao(() =>
         modo.tipo === "impulso"
-          ? comprarImpulso({ ...pagador, anuncio: modo.anuncio, dias })
+          ? comprarImpulso({ ...pagador, anuncio: modo.anuncio, dias, rapido: comRapido && rapido })
           : modo.tipo === "trinta"
           ? comprarPorTrintaDias({ ...pagador, plano })
           : modo.tipo === "faixa"
@@ -165,7 +174,9 @@ export function FormAssinar({
                   className="mt-1 size-4 accent-terra"
                 />
                 <span className="flex flex-col gap-0.5">
-                  <span className="text-label">{o.dias} dias no Google</span>
+                  <span className="text-label">
+                    {o.dias_rapido ? `${o.dias} dias, ou ${o.dias_rapido} no Rápido` : `${o.dias} dias no Google`}
+                  </span>
                   <span className="text-h3 tabular-nums">{formatarMoeda(o.valor)}</span>
                   <span className="text-body-sm text-ink-muted">
                     {formatarMoeda(o.verba)} vão para o anúncio, cerca de {formatarMoeda(Math.round((o.verba / o.dias) * 100) / 100)}{" "}
@@ -175,6 +186,32 @@ export function FormAssinar({
               </label>
             ))}
           </div>
+          {opcaoImpulso?.dias_rapido && (
+            <div role="radiogroup" aria-label="Em quantos dias" className="mt-2 grid gap-2 sm:grid-cols-2">
+              {[false, true].map((r) => {
+                const d = r ? opcaoImpulso.dias_rapido! : opcaoImpulso.dias;
+                return (
+                  <label key={String(r)} className={`${OPCAO} ${rapido === r ? MARCADA : SOLTA}`}>
+                    <input
+                      type="radio"
+                      name="rapido"
+                      checked={rapido === r}
+                      onChange={() => setRapido(r)}
+                      className="mt-1 size-4 accent-terra"
+                    />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-label">{r ? `Rápido: ${d} dias` : `Normal: ${d} dias`}</span>
+                      <span className="text-body-sm text-ink-muted">
+                        {r
+                          ? `Mais gente por dia, cerca de ${formatarMoeda(Math.round((opcaoImpulso.verba / d) * 100) / 100)} por dia no Google. Mesmo preço.`
+                          : `Cerca de ${formatarMoeda(Math.round((opcaoImpulso.verba / d) * 100) / 100)} por dia no Google, por mais tempo.`}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </fieldset>
       )}
 
@@ -397,7 +434,7 @@ export function FormAssinar({
           <p className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-body">
               {modo.tipo === "impulso"
-                ? `Impulso no Google · ${dias} dias`
+                ? `Impulso no Google · ${diasDoImpulso} dias${comRapido && rapido ? " (Rápido)" : ""}`
                 : modo.tipo === "faixa"
                   ? `${NOME_PRODUTO[recurso]}: a diferença`
                   : `${NOME_PRODUTO[recurso]} · ${escolhido ? NOME_CICLO[escolhido.ciclo].toLowerCase() : ""}`}

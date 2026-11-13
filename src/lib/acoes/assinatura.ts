@@ -445,7 +445,9 @@ export async function comprarPorTrintaDias(dados: DadosDoPagador & { plano: stri
  * O impulso da vaga no Google (claude/plano-impulsionar-vaga.md; migração 20270423120000): uma cobrança só, como os 30
  * dias. Pago, o robô cria o anúncio no Google sozinho; o cartão volta para a página do impulso da vaga.
  */
-export async function comprarImpulso(dados: DadosDoPagador & { anuncio: string; dias: number }): Promise<ResultadoAssinar> {
+export async function comprarImpulso(
+  dados: DadosDoPagador & { anuncio: string; dias: number; rapido?: boolean },
+): Promise<ResultadoAssinar> {
   if (!/^[0-9a-f-]{36}$/.test(String(dados.anuncio)) || !Number.isInteger(dados.dias) || dados.dias < 1 || dados.dias > 60)
     return { ok: false, erro: "Pedido inválido." };
   try {
@@ -459,6 +461,8 @@ export async function comprarImpulso(dados: DadosDoPagador & { anuncio: string; 
       p_dias: dados.dias,
       p_forma: dados.forma,
       p_sandbox: sandbox,
+      // só com o Rápido, para funcionar também antes da migração 20270516120000
+      ...(dados.rapido ? { p_rapido: true } : {}),
     });
     if (error) throw new Error(error.message);
     const r = (data ?? {}) as { erro?: string; id?: string; valor?: number; dias?: number; titulo?: string };

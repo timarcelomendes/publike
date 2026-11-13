@@ -3704,7 +3704,16 @@ export type Database = {
         Returns: boolean;
       };
       servidor_compra_impulso: {
-        Args: { p_chave: string; p_conta: string; p_anuncio: string; p_dias: number; p_forma: string; p_sandbox: boolean };
+        Args: {
+          p_chave: string;
+          p_conta: string;
+          p_anuncio: string;
+          p_dias: number;
+          p_forma: string;
+          p_sandbox: boolean;
+          // o Rápido: os dias curtos do plano, com o mesmo preço (migração 20270516120000)
+          p_rapido?: boolean;
+        };
         Returns: Json;
       };
       servidor_impulso_cancelar: { Args: { p_chave: string; p_conta: string; p_id: string }; Returns: Json };

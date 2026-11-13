@@ -3,6 +3,8 @@
 import { refresh } from "next/cache";
 import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
+import { formatarMoeda } from "@/lib/formato";
+import { VERBA_MINIMA_POR_DIA } from "@/lib/impulso";
 import {
   consultar,
   contasAcessiveis,
@@ -123,6 +125,18 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
   }
   if (!(config.cortesia_dias >= 1 && config.cortesia_dias <= 15) || !(config.cortesia_verba >= 1 && config.cortesia_verba <= 200))
     return { ok: false, erro: "O impulso grátis vai de 1 a 15 dias, com R$ 1 a R$ 200 de anúncio." };
+  // menos de R$ 10 por dia no Google não vale a pena (13/11/2026, migração 20270516120000)
+  const pouco = (verba: number, dias: number) => verba < VERBA_MINIMA_POR_DIA * dias - 0.005;
+  const abaixo = precos.find((p) => p.ligado && pouco(p.verba, p.dias));
+  if (abaixo)
+    return {
+      ok: false,
+      erro: `O impulso de ${abaixo.dias} dias precisa de ao menos ${formatarMoeda(VERBA_MINIMA_POR_DIA * abaixo.dias)} no Google (R$ 10 por dia).`,
+    };
+  if (pouco(config.cortesia_verba, config.cortesia_dias))
+    return { ok: false, erro: `O impulso grátis precisa de ao menos ${formatarMoeda(VERBA_MINIMA_POR_DIA * config.cortesia_dias)} no Google (R$ 10 por dia).` };
+  if (pouco(config.auto_verba, config.auto_dias))
+    return { ok: false, erro: `Cada impulso automático precisa de ao menos ${formatarMoeda(VERBA_MINIMA_POR_DIA * config.auto_dias)} no Google (R$ 10 por dia).` };
   if (![config.raio_capital, config.raio_outras].every((r) => Number.isInteger(r) && r >= 1 && r <= 65))
     return { ok: false, erro: "O raio vai de 1 a 65 km." };
   if (!(config.auto_verba_mes >= 0 && config.auto_verba_mes <= 20000))
