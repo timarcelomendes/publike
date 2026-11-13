@@ -3698,6 +3698,8 @@ export type Database = {
       // o ajuste diário do impulso, em beta (migração 20270509120000)
       servidor_ajustes_para_fazer: { Args: { p_chave: string }; Returns: Json };
       servidor_ajuste_comecou: { Args: { p_chave: string; p_tipo: string; p_id: string }; Returns: boolean };
+      servidor_impulsos_pegar_vez: { Args: { p_chave: string; p_vez: string }; Returns: boolean };
+      servidor_impulsos_soltar_vez: { Args: { p_chave: string; p_vez: string }; Returns: undefined };
       servidor_ajuste_feito: {
         Args: {
           p_chave: string;

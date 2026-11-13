@@ -36,10 +36,10 @@ import { mandarNumerosDaSemana } from "@/lib/servidor/numeros-da-semana";
 import { ajustarImpulsos } from "@/lib/servidor/impulso-ajuste";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 
-// A garantia das filas: a tarefa agendada do GitHub (.github/workflows/filas.yml) chama a cada 5 minutos,
-// com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém
-// usando o site (hoje elas só andam em after() das ações). Responde 500 quando a fila não anda (chave do
-// servidor recusada, configuração faltando, e-mail com falha): a tarefa falha e o GitHub avisa por e-mail.
+// A garantia das filas: o cron-job.org chama a cada minuto (Admin › Chaves) e a tarefa agendada do GitHub
+// (.github/workflows/filas.yml) fica de reserva, os dois com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém usando o site
+// (fora daqui, elas só andam em after() das ações). Responde 500 quando a fila não anda (chave do servidor recusada,
+// configuração faltando, e-mail com falha): a tarefa do GitHub falha e avisa por e-mail.
 export const maxDuration = 60;
 
 function autorizado(cabecalho: string | null) {

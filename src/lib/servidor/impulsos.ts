@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { ocupacao } from "@/lib/cbo";
 import { SITE_URL } from "@/lib/config";
 import { nomeDoBairro } from "@/lib/formato";
@@ -1337,10 +1338,34 @@ async function cuidarDasCampanhas(a: Acesso, alertas: string[]) {
   return feitas;
 }
 
-/** Uma rodada do robô. Devolve quantos impulsos andaram e, quando um erro dura mais de 6 horas, o motivo. */
+/**
+ * Uma rodada do robô, uma por vez (migração 20270511120000): o cron-job.org (a cada minuto), o GitHub e as ações do
+ * site (o after() depois de pagar ou de aprovar) chamam o robô, e duas voltas juntas podiam criar a mesma campanha duas
+ * vezes no Google. A volta que não pega a vez pula, e o trabalho fica para a próxima. Sem a migração, roda como antes.
+ */
 export async function cuidarDosImpulsos(): Promise<{ feitos: number; motivo?: string }> {
   const a = acessoFila();
   if (!a) return { feitos: 0 };
+  const vez = randomUUID();
+  const { data: peguei, error: e } = await a.cliente.rpc("servidor_impulsos_pegar_vez", { p_chave: a.chave, p_vez: vez });
+  if (e && e.code !== "PGRST202") {
+    console.error("Publike: falha ao pegar a vez do robô do impulso:", e.message);
+    return { feitos: 0 };
+  }
+  if (!e && !peguei) return { feitos: 0 };
+  try {
+    return await umaVoltaDoRobo(a);
+  } finally {
+    if (!e) {
+      const { error: s } = await a.cliente.rpc("servidor_impulsos_soltar_vez", { p_chave: a.chave, p_vez: vez });
+      // sem soltar, a vez vence sozinha em 2 minutos
+      if (s) console.error("Publike: falha ao soltar a vez do robô do impulso:", s.message);
+    }
+  }
+}
+
+/** Uma rodada do robô. Devolve quantos impulsos andaram e, quando um erro dura mais de 6 horas, o motivo. */
+async function umaVoltaDoRobo(a: Acesso): Promise<{ feitos: number; motivo?: string }> {
   // o impulso automático do Publike (migração 20270428120000): com o Google Ads ligado, o banco escolhe as vagas
   // paradas dentro do teto do mês e cria os impulsos; logo abaixo, eles entram na fila como os outros
   if (googleAdsLigado()) {
