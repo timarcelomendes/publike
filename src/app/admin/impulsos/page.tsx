@@ -7,23 +7,17 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import {
   AtualizarImpulsos,
   ConfigImpulsos,
-  PararCampanha,
   PararImpulso,
   TestarGoogleAds,
 } from "@/components/admin/impulsos";
+import { CorrendoAgora, type Cliente } from "@/components/admin/impulsos-correndo";
 import { ListaDeAjustes, type AjusteDoAdmin } from "@/components/admin/impulsos-ajustes";
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
-import {
-  NOME_DA_ORIGEM,
-  NOME_DA_SITUACAO,
-  VARIANTE_DA_SITUACAO,
-  ehCorrendo,
-  quemPediu,
-} from "@/components/admin/impulsos-nomes";
+import { ehCorrendo, quemPediu } from "@/components/admin/impulsos-nomes";
 import { NovoImpulso } from "@/components/admin/impulsos-novo";
 import { TiposDeVaga } from "@/components/admin/impulsos-tipos";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
-import { Aviso, Selo } from "@/components/ui/basicos";
+import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import type {
   CampanhaDoAdmin,
@@ -34,7 +28,7 @@ import type {
   TipoDeVaga,
   VagaParaImpulso,
 } from "@/lib/acoes/admin-impulsos";
-import { formatarData, formatarMoeda, formatarNumero, plural, primeiro, tempoRelativo } from "@/lib/formato";
+import { formatarMoeda, formatarNumero, plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { contaDeAnuncios, situacaoGoogleAds } from "@/lib/servidor/google-ads-api";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
@@ -95,17 +89,6 @@ export default function Impulsos({ searchParams }: PageProps<"/admin/impulsos">)
 
 const comTracos = (c: string) => c.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
 const reais = (v: number) => formatarMoeda(Math.round(v * 100) / 100);
-
-/** As vagas que correm agora, por cliente: a campanha do cliente (com as vagas dela) e os impulsos de uma vaga só. */
-type Cliente = {
-  conta_id: string;
-  nome: string;
-  campanha: CampanhaDoAdmin | null;
-  vagas: ImpulsoDoAdmin[];
-  avulsos: ImpulsoDoAdmin[];
-  problema: boolean;
-  recente: string;
-};
 
 function clientesCorrendo(d: Dados): Cliente[] {
   const m = new Map<string, Cliente>();
@@ -361,148 +344,10 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
             Nenhum impulso correndo agora. Em Novo impulso, escolha as vagas de um cliente.
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
-            {clientes.map((c) => (
-              <CartaoDoCliente key={c.conta_id} c={c} agora={agora} />
-            ))}
-          </div>
+          <CorrendoAgora clientes={clientes} agora={agora} />
         )}
       </Secao>
     </>
-  );
-}
-
-function somaDos(vagas: ImpulsoDoAdmin[]) {
-  return vagas.reduce(
-    (t, i) => ({
-      gasto: t.gasto + Number(i.gasto ?? 0),
-      impressoes: t.impressoes + i.totais.impressoes,
-      cliques: t.cliques + i.totais.cliques,
-      curtidas: t.curtidas + i.totais.curtidas,
-    }),
-    { gasto: 0, impressoes: 0, cliques: 0, curtidas: 0 },
-  );
-}
-
-function numerosDa(t: { impressoes: number; cliques: number; curtidas: number }) {
-  return `${plural(t.impressoes, "vista", "vistas")}, ${plural(t.cliques, "clique", "cliques")}, ${plural(t.curtidas, "curtida", "curtidas")}`;
-}
-
-function situacaoDaCampanha(k: CampanhaDoAdmin) {
-  if (k.situacao === "no_ar") return k.ate ? `no ar até ${formatarData(k.ate)}` : "no ar";
-  if (k.situacao === "em_revisao") return "anúncios em revisão no Google";
-  return "criando no Google";
-}
-
-function CartaoDoCliente({ c, agora }: { c: Cliente; agora: number }) {
-  const k = c.campanha;
-  const vagasCorrendo = c.vagas.filter((i) => ehCorrendo(i.situacao));
-  const soma = somaDos([...c.vagas, ...c.avulsos]);
-  const gastoCampanha = somaDos(c.vagas).gasto;
-  const parte = k ? Math.min(100, (100 * gastoCampanha) / Math.max(Number(k.verba), 1)) : 0;
-  const podeParar = vagasCorrendo.some((i) => !i.pausar);
-  return (
-    <article className="overflow-hidden rounded-md border border-line">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-surface-100 px-4 py-3">
-        <div className="min-w-0">
-          <h3 className="text-h3">
-            <Link href={`/perfil/${c.conta_id}/vagas`} className="hover:underline">
-              {c.nome}
-            </Link>
-          </h3>
-          <p className="text-body-sm text-ink-muted">
-            {k
-              ? `Campanha do cliente, ${plural(vagasCorrendo.length, "vaga", "vagas")}, ${situacaoDaCampanha(k)}`
-              : c.avulsos.every((i) => i.automatico)
-                ? plural(c.avulsos.length, "vaga no impulso automático", "vagas no impulso automático")
-                : plural(c.avulsos.length, "vaga impulsionada sozinha", "vagas impulsionadas sozinhas")}
-            {k && c.avulsos.length > 0 && `. Mais ${plural(c.avulsos.length, "vaga sozinha", "vagas sozinhas")}`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <BotaoLink href={`/admin/impulsos?aba=novo&conta=${c.conta_id}`} tamanho="sm">
-            <Plus aria-hidden />
-            Mais vagas
-          </BotaoLink>
-          {k && podeParar && <PararCampanha id={k.id} vagas={vagasCorrendo.length} />}
-        </div>
-      </header>
-
-      {(k || c.avulsos.length > 1) && (
-        <div className="flex flex-col gap-2 border-b border-line px-4 py-3">
-          {k && (
-            <div className="flex flex-col gap-1.5">
-              <p className="flex flex-wrap justify-between gap-x-4 text-body-sm">
-                <span>
-                  <span className="text-label tabular-nums">{reais(gastoCampanha)}</span>
-                  <span className="text-ink-muted"> de {reais(Number(k.verba))} no Google</span>
-                </span>
-                <span className="text-ink-muted tabular-nums">{numerosDa(soma)}</span>
-              </p>
-              <span className="block h-1.5 overflow-hidden rounded-pill bg-surface-300" aria-hidden>
-                <span className="block h-full rounded-pill bg-ink" style={{ width: `${parte}%` }} />
-              </span>
-            </div>
-          )}
-          {k?.erro && (
-            <p className="text-body-sm break-words text-danger">
-              {k.erro}
-              {k.erro_desde && ` (desde ${tempoRelativo(k.erro_desde, agora)})`}
-            </p>
-          )}
-          {!k && <p className="text-body-sm text-ink-muted tabular-nums">{numerosDa(soma)}</p>}
-        </div>
-      )}
-
-      <ul className="divide-y divide-line">
-        {[...c.vagas, ...c.avulsos].map((i) => {
-          const corre = ehCorrendo(i.situacao);
-          return (
-            <li
-              key={i.id}
-              className={`grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start ${corre ? "" : "opacity-70"}`}
-            >
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {i.anuncio_id ? (
-                    <Link href={`/anuncio/${i.anuncio_id}`} className="text-label hover:underline">
-                      {i.titulo}
-                    </Link>
-                  ) : (
-                    <span className="text-label">{i.titulo}</span>
-                  )}
-                  <Selo variante={VARIANTE_DA_SITUACAO[i.situacao] ?? "neutro"}>{NOME_DA_SITUACAO[i.situacao] ?? i.situacao}</Selo>
-                  {i.automatico && <Selo variante="novo">Automático</Selo>}
-                  <Selo variante="contorno">{i.tipo ?? "Outros"}</Selo>
-                  {i.pausar && <Selo variante="novo">Parando</Selo>}
-                </p>
-                <p className="mt-0.5 text-body-sm text-ink-muted">
-                  {!i.campanha_cliente_id &&
-                    `${i.automatico ? NOME_DA_ORIGEM.automatico : NOME_DA_ORIGEM[i.origem]}, ${plural(i.dias, "dia", "dias")}${
-                      i.ate && i.situacao === "no_ar" ? ` até ${formatarData(i.ate)}` : ""
-                    }. `}
-                  <span className="tabular-nums">
-                    {reais(Number(i.gasto ?? 0))} no Google, {numerosDa(i.totais)}
-                  </span>
-                </p>
-                {i.erro && corre && (
-                  <p className="mt-0.5 text-body-sm break-words text-danger">
-                    {i.erro}
-                    {i.erro_desde && ` (desde ${tempoRelativo(i.erro_desde, agora)})`}
-                  </p>
-                )}
-                {!corre && i.motivo && <p className="mt-0.5 text-body-sm text-ink-muted">{i.motivo}</p>}
-              </div>
-              {corre && !i.pausar && (
-                <div className="sm:justify-self-end">
-                  <PararImpulso id={i.id} noAr={i.situacao === "no_ar"} />
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </article>
   );
 }
 

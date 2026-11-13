@@ -21,7 +21,7 @@ const SITUACOES = [
 
 // "Manuais": o que a equipe pediu (a campanha do cliente e o impulso pelo admin de antes); "Automático": o que o robô
 // escolheu sozinho; o resto, o que o cliente pagou ou ganhou
-const ORIGENS = [
+export const ORIGENS = [
   { valor: "todas", nome: "Todas" },
   { valor: "automatico", nome: "Automático" },
   { valor: "manual", nome: "Manuais" },
@@ -30,7 +30,7 @@ const ORIGENS = [
   { valor: "credito", nome: "Crédito" },
 ] as const;
 
-function Filtro<T extends string>({
+export function Filtro<T extends string>({
   rotulo,
   opcoes,
   atual,
