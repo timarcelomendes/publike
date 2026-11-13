@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Sparkles,
   Zap,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -90,6 +91,8 @@ type Previa = {
   comecaJa: boolean;
   contatoDireto: boolean;
   confidencial: boolean;
+  /** a candidatura é no site da empresa: no lugar do Curtir, "Ver a vaga" */
+  noSite: boolean;
   /** os campos obrigatórios que ainda faltam (os de `faltaNoPasso`) */
   falta: string[];
 };
@@ -105,6 +108,7 @@ const PREVIA_VAZIA: Previa = {
   comecaJa: false,
   contatoDireto: false,
   confidencial: false,
+  noSite: false,
   falta: ["titulo", "regime", "pagamento_valor", "bairro"],
 };
 
@@ -133,8 +137,10 @@ function lerPrevia(form: HTMLFormElement, agencia: boolean): Previa {
     resumo: t("descricao").replace(/\s+/g, " ").slice(0, 240),
     beneficios: f.getAll("beneficios_lista").filter((b): b is string => typeof b === "string" && Boolean(b)),
     comecaJa: t("comeca_ja") === "on",
-    contatoDireto: t("contato_direto") === "on",
+    // no site da empresa, o contato direto não vale (o formulário esconde)
+    contatoDireto: t("contato_direto") === "on" && t("candidatura") !== "site",
     confidencial: t("contratante_confidencial") === "on",
+    noSite: t("candidatura") === "site",
     // o mesmo que o Continuar de cada passo confere
     falta: [1, 2, 3].flatMap((n) => Object.keys(faltaNoPasso(n, f, { vaga: true, agencia }))),
   };
@@ -771,6 +777,12 @@ function TiqueteDaPrevia({ p, autor }: { p: Previa; autor: string }) {
                   Contato direto
                 </li>
               )}
+              {p.noSite && (
+                <li className="inline-flex items-center gap-1" title="A candidatura é no site da empresa">
+                  <ExternalLink aria-hidden className="size-3.5" />
+                  No site da empresa
+                </li>
+              )}
               {beneficios.map((b) => (
                 <li key={b} className={`${MARCA} ${EM_FOCO.beneficio}`}>
                   {BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}
@@ -805,8 +817,14 @@ function TiqueteDaPrevia({ p, autor }: { p: Previa; autor: string }) {
           )}
         </p>
         <span className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-4 text-label whitespace-nowrap">
-          <Heart aria-hidden className="size-4" />
-          Curtir
+          {p.noSite ? (
+            "Ver a vaga"
+          ) : (
+            <>
+              <Heart aria-hidden className="size-4" />
+              Curtir
+            </>
+          )}
         </span>
       </div>
     </article>
@@ -944,9 +962,11 @@ function PalcoDaVaga({
         </ul>
         <p className="flex items-start gap-2 text-body-sm text-ink-muted">
           <LockKeyhole aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {p.contatoDireto
-            ? "Com o contato direto, quem curtir a vaga já vê seu WhatsApp."
-            : "Grátis e sem limite de candidatos. Seu WhatsApp só aparece para quem você aceitar."}
+          {p.noSite
+            ? "Grátis. O botão “Candidatar no site da empresa” leva quem procura para a página da vaga no seu site."
+            : p.contatoDireto
+              ? "Com o contato direto, quem curtir a vaga já vê seu WhatsApp."
+              : "Grátis e sem limite de candidatos. Seu WhatsApp só aparece para quem você aceitar."}
         </p>
         {semConta && (
           <p className="text-body-sm text-ink-muted">

@@ -35,6 +35,7 @@ import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
 import { mandarNumerosDaSemana } from "@/lib/servidor/numeros-da-semana";
 import { ajustarImpulsos } from "@/lib/servidor/impulso-ajuste";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
+import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura";
 
 // A garantia das filas: o cron-job.org chama a cada minuto (Admin › Chaves) e a tarefa agendada do GitHub
 // (.github/workflows/filas.yml) fica de reserva, os dois com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém usando o site
@@ -122,6 +123,9 @@ export async function GET(request: Request) {
   const google = await comTempo(() => avisarGoogleDasVagas(10));
   // o Bing, o Yandex e os outros do IndexNow: vagas e serviços que entraram, mudaram ou saíram (um aviso só)
   const indexnow = await comTempo(() => avisarIndexNowDosAnuncios(500));
+  // as vagas com candidatura no site da empresa: o link de cada uma, uma vez por dia (fechou lá, sai daqui; a Gupy
+  // mudou a página, a equipe recebe o aviso uma vez, que sai junto com os e-mails abaixo)
+  const links = await comTempo(() => conferirLinksDeCandidatura(5));
   // o impulso da vaga no Google Ads: criar, olhar a aprovação, medir, tirar quando a vaga fecha e encerrar (o aviso
   // de "no ar" e o relatório saem junto com os e-mails abaixo)
   const impulsos = await comTempo(() => cuidarDosImpulsos());
@@ -154,6 +158,7 @@ export async function GET(request: Request) {
     buscasTalentos.motivo,
     google.motivo,
     indexnow.motivo,
+    links.motivo,
     impulsos.motivo,
     noticias.motivo,
     testes.motivo,
@@ -198,6 +203,7 @@ export async function GET(request: Request) {
       buscasTalentos: buscasTalentos.avisadas,
       google: google.avisadas,
       indexnow: indexnow.avisados,
+      links_das_vagas: { conferidos: links.conferidos, fechadas: links.fechadas },
       impulsos: impulsos.feitos,
       ajustes_dos_impulsos: ajustes.feitos,
       combinam: {

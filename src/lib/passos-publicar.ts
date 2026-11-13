@@ -31,7 +31,7 @@ const CAMPOS_DO_PASSO: Record<number, string[]> = {
   ],
   3: ["cidade", "bairro", "cep", "endereco", "lat", "lng", "modelo"],
   4: ["descricao", "escolaridade_minima", "experiencia", "cnh", "pcd", "perguntas", "pede_curriculo"],
-  5: ["prazo_dias", "comeca_ja", "contato_direto", "contato_por"],
+  5: ["candidatura", "link_candidatura", "prazo_dias", "comeca_ja", "contato_direto", "contato_por"],
 };
 
 /** O passo de um campo (o erro que não é de campo nenhum fica no último, perto do botão). */

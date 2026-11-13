@@ -70,7 +70,8 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
   const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
   if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso." };
 
-  const leitura = lerAnuncio(formData);
+  // a moderação corrige o anúncio de outra pessoa: o link de qualquer site vale (o banco só confere o link que muda)
+  const leitura = lerAnuncio(formData, { equipe: true });
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
   const d = leitura.dados;
   const { data, error } = await gravarVaga(registroDoAnuncio(d), (r) =>

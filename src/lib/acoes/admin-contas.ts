@@ -201,7 +201,8 @@ async function gravarEmNomeDe(
   // como na publicação normal: sem ponto no mapa, o meio do bairro; a confidencial (sem CEP, endereço nem
   // pino na tela), o meio do bairro ou o centro da cidade; sem categoria ou descrição, as do título
   const trocas = await completarAnuncio(formData);
-  const leitura = lerAnuncio(formData);
+  // a equipe pode usar o link de qualquer site na candidatura no site da empresa
+  const leitura = lerAnuncio(formData, { equipe: true });
   if (!leitura.ok)
     return { ok: false, erro: "Confira os campos marcados.", erros: ajustarErros(leitura.erros, trocas) };
   const d = leitura.dados;
@@ -216,7 +217,7 @@ async function gravarEmNomeDe(
   );
   if (error) {
     const erro = mensagemDeErro(error);
-    if (error.hint === "contratante" || error.hint === "pagamento_ate") {
+    if (error.hint === "contratante" || error.hint === "pagamento_ate" || error.hint === "link_candidatura") {
       return { ok: false, erro: "Confira os campos marcados.", erros: { [error.hint]: erro } };
     }
     return { ok: false, erro };
@@ -260,6 +261,13 @@ export async function publicarVariasEmNomeDe(
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
   if (!Array.isArray(outras) || outras.length > 12) return { ok: false, erro: "Vagas demais de uma vez (até 12)." };
+  // no site da empresa, cada vaga tem o próprio link: uma por vez
+  if (outras.length && formData.get("candidatura") === "site")
+    return {
+      ok: false,
+      erro: "Com a candidatura no site da empresa, publique uma vaga por vez: cada uma tem o próprio link.",
+      campos: ["link_candidatura"],
+    };
   // a primeira (a do formulário) precisa passar: os campos que valem para todas estão nela. Depois dela, o
   // formulário já vem completo (o ponto do mapa do bairro, por exemplo) e serve de base para as outras
   const primeira = await gravarEmNomeDe(c, usuarioId, formData);

@@ -22,6 +22,7 @@ import { registrarPassoPublicar } from "@/lib/acoes/funil-publicar";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { perfilDaVaga } from "@/lib/aderencia";
 import { BAIRROS } from "@/lib/bairros";
+import type { Candidatura } from "@/lib/candidatura";
 import { categoriaSugerida } from "@/lib/categoria-sugerida";
 import { temLugar, type ClienteParaVaga } from "@/lib/clientes";
 import {
@@ -53,6 +54,7 @@ import {
   type HorarioDetalhe,
   type Pergunta,
 } from "@/lib/vaga-extra";
+import { CandidaturaDaVaga } from "./anuncio/candidatura-da-vaga";
 import { CargoNaCarteira } from "./anuncio/cargo-na-carteira";
 import { EmpresaDaVaga } from "./anuncio/empresa-da-vaga";
 import { AvisoDaSaida, rotuloSalvando, useSaidaDoSalvar, vagaGravada } from "./anuncio/saida-do-salvar";
@@ -95,6 +97,12 @@ export type ValoresAnuncio = {
   contato_direto?: boolean;
   /** depois do match: o chat e o WhatsApp ("ambos", o padrão) ou só o chat do Publike */
   contato_por?: "ambos" | "chat";
+  /**
+   * vaga: como recebe os candidatos, pelo Publike (o padrão) ou no site da empresa, com o link da vaga lá
+   * (claude/plano-candidatura-no-site-da-empresa.md)
+   */
+  candidatura?: Candidatura;
+  link_candidatura?: string | null;
   /** vaga: precisa de alguém para começar logo (a etiqueta e o filtro "Começa já") */
   comeca_ja?: boolean;
   /** em quantos dias a vaga sai do ar sozinha; null: sem prazo (fica até ser encerrada) */
@@ -315,6 +323,9 @@ export function FormAnuncio({
     prazoInicial === null ? "sem" : PRAZOS.includes(prazoInicial) ? String(prazoInicial) : "outro",
   );
   const [pedeCurriculo, setPedeCurriculo] = useState(inicial.pede_curriculo ?? false);
+  // como recebe os candidatos: no site da empresa, some o que é da candidatura pelo Publike (currículo, perguntas,
+  // contato direto, conversa depois do match)
+  const [candidatura, setCandidatura] = useState<Candidatura>(inicial.candidatura === "site" ? "site" : "publike");
   // Em vaga nova, CLT, estágio e temporário já marcam "pedir currículo" (até a pessoa mexer na caixa)
   const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(
     editando || (inicial.curriculo_padrao !== undefined && inicial.curriculo_padrao !== "regime"),
@@ -357,6 +368,7 @@ export function FormAnuncio({
   }, [estado, editando, equipe]);
   const erros = { ...(estado.erros ?? {}), ...errosLocais };
   const vaga = tipo === "vaga";
+  const noSite = vaga && candidatura === "site";
   const rotuloSalvar = semConta
     ? "Continuar para publicar"
     : equipe
@@ -534,8 +546,11 @@ export function FormAnuncio({
         nome: "Mais detalhes",
         texto: juntar([
           t("descricao") ? "Descrição escrita por você" : "Descrição montada pelo Publike",
-          t("pede_curriculo") === "on" && "Pede currículo",
-          perguntas > 0 && `${perguntas} ${perguntas === 1 ? "pergunta" : "perguntas"} para o candidato`,
+          // no site da empresa, o currículo e as perguntas ficam de fora
+          t("pede_curriculo") === "on" && t("candidatura") !== "site" && "Pede currículo",
+          perguntas > 0 &&
+            t("candidatura") !== "site" &&
+            `${perguntas} ${perguntas === 1 ? "pergunta" : "perguntas"} para o candidato`,
         ]),
       },
     ];
@@ -1149,7 +1164,7 @@ export function FormAnuncio({
       {ia && <MelhorarTexto lerRascunho={lerRascunho} aplicar={aplicarSugestao} />}
 
       {vaga && (
-        <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
+        <label hidden={noSite} className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
           <input
             type="checkbox"
             name="pede_curriculo"
@@ -1270,7 +1285,10 @@ export function FormAnuncio({
               ))}
             </div>
           </fieldset>
-          <EditorPerguntas inicial={inicial.perguntas ?? []} erro={erros.perguntas} />
+          {/* no site da empresa, as perguntas ficam lá (escondidas aqui, sem perder o que já foi escrito) */}
+          <div hidden={noSite} className="contents">
+            <EditorPerguntas inicial={inicial.perguntas ?? []} erro={erros.perguntas} />
+          </div>
         </div>
       )}
     </>
@@ -1300,6 +1318,21 @@ export function FormAnuncio({
           ))}
         </ul>
       )}
+      {vaga && (
+        <CandidaturaDaVaga
+          valor={candidatura}
+          aoMudar={(v) => {
+            setCandidatura(v);
+            // o resumo do passo 5 lê o formulário: depois de redesenhar, sem o currículo e as perguntas
+            if (passos && passo === TOTAL_PASSOS) window.requestAnimationFrame(() => setResumo(montarResumo()));
+          }}
+          link={inicial.link_candidatura ?? ""}
+          erro={erros.link_candidatura}
+          eraNoSite={editando && inicial.candidatura === "site"}
+          equipe={equipe || Boolean(emNomeDe)}
+        />
+      )}
+
       {vaga && (
         <fieldset className="flex flex-col gap-2 rounded-md border border-line bg-surface-200 p-4">
           <legend className="sr-only">Expiração automática</legend>
@@ -1393,7 +1426,10 @@ export function FormAnuncio({
       )}
 
       {vaga && (
-        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4">
+        <label
+          hidden={noSite}
+          className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4"
+        >
           <input
             type="checkbox"
             name="contato_direto"
@@ -1412,7 +1448,7 @@ export function FormAnuncio({
 
       {vaga && (
         // depois do match: o chat e o WhatsApp de quem publicou, ou só o chat (claude/plano-so-chat-ou-whatsapp.md)
-        <fieldset className="flex flex-col gap-2">
+        <fieldset hidden={noSite} className="flex flex-col gap-2">
           <legend className="mb-1 text-label">Depois do match, como os candidatos falam com você?</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {CONTATO_POR.map((o) => (
@@ -1438,7 +1474,7 @@ export function FormAnuncio({
       )}
 
       {/* várias vagas de uma vez: só ao publicar com conta (o rascunho de quem não tem conta não leva os cargos) */}
-      {passos && vaga && !editando && !semConta && <OutrosCargos />}
+      {passos && vaga && !editando && !semConta && !noSite && <OutrosCargos />}
       {/* a vaga que sair daqui conta no funil do publicar (o passo 6) */}
       {passos && !editando && <input type="hidden" name="de_passos" value="1" />}
 

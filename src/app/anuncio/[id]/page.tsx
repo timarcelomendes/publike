@@ -14,6 +14,7 @@ import {
   CalendarClock,
   ClipboardCheck,
   Clock,
+  ExternalLink,
   FileText,
   Flag,
   Gift,
@@ -52,11 +53,14 @@ import { VerMaisPerto } from "@/components/anuncio/ver-mais";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
 import { BotaoVagaPreenchida } from "@/components/painel/acoes";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
+import { QuadroNoSite } from "@/components/anuncio/candidatar-no-site";
+import { candidaturaNoSite, nomeDoSiteDeCandidatura } from "@/lib/candidatura";
+import { idasAoSiteDasVagas, minhaIdaAoSite } from "@/lib/servidor/idas-ao-site";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { MapaArea } from "@/components/mapa/mapa-area";
 import { MatchDaVaga, SeloMatch } from "@/components/match-vaga";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
-import { BotaoLink } from "@/components/ui/botao";
+import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { matchComAVaga } from "@/lib/aderencia";
 import { comFuncaoDasVagas, comFuncoesDoCurriculo } from "@/lib/servidor/funcoes-pelo-contexto";
 import { SITE_URL } from "@/lib/config";
@@ -386,9 +390,40 @@ async function DetalheAnuncio({
   const caixaDeVideo = meuVideo ? <AvisoVideoPedido anuncioId={anuncio.id} e={meuVideo} /> : null;
   // a empresa usa a Triagem com IA: quem vê a vaga (e se candidata) fica sabendo (migração 20261226120000)
   const avisoTriagem = vaga && !proprio && (await vagaUsaTriagem(anuncio.id)) ? <AvisoTriagem /> : null;
+  // a candidatura no site da empresa (migração 20270513120000): no lugar do Curtir, o botão para o site dela
+  const linkNoSite = vaga && candidaturaNoSite(anuncio) ? (anuncio.link_candidatura ?? null) : null;
+  const idaEm = linkNoSite && usuario && !proprio ? await minhaIdaAoSite(anuncio.id) : null;
+  const idas = linkNoSite && proprio ? ((await idasAoSiteDasVagas([anuncio.id])).get(anuncio.id) ?? null) : null;
 
   const quadroAcao = (sufixo: string) =>
-    proprio ? (
+    proprio && linkNoSite ? (
+      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
+        <p className="font-display text-h3">Este anúncio é seu</p>
+        <p className="text-body-sm text-ink-muted">
+          A candidatura é no seu site: o botão “Candidatar no site da empresa” leva quem procura para a página da vaga
+          lá.
+        </p>
+        <p className="text-body">
+          {idas && idas.total > 0 ? (
+            <>
+              <strong className="font-semibold tabular-nums">{idas.total}</strong>{" "}
+              {idas.total === 1 ? "clique" : "cliques"} em “Candidatar no site da empresa”
+              <span className="block text-body-sm text-ink-muted">{idas.semana} nos últimos 7 dias</span>
+            </>
+          ) : (
+            "Ninguém clicou em “Candidatar no site da empresa” ainda."
+          )}
+        </p>
+        <a href={linkNoSite} target="_blank" rel="noopener noreferrer" className={classesBotao("secundario")}>
+          Abrir a vaga no seu site
+          <ExternalLink aria-hidden />
+        </a>
+        <BotaoLink href={`/painel/anuncio/${anuncio.id}/editar`}>Editar anúncio</BotaoLink>
+        {(anuncio.status === "ativo" || anuncio.status === "pausado") && (
+          <BotaoVagaPreenchida id={anuncio.id} preenchida={Boolean(anuncio.preenchida_em)} />
+        )}
+      </div>
+    ) : proprio ? (
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
         <p className="font-display text-h3">{vaga ? "Este anúncio é seu" : "Este serviço é seu"}</p>
         <p className="text-body-sm text-ink-muted">
@@ -420,6 +455,15 @@ async function DetalheAnuncio({
           Ver vagas perto de mim
         </BotaoLink>
       </div>
+    ) : linkNoSite ? (
+      <QuadroNoSite
+        anuncioId={anuncio.id}
+        link={linkNoSite}
+        site={nomeDoSiteDeCandidatura(linkNoSite)}
+        logado={usuario !== null}
+        idaEm={idaEm}
+        area={categoria(anuncio.categoria).nome}
+      />
     ) : (
       <PainelCurtir
         idCampo={`mensagem-curtida-${sufixo}`}
@@ -545,6 +589,12 @@ async function DetalheAnuncio({
               <Selo variante="match">
                 <Zap aria-hidden />
                 Contato direto
+              </Selo>
+            )}
+            {linkNoSite && (
+              <Selo variante="contorno">
+                <ExternalLink aria-hidden />
+                Candidatura no site da empresa
               </Selo>
             )}
           </div>
@@ -697,12 +747,15 @@ async function DetalheAnuncio({
               valor={valor}
               status={anuncio.minha_curtida}
               servico={!vaga}
+              noSite={Boolean(linkNoSite)}
             />
           )}
 
           {vaga && !proprio && primeiro(sp.indicado) === "1" && anuncio.minha_curtida == null && (
             <Aviso tipo="sucesso" titulo="Você chegou por uma indicação" className="mt-6">
-              Se a vaga combinar com você, toque em Curtir para se candidatar. A empresa vê que foi indicação.
+              {linkNoSite
+                ? "Se a vaga combinar com você, toque em “Candidatar no site da empresa” para se candidatar lá."
+                : "Se a vaga combinar com você, toque em Curtir para se candidatar. A empresa vê que foi indicação."}
             </Aviso>
           )}
 

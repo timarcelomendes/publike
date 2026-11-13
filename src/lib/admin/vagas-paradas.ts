@@ -41,7 +41,11 @@ export async function vagasParadas(c: ClienteBanco, agora: number): Promise<Vaga
   const { data: curtidas, error: ec } = await c.from("curtidas").select("anuncio_id").in("anuncio_id", ids);
   if (ec) throw new Error(`Publike: não deu para ler as curtidas das vagas paradas (${ec.message}).`);
   const comCandidato = new Set((curtidas ?? []).map((x) => x.anuncio_id));
-  const paradas = vagas.filter((v) => !comCandidato.has(v.id));
+  // a vaga com a candidatura no site da empresa nunca recebe curtida: não conta como parada (antes da migração
+  // 20270513120000 a coluna não existe, e a leitura volta vazia)
+  const { data: doSite } = await c.from("anuncios").select("id").in("id", ids).eq("candidatura", "site");
+  const noSite = new Set((doSite ?? []).map((x) => x.id));
+  const paradas = vagas.filter((v) => !comCandidato.has(v.id) && !noSite.has(v.id));
   if (!paradas.length) return [];
   const autores = [...new Set(paradas.map((v) => v.autor_id))];
   const [{ data: contas }, { data: contatos }, { data: visitas }] = await Promise.all([

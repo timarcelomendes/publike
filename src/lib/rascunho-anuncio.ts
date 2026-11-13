@@ -110,6 +110,10 @@ export function valoresDoRascunho(r: Rascunho, base: ValoresAnuncio): ValoresAnu
     endereco: um("endereco") || base.endereco,
     lat: coordenada("lat"),
     lng: coordenada("lng"),
+    // no site da empresa: a escolha e o link voltam junto
+    ...(um("candidatura") === "site"
+      ? { candidatura: "site" as const, link_candidatura: um("link_candidatura") ?? null }
+      : {}),
     // agência: a empresa da vaga (o cliente, o nome escrito ou "Empresa confidencial"). Sem isto, o rascunho
     // voltava sem a marcação e o publicar pedia a empresa de novo (relato do Grupo Farol, 30/10/2026)
     ...(r.campos.some(([c]) => c === "agencia")

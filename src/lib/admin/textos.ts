@@ -85,6 +85,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   aviso_cadastro: "Novo cadastro",
   aviso_retirado: "Anúncio tirado do ar",
   aviso_falha: "Falha na vaga ou no currículo",
+  aviso_sistema: "Algo de fora mudou (a página da Gupy)",
   avaliacao: "Avaliação nova",
   avaliacao_retida: "Avaliação não publicada",
   aviso_avaliacao: "Avaliação para revisar",

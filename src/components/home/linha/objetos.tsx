@@ -2,6 +2,7 @@ import {
   Bus,
   CalendarClock,
   CircleCheck,
+  ExternalLink,
   Footprints,
   Heart,
   MapPin,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { candidaturaNoSite } from "@/lib/candidatura";
 import { nomeBeneficio } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { deslocamentoCurto } from "@/lib/deslocamento";
@@ -150,7 +152,17 @@ export function TicketDaVaga({
       ? item.match
       : null;
   const etiquetas: ReactNode[] = [];
+  // a candidatura é no site da empresa (migração 20270513120000): sem Curtir no canhoto, a página da vaga tem o botão
+  const noSite = candidaturaNoSite(a);
   if (modalidade) etiquetas.push(<li key="m">{modalidade}</li>);
+  if (noSite && !preenchida)
+    etiquetas.push(
+      // curto: o tíquete é estreito (no cartão e na página da vaga, "Candidatura no site da empresa")
+      <li key="s" className="inline-flex items-center gap-1" title="A candidatura é no site da empresa">
+        <ExternalLink aria-hidden className="size-3.5" />
+        No site da empresa
+      </li>,
+    );
   // precisa de alguém para começar logo: antes do contato direto (é o que mais muda a decisão)
   if (comecaJa)
     etiquetas.push(
@@ -265,6 +277,13 @@ export function TicketDaVaga({
           </Link>
         ) : preenchida && a.minha_curtida !== "match" ? (
           <span className="text-label text-ink-muted">Preenchida</span>
+        ) : noSite ? (
+          <Link
+            href={`/anuncio/${a.id}`}
+            className="relative z-10 inline-flex min-h-9 items-center justify-center rounded-pill border border-line-strong px-3 text-label whitespace-nowrap hover:bg-surface-300"
+          >
+            Ver a vaga
+          </Link>
         ) : (
           <span className="relative z-10 flex items-center gap-2 sm:flex-col sm:items-stretch">
             <BotaoCurtir

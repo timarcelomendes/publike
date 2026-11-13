@@ -1,4 +1,4 @@
-import { ChevronDown, Download, FileText, Heart, Sparkles } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, FileText, Heart, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -54,6 +54,31 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
+import { candidaturaNoSite } from "@/lib/candidatura";
+import { idasAoSiteDasVagas, type IdasDaVaga } from "@/lib/servidor/idas-ao-site";
+
+/**
+ * A vaga com a candidatura no site da empresa (migração 20270513120000): ninguém curte pelo Publike, e quem publicou
+ * vê quantos foram para o site.
+ */
+function VazioDoSite({ link, idas }: { link: string | null; idas: IdasDaVaga | null }) {
+  return (
+    <Vazio icone={ExternalLink} titulo="A candidatura desta vaga é no seu site">
+      Quem procura toca em “Candidatar no site da empresa” e vai para a página da vaga lá, onde se candidata.{" "}
+      {idas && idas.total > 0
+        ? `Pelo Publike, foram ${idas.total} ${idas.total === 1 ? "clique" : "cliques"} (${idas.semana} nos últimos 7 dias).`
+        : "Ninguém clicou ainda."}
+      {link && (
+        <>
+          {" "}
+          <a href={link} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2">
+            Abrir a vaga no seu site
+          </a>
+        </>
+      )}
+    </Vazio>
+  );
+}
 
 type AbaDaEtapa = ReturnType<typeof abaDaEtapa>;
 
@@ -272,6 +297,11 @@ async function Conteudo({
 
       {todos.length > 0 && interessados.length === 0 ? (
         <p className="text-body text-ink-muted">Ninguém nesta etapa.</p>
+      ) : interessados.length === 0 && candidaturaNoSite(anuncio) ? (
+        <VazioDoSite
+          link={anuncio.link_candidatura ?? null}
+          idas={(await idasAoSiteDasVagas([anuncio.id])).get(anuncio.id) ?? null}
+        />
       ) : interessados.length === 0 ? (
         <Vazio icone={Heart} titulo={servico ? "Ninguém pediu ainda" : "Ninguém curtiu ainda"}>
           {servico
@@ -519,6 +549,11 @@ async function MesaDaVaga({
         <Aviso tipo="alerta" titulo="Não deu para carregar os candidatos agora">
           Tente de novo em instantes.
         </Aviso>
+      ) : itens.length === 0 && candidaturaNoSite(anuncio) ? (
+        <VazioDoSite
+          link={anuncio.link_candidatura ?? null}
+          idas={(await idasAoSiteDasVagas([anuncio.id])).get(anuncio.id) ?? null}
+        />
       ) : itens.length === 0 ? (
         <Vazio icone={Heart} titulo="Ninguém se candidatou ainda">
           Quem se candidatar aparece aqui, pelo que fazer agora. Divulgue a vaga com o “Copiar o link da vaga”, no alto.

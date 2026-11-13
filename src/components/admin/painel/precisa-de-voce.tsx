@@ -1,4 +1,4 @@
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { itensDaSaude } from "@/components/admin/saude";
@@ -15,7 +15,7 @@ import { vagasParadas } from "@/lib/admin/vagas-paradas";
 import { plural, tempoRelativo } from "@/lib/formato";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { itensPagamentos, situacaoPagamentos } from "@/lib/servidor/situacao-pagamentos";
-import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { criarClienteAdmin, type ClienteBanco } from "@/lib/supabase/admin";
 
 // "Precisa de você" (claude/plano-indicadores-do-admin.md), no alto da Visão geral, só no admin: o que pede ação,
 // junto. Com tudo em dia, uma linha verde. A pergunta ao site no ar sobre os pagamentos carrega à parte.
@@ -24,9 +24,24 @@ type Item = { chave: string; numero: number | null; titulo: string; apoio: strin
 
 const HORAS_ESPERA = 48;
 
+type AlertaDoSistema = { chave: string; titulo: string; detalhe: string | null; desde: string; vezes: number };
+
+/**
+ * Os alertas do sistema abertos (migração 20270513120000): uma peça de fora mudou e o Publike deixou de entender, como
+ * a página de vagas da Gupy. A equipe também recebe o e-mail, na primeira vez.
+ */
+async function alertasDoSistema(c: ClienteBanco): Promise<AlertaDoSistema[]> {
+  const { data, error } = await c.rpc("admin_alertas_do_sistema");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: não deu para ler os alertas do sistema: ${error.message}`);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function PrecisaDeVoce({ agora }: { agora: number }) {
   const c = criarClienteAdmin();
-  const [saude, respostas, chaves, config, n, esperando, paradas] = await Promise.all([
+  const [saude, respostas, chaves, config, n, esperando, paradas, alertas] = await Promise.all([
     saudeDoSite(c),
     respostasNovasDaEquipe(c),
     listarChavesServidor(c),
@@ -34,6 +49,7 @@ export async function PrecisaDeVoce({ agora }: { agora: number }) {
     resumoDoAdmin(),
     empresasComGenteEsperando(c, agora).catch(() => null),
     vagasParadas(c, agora).catch(() => null),
+    alertasDoSistema(c).catch(() => []),
   ]);
 
   const itens: Item[] = [];
@@ -129,8 +145,23 @@ export async function PrecisaDeVoce({ agora }: { agora: number }) {
       className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 sm:p-5"
     >
       <h2 id="precisa-titulo" className="text-h3">
-        {itens.length ? "Precisa de você" : "Precisa de você: nada agora"}
+        {itens.length || alertas.length ? "Precisa de você" : "Precisa de você: nada agora"}
       </h2>
+      {alertas.map((a) => (
+        // em cima de tudo e na largura toda: algo de fora parou de funcionar
+        <div key={a.chave} role="alert" className="flex gap-3 rounded-md border-2 border-danger bg-surface-100 p-3 sm:p-4">
+          <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-danger" />
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="text-label">{a.titulo}</p>
+            {a.detalhe && <p className="text-body-sm break-words">{a.detalhe}</p>}
+            <p className="text-body-sm text-ink-muted">
+              Começou {tempoRelativo(a.desde, agora)}
+              {a.vezes > 1 ? ` · aconteceu ${a.vezes} vezes` : ""}. O e-mail vai uma vez só, para quem recebe os avisos
+              da equipe; este aviso sai daqui sozinho quando voltar a funcionar.
+            </p>
+          </div>
+        </div>
+      ))}
       {itens.length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {itens.map((i) => (

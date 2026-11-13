@@ -205,6 +205,8 @@ export async function curtirAnuncio(
   const { error } = await supabase.from("curtidas").insert({ anuncio_id: anuncioId, mensagem: texto, respostas });
   if (error) {
     if (error.hint === "perguntas") return { ok: false, erro: mensagemDeErro(error), ir: RESPONDER(anuncioId) };
+    // a vaga recebe os candidatos no site da empresa (migração 20270513120000): a página dela tem o botão
+    if (error.hint === "site") return { ok: false, erro: mensagemDeErro(error), ir: voltar };
     if (precisaCompletarPerfil(error) || error.code === "23503") {
       return {
         ok: false,
@@ -408,7 +410,12 @@ export async function curtirDeNovo(anuncioId: string, mensagem: string | null = 
   }
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("curtir_de_novo", { p_anuncio: anuncioId, p_mensagem: texto });
-  if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível curtir de novo agora.") };
+  if (error)
+    return {
+      ok: false,
+      erro: mensagemDeErro(error, "Não foi possível curtir de novo agora."),
+      ...(error.hint === "site" ? { ir: `/anuncio/${anuncioId}` } : {}),
+    };
   after(processarFilas);
   refresh();
   const { data: feita } = await supabase

@@ -65,6 +65,8 @@ type Base = {
   /** endereço público (só comércio, empresa e agência) */
   endereco?: string;
   cep?: string;
+  /** a candidatura é no site da empresa: o link da vaga lá */
+  site?: string;
   cidade: string;
   bairro: string;
   lat: number;
@@ -231,6 +233,14 @@ const BASE: Base[] = [
     comissao: true, beneficiosLista: ["ajuda_combustivel"], experiencia: "6_meses", cnh: "A", jornada: "integral",
     cidade: "Goiânia", bairro: "Setor Oeste", lat: -16.68, lng: -49.27, horasAtras: 28,
   },
+  {
+    id: "demo-22", autor: "demo-distribuidora", tipo: "vaga", categoria: "logistica", regime: "clt",
+    titulo: "Auxiliar de estoque",
+    descricao: "🔹 Como será seu dia a dia:\n• Receber e conferir as mercadorias;\n• Separar e embalar os pedidos;\n• Manter o estoque organizado.\n\nRequisitos e qualificações:\n• Ensino médio completo.",
+    valor: null, unidade: "mes", vagas: 1, modelo: "presencial", pcd: "tambem", jornada: "integral",
+    site: "https://exemplo.gupy.io/jobs/1234567",
+    cidade: "Goiânia", bairro: "Campinas", endereco: "Avenida 24 de Outubro, 1500", cep: "74505010", lat: -16.66972, lng: -49.28766, horasAtras: 20,
+  },
 ];
 
 /** Avaliações de exemplo (só de serviços). */
@@ -331,8 +341,8 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     oficio: b.oficio ?? null,
     fotos: [],
     atende: b.atende ?? [],
-    // na demonstração, CLT e estágio pedem currículo
-    pede_curriculo: b.tipo === "vaga" && (b.regime === "clt" || b.regime === "estagio"),
+    // na demonstração, CLT e estágio pedem currículo (a do site da empresa, não)
+    pede_curriculo: b.tipo === "vaga" && !b.site && (b.regime === "clt" || b.regime === "estagio"),
     contato_direto: b.tipo === "servico",
     preenchida_em: null,
     prazo_dias: b.tipo === "vaga" ? 30 : null,
@@ -353,6 +363,8 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     jornada: b.jornada ?? null,
     modelo: b.modelo ?? (b.tipo === "vaga" ? "presencial" : null),
     pcd: b.pcd ?? null,
+    candidatura: b.site ? "site" : "publike",
+    link_candidatura: b.site ?? null,
   };
 }
 
@@ -384,6 +396,7 @@ function resumo(c: AnuncioCompleto, lat: number, lng: number): AnuncioResumo {
     autor_avaliacoes: c.tipo === "servico" ? notaDemo(c.autor_id).total : 0,
     pagamento_ate: c.pagamento_ate,
     comissao: c.comissao,
+    candidatura: c.candidatura,
   };
 }
 
@@ -459,7 +472,8 @@ export function idsDemo() {
 
 /** Vagas do Descobrir na demonstração (com curtidas e salvas de mentira para o "Em alta"). */
 export function vagasDescobrirDemo(agora: number): VagaDescobrir[] {
-  return BASE.filter((b) => b.tipo === "vaga").map((b, i) => {
+  // como no banco: a vaga do site da empresa fica fora do Descobrir
+  return BASE.filter((b) => b.tipo === "vaga" && !b.site).map((b, i) => {
     const c = completo(b, agora);
     return {
       id: c.id,

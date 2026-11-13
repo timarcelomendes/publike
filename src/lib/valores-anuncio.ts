@@ -40,6 +40,10 @@ export function valoresDoAnuncio(
     vagas: anuncio.vagas,
     pede_curriculo: anuncio.pede_curriculo,
     contato_direto: anuncio.contato_direto,
+    // no site da empresa: a parecida (copiar) pede o link da outra vaga
+    ...(anuncio.candidatura === "site"
+      ? { candidatura: "site" as const, link_candidatura: copiar ? null : (anuncio.link_candidatura ?? null) }
+      : {}),
     prazo_dias: anuncio.prazo_dias,
     contratante: anuncio.contratante,
     contratante_confidencial: anuncio.contratante_confidencial,

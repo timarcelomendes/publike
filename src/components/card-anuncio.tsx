@@ -1,4 +1,4 @@
-import { CalendarClock, Heart, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
+import { CalendarClock, ExternalLink, Heart, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -10,6 +10,7 @@ import {
   urlDaFotoTrabalho,
   valorDoAnuncio,
 } from "@/lib/formato";
+import { candidaturaNoSite } from "@/lib/candidatura";
 import { nomeBeneficio } from "@/lib/constantes";
 import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { ResumoComentarios } from "@/lib/comentarios";
@@ -151,6 +152,8 @@ export function CardAnuncio({
   const modalidade =
     anuncio.tipo === "vaga" && anuncio.regime === "outro" ? null : rotuloModalidade(anuncio.tipo, anuncio.regime);
   const preenchida = Boolean(extras?.preenchida);
+  // a candidatura é no site da empresa (migração 20270513120000): sem Curtir no cartão, a página da vaga tem o botão
+  const noSite = anuncio.tipo === "vaga" && candidaturaNoSite(anuncio);
   // sem conta: o % embaçado chama para entrar e ver o quanto a vaga combina (11/11/2026)
   const fechado = usuarioId === null && anuncio.tipo === "vaga" && !preenchida && !match;
   const anel = Boolean(comMatch) || fechado;
@@ -188,6 +191,13 @@ export function CardAnuncio({
     etiquetas.push(
       <Etiqueta key="modalidade" className="bg-surface-300 text-ink group-data-[visao=lista]/visao:hidden">
         {modalidade}
+      </Etiqueta>,
+    );
+  if (noSite && !preenchida)
+    etiquetas.push(
+      <Etiqueta key="site" className="text-ink-muted ring-1 ring-line-strong ring-inset">
+        <ExternalLink aria-hidden className="mr-1 size-3.5" />
+        Candidatura no site da empresa
       </Etiqueta>,
     );
   if (extras?.comecaJa && !preenchida)
@@ -442,6 +452,13 @@ export function CardAnuncio({
                 )}
                 {preenchida && anuncio.minha_curtida !== "match" ? (
                   <span className="text-label text-ink-muted">Vaga preenchida</span>
+                ) : noSite ? (
+                  <Link
+                    href={`/anuncio/${anuncio.id}`}
+                    className="relative z-10 inline-flex min-h-11 shrink-0 items-center rounded-pill border border-line-strong px-4 text-label text-ink hover:bg-surface-300"
+                  >
+                    Ver a vaga
+                  </Link>
                 ) : (
                   <BotaoCurtir
                     className="relative z-10"

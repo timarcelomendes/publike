@@ -1,21 +1,24 @@
 "use client";
 
-import { Check, ClipboardPaste, Copy, ImageUp, Layers, Sparkles, X } from "lucide-react";
+import { Check, ClipboardPaste, Copy, ImageUp, Layers, Link2, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ComponentProps } from "react";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
 import { publicarVariasEmNomeDe } from "@/lib/acoes/admin-contas";
+import { puxarVagaDoLink, type VagaPuxada } from "@/lib/acoes/admin-candidatura";
 import { importarVagas } from "@/lib/acoes/admin-importar";
 import type { VagaImportada } from "@/lib/ia/importar-vaga";
 import { Aviso, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 
-// Admin › Publicar vaga em nome de uma conta: antes do formulário, dois atalhos. "Importar com a
+// Admin › Publicar vaga em nome de uma conta: antes do formulário, três atalhos. "Importar com a
 // IA" lê a foto de um anúncio (ou o texto colado) e preenche o formulário; com várias vagas na
 // mesma foto, elas ficam numa lista (guardada nesta aba do navegador, para publicar uma depois da
-// outra). "Copiar uma vaga" traz uma vaga já publicada (desta conta ou de qualquer outra).
+// outra). "Copiar uma vaga" traz uma vaga já publicada (desta conta ou de qualquer outra). "Puxar do
+// link" lê a vaga da Gupy e preenche com a candidatura no site da empresa
+// (claude/plano-candidatura-no-site-da-empresa.md).
 
 export type VagaDaConta = { id: string; titulo: string; situacao: string; bairro: string | null };
 
@@ -104,6 +107,27 @@ export function PublicarVagaAdmin({
   const [texto, setTexto] = useState("");
   const campoFoto = useRef<HTMLInputElement>(null);
   const idTexto = useId();
+  // "Puxar do link": a vaga lida da Gupy (o que conferir) ou o erro
+  const [linkGupy, setLinkGupy] = useState("");
+  const [puxando, iniciarPuxar] = useTransition();
+  const [puxada, setPuxada] = useState<VagaPuxada | null>(null);
+  const [erroPuxar, setErroPuxar] = useState<string | null>(null);
+
+  function puxar() {
+    setErroPuxar(null);
+    iniciarPuxar(async () => {
+      const r = await puxarVagaDoLink(linkGupy);
+      if (!r.ok) {
+        setErroPuxar(r.erro);
+        return;
+      }
+      setPuxada(r.vaga);
+      setUsando(null);
+      setValores({ ...inicial, ...r.vaga.campos });
+      setVersao((n) => n + 1);
+      requestAnimationFrame(() => document.getElementById("formulario-vaga")?.scrollIntoView({ behavior: "smooth" }));
+    });
+  }
 
   // as vagas que sobraram de uma foto com várias (depois de publicar uma, a página volta aqui)
   useEffect(() => {
@@ -350,6 +374,51 @@ export function PublicarVagaAdmin({
             </div>
           </form>
         </section>
+
+        <section
+          aria-labelledby="puxar-titulo"
+          className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4"
+        >
+          <h3 id="puxar-titulo" className="flex items-center gap-2 text-h3">
+            <Link2 aria-hidden className="size-5 text-terra-text" />
+            Puxar do link da Gupy
+          </h3>
+          <p className="text-body-sm text-ink-muted">
+            Cole o link da vaga na Gupy. O Publike lê o título, a cidade, o endereço, o tipo, o modelo e a descrição, e a
+            vaga sai com o botão “Candidatar no site da empresa”. Só com a vaga que a empresa autorizou.
+          </p>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              puxar();
+            }}
+          >
+            <label htmlFor="puxar-link" className="sr-only">
+              Link da vaga na Gupy
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="puxar-link"
+                value={linkGupy}
+                onChange={(e) => setLinkGupy(e.target.value)}
+                required
+                inputMode="url"
+                spellCheck={false}
+                placeholder="https://empresa.gupy.io/jobs/1234567"
+                className={classesEntrada}
+              />
+              <Botao type="submit" variante="primario" disabled={puxando || !linkGupy.trim()}>
+                {puxando ? "Lendo…" : "Puxar"}
+              </Botao>
+            </div>
+          </form>
+          {erroPuxar && (
+            <p role="alert" className="text-body-sm text-danger">
+              {erroPuxar}
+            </p>
+          )}
+        </section>
       </div>
 
       {importacao && importacao.vagas.length > 1 && (
@@ -450,7 +519,22 @@ export function PublicarVagaAdmin({
           }
         }}
       >
-        {vagaEmUso ? (
+        {puxada && usando === null ? (
+          <Aviso
+            tipo={puxada.avisos.length ? "alerta" : "info"}
+            titulo={`Lido da Gupy${puxada.empresa ? ` (${puxada.empresa})` : ""}: confira antes de publicar`}
+          >
+            {puxada.avisos.length > 0 ? (
+              <ul className="mt-1 list-disc pl-5">
+                {puxada.avisos.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+            ) : (
+              "Confira o título, o bairro, a categoria e o salário (a Gupy quase nunca mostra: ficou a combinar)."
+            )}
+          </Aviso>
+        ) : vagaEmUso ? (
           <Aviso tipo="info" titulo="Preenchido pela IA: confira antes de publicar">
             {vagaEmUso.conferir.length > 0 ? (
               <ul className="mt-1 list-disc pl-5">

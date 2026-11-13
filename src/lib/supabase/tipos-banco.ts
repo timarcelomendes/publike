@@ -517,6 +517,10 @@ export type Database = {
           dia_a_dia?: string[];
           /** a vaga precisa de alguém para começar logo (migração 20261212) */
           comeca_ja: boolean;
+          /** como recebe os candidatos: 'publike' ou 'site' (migração 20270513120000) */
+          candidatura?: string;
+          /** no site da empresa: o link da vaga lá (só https) */
+          link_candidatura?: string | null;
           /** migração 20270112120000: a latitude e a longitude de `local`, geradas ao gravar */
           geo_lat: number | null;
           geo_lng: number | null;
@@ -578,6 +582,8 @@ export type Database = {
           dia_a_dia?: string[];
           comeca_ja?: boolean;
           prazo_dias?: number | null;
+          candidatura?: string;
+          link_candidatura?: string | null;
           preenchida_em?: string | null;
           contratante?: string | null;
           contratante_confidencial?: boolean;
@@ -626,6 +632,8 @@ export type Database = {
           dia_a_dia?: string[];
           comeca_ja?: boolean;
           prazo_dias?: number | null;
+          candidatura?: string;
+          link_candidatura?: string | null;
           preenchida_em?: string | null;
           contratante?: string | null;
           contratante_confidencial?: boolean;
@@ -1241,6 +1249,8 @@ export type Database = {
           /** vaga: fim da faixa salarial */
           pagamento_ate: number | null;
           comissao: boolean;
+          /** 'site': a candidatura é no site da empresa (migração 20270513120000; antes dela, não vem) */
+          candidatura?: string;
         }[];
       };
       obter_anuncio: {
@@ -1306,6 +1316,10 @@ export type Database = {
           preenchida_em: string | null;
           prazo_dias: number | null;
           ganhos_extras: Json;
+          /** 'publike' ou 'site' (migração 20270513120000; antes dela, não vem) */
+          candidatura?: string;
+          /** no site da empresa: o link da vaga lá */
+          link_candidatura?: string | null;
         }[];
       };
       meus_anuncios: {
@@ -3699,6 +3713,33 @@ export type Database = {
       servidor_ajustes_para_fazer: { Args: { p_chave: string }; Returns: Json };
       servidor_ajuste_comecou: { Args: { p_chave: string; p_tipo: string; p_id: string }; Returns: boolean };
       servidor_impulsos_pegar_vez: { Args: { p_chave: string; p_vez: string }; Returns: boolean };
+      /** a candidatura no site da empresa (migração 20270513120000) */
+      registrar_ida_ao_site: { Args: { p_anuncio: string }; Returns: boolean };
+      minhas_idas_ao_site: {
+        Args: Record<PropertyKey, never>;
+        Returns: { anuncio_id: string; titulo: string; empresa: string; status: string; link: string; em: string }[];
+      };
+      idas_ao_site_das_vagas: {
+        Args: { p_ids: string[] };
+        Returns: { anuncio_id: string; total: number; semana: number; pessoas: number }[];
+      };
+      servidor_links_para_conferir: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { anuncio_id: string; link: string; titulo: string }[];
+      };
+      servidor_link_conferido: {
+        Args: { p_chave: string; p_anuncio: string; p_situacao: string; p_motivo: string | null };
+        Returns: undefined;
+      };
+      servidor_alerta: {
+        Args: { p_chave: string; p_alerta: string; p_titulo: string; p_detalhe: string };
+        Returns: boolean;
+      };
+      servidor_alerta_resolvido: { Args: { p_chave: string; p_alerta: string }; Returns: undefined };
+      admin_alertas_do_sistema: {
+        Args: Record<PropertyKey, never>;
+        Returns: { chave: string; titulo: string; detalhe: string | null; desde: string; ultima_vez: string; vezes: number }[];
+      };
       servidor_teto_do_impulso: { Args: { p_chave: string }; Returns: Json };
       servidor_teto_aplicado: { Args: { p_chave: string; p_tipo: string; p_id: string }; Returns: undefined };
       servidor_impulsos_soltar_vez: { Args: { p_chave: string; p_vez: string }; Returns: undefined };

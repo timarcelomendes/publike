@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { lerLinkDeCandidatura, type Candidatura } from "./candidatura";
 import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
 import { emailValido } from "./email-valido";
@@ -270,6 +271,13 @@ type ExtrasDaVaga = {
    * Publike; claude/plano-so-chat-ou-whatsapp.md). Só quando o formulário tem a escolha.
    */
   contato_por?: "ambos" | "chat";
+  /**
+   * como a vaga recebe os candidatos: pelo Publike (o padrão) ou no site da empresa, com o link
+   * (claude/plano-candidatura-no-site-da-empresa.md). Só quando muda alguma coisa: a vaga que fica pelo Publike não
+   * manda (e o publicar funciona antes da migração 20270513120000).
+   */
+  candidatura?: Candidatura;
+  link_candidatura?: string | null;
 };
 
 export type DadosAnuncio = z.output<typeof esquemaAnuncio> & ExtrasDaVaga;
@@ -333,6 +341,9 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     ...(d.ganhos_extras !== undefined ? { ganhos_extras: d.ganhos_extras } : {}),
     ...(d.comeca_ja !== undefined ? { comeca_ja: d.comeca_ja } : {}),
     ...(d.contato_por !== undefined ? { contato_por: d.contato_por } : {}),
+    ...(d.candidatura !== undefined
+      ? { candidatura: d.candidatura, link_candidatura: d.candidatura === "site" ? (d.link_candidatura ?? null) : null }
+      : {}),
     vagas: d.vagas,
     pede_curriculo: d.pede_curriculo,
     contato_direto: d.contato_direto,
@@ -396,7 +407,11 @@ function lerPrazo(prazo: string | null, outro: string | null): number | null {
   return prazo ? Number(prazo) : 30;
 }
 
-export function lerAnuncio(formData: FormData): LeituraAnuncio {
+/**
+ * O formulário da vaga (publicar, editar, a correção da moderação e o admin). `equipe`: quem salva é a equipe do
+ * Publike, que pode usar o link de qualquer site na candidatura no site da empresa.
+ */
+export function lerAnuncio(formData: FormData, { equipe = false }: { equipe?: boolean } = {}): LeituraAnuncio {
   const bruto = {
     tipo: campo(formData, "tipo"),
     titulo: campo(formData, "titulo") ?? "",
@@ -433,16 +448,19 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     lat: coordenada(campo(formData, "lat")),
     lng: coordenada(campo(formData, "lng")),
   };
-  const extras = lerExtrasDaVaga(formData, bruto.tipo === "vaga");
+  const extras = lerExtrasDaVaga(formData, bruto.tipo === "vaga", equipe);
   const leitura = esquemaAnuncio.safeParse(bruto);
   if (leitura.success && extras.ok) {
     const d = leitura.data;
     const { horario_detalhe, beneficios_extras, ganhos_extras } = extras.dados;
+    // no site da empresa, a candidatura é lá: sem currículo, sem contato direto e sem perguntas (o banco também tira)
+    const noSite = extras.dados.candidatura === "site";
     return {
       ok: true,
       dados: {
         ...d,
         ...extras.dados,
+        ...(noSite ? { pede_curriculo: false, contato_direto: false, perguntas: [], triagem: {} } : {}),
         // "Mais comissão" de antes: marcado quando um dos ganhos a mais é comissão (cartão e vagas antigas)
         comissao: ganhos_extras ? d.tipo === "vaga" && ganhos_extras.some((g) => ehComissao(g.nome)) : d.comissao,
         // o horário montado e os benefícios a mais também vão em texto: cartão, busca e planilha leem dali
@@ -460,19 +478,36 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
   };
 }
 
-/** Perguntas, benefícios a mais e horário montado: só da vaga, e só quando o formulário manda. */
+/** Perguntas, benefícios a mais, horário montado e a candidatura: só da vaga, e só quando o formulário manda. */
 function lerExtrasDaVaga(
   formData: FormData,
   vaga: boolean,
+  equipe = false,
 ): { ok: true; dados: ExtrasDaVaga } | { ok: false; erros: Record<string, string> } {
   const dados: ExtrasDaVaga = {};
   const erros: Record<string, string> = {};
+  // como recebe os candidatos: no site da empresa, o link conferido; de volta ao Publike, só a vaga que era do site
+  // (a que sempre foi pelo Publike não mexe nas colunas novas)
+  const noSite = vaga && formData.get("candidatura") === "site";
+  if (formData.has("candidatura")) {
+    if (noSite) {
+      const r = lerLinkDeCandidatura(campo(formData, "link_candidatura"), { equipe });
+      if (r.ok) {
+        dados.candidatura = "site";
+        dados.link_candidatura = r.link;
+      } else erros.link_candidatura = r.erro;
+    } else if (formData.get("candidatura_era_site") === "1") {
+      dados.candidatura = "publike";
+      dados.link_candidatura = null;
+    }
+  }
   // "Começa já": só o formulário que tem a caixa manda (o que não tem não mexe); serviço nunca
   if (formData.has("comeca_ja_enviado")) dados.comeca_ja = vaga && formData.get("comeca_ja") === "on";
   // só pelo chat ou chat e WhatsApp: só o formulário que tem a escolha manda; serviço fica com os dois
   if (formData.has("contato_por"))
     dados.contato_por = vaga && formData.get("contato_por") === "chat" ? "chat" : "ambos";
-  if (formData.has("perguntas")) {
+  // no site da empresa, as perguntas ficam escondidas no formulário e não valem (nem dão erro)
+  if (formData.has("perguntas") && !noSite) {
     const r = lerPerguntas(vaga ? campo(formData, "perguntas") : null);
     if (r.ok) {
       const { publicas, triagem } = separarTriagem(r.perguntas);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, PartyPopper } from "lucide-react";
+import { ExternalLink, Heart, PartyPopper } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /**
@@ -15,6 +15,7 @@ export function BarraCurtirCelular({
   valor,
   status,
   servico,
+  noSite = false,
 }: {
   /** o id do quadro do celular */
   alvo: string;
@@ -23,6 +24,8 @@ export function BarraCurtirCelular({
   /** a curtida de quem vê (null: ainda não curtiu) */
   status: string | null;
   servico: boolean;
+  /** a candidatura é no site da empresa: o botão leva ao quadro com o "Candidatar no site da empresa" */
+  noSite?: boolean;
 }) {
   const [visivel, setVisivel] = useState(false);
 
@@ -57,8 +60,15 @@ export function BarraCurtirCelular({
     quadro.scrollIntoView({ behavior: reduzir ? "auto" : "smooth", block: "center" });
   }
 
-  const rotulo =
-    status === "match" ? "Deu match" : status === "pendente" ? (servico ? "Pedido enviado" : "Você curtiu") : null;
+  const rotulo = noSite
+    ? null
+    : status === "match"
+      ? "Deu match"
+      : status === "pendente"
+        ? servico
+          ? "Pedido enviado"
+          : "Você curtiu"
+        : null;
 
   return (
     <div
@@ -89,6 +99,15 @@ export function BarraCurtirCelular({
               <Heart aria-hidden className="size-4 fill-current text-like" />
             )}
             {rotulo}
+          </button>
+        ) : noSite ? (
+          <button
+            type="button"
+            onClick={irAoQuadro}
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-pill bg-terra px-5 text-label text-on-terra hover:bg-terra-hover"
+          >
+            Candidatar no site
+            <ExternalLink aria-hidden className="size-4" />
           </button>
         ) : (
           <button

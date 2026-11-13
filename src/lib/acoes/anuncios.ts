@@ -36,10 +36,13 @@ async function conferir(formData: FormData): Promise<EstadoForm> {
   return { ok: true };
 }
 
-/** Erro do banco no formulário: o da empresa contratante, do cliente e da faixa salarial ficam marcados no campo. */
+/**
+ * Erro do banco no formulário: o da empresa contratante, do cliente, da faixa salarial e do link da candidatura no site
+ * da empresa ficam marcados no campo.
+ */
 function erroDoBanco(error: { code?: string; message?: string; hint?: string | null }): EstadoForm {
   const erro = mensagemDeErro(error);
-  if (error.hint === "contratante" || error.hint === "pagamento_ate") {
+  if (error.hint === "contratante" || error.hint === "pagamento_ate" || error.hint === "link_candidatura") {
     return { ok: false, erro: "Confira os campos marcados.", erros: { [error.hint]: erro } };
   }
   if (error.hint === "cliente") return { ok: false, erro: "Confira os campos marcados.", erros: { cliente_id: erro } };
@@ -187,8 +190,12 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     if (erroTriagem) vigia.parcial("A vaga foi publicada, mas as respostas da triagem não salvaram.", erroTriagem);
     await guardarCargo(supabase, data.id, formData);
     if (cliente) await cuidarDoCliente(supabase, cliente, d, true);
-    // o Teste Prático que combina com a função já entra na vaga (grátis; a página da vaga diz e deixa tirar)
-    const comTeste = d.tipo === "vaga" && (await porTesteSugerido(supabase, data.id, d.titulo, d.categoria));
+    // o Teste Prático que combina com a função já entra na vaga (grátis; a página da vaga diz e deixa tirar). No site
+    // da empresa, a candidatura é lá: sem teste
+    const comTeste =
+      d.tipo === "vaga" &&
+      d.candidatura !== "site" &&
+      (await porTesteSugerido(supabase, data.id, d.titulo, d.categoria));
     // quem responder diferente numa eliminatória sai do processo, se o padrão da conta pede (migração 20270315120000)
     if (d.tipo === "vaga" && Object.values(d.triagem ?? {}).some((t) => t.eliminatoria)) {
       const { data: padrao } = await supabase.rpc("padroes_da_conta");
@@ -225,7 +232,9 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
         console.error(`Publike: falha ao contar a vaga no funil: ${erroFunil.message}`);
     }
     // "Publicar também para outros cargos com as mesmas condições": uma vaga por cargo, e a lista em Vagas
-    const outros = d.tipo === "vaga" && !conviteValido(formData) ? lerOutrosCargos(formData, d.titulo) : [];
+    // (no site da empresa, cada cargo tem o próprio link: uma vaga por vez)
+    const outros =
+      d.tipo === "vaga" && d.candidatura !== "site" && !conviteValido(formData) ? lerOutrosCargos(formData, d.titulo) : [];
     if (outros.length) {
       const r = await publicarOutrosCargos(supabase, formData, outros, cliente, vigia);
       const q = new URLSearchParams({ tipo: "vaga", publicadas: String(1 + r.publicadas) });

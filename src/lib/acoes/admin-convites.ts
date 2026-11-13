@@ -283,7 +283,8 @@ export async function publicarConvitePeloAdmin(
   // a vaga primeiro: com erro nela, nenhuma conta é criada (sem categoria, descrição ou ponto no
   // mapa, completa como na publicação normal)
   const trocas = await completarAnuncio(formData);
-  const leitura = lerAnuncio(formData);
+  // a equipe pode usar o link de qualquer site na candidatura no site da empresa
+  const leitura = lerAnuncio(formData, { equipe: true });
   if (!leitura.ok)
     return { ok: false, erro: "Confira os campos marcados.", erros: ajustarErros(leitura.erros, trocas) };
   const d = leitura.dados;
@@ -303,7 +304,7 @@ export async function publicarConvitePeloAdmin(
   );
   if (error) {
     const erro = mensagemDeErro(error);
-    if (error.hint === "contratante" || error.hint === "pagamento_ate") {
+    if (error.hint === "contratante" || error.hint === "pagamento_ate" || error.hint === "link_candidatura") {
       return { ok: false, erro: "Confira os campos marcados.", erros: { [error.hint]: erro } };
     }
     return { ok: false, erro };

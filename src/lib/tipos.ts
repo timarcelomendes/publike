@@ -106,6 +106,7 @@ export type DadosCard = Pick<
   | "autor_tipo"
   | "autor_verificado"
   | "minha_curtida"
+  | "candidatura"
 > & {
   distancia_km: number | null;
   /** a foto do perfil de quem publicou (o logo da empresa); sem ela, o cartão mostra as iniciais */

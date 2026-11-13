@@ -802,6 +802,13 @@ export const obterPerfilPublico = cache(async (id: string, limite = 30): Promise
   ]);
   if (error) falha("perfil", error);
   if (!perfil) return null;
+  // a candidatura no site da empresa (migração 20270513120000): o cartão troca o Curtir por "Ver a vaga" (antes da
+  // migração, a leitura volta vazia)
+  const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga").map((a) => a.id);
+  const { data: doSite } = vagas.length
+    ? await supabase.from("anuncios").select("id").in("id", vagas).eq("candidatura", "site")
+    : { data: [] };
+  const noSite = new Set((doSite ?? []).map((a) => a.id));
   return {
     perfil,
     anuncios: (anuncios ?? []).map((a) => ({
@@ -813,6 +820,7 @@ export const obterPerfilPublico = cache(async (id: string, limite = 30): Promise
       minha_curtida: null,
       distancia_km: null,
       foto: a.fotos[0] ?? null,
+      ...(noSite.has(a.id) ? { candidatura: "site" } : {}),
     })),
   };
 });

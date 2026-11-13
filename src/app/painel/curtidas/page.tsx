@@ -1,4 +1,4 @@
-import { FileText, Flag, Heart, PartyPopper } from "lucide-react";
+import { ExternalLink, FileText, Flag, Heart, PartyPopper } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -18,6 +18,8 @@ import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { retornosRecebidos } from "@/lib/servidor/retorno";
 import { minhasCandidaturasVistas } from "@/lib/servidor/visitas";
+import { minhasIdasAoSite, type IdaAoSite } from "@/lib/servidor/idas-ao-site";
+import { linkComOrigem } from "@/lib/candidatura";
 import { Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
@@ -93,7 +95,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/curtidas");
   const sp = await searchParams;
-  const [curtidas, desfeitos, etapas, bloqueios, publicas, curriculo, vistas, atividades] = await Promise.all([
+  const [curtidas, desfeitos, etapas, bloqueios, publicas, curriculo, vistas, atividades, idas] = await Promise.all([
     listarMinhasCurtidas(),
     listarMeusDesfeitos(),
     listarMinhasEtapas(),
@@ -104,6 +106,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     // as candidaturas que a empresa já abriu (Quem viu seu perfil)
     minhasCandidaturasVistas(),
     atividadesDoMenu(),
+    // as vagas com candidatura no site da empresa que a pessoa abriu (migração 20270513120000)
+    minhasIdasAoSite(),
   ]);
   const agora = await agoraDaRequisicao();
   // à mostra na aba Talentos: no contato direto, o link do currículo vai na mensagem do WhatsApp
@@ -144,20 +148,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
       }
     />
   );
+  // as vagas do site da empresa: só na lista sem filtro (ou só de vagas)
+  const fuiParaOSite = tipo !== "servico" && !primeiro(sp.situacao) && !primeiro(sp.etapa) && idas.length > 0 && (
+    <FuiParaOSite idas={idas} agora={agora} />
+  );
   if (curtidas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
         {cabecalho}
         {semCurriculo}
         {fazerAgora}
-        <Vazio
-          icone={Heart}
-          titulo="Você ainda não curtiu nada"
-          acao={<BotaoLink href="/">Ver oportunidades</BotaoLink>}
-        >
-          Curta as vagas que combinam com você ou peça um serviço a um profissional. Se a outra pessoa aceitar, dá
-          match.
-        </Vazio>
+        {fuiParaOSite || (
+          <Vazio
+            icone={Heart}
+            titulo="Você ainda não curtiu nada"
+            acao={<BotaoLink href="/">Ver oportunidades</BotaoLink>}
+          >
+            Curta as vagas que combinam com você ou peça um serviço a um profissional. Se a outra pessoa aceitar, dá
+            match.
+          </Vazio>
+        )}
       </div>
     );
   }
@@ -557,6 +567,63 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
           })}
         </ul>
       )}
+      {fuiParaOSite}
     </div>
+  );
+}
+
+/**
+ * "Fui para o site": as vagas em que a pessoa tocou em "Candidatar no site da empresa". Sem aceite e sem match: a
+ * candidatura é no site da empresa (claude/plano-candidatura-no-site-da-empresa.md).
+ */
+function FuiParaOSite({ idas, agora }: { idas: IdaAoSite[]; agora: number }) {
+  return (
+    <section aria-labelledby="fui-para-o-site" className="flex flex-col gap-3">
+      <div>
+        <h2 id="fui-para-o-site" className="text-h3">
+          Fui para o site
+        </h2>
+        <p className="text-body-sm text-ink-muted">
+          Vagas em que você tocou em “Candidatar no site da empresa”. A candidatura é feita lá, e a resposta vem da
+          empresa, pelo site dela.
+        </p>
+      </div>
+      <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+        {idas.map((i) => {
+          const noAr = i.status === "ativo";
+          return (
+            <li key={i.anuncio_id} className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-label">
+                  {noAr ? (
+                    <Link href={`/anuncio/${i.anuncio_id}`} className="underline-offset-2 hover:underline">
+                      {i.titulo}
+                    </Link>
+                  ) : (
+                    i.titulo
+                  )}
+                </p>
+                <p className="text-body-sm text-ink-muted">
+                  {i.empresa} · você foi {tempoRelativo(i.em, agora)}
+                  {!noAr && " · a vaga saiu do ar"}
+                </p>
+              </div>
+              {noAr && (
+                <a
+                  href={linkComOrigem(i.link)}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-line-strong px-3 text-label hover:bg-surface-300"
+                >
+                  Abrir o site
+                  <ExternalLink aria-hidden className="size-4" />
+                  <span className="sr-only">(abre em outra aba)</span>
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
