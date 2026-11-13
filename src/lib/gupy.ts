@@ -243,3 +243,66 @@ export function fechadaNaGupy(v: Pick<VagaDaGupy, "situacao" | "expiraEm">, hoje
   if (v.expiraEm && v.expiraEm < hoje) return `a publicação na Gupy venceu em ${v.expiraEm.split("-").reverse().join("/")}`;
   return null;
 }
+
+// ------------------------------------------------------------------ a página de vagas da empresa
+
+/** A página de vagas da empresa na Gupy (https://<empresa>.gupy.io/), a partir de qualquer link dela. */
+export function paginaDeVagasDaGupy(link: string | null | undefined): string | null {
+  const bruto = (link ?? "").trim();
+  if (!bruto) return null;
+  try {
+    const u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(bruto) ? bruto : `https://${bruto}`);
+    const host = u.hostname.toLowerCase();
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    // o portal e o site da própria Gupy não são a página de uma empresa
+    if (!/^[a-z0-9-]+\.gupy\.io$/.test(host) || /^(www|portal|app|login|api|help|blog)\./.test(host)) return null;
+    return `https://${host}/`;
+  } catch {
+    return null;
+  }
+}
+
+/** Campos que só uma vaga da Gupy tem: o objeto com eles e com id e name é uma vaga no dado da página. */
+const CAMPOS_DE_VAGA = ["jobType", "workplaceType", "addressCity", "publishedDate", "publishedAt", "careerPageId", "jobUrl"];
+
+function idsNoDado(dado: unknown, ids: Set<string>, fundo = 0) {
+  if (fundo > 8 || !dado || typeof dado !== "object") return;
+  if (Array.isArray(dado)) {
+    for (const item of dado) idsNoDado(item, ids, fundo + 1);
+    return;
+  }
+  const o = dado as Record<string, unknown>;
+  if (
+    (typeof o.id === "number" || (typeof o.id === "string" && /^\d+$/.test(o.id))) &&
+    typeof o.name === "string" &&
+    CAMPOS_DE_VAGA.some((c) => c in o)
+  )
+    ids.add(String(o.id));
+  for (const v of Object.values(o)) if (v && typeof v === "object") idsNoDado(v, ids, fundo + 1);
+}
+
+/**
+ * As vagas da página de vagas da empresa: os números delas, sem repetir e na ordem da página. Vêm dos links
+ * "/jobs/<número>" (como a página mostra) e do dado da página (`__NEXT_DATA__`), que pode ter as vagas das outras
+ * páginas da lista. `formato`: a página não tem nem os links nem o dado (a Gupy mudou a página).
+ */
+export function vagasDaPaginaDaGupy(html: string, pagina: string): { ids: string[]; formato: string | null } {
+  const host = new URL(pagina).hostname.replace(/\./g, "\\.");
+  const ids = new Set<string>();
+  const links = new RegExp(`href=["'](?:https?://${host})?/jobs/(\\d{1,15})(?:[/?#"'])`, "gi");
+  for (const m of html.matchAll(links)) ids.add(m[1]);
+  const script = html.match(/<script\b[^>]*\bid=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  let temDado = false;
+  if (script) {
+    try {
+      idsNoDado(JSON.parse(script[1]), ids);
+      temDado = true;
+    } catch {
+      // o dado quebrado: ficam os links
+    }
+  }
+  return {
+    ids: [...ids],
+    formato: !ids.size && !temDado ? "a página de vagas não tem mais os links das vagas nem o dado __NEXT_DATA__" : null,
+  };
+}

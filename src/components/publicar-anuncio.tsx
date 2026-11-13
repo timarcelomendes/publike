@@ -649,6 +649,15 @@ export function PublicarAnuncio({
               )}
               {atalho === "texto" && lerComIA && <TextoDaVaga aoLer={aplicarArte} />}
               {atalho === "foto" && lerComIA && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
+              {/* empresa com as vagas na Gupy: todas de uma vez (sem conta, entra antes) */}
+              {enderecoPublico !== false && (
+                <p className="text-body-sm text-ink-muted">
+                  Suas vagas estão na Gupy?{" "}
+                  <Link href="/painel/anuncios/importar" className="underline underline-offset-2 hover:text-ink">
+                    Importe todas de uma vez
+                  </Link>
+                </p>
+              )}
             </div>
           ) : null
         }

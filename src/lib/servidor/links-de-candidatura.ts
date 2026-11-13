@@ -1,6 +1,13 @@
 import "server-only";
 import { MODO_DEMO } from "@/lib/config";
-import { fechadaNaGupy, lerPaginaDaGupy, linkLimpoDaGupy, type VagaDaGupy } from "@/lib/gupy";
+import {
+  fechadaNaGupy,
+  lerPaginaDaGupy,
+  linkLimpoDaGupy,
+  paginaDeVagasDaGupy,
+  vagasDaPaginaDaGupy,
+  type VagaDaGupy,
+} from "@/lib/gupy";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { acessoFila } from "./filas";
 
@@ -108,6 +115,45 @@ export async function buscarVagaDaGupy(link: string): Promise<BuscaDaGupy> {
   if (!p.html) return { tipo: "formato", detalhe: "a página da vaga não veio em HTML" };
   const lida = lerPaginaDaGupy(p.html, limpo);
   return lida.ok ? { tipo: "vaga", vaga: lida.vaga } : { tipo: "formato", detalhe: lida.formato };
+}
+
+export type ListaDaGupy =
+  | { tipo: "lista"; pagina: string; vagas: VagaDaGupy[]; total: number; naoAbriram: number }
+  | { tipo: "nao_existe" }
+  | { tipo: "falhou"; erro: string }
+  | { tipo: "formato"; detalhe: string; link: string };
+
+/**
+ * As vagas da página de vagas da empresa na Gupy (https://<empresa>.gupy.io/), cada uma lida da página dela (a
+ * mesma leitura do "Puxar do link"), até `limite`, 4 de cada vez. `total`: quantas a página tem.
+ */
+export async function buscarVagasDaPaginaDaGupy(link: string, limite = 40): Promise<ListaDaGupy> {
+  const pagina = paginaDeVagasDaGupy(link);
+  if (!pagina) return { tipo: "falhou", erro: "não é o link de uma página de vagas da Gupy (https://empresa.gupy.io)" };
+  const p = await abrir(pagina);
+  if ("erro" in p) return { tipo: "falhou", erro: p.erro };
+  if (p.status === 404 || p.status === 410) return { tipo: "nao_existe" };
+  if (p.status !== 200) return { tipo: "falhou", erro: `a Gupy respondeu ${p.status}` };
+  if (!p.html) return { tipo: "formato", detalhe: "a página de vagas não veio em HTML", link: pagina };
+  const lidos = vagasDaPaginaDaGupy(p.html, pagina);
+  if (lidos.formato) return { tipo: "formato", detalhe: lidos.formato, link: pagina };
+  const ids = lidos.ids.slice(0, Math.max(1, limite));
+  const vagas: VagaDaGupy[] = [];
+  let naoAbriram = 0;
+  let formato: { detalhe: string; link: string } | null = null;
+  for (let i = 0; i < ids.length; i += 4) {
+    const lote = await Promise.all(ids.slice(i, i + 4).map((id) => buscarVagaDaGupy(`${pagina}jobs/${id}`)));
+    for (const [j, b] of lote.entries()) {
+      if (b.tipo === "vaga") vagas.push(b.vaga);
+      else {
+        naoAbriram++;
+        if (b.tipo === "formato") formato ??= { detalhe: b.detalhe, link: `${pagina}jobs/${ids[i + j]}` };
+      }
+    }
+  }
+  // nenhuma vaga entendida e alguma com o formato mudado: é a Gupy que mudou
+  if (!vagas.length && formato) return { tipo: "formato", ...formato };
+  return { tipo: "lista", pagina, vagas, total: lidos.ids.length, naoAbriram };
 }
 
 export type Conferencia =

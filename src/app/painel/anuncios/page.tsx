@@ -1,4 +1,4 @@
-import { Building2, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
+import { Building2, Download, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -264,10 +264,19 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
               Editar vitrine
             </BotaoLink>
           ) : (
-            <BotaoLink href={cliente ? `/publicar?cliente=${cliente}` : "/publicar"} tamanho="sm">
-              <Plus aria-hidden />
-              Publicar vaga
-            </BotaoLink>
+            <span className="flex flex-wrap gap-2">
+              {/* as vagas que estão na Gupy, todas de uma vez (claude/plano-candidatura-no-site-da-empresa.md) */}
+              {contaPublica && (
+                <BotaoLink href="/painel/anuncios/importar" tamanho="sm" variante="fantasma">
+                  <Download aria-hidden />
+                  Importar da Gupy
+                </BotaoLink>
+              )}
+              <BotaoLink href={cliente ? `/publicar?cliente=${cliente}` : "/publicar"} tamanho="sm">
+                <Plus aria-hidden />
+                Publicar vaga
+              </BotaoLink>
+            </span>
           )
         }
       >

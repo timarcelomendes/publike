@@ -1,23 +1,27 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import type { ValoresAnuncio } from "@/components/form-anuncio";
-import { CIDADES } from "@/lib/constantes";
-import { tituloLegivel } from "@/lib/conferir-anuncio";
-import { fechadaNaGupy, linkLimpoDaGupy, modeloDaGupy, regimeDaGupy } from "@/lib/gupy";
-import { consultarCep } from "@/lib/servidor/cep";
+import { fechadaNaGupy, linkLimpoDaGupy } from "@/lib/gupy";
+import { MAX_NA_LISTA, type ListaParaImportar, type ResultadoImportacao } from "@/lib/importar-gupy";
+import { gravarVaga } from "@/lib/servidor/comeca-ja";
 import { processarFilas } from "@/lib/servidor/filas";
+import { importarDaGupy, linksJaNoPublike, listarDaGupy } from "@/lib/servidor/importar-gupy";
 import {
   avisarFormatoDaGupy,
   buscarVagaDaGupy,
   formatoDaGupyVoltou,
   hojeEmBrasilia,
 } from "@/lib/servidor/links-de-candidatura";
+import { avisosDaVagaDaGupy, camposDaVagaDaGupy, lugarDaVagaDaGupy } from "@/lib/servidor/vaga-da-gupy";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
+import { UUID } from "@/lib/validacao";
 
-// Admin › Publicar vaga em nome de uma conta › "Puxar do link" (claude/plano-candidatura-no-site-da-empresa.md,
-// parte 4): colado o link da vaga na Gupy, o Publike lê a página dela e preenche o formulário para a equipe conferir,
-// com a candidatura no site da empresa. Só com a vaga que a empresa autorizou, uma por vez.
+// Admin › Publicar vaga em nome de uma conta › "Puxar do link da Gupy" (claude/plano-candidatura-no-site-da-empresa.md,
+// parte 4): o link de uma vaga preenche o formulário para a equipe conferir; o link da página de vagas da empresa
+// lista todas, para publicar as escolhidas de uma vez. Sempre com a candidatura no site da empresa, e só com as vagas
+// que a empresa autorizou.
 
 const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
 
@@ -29,15 +33,6 @@ export type VagaPuxada = {
   /** o nome da empresa na página de carreiras da Gupy */
   empresa: string | null;
 };
-
-/** Em quantos dias a vaga sai do ar: até o fim da publicação na Gupy (de 1 a 365); sem o fim, 30. */
-function prazoAte(expiraEm: string | null, hoje: string): number {
-  if (!expiraEm) return 30;
-  const dias = Math.round((Date.parse(`${expiraEm}T12:00:00Z`) - Date.parse(`${hoje}T12:00:00Z`)) / 86_400_000);
-  return Math.min(Math.max(dias, 1), 365);
-}
-
-const CIDADES_DO_PUBLIKE = new Set<string>(CIDADES);
 
 export async function puxarVagaDoLink(
   link: string,
@@ -65,68 +60,55 @@ export async function puxarVagaDoLink(
   const hoje = hojeEmBrasilia();
   const fechada = fechadaNaGupy(v, hoje);
   if (fechada) return { ok: false, erro: `Essa vaga não está aberta: ${fechada}.` };
+  const { lugar, aviso } = await lugarDaVagaDaGupy(v);
+  const avisos = avisosDaVagaDaGupy(v);
+  if (aviso) avisos.push(lugar ? aviso : `${aviso} A moderação segura vaga fora de Goiás.`);
+  return { ok: true, vaga: { empresa: v.empresa, avisos, campos: camposDaVagaDaGupy(v, lugar, hoje) } };
+}
 
-  const avisos: string[] = [];
-  const regime = regimeDaGupy(v.tipo);
-  if (!regime) avisos.push(`A Gupy diz o tipo “${v.tipo ?? "nenhum"}”, que o Publike não conhece: escolha o tipo de contratação.`);
-  if (v.tipo === "vacancy_type_talent_pool")
-    avisos.push("Na Gupy, isto é um banco de talentos, não uma vaga aberta. Confira com a empresa antes de publicar.");
-  if (v.descricaoCortada) avisos.push("A descrição passou de 3.000 letras: ficou o começo. Confira o fim do texto.");
-  if (v.linhasComContato)
-    avisos.push(
-      `${v.linhasComContato === 1 ? "Saiu 1 linha" : `Saíram ${v.linhasComContato} linhas`} da descrição com telefone, e-mail ou site (o Publike não deixa contato na descrição).`,
-    );
+/** A lista das vagas da página de vagas da empresa na Gupy, para publicar em nome da conta. */
+export async function listarVagasDaGupyDaConta(contaId: string, link: string): Promise<ListaParaImportar> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Conta não encontrada." };
+  // a equipe não tem o limite de vagas por dia: até a lista inteira de uma vez
+  return listarDaGupy(link, await linksJaNoPublike(c, contaId), MAX_NA_LISTA);
+}
 
-  // o lugar: pelo CEP do endereço da vaga (o bairro e o ponto no mapa); sem ele, só a cidade
-  let lugar: Partial<ValoresAnuncio> = {};
-  const cep = v.cep ? await consultarCep(v.cep).catch(() => null) : null;
-  if (cep?.ok && CIDADES_DO_PUBLIKE.has(cep.endereco.cidade)) {
-    lugar = {
-      cidade: cep.endereco.cidade,
-      ...(cep.endereco.bairro ? { bairro: cep.endereco.bairro } : {}),
-      cep: cep.endereco.cep,
-      endereco: cep.endereco.rua,
-      lat: cep.ponto?.lat ?? null,
-      lng: cep.ponto?.lng ?? null,
-    };
-    if (!cep.ponto) avisos.push("Achamos o CEP, mas não o ponto no mapa: marque o pino na região da vaga.");
-    else if (cep.precisao === "cep" || cep.precisao === "bairro")
-      avisos.push("O pino ficou no meio do CEP ou do bairro: confira no mapa.");
-  } else if (v.cidade && CIDADES_DO_PUBLIKE.has(v.cidade)) {
-    lugar = { cidade: v.cidade, lat: null, lng: null, cep: null, endereco: null };
-    avisos.push("A Gupy não deu um CEP que o Publike ache: escreva o bairro e marque o pino no mapa.");
-  } else {
-    const onde = v.cidade ? `${v.cidade}${v.uf ? ` (${v.uf})` : ""}` : "um lugar que a Gupy não diz";
-    avisos.push(`A vaga é em ${onde}, fora das cidades do Publike. A moderação segura vaga fora de Goiás.`);
-  }
-
-  return {
-    ok: true,
-    vaga: {
-      empresa: v.empresa,
-      avisos,
-      campos: {
-        id: undefined,
-        tipo: "vaga",
-        titulo: tituloLegivel(v.titulo),
-        descricao: v.descricao,
-        regime,
-        modelo: modeloDaGupy(v.modelo),
-        pcd: v.pcd ? "tambem" : null,
-        // a Gupy quase nunca mostra o salário: a combinar (a equipe muda, se a empresa disser)
-        combinar: true,
-        pagamento_valor: null,
-        pagamento_ate: null,
-        pagamento_unidade: "mes",
-        vagas: 1,
-        prazo_dias: prazoAte(v.expiraEm, hoje),
-        candidatura: "site",
-        link_candidatura: v.link,
-        pede_curriculo: false,
-        contato_direto: false,
-        perguntas: [],
-        ...lugar,
-      },
-    },
-  };
+/** Publica em nome da conta as vagas escolhidas da Gupy, como se ela mesma tivesse publicado. */
+export async function importarVagasDaGupyEmNomeDe(
+  contaId: string,
+  links: string[],
+  autorizou: boolean,
+): Promise<ResultadoImportacao> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Conta não encontrada." };
+  if (autorizou !== true) return { ok: false, erro: "Marque que a empresa autorizou a divulgação das vagas." };
+  const { data: perfil } = await c
+    .from("perfis")
+    .select("tipo, cidade, bairro, suspenso_ate")
+    .eq("id", contaId)
+    .maybeSingle();
+  if (!perfil) return { ok: false, erro: "Esta conta ainda não tem perfil. Crie o perfil antes de publicar." };
+  if (perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > Date.now())
+    return { ok: false, erro: "A conta está suspensa: não dá para publicar em nome dela." };
+  const r = await importarDaGupy({
+    links,
+    existentes: await linksJaNoPublike(c, contaId),
+    gravar: (registro) =>
+      gravarVaga(registro, (dados) =>
+        c
+          .from("anuncios")
+          .insert({ ...dados, tipo: "vaga", autor_id: contaId })
+          .select("id")
+          .single(),
+      ),
+    base: { cidade: perfil.cidade, bairro: perfil.bairro },
+    agencia: perfil.tipo === "agencia",
+    equipe: true,
+    maximo: MAX_NA_LISTA,
+  });
+  if (r.ok && r.publicadas) revalidatePath("/");
+  return r;
 }

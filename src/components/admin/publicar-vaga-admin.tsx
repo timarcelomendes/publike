@@ -6,7 +6,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ComponentProps } from "react";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
 import { publicarVariasEmNomeDe } from "@/lib/acoes/admin-contas";
-import { puxarVagaDoLink, type VagaPuxada } from "@/lib/acoes/admin-candidatura";
+import {
+  importarVagasDaGupyEmNomeDe,
+  listarVagasDaGupyDaConta,
+  puxarVagaDoLink,
+  type VagaPuxada,
+} from "@/lib/acoes/admin-candidatura";
+import { linkLimpoDaGupy, paginaDeVagasDaGupy } from "@/lib/gupy";
+import type { ListaParaImportar } from "@/lib/importar-gupy";
+import { ImportarDaGupy } from "../anuncio/importar-da-gupy";
 import { importarVagas } from "@/lib/acoes/admin-importar";
 import type { VagaImportada } from "@/lib/ia/importar-vaga";
 import { Aviso, Selo } from "../ui/basicos";
@@ -17,8 +25,8 @@ import { classesEntrada } from "../ui/campo";
 // IA" lê a foto de um anúncio (ou o texto colado) e preenche o formulário; com várias vagas na
 // mesma foto, elas ficam numa lista (guardada nesta aba do navegador, para publicar uma depois da
 // outra). "Copiar uma vaga" traz uma vaga já publicada (desta conta ou de qualquer outra). "Puxar do
-// link" lê a vaga da Gupy e preenche com a candidatura no site da empresa
-// (claude/plano-candidatura-no-site-da-empresa.md).
+// link" lê a vaga da Gupy e preenche com a candidatura no site da empresa; com o link da página de vagas
+// da empresa, lista todas para publicar as escolhidas de uma vez (claude/plano-candidatura-no-site-da-empresa.md).
 
 export type VagaDaConta = { id: string; titulo: string; situacao: string; bairro: string | null };
 
@@ -112,10 +120,27 @@ export function PublicarVagaAdmin({
   const [puxando, iniciarPuxar] = useTransition();
   const [puxada, setPuxada] = useState<VagaPuxada | null>(null);
   const [erroPuxar, setErroPuxar] = useState<string | null>(null);
+  // o link da página de vagas da empresa: a lista de todas, para publicar de uma vez
+  const [listaGupy, setListaGupy] = useState<Extract<ListaParaImportar, { ok: true }> | null>(null);
+  const [vezDaLista, setVezDaLista] = useState(0);
 
   function puxar() {
     setErroPuxar(null);
+    const pagina = !linkLimpoDaGupy(linkGupy) && paginaDeVagasDaGupy(linkGupy);
     iniciarPuxar(async () => {
+      if (pagina) {
+        const lista = await listarVagasDaGupyDaConta(contaId, linkGupy);
+        if (!lista.ok) {
+          setErroPuxar(lista.erro);
+          return;
+        }
+        setListaGupy(lista);
+        setVezDaLista((n) => n + 1);
+        requestAnimationFrame(() =>
+          document.getElementById("vagas-da-gupy")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        );
+        return;
+      }
       const r = await puxarVagaDoLink(linkGupy);
       if (!r.ok) {
         setErroPuxar(r.erro);
@@ -384,8 +409,10 @@ export function PublicarVagaAdmin({
             Puxar do link da Gupy
           </h3>
           <p className="text-body-sm text-ink-muted">
-            Cole o link da vaga na Gupy. O Publike lê o título, a cidade, o endereço, o tipo, o modelo e a descrição, e a
-            vaga sai com o botão “Candidatar no site da empresa”. Só com a vaga que a empresa autorizou.
+            Com o link de uma vaga, o Publike lê o título, a cidade, o endereço, o tipo, o modelo e a descrição e preenche
+            o formulário. Com o link da página de vagas da empresa (https://empresa.gupy.io), aparecem todas, para
+            publicar de uma vez. As vagas saem com o botão “Candidatar no site da empresa”. Só com as vagas que a
+            empresa autorizou.
           </p>
           <form
             className="flex flex-col gap-2"
@@ -395,7 +422,7 @@ export function PublicarVagaAdmin({
             }}
           >
             <label htmlFor="puxar-link" className="sr-only">
-              Link da vaga na Gupy
+              Link da vaga ou da página de vagas na Gupy
             </label>
             <div className="flex gap-2">
               <input
@@ -405,7 +432,7 @@ export function PublicarVagaAdmin({
                 required
                 inputMode="url"
                 spellCheck={false}
-                placeholder="https://empresa.gupy.io/jobs/1234567"
+                placeholder="https://empresa.gupy.io ou …/jobs/1234567"
                 className={classesEntrada}
               />
               <Botao type="submit" variante="primario" disabled={puxando || !linkGupy.trim()}>
@@ -420,6 +447,23 @@ export function PublicarVagaAdmin({
           )}
         </section>
       </div>
+
+      {listaGupy && (
+        <section
+          id="vagas-da-gupy"
+          aria-label="Vagas da página da Gupy"
+          className="flex scroll-mt-24 flex-col gap-3 rounded-lg border border-line p-4"
+        >
+          <ImportarDaGupy
+            key={vezDaLista}
+            listaInicial={listaGupy}
+            listar={listarVagasDaGupyDaConta.bind(null, contaId)}
+            importar={importarVagasDaGupyEmNomeDe.bind(null, contaId)}
+            depois={{ href: `/admin/usuarios/${contaId}`, rotulo: "Ver a conta" }}
+            equipe
+          />
+        </section>
+      )}
 
       {importacao && importacao.vagas.length > 1 && (
         <section aria-labelledby="importadas-titulo" className="flex flex-col gap-3 rounded-lg border border-line p-4">

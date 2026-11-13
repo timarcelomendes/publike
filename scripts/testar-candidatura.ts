@@ -17,7 +17,9 @@ import {
   linhasDoHtml,
   linkLimpoDaGupy,
   modeloDaGupy,
+  paginaDeVagasDaGupy,
   regimeDaGupy,
+  vagasDaPaginaDaGupy,
 } from "../src/lib/gupy";
 import { lerAnuncio, registroDoAnuncio } from "../src/lib/validacao";
 
@@ -202,6 +204,31 @@ igual(
   ).ok,
   true,
 );
+
+// ------------------------------------------------------------------ a página de vagas da empresa
+
+igual("página de vagas pelo link dela", paginaDeVagasDaGupy("https://nutriex.gupy.io"), "https://nutriex.gupy.io/");
+igual("página de vagas sem https", paginaDeVagasDaGupy("nutriex.gupy.io/"), "https://nutriex.gupy.io/");
+igual("página de vagas pelo link de uma vaga", paginaDeVagasDaGupy(gupy), "https://nutriex.gupy.io/");
+igual("o portal da Gupy não é página de empresa", paginaDeVagasDaGupy("https://portal.gupy.io/job-search"), null);
+igual("outro site não é Gupy", paginaDeVagasDaGupy("https://nutriex.inhire.app"), null);
+const carreiras = `<html><body><ul>
+<li><a href="https://nutriex.gupy.io/jobs/12693864?jobBoardSource=gupy_public_page">Analista</a></li>
+<li><a href='/jobs/12757120?jobBoardSource=gupy_public_page'>Licitação</a></li>
+<li><a href="https://nutriex.gupy.io/jobs/12693864">De novo</a></li>
+<li><a href="https://outra.gupy.io/jobs/999">De outra empresa</a></li>
+</ul><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+  props: { pageProps: { jobs: [{ id: 12833169, name: "AUXILIAR DE ESTOQUE", workplaceType: "on-site" }, { id: 7, name: "Sem campo de vaga" }] } },
+})}</script></body></html>`;
+igual("as vagas da página: os links e o dado, sem repetir e sem as de outra empresa", vagasDaPaginaDaGupy(carreiras, "https://nutriex.gupy.io/"), {
+  ids: ["12693864", "12757120", "12833169"],
+  formato: null,
+});
+igual("página sem vaga, mas no formato", vagasDaPaginaDaGupy(`<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"jobs":[]}}}</script>`, "https://nutriex.gupy.io/"), {
+  ids: [],
+  formato: null,
+});
+igual("página sem os links nem o dado: o formato mudou", vagasDaPaginaDaGupy("<html><body>Vagas</body></html>", "https://nutriex.gupy.io/").formato, "a página de vagas não tem mais os links das vagas nem o dado __NEXT_DATA__");
 
 // ------------------------------------------------------------------ o formulário da vaga (lerAnuncio)
 
