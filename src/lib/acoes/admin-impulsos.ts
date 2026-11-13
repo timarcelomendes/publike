@@ -10,7 +10,8 @@ import {
   ErroGoogleAds,
   situacaoGoogleAds,
 } from "@/lib/servidor/google-ads-api";
-import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
+import { emLista } from "@/lib/constantes";
+import { conferirCidadesNoGoogle, cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -225,9 +226,17 @@ export async function testarGoogleAds(): Promise<Resultado> {
         : vinculada === false
           ? `, direto: ela ainda não está ligada à conta de administrador ${comTracos(gestora)} (aceite o convite de vínculo para ver tudo junto)`
           : "";
+    // as cidades em que os impulsos aparecem (13/11/2026): sem elas, o robô fica no raio em volta da vaga
+    const cidades = await conferirCidadesNoGoogle().catch((e: unknown) => (e instanceof Error ? e.message : "erro"));
+    const nasCidades =
+      typeof cidades === "string"
+        ? ` As cidades do Publike não vieram do Google (${cidades}): os impulsos ficam no raio em volta da vaga.`
+        : cidades.faltam.length
+          ? ` ${cidades.achadas} das ${cidades.total} cidades do Publike estão no Google (faltam ${emLista(cidades.faltam)}).`
+          : ` As ${cidades.total} cidades do Publike estão no Google.`;
     return {
       ok: true,
-      mensagem: `Ligado na ${nome}${via}${comPagamento ? ", com pagamento aprovado" : ""}.`,
+      mensagem: `Ligado na ${nome}${via}${comPagamento ? ", com pagamento aprovado" : ""}.${nasCidades}`,
     };
   } catch (e) {
     const codigos = e instanceof ErroGoogleAds ? e.codigos.join(" ") : "";

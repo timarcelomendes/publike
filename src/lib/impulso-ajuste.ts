@@ -46,7 +46,7 @@ export type Situacao = {
   perdeLance: number | null;
   /** as buscas perdidas porque a verba do dia acabou (0 a 1) */
   perdeVerba: number | null;
-  /** o jeito do lance no Google (o do robô é TARGET_IMPRESSION_SHARE; outro foi mudado à mão) */
+  /** o jeito do lance no Google (o do robô é TARGET_SPEND, o "Maximizar cliques"; outro foi mudado à mão) */
   estrategia: string | null;
   /** o máximo por clique agora (R$) */
   teto: number | null;

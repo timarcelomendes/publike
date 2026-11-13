@@ -62,7 +62,7 @@ type LinhaDoEstado = {
     id?: string;
     status?: string;
     biddingStrategyType?: string;
-    targetImpressionShare?: { cpcBidCeilingMicros?: string | number };
+    targetSpend?: { cpcBidCeilingMicros?: string | number };
   };
   campaignBudget?: { resourceName?: string; amountMicros?: string | number };
 };
@@ -175,7 +175,7 @@ async function ajustar(a: AcessoDoRobo, item: ItemDoAjuste, regras: Regras) {
     const campanha = Number(item.campanha_id);
     const [estado] = await consultar<LinhaDoEstado>(
       `SELECT campaign.id, campaign.status, campaign.bidding_strategy_type, ` +
-        `campaign.target_impression_share.cpc_bid_ceiling_micros, campaign_budget.resource_name, ` +
+        `campaign.target_spend.cpc_bid_ceiling_micros, campaign_budget.resource_name, ` +
         `campaign_budget.amount_micros FROM campaign WHERE campaign.id = ${campanha}`,
       conta,
     );
@@ -232,9 +232,10 @@ async function ajustar(a: AcessoDoRobo, item: ItemDoAjuste, regras: Regras) {
       perdeLance: fracao(m.searchRankLostImpressionShare),
       perdeVerba: fracao(m.searchBudgetLostImpressionShare),
       estrategia: estado.campaign.biddingStrategyType ?? null,
+      // o teto do "Maximizar cliques" (o jeito do robô); sem teto (posto à mão sem limite), o ajuste não mexe no lance
       teto:
-        estado.campaign.targetImpressionShare?.cpcBidCeilingMicros != null
-          ? num(estado.campaign.targetImpressionShare.cpcBidCeilingMicros) / 1_000_000
+        Number(estado.campaign.targetSpend?.cpcBidCeilingMicros ?? 0) > 0
+          ? num(estado.campaign.targetSpend!.cpcBidCeilingMicros) / 1_000_000
           : null,
       raio: num(item.raio),
       raioExtra: num(item.raio_extra),
@@ -282,10 +283,10 @@ async function ajustar(a: AcessoDoRobo, item: ItemDoAjuste, regras: Regras) {
     if (lance) {
       operacoes.push({
         campaignOperation: {
-          updateMask: "targetImpressionShare.cpcBidCeilingMicros",
+          updateMask: "targetSpend.cpcBidCeilingMicros",
           update: {
             resourceName: recursoDaCampanha,
-            targetImpressionShare: { cpcBidCeilingMicros: String(Math.round(Number(lance.depois) * 1_000_000)) },
+            targetSpend: { cpcBidCeilingMicros: String(Math.round(Number(lance.depois) * 1_000_000)) },
           },
         },
       });

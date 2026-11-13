@@ -19,7 +19,7 @@ import type { acessoFila } from "./filas";
 
 type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
 
-const SISTEMA = `Você cuida das palavras-chave do Google Ads de uma vaga de emprego impulsionada pelo Publike, um site de vagas de Goiânia e região (Goiás, Brasil). O anúncio aparece na pesquisa do Google só para quem está perto da vaga (o lugar já é o raio em volta dela), e as palavras são de correspondência ampla: o Google já pega plural, sem acento e erro de digitação.
+const SISTEMA = `Você cuida das palavras-chave do Google Ads de uma vaga de emprego impulsionada pelo Publike, um site de vagas de Goiânia e região (Goiás, Brasil). O anúncio aparece na pesquisa do Google só para quem está perto da vaga (o lugar já é a cidade dela e as vizinhas), e as palavras são de correspondência ampla: o Google já pega plural, sem acento e erro de digitação.
 
 Você recebe a vaga e a lista de buscas que o Publike montou: a função do título, os nomes oficiais da CBO e as funções parecidas. Melhore a lista para trazer mais gente certa para esta vaga:
 - acrescentar: até 30 buscas que quem procura este trabalho digita e que faltam na lista: o nome popular da função em Goiás, o jeito de falar do dia a dia ("chapa", "ajudante geral"), funções equivalentes que a pessoa toparia, a busca com a cidade ou o bairro. Escreva como as pessoas buscam, em minúsculas, até 8 palavras, com "vaga", "emprego" ou "trabalho"; ou só o nome da função, que o Publike completa com "vaga de".

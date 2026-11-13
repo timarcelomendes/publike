@@ -15,6 +15,12 @@ import {
   cidadeDoSlug,
   slugDaCidade,
 } from "@/lib/paginas-busca";
+import { CIDADES, emLista, type Cidade } from "@/lib/constantes";
+import {
+  cidadesDoLugar,
+  cidadesNoGoogle,
+  type LugarDoGoogle,
+} from "@/lib/impulso-cidades";
 import { pracaDaCidade } from "@/lib/pracas";
 import {
   buscasComARevisao,
@@ -28,8 +34,9 @@ import {
 } from "@/lib/impulso";
 import {
   gruposSemLance,
-  tetoEmMicros,
+  lanceDeAntes,
   lanceDoRobo,
+  lanceMaximizarCliques,
   usaLanceDoGrupo,
 } from "@/lib/impulso-lance";
 import type { Json } from "@/lib/supabase/tipos-banco";
@@ -63,6 +70,9 @@ import {
 // campanha acaba quando não sobra vaga.
 // Desde 12/11/2026 (migração 20270504120000): o raio que muda no admin vale também para os impulsos no ar
 // (`acertarLugar`), e a campanha geral do Publike sai das buscas das funções com impulso no ar (`semDisputaComAGeral`).
+// Desde 13/11/2026 (claude/diagnostico-impulsos-sem-cliques.md): as campanhas nascem como as que funcionam, no
+// "Maximizar cliques" (`lance`) e nas cidades que o raio alcança (`cidadesDoLugar`), em vez do raio em volta da vaga; as
+// que estão no ar mudam na medida seguinte (`acertarCampanha` e `acertarLugar`).
 
 type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
 export type AcessoDoRobo = Acesso;
@@ -181,7 +191,19 @@ function operacoesDoAnuncio(grupo: string, url: string, t: TextoDoAnuncio) {
   };
 }
 
-/** O lugar em volta do qual o anúncio aparece. Só pelo lugar e pela pesquisa, nunca por idade ou sexo (CLT, art. 373-A). */
+/** Uma cidade em que o anúncio aparece (o lugar dela no Google, `cidadesDoGoogle`). */
+function operacaoDaCidade(campanha: string, lugar: string) {
+  return {
+    campaignCriterionOperation: {
+      create: { campaign: campanha, location: { geoTargetConstant: lugar } },
+    },
+  };
+}
+
+/**
+ * O raio em volta da vaga: só quando as cidades não vêm do Google (`cidadesDoGoogle`). Só pelo lugar e pela pesquisa,
+ * nunca por idade ou sexo (CLT, art. 373-A).
+ */
 function operacaoDoLugar(campanha: string, l: Lugar) {
   return {
     campaignCriterionOperation: {
@@ -220,21 +242,15 @@ function lugarDaVaga(v: NonNullable<Tarefa["vaga"]>): Lugar {
 }
 
 /**
- * O lance das campanhas: aparecer no alto da página em 80% das buscas, pagando até R$ 2 por clique. Com o "máximo de
- * cliques", a verba pequena (R$ 4 por dia) fazia o Google dar lances baixos, e a campanha geral do Publike (o mesmo
- * site, verba maior) ficava com os leilões: só um anúncio por site aparece em cada busca. Resultado: 0 impressões no
- * primeiro dia, enquanto a geral tinha mais de mil (12/11/2026). Gastada a verba do dia, a geral volta a aparecer.
+ * O lance das campanhas: "Maximizar cliques", pagando até o teto do clique das Regras (13/11/2026), como a campanha
+ * geral do Publike. No primeiro dia (12/11/2026), o robô já criava no "Maximizar cliques", mas com o raio em volta da
+ * vaga, e teve 0 impressões; trocou para a parcela de impressões no alto da página, e seguiu com 0. As campanhas só
+ * apareceram com o "Maximizar cliques" e as cidades juntos (a Etica RH e o Movimentador, mudadas à mão no Google Ads).
  */
 const TETO_DO_CLIQUE = 2;
 /** O teto vem das Regras (`config_impulso.teto_clique`, migração 20270512120000); sem ela, R$ 2. */
 function lance(teto = volta.teto) {
-  return {
-    targetImpressionShare: {
-      location: "TOP_OF_PAGE",
-      locationFractionMicros: "800000",
-      cpcBidCeilingMicros: String(Math.round(teto * 1_000_000)),
-    },
-  };
+  return lanceMaximizarCliques(teto);
 }
 
 /** O último dia inteiro no Google, no fuso da conta (o de Brasília), como `servidor_impulso_olhado` manda. */
@@ -249,11 +265,11 @@ type LinhaDoGrupo = {
 
 /**
  * Na medição, a campanha igual ao banco: o fim no Google fica o do banco (13/11/2026: o prazo estendido no banco não
- * chegava ao Google, e a campanha parava no fim velho). O jeito do lance fica como está no Google: quem muda à mão no
- * Google Ads ("Maximizar cliques", CPC manual) não é desfeito (13/11/2026: a medida trocava "Maximizar cliques" de
- * volta para a parcela de impressões). No CPC manual, o grupo sem lance ganha o teto do clique das Regras (o Google
- * põe R$ 0,01 no grupo criado sem lance, e no CPC manual é esse o lance de cada clique). Uma consulta só; o mutate, só
- * quando algo mudou.
+ * chegava ao Google, e a campanha parava no fim velho). A campanha ainda na parcela de impressões (o jeito de antes do
+ * robô, com 0 vistas) passa para o "Maximizar cliques", até o teto do clique das Regras, uma vez. Os outros jeitos ficam
+ * como estão no Google: quem muda à mão no Google Ads (CPC manual) não é desfeito. No CPC manual, o grupo sem lance
+ * ganha o teto do clique das Regras (o Google põe R$ 0,01 no grupo criado sem lance, e no CPC manual é esse o lance de
+ * cada clique). Uma consulta só; o mutate, só quando algo mudou.
  */
 async function acertarCampanha(
   campanhaId: string,
@@ -277,25 +293,39 @@ async function acertarCampanha(
           conta,
         )
       )[0]?.campaign;
+  const campos: string[] = [];
+  const mudar: Record<string, unknown> = {
+    resourceName: recurso("campaigns", campanhaId, conta),
+  };
   const fimAtual = campanha?.endDateTime;
   if (ate && Date.parse(ate) > Date.now()) {
     const fim = fimNoGoogle(ate);
     if (fimAtual !== undefined && fimAtual !== fim) {
-      await mutar(
-        [
-          {
-            campaignOperation: {
-              updateMask: "endDateTime",
-              update: {
-                resourceName: recurso("campaigns", campanhaId, conta),
-                endDateTime: fim,
-              },
-            },
-          },
-        ],
-        conta,
-      );
+      campos.push("endDateTime");
+      mudar.endDateTime = fim;
     }
+  }
+  const virouMaximizar = lanceDeAntes(campanha?.biddingStrategyType);
+  if (virouMaximizar) {
+    campos.push("targetSpend.cpcBidCeilingMicros");
+    Object.assign(mudar, lance());
+  }
+  if (campos.length) {
+    await mutar(
+      [
+        {
+          campaignOperation: {
+            updateMask: campos.join(","),
+            update: mudar,
+          },
+        },
+      ],
+      conta,
+    );
+    if (virouMaximizar)
+      console.info(
+        `Publike: a campanha ${campanhaId} passou para "Maximizar cliques", até R$ ${volta.teto.toFixed(2)} por clique.`,
+      );
   }
   if (!usaLanceDoGrupo(campanha?.biddingStrategyType)) return;
   const semLance = gruposSemLance(
@@ -339,8 +369,9 @@ type TetoDoImpulso = {
 /**
  * O teto do clique das Regras (migração 20270512120000): fica guardado para o impulso que nasce nesta volta e, quando
  * mudou, vai para as campanhas no ar que ainda não o receberam (até 20 por volta). Só a campanha no jeito de lance do
- * robô recebe; a que teve o lance mudado à mão no Google Ads fica como está (e conta como feita, para não voltar a cada
- * volta). O erro não segura o robô: a campanha fica para a volta seguinte. Sem a migração, R$ 2.
+ * robô ("Maximizar cliques") recebe, e a que ainda está no jeito de antes (a parcela de impressões) passa para ele; a
+ * que está no CPC manual, posto à mão no Google Ads, fica como está (e conta como feita, para não voltar a cada volta).
+ * O erro não segura o robô: a campanha fica para a volta seguinte. Sem a migração, R$ 2.
  */
 async function tetoDasRegras(a: Acesso) {
   const { data, error } = await a.cliente.rpc("servidor_teto_do_impulso", {
@@ -364,17 +395,15 @@ async function tetoDasRegras(a: Acesso) {
         conta,
       );
       const estrategia = linha?.campaign?.biddingStrategyType;
-      if (lanceDoRobo(estrategia)) {
+      if (lanceDoRobo(estrategia) || lanceDeAntes(estrategia)) {
         await mutar(
           [
             {
               campaignOperation: {
-                updateMask: "targetImpressionShare.cpcBidCeilingMicros",
+                updateMask: "targetSpend.cpcBidCeilingMicros",
                 update: {
                   resourceName: recurso("campaigns", k.campanha_id, conta),
-                  targetImpressionShare: {
-                    cpcBidCeilingMicros: String(tetoEmMicros(volta.teto)),
-                  },
+                  ...lance(volta.teto),
                 },
               },
             },
@@ -382,7 +411,7 @@ async function tetoDasRegras(a: Acesso) {
           conta,
         );
         console.info(
-          `Publike: o impulso ${k.codigo} passou a pagar até R$ ${volta.teto.toFixed(2)} por clique.`,
+          `Publike: o impulso ${k.codigo} passou a pagar até R$ ${volta.teto.toFixed(2)} por clique ("Maximizar cliques").`,
         );
       } else {
         console.info(
@@ -403,10 +432,107 @@ async function tetoDasRegras(a: Acesso) {
   }
 }
 
+/** As cidades do Publike no Google, guardadas por 12 horas (os lugares do Google não mudam). */
+let cidadesGuardadas: { em: number; mapa: Map<Cidade, string> } | null = null;
+
+/** Os lugares do Google em Goiás: o nome vem com ou sem acento, por isso o "Goi" (o filtro fino é `cidadesNoGoogle`). */
+const CONSULTA_DAS_CIDADES =
+  `SELECT geo_target_constant.resource_name, geo_target_constant.name, geo_target_constant.canonical_name, ` +
+  `geo_target_constant.target_type, geo_target_constant.status FROM geo_target_constant ` +
+  `WHERE geo_target_constant.country_code = 'BR' AND geo_target_constant.canonical_name LIKE '%Goi%'`;
+
+async function buscarCidadesNoGoogle(conta: string) {
+  if (cidadesGuardadas && Date.now() - cidadesGuardadas.em < 12 * 3_600_000)
+    return cidadesGuardadas.mapa;
+  const linhas = await consultar<{ geoTargetConstant?: LugarDoGoogle }>(
+    CONSULTA_DAS_CIDADES,
+    conta,
+  );
+  const mapa = cidadesNoGoogle(linhas.map((l) => l.geoTargetConstant ?? {}));
+  if (!mapa.size)
+    throw new Error(
+      `nenhuma cidade do Publike entre os ${linhas.length} lugares que vieram.`,
+    );
+  cidadesGuardadas = { em: Date.now(), mapa };
+  return mapa;
+}
+
+/**
+ * As cidades do Publike no Google (o lugar de cada uma), ou null quando a consulta falha (o erro fica no registro): sem
+ * elas, o impulso fica no raio em volta da vaga, como antes de 13/11/2026.
+ */
+async function cidadesDoGoogle(
+  conta: string,
+): Promise<Map<Cidade, string> | null> {
+  try {
+    return await buscarCidadesNoGoogle(conta);
+  } catch (e) {
+    console.error(
+      "Publike: as cidades do Google não vieram (o impulso fica no raio em volta da vaga):",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
+/** Para o teste da ligação no Admin: quantas cidades do Publike o Google tem e quais faltam (com erro, o erro). */
+export async function conferirCidadesNoGoogle() {
+  const mapa = await buscarCidadesNoGoogle(contaDeAnuncios());
+  return {
+    achadas: mapa.size,
+    total: CIDADES.length,
+    faltam: CIDADES.filter((c) => !mapa.has(c)),
+  };
+}
+
+/**
+ * As cidades em que o anúncio da vaga aparece (`cidadesDoLugar`: a dela e as vizinhas que o raio alcança), com o lugar
+ * de cada uma no Google. Vazio quando o Google não tem nenhuma.
+ */
+function cidadesDaVaga(
+  l: Lugar | null,
+  cidade: string | null,
+  geo: Map<Cidade, string>,
+) {
+  return cidadesDoLugar(l, cidade).flatMap((c) => {
+    const lugar = geo.get(c);
+    return lugar ? [{ cidade: c, lugar }] : [];
+  });
+}
+
+/** Onde a campanha nova aparece: nas cidades dos pontos ou, sem as cidades do Google, no raio em volta de cada um. */
+function lugaresDaCampanhaNova(
+  pontos: Lugar[],
+  cidade: string | null,
+  geo: Map<Cidade, string> | null,
+) {
+  const cidades = geo
+    ? [
+        ...new Set(
+          pontos.flatMap((p) => cidadesDaVaga(p, cidade, geo).map((x) => x.lugar)),
+        ),
+      ]
+    : [];
+  return cidades.length
+    ? { cidades, raios: [] as Lugar[] }
+    : { cidades: [] as string[], raios: pontos };
+}
+
+/** O lugar da vaga, ou null quando ela não tem (nem o ponto nem a cidade do Publike). */
+function pontoDaVaga(v: NonNullable<Tarefa["vaga"]>): Lugar | null {
+  try {
+    return lugarDaVaga(v);
+  } catch {
+    return null;
+  }
+}
+
 type LinhaDoLugar = {
   campaignCriterion?: {
     resourceName?: string;
     status?: string;
+    negative?: boolean;
+    location?: { geoTargetConstant?: string };
     proximity?: {
       geoPoint?: {
         latitudeInMicroDegrees?: number | string;
@@ -418,57 +544,122 @@ type LinhaDoLugar = {
   };
 };
 
-/** Dois pontos no mesmo lugar: até 0,0001 grau (uns 11 m), a diferença do arredondamento da campanha do cliente. */
-const MESMO_PONTO = 100;
+/** Um raio que a campanha tem no Google (o ponto em micrograus; o raio em km). */
+type RaioNoGoogle = { nome: string; lat: number; lng: number; raio: number };
 
-/**
- * O lugar da campanha no Google igual ao de hoje (12/11/2026): o raio mudou no Admin › Impulsos depois que o impulso
- * nasceu (o geral ou o do tipo da vaga), ou a vaga mudou de lugar. Na medida do impulso no ar, como o lance. A
- * campanha de uma vaga tem um lugar só: troca o ponto e o raio. Na do cliente, cada ponto serve às vagas que estão
- * nele: troca só o raio do ponto desta vaga (o maior das vagas nele, `t.lugar`). Um critério do Google não muda: sai o
- * velho e entra o novo, no mesmo mutate (tudo ou nada).
- */
-async function acertarLugar(t: Tarefa, conta: string) {
-  if (!t.campanha_id || !t.vaga) return;
-  const alvo = t.campanha_cliente ? (t.lugar ?? null) : lugarDaVaga(t.vaga);
-  if (!alvo) return;
+/** Onde a campanha aparece hoje no Google (sem os lugares excluídos): as cidades (o lugar de cada uma) e os raios. */
+async function lugaresNoGoogle(campanhaId: string, conta: string) {
   const linhas = await consultar<LinhaDoLugar>(
-    `SELECT campaign_criterion.resource_name, campaign_criterion.status, ` +
+    `SELECT campaign_criterion.resource_name, campaign_criterion.status, campaign_criterion.negative, ` +
+      `campaign_criterion.location.geo_target_constant, ` +
       `campaign_criterion.proximity.geo_point.latitude_in_micro_degrees, ` +
       `campaign_criterion.proximity.geo_point.longitude_in_micro_degrees, ` +
       `campaign_criterion.proximity.radius, campaign_criterion.proximity.radius_units ` +
-      `FROM campaign_criterion WHERE campaign.id = ${Number(t.campanha_id)} AND campaign_criterion.type = 'PROXIMITY'`,
+      `FROM campaign_criterion WHERE campaign.id = ${Number(campanhaId)} ` +
+      `AND campaign_criterion.type IN ('LOCATION', 'PROXIMITY')`,
     conta,
   );
-  const lat = Math.round(alvo.lat * 1_000_000);
-  const lng = Math.round(alvo.lng * 1_000_000);
-  const pontos = linhas
-    .map((l) => l.campaignCriterion)
-    .filter(
-      (c) => c?.resourceName && c.status !== "REMOVED" && c.proximity?.geoPoint,
-    )
-    .map((c) => ({
-      nome: c!.resourceName!,
-      lat: Number(c!.proximity!.geoPoint!.latitudeInMicroDegrees ?? 0),
-      lng: Number(c!.proximity!.geoPoint!.longitudeInMicroDegrees ?? 0),
-      // o Google guarda na unidade em que o raio entrou (o robô sempre usa km)
-      raio:
-        Number(c!.proximity!.radius ?? 0) *
-        (c!.proximity!.radiusUnits === "MILES" ? 1.609344 : 1),
-    }));
-  const perto = (p: { lat: number; lng: number }) =>
+  const cidades = new Set<string>();
+  const raios: RaioNoGoogle[] = [];
+  for (const { campaignCriterion: c } of linhas) {
+    if (!c?.resourceName || c.status === "REMOVED" || c.negative) continue;
+    if (c.location?.geoTargetConstant) cidades.add(c.location.geoTargetConstant);
+    else if (c.proximity?.geoPoint)
+      raios.push({
+        nome: c.resourceName,
+        lat: Number(c.proximity.geoPoint.latitudeInMicroDegrees ?? 0),
+        lng: Number(c.proximity.geoPoint.longitudeInMicroDegrees ?? 0),
+        // o Google guarda na unidade em que o raio entrou (o robô sempre usa km)
+        raio:
+          Number(c.proximity.radius ?? 0) *
+          (c.proximity.radiusUnits === "MILES" ? 1.609344 : 1),
+      });
+  }
+  return { cidades, raios };
+}
+
+/** Dois pontos no mesmo lugar: até 0,0001 grau (uns 11 m), a diferença do arredondamento da campanha do cliente. */
+const MESMO_PONTO = 100;
+
+/** O raio do Google está no ponto do lugar? */
+function noPonto(l: Lugar) {
+  const lat = Math.round(l.lat * 1_000_000);
+  const lng = Math.round(l.lng * 1_000_000);
+  return (p: { lat: number; lng: number }) =>
     Math.abs(p.lat - lat) <= MESMO_PONTO &&
     Math.abs(p.lng - lng) <= MESMO_PONTO;
+}
+
+/**
+ * O lugar da campanha no Google igual ao de hoje, na medida do impulso no ar (como o lance). Com as cidades do Google
+ * (13/11/2026): entram as cidades da vaga que faltam (o raio mudou no Admin › Impulsos ou no ajuste diário, ou a vaga
+ * mudou de lugar) e sai o raio que o robô punha antes; na campanha de uma vaga, todos os raios; na do cliente, o do
+ * ponto desta vaga (os outros, na vez das vagas deles). Nenhuma cidade sai: a posta à mão no Google Ads fica. Tudo num
+ * mutate só (tudo ou nada): a campanha nunca fica sem lugar. Sem as cidades do Google, o raio, como antes (`acertarRaio`).
+ */
+async function acertarLugar(t: Tarefa, conta: string) {
+  if (!t.campanha_id || !t.vaga) return;
+  const ponto = t.campanha_cliente
+    ? (t.lugar ?? pontoDaVaga(t.vaga))
+    : lugarDaVaga(t.vaga);
+  const campanha = recurso("campaigns", t.campanha_id, conta);
+  const [tem, geo] = await Promise.all([
+    lugaresNoGoogle(t.campanha_id, conta),
+    cidadesDoGoogle(conta),
+  ]);
+  const daVaga = geo ? cidadesDaVaga(ponto, t.vaga.cidade, geo) : [];
+  if (!daVaga.length) {
+    const alvo = t.campanha_cliente ? (t.lugar ?? null) : ponto;
+    if (alvo) await acertarRaio(t, conta, campanha, alvo, tem.raios);
+    return;
+  }
+  const faltam = daVaga.filter((x) => !tem.cidades.has(x.lugar));
+  const sair = !t.campanha_cliente
+    ? tem.raios
+    : ponto
+      ? tem.raios.filter(noPonto(ponto))
+      : [];
+  if (!faltam.length && !sair.length) return;
+  await mutar(
+    [
+      ...faltam.map((x) => operacaoDaCidade(campanha, x.lugar)),
+      ...sair.map((r) => ({ campaignCriterionOperation: { remove: r.nome } })),
+    ],
+    conta,
+  );
+  const cidades = faltam.length
+    ? ` passou a aparecer em ${emLista(faltam.map((x) => x.cidade))}`
+    : "";
+  const raio = sair.length
+    ? `${cidades ? " e" : ""} saiu do raio em volta da vaga`
+    : "";
+  console.info(`Publike: o impulso ${t.codigo}${cidades}${raio}.`);
+}
+
+/**
+ * Sem as cidades do Google (como de 12 a 13/11/2026): o raio em volta da vaga igual ao do Admin › Impulsos (o geral ou
+ * o do tipo da vaga), ou a vaga mudou de lugar. A campanha de uma vaga tem um lugar só: troca o ponto e o raio. Na do
+ * cliente, cada ponto serve às vagas que estão nele: troca só o raio do ponto desta vaga (o maior das vagas nele,
+ * `t.lugar`). Um critério do Google não muda: sai o velho e entra o novo, no mesmo mutate (tudo ou nada).
+ */
+async function acertarRaio(
+  t: Tarefa,
+  conta: string,
+  campanha: string,
+  alvo: Lugar,
+  raios: RaioNoGoogle[],
+) {
+  const perto = noPonto(alvo);
   // na campanha de uma vaga, o lugar único pode estar em outro ponto (a vaga mudou de endereço)
   const velho =
-    pontos.find(perto) ??
-    (!t.campanha_cliente && pontos.length === 1 ? pontos[0] : undefined);
+    raios.find(perto) ??
+    (!t.campanha_cliente && raios.length === 1 ? raios[0] : undefined);
   if (!velho || (perto(velho) && Math.abs(velho.raio - alvo.raio) < 0.05))
     return;
   await mutar(
     [
       { campaignCriterionOperation: { remove: velho.nome } },
-      operacaoDoLugar(recurso("campaigns", t.campanha_id, conta), alvo),
+      operacaoDoLugar(campanha, alvo),
     ],
     conta,
   );
@@ -637,15 +828,18 @@ const FORA_DA_BUSCA = [
   "significado",
 ];
 
-/** O orçamento, a campanha, a língua e os lugares (com os nomes provisórios -1 e -2, para o mesmo mutate). */
+/**
+ * O orçamento, a campanha, a língua e os lugares (com os nomes provisórios -1 e -2, para o mesmo mutate). Os lugares:
+ * as cidades (`lugaresDaCampanhaNova`) ou, sem as cidades do Google, os raios.
+ */
 function operacoesDaBaseDaCampanha(o: {
   codigo: string;
   nome: string;
   porDia: number;
-  lugares: Lugar[];
+  lugares: { cidades: string[]; raios: Lugar[] };
   conta: string;
 }) {
-  if (!o.lugares.length)
+  if (!o.lugares.cidades.length && !o.lugares.raios.length)
     throw new Error(
       "Nenhum lugar para a campanha: sem ele, o anúncio apareceria no Brasil inteiro.",
     );
@@ -671,7 +865,7 @@ function operacoesDaBaseDaCampanha(o: {
           status: "ENABLED",
           advertisingChannelType: "SEARCH",
           campaignBudget: orcamento,
-          // no alto da página, até o teto das Regras por clique (`lance`: com o máximo de cliques, não aparecia)
+          // "Maximizar cliques", até o teto das Regras por clique (`lance`), como a campanha geral do Publike
           ...lance(),
           networkSettings: {
             targetGoogleSearch: true,
@@ -698,7 +892,8 @@ function operacoesDaBaseDaCampanha(o: {
         },
       },
     },
-    ...o.lugares.map((l) => operacaoDoLugar(campanha, l)),
+    ...o.lugares.cidades.map((c) => operacaoDaCidade(campanha, c)),
+    ...o.lugares.raios.map((l) => operacaoDoLugar(campanha, l)),
     // com a palavra ampla, fora quem procura curso, receita ou concurso (não é vaga)
     ...FORA_DA_BUSCA.map((text) => ({
       campaignCriterionOperation: {
@@ -774,14 +969,18 @@ function nomeDaOrigem(t: Tarefa) {
 }
 
 /** A campanha inteira de uma vez (tudo ou nada): o orçamento, a campanha, o lugar, a língua, o grupo, as palavras e o anúncio. */
-function operacoesDaCampanha(t: Tarefa, texto: TextoDoAnuncio) {
+function operacoesDaCampanha(
+  t: Tarefa,
+  texto: TextoDoAnuncio,
+  geo: Map<Cidade, string> | null,
+) {
   const v = t.vaga!;
   const conta = contaDeAnuncios();
   const base = operacoesDaBaseDaCampanha({
     codigo: t.codigo,
     nome: `${nomeDaOrigem(t)} · ${v.titulo.slice(0, 60)} · ${t.codigo}`,
     porDia: Math.round((t.verba / t.dias) * 100) / 100,
-    lugares: [lugarDaVaga(v)],
+    lugares: lugaresDaCampanhaNova([lugarDaVaga(v)], v.cidade, geo),
     conta,
   });
   return [
@@ -1402,16 +1601,38 @@ async function pausarNoGoogle(
 }
 
 /**
- * A vaga da campanha do cliente: o grupo dela dentro da campanha que já existe (o lugar dela entra se for novo). A
- * política barrou o texto: a segunda chance com o texto simples, como na campanha de uma vaga.
+ * Os lugares que a vaga leva para a campanha do cliente: as cidades dela que a campanha ainda não tem ou, sem as
+ * cidades do Google, o raio em volta dela quando o ponto é novo (como antes de 13/11/2026).
+ */
+async function lugaresDoGrupo(
+  t: Tarefa,
+  campanhaId: string,
+  campanha: string,
+  conta: string,
+) {
+  const geo = await cidadesDoGoogle(conta);
+  const ponto = t.novo_lugar ?? t.lugar ?? pontoDaVaga(t.vaga!);
+  const daVaga = geo ? cidadesDaVaga(ponto, t.vaga!.cidade, geo) : [];
+  if (!daVaga.length)
+    return t.novo_lugar ? [operacaoDoLugar(campanha, t.novo_lugar)] : [];
+  const tem = await lugaresNoGoogle(campanhaId, conta);
+  return daVaga
+    .filter((x) => !tem.cidades.has(x.lugar))
+    .map((x) => operacaoDaCidade(campanha, x.lugar));
+}
+
+/**
+ * A vaga da campanha do cliente: o grupo dela dentro da campanha que já existe (as cidades dela entram se forem
+ * novas). A política barrou o texto: a segunda chance com o texto simples, como na campanha de uma vaga.
  */
 async function criarGrupo(a: Acesso, t: Tarefa) {
   const k = t.campanha_cliente!;
   if (!t.vaga || !k.campanha_id) return;
   const conta = k.conta_google || contaDeAnuncios();
   const campanha = recurso("campaigns", k.campanha_id, conta);
+  const lugares = await lugaresDoGrupo(t, k.campanha_id, campanha, conta);
   const montar = (simples: boolean) => [
-    ...(t.novo_lugar ? [operacaoDoLugar(campanha, t.novo_lugar)] : []),
+    ...lugares,
     ...operacoesDoGrupo({
       grupo: recurso("adGroups", -1, conta),
       campanha,
@@ -1477,8 +1698,10 @@ async function criar(a: Acesso, t: Tarefa) {
   }
   let simples = t.texto_simples;
   let r: RespostaDoMutate;
+  // as cidades em que o anúncio aparece (sem elas, o raio em volta da vaga)
+  const geo = await cidadesDoGoogle(contaDeAnuncios());
   try {
-    r = await mutar(operacoesDaCampanha(t, texto(t, simples)));
+    r = await mutar(operacoesDaCampanha(t, texto(t, simples), geo));
   } catch (e) {
     if (!(e instanceof ErroGoogleAds && e.politica)) throw e;
     // a política do Google barrou o texto: a segunda chance com o texto simples; a segunda recusa devolve
@@ -1490,7 +1713,7 @@ async function criar(a: Acesso, t: Tarefa) {
     if (!(data as { texto_simples?: boolean } | null)?.texto_simples) return;
     simples = true;
     try {
-      r = await mutar(operacoesDaCampanha(t, texto(t, simples)));
+      r = await mutar(operacoesDaCampanha(t, texto(t, simples), geo));
     } catch (e2) {
       if (!(e2 instanceof ErroGoogleAds && e2.politica)) throw e2;
       await a.cliente.rpc("servidor_impulso_recusado", {
@@ -1654,8 +1877,8 @@ type LinhaDosNumeros = {
 /**
  * Os números do Google, por dia, do dia em que entrou no ar até hoje (o de hoje vai mudando a cada medida: a cada 2
  * horas, pela migração 20270501120000; antes, só o de ontem, e o Admin mostrava R$ 0 o dia inteiro). Com a vaga no
- * ar, acerta antes o fim no Google e o grupo sem lance (`acertarCampanha`) e o raio que mudou no admin (`acertarLugar`).
- * O jeito do lance não é mexido: o que for mudado à mão no Google Ads fica.
+ * ar, acerta antes o fim no Google, o lance de antes do robô e o grupo sem lance (`acertarCampanha`) e as cidades da
+ * vaga (`acertarLugar`). O CPC manual, posto à mão no Google Ads, fica.
  */
 async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
   if (!t.campanha_id || !t.medir_desde) return;
@@ -1672,9 +1895,9 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
     try {
       await acertarLugar(t, conta);
     } catch (e) {
-      // o raio também fica para a próxima medida
+      // o lugar também fica para a próxima medida
       console.error(
-        `Publike: o raio do impulso ${t.codigo} não mudou:`,
+        `Publike: o lugar do impulso ${t.codigo} não mudou:`,
         e instanceof Error ? e.message : e,
       );
     }
@@ -1808,14 +2031,18 @@ async function fazer(a: Acesso, t: Tarefa) {
   return true;
 }
 
-/** A campanha do cliente nasce no Google: o orçamento, a campanha, a língua, os lugares e os sitelinks. */
+/**
+ * A campanha do cliente nasce no Google: o orçamento, a campanha, a língua, os lugares (as cidades que os pontos das
+ * vagas alcançam; cada vaga acrescenta a dela ao criar o grupo) e os sitelinks.
+ */
 async function criarCampanhaDoCliente(a: Acesso, k: TarefaDaCampanha) {
   const conta = contaDeAnuncios();
+  const geo = await cidadesDoGoogle(conta);
   const base = operacoesDaBaseDaCampanha({
     codigo: k.codigo,
     nome: `Impulso do cliente · ${k.nome.slice(0, 60)} · ${k.codigo}`,
     porDia: k.verba_dia,
-    lugares: k.lugares,
+    lugares: lugaresDaCampanhaNova(k.lugares, null, geo),
     conta,
   });
   const r = await mutar(base.ops, conta);

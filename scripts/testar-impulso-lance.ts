@@ -1,10 +1,13 @@
-// O lance do impulso (src/lib/impulso-lance.ts, 13/11/2026): o robô só mexe no lance de quem está no jeito dele (a
-// parcela de impressões), e no CPC manual o grupo sem lance (R$ 0,01) ganha o teto das Regras. Sem banco e sem rede.
+// O lance do impulso (src/lib/impulso-lance.ts, 13/11/2026): o robô cria e ajusta no "Maximizar cliques" (até o teto
+// das Regras), a parcela de impressões de antes vira "Maximizar cliques", e no CPC manual (posto à mão) o grupo sem
+// lance (R$ 0,01) ganha o teto das Regras. Sem banco e sem rede.
 // Roda com `npx tsx scripts/testar-impulso-lance.ts` (sai com erro se algo mudou).
 import { decidirLance } from "../src/lib/impulso-ajuste";
 import {
   gruposSemLance,
+  lanceDeAntes,
   lanceDoRobo,
+  lanceMaximizarCliques,
   tetoEmMicros,
   usaLanceDoGrupo,
 } from "../src/lib/impulso-lance";
@@ -21,15 +24,32 @@ function igual(nome: string, veio: unknown, esperado: unknown) {
   }
 }
 
-// o jeito do lance do robô: só a parcela de impressões
+// o jeito do lance do robô: "Maximizar cliques"; a parcela de impressões é o de antes
+igual("Maximizar cliques é do robô", lanceDoRobo("TARGET_SPEND"), true);
 igual(
-  "parcela de impressões é do robô",
+  "parcela de impressões não é mais do robô",
   lanceDoRobo("TARGET_IMPRESSION_SHARE"),
-  true,
+  false,
 );
-igual("Maximizar cliques foi mudado à mão", lanceDoRobo("TARGET_SPEND"), false);
 igual("CPC manual foi mudado à mão", lanceDoRobo("MANUAL_CPC"), false);
 igual("sem campanha não é do robô", lanceDoRobo(undefined), false);
+igual(
+  "a parcela de impressões é o jeito de antes",
+  lanceDeAntes("TARGET_IMPRESSION_SHARE"),
+  true,
+);
+igual("Maximizar cliques não é o de antes", lanceDeAntes("TARGET_SPEND"), false);
+igual("CPC manual não é o de antes", lanceDeAntes("MANUAL_CPC"), false);
+igual(
+  "o lance do robô no Google",
+  lanceMaximizarCliques(2),
+  { targetSpend: { cpcBidCeilingMicros: "2000000" } },
+);
+igual(
+  "o lance do robô com o teto de R$ 1,30",
+  lanceMaximizarCliques(1.3),
+  { targetSpend: { cpcBidCeilingMicros: "1300000" } },
+);
 
 // o lance do grupo só conta no CPC manual
 igual("CPC manual usa o lance do grupo", usaLanceDoGrupo("MANUAL_CPC"), true);
@@ -85,14 +105,18 @@ const base = {
 };
 const regras = { tetoMax: 3.5, raioMax: 10 };
 igual(
-  "na parcela de impressões, o ajuste mexe",
-  decidirLance({ ...base, estrategia: "TARGET_IMPRESSION_SHARE" }, regras) !==
-    null,
-  true,
+  "em Maximizar cliques, o ajuste mexe",
+  decidirLance({ ...base, estrategia: "TARGET_SPEND" }, regras)?.depois,
+  2.5,
 );
 igual(
-  "em Maximizar cliques, não mexe",
-  decidirLance({ ...base, estrategia: "TARGET_SPEND" }, regras),
+  "em Maximizar cliques sem teto (posto à mão sem limite), não mexe",
+  decidirLance({ ...base, estrategia: "TARGET_SPEND", teto: null }, regras),
+  null,
+);
+igual(
+  "na parcela de impressões (antes de virar), não mexe",
+  decidirLance({ ...base, estrategia: "TARGET_IMPRESSION_SHARE" }, regras),
   null,
 );
 igual(

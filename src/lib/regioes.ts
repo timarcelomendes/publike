@@ -8,7 +8,7 @@
  * Nas outras cidades, a cidade inteira conta como uma região só.
  */
 import { CENTRO_ANAPOLIS, CENTRO_GOIANIA } from "./config";
-import { CIDADES, REGIOES, type Cidade, type Regiao } from "./constantes";
+import { CIDADES, REGIOES, REGIOES_DAS_CIDADES, type Cidade, type Regiao } from "./constantes";
 
 export { REGIOES, type Regiao };
 
@@ -110,6 +110,14 @@ const CENTRO_CIDADE: Record<Cidade, { lat: number; lng: number }> = {
 /** O centro de uma cidade: de onde a lista conta a distância de quem ainda não disse onde mora. */
 export function centroDaCidade(cidade: Cidade) {
   return CENTRO_CIDADE[cidade];
+}
+
+/**
+ * Os pontos para medir a distância até uma cidade: o centro dela e, na cidade com regiões (Goiânia), o centro de cada
+ * região, porque a cidade grande chega mais longe do centro (o impulso no Google, `impulso-cidades.ts`).
+ */
+export function pontosDaCidade(cidade: Cidade) {
+  return [CENTRO_CIDADE[cidade], ...(REGIOES_DAS_CIDADES[cidade] ?? []).map((r) => CENTRO_REGIAO[r])];
 }
 
 /** O centro de uma área: o da região (nas cidades com regiões, pelo bairro) ou o da cidade. */
