@@ -6,7 +6,14 @@ import { nomeDoBairro } from "@/lib/formato";
 import { caminhoDaFuncao, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
 import { caminhoDaBusca, caminhoDasRecentes, caminhoDoBairro, cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
 import { pracaDaCidade } from "@/lib/pracas";
-import { frasesSemDisputa, sufixoDoImpulso, textoDoAnuncio, type TextoDoAnuncio, type VagaDoImpulso } from "@/lib/impulso";
+import {
+  frasesSemDisputa,
+  limparNomeDaCbo,
+  sufixoDoImpulso,
+  textoDoAnuncio,
+  type TextoDoAnuncio,
+  type VagaDoImpulso,
+} from "@/lib/impulso";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { urlDosEmails } from "./ambiente";
 import { estornarCobranca } from "./asaas";
@@ -339,8 +346,42 @@ async function semDisputaComAGeral(a: Acesso) {
   await a.cliente.rpc("servidor_impulsos_sem_disputa_feita", { p_chave: a.chave, p_assinatura: d.assinatura });
 }
 
-/** Buscas que não são de quem procura emprego (palavras negativas da campanha). */
-const FORA_DA_BUSCA = ["curso", "cursos", "receita", "receitas", "concurso", "apostila", "o que faz"];
+/**
+ * Buscas que não são de quem procura emprego (palavras negativas da campanha, amplas). Com as buscas largas e os nomes
+ * curtos da função ("carregador", "chapa"), também o que é de comprar, de estudar, de estacionar e de benefício.
+ * As novas entram nas campanhas no ar na medida seguinte (`acertarPalavras`).
+ */
+const FORA_DA_BUSCA = [
+  "curso",
+  "cursos",
+  "receita",
+  "receitas",
+  "concurso",
+  "apostila",
+  "o que faz",
+  "edital",
+  "faculdade",
+  "universidade",
+  "vestibular",
+  "enem",
+  "sisu",
+  "estacionamento",
+  "garagem",
+  "celular",
+  "iphone",
+  "samsung",
+  "bateria",
+  "usb",
+  "notebook",
+  "comprar",
+  "preço",
+  "mercado livre",
+  "shopee",
+  "seguro desemprego",
+  "fgts",
+  "inss",
+  "significado",
+];
 
 /** O orçamento, a campanha, a língua e os lugares (com os nomes provisórios -1 e -2, para o mesmo mutate). */
 function operacoesDaBaseDaCampanha(o: { codigo: string; nome: string; porDia: number; lugares: Lugar[]; conta: string }) {
@@ -633,14 +674,89 @@ function idsDoMutate(r: RespostaDoMutate) {
   return ids;
 }
 
-/** Os outros nomes da função da vaga, pela CBO (o nome oficial e os sinônimos), até 3. */
+/** Os outros nomes da função da vaga, pela CBO (o nome oficial e os sinônimos), até 3: para a lista sem disputa. */
 function sinonimosDaCbo(cbo: string | null | undefined) {
   const o = cbo ? ocupacao(cbo) : null;
   return (o ? [o.nome, ...(o.sinonimos ?? [])] : []).filter((s): s is string => Boolean(s)).slice(0, 3);
 }
 
+/**
+ * Todos os nomes da função na CBO como se buscam, para as palavras-chave: o oficial e todos os sinônimos, sem o
+ * parêntese ("Carregador (veículos de transportes terrestres)" → "carregador"; "Chapa (movimentador de mercadoria)" →
+ * "chapa" e "movimentador de mercadoria").
+ */
+function nomesDaCbo(cbo: string | null | undefined) {
+  const o = cbo ? ocupacao(cbo) : null;
+  return o ? [...new Set([o.nome, ...(o.sinonimos ?? [])].filter(Boolean).flatMap(limparNomeDaCbo))] : [];
+}
+
 function texto(t: Tarefa, simples: boolean) {
-  return textoDoAnuncio(t.vaga!, { simples, sinonimos: sinonimosDaCbo(t.vaga?.cbo) });
+  return textoDoAnuncio(t.vaga!, { simples, sinonimos: nomesDaCbo(t.vaga?.cbo) });
+}
+
+type LinhaDaPalavra = {
+  adGroupCriterion?: { resourceName?: string; keyword?: { text?: string; matchType?: string } };
+};
+type LinhaDaNegativa = { campaignCriterion?: { keyword?: { text?: string } } };
+
+/**
+ * As palavras do grupo da vaga iguais às buscas de hoje (`textoDoAnuncio(…).todas`, claude/plano-impulsionar-vaga.md,
+ * 13/11/2026): entram as que faltam, sai o que não está mais na lista (o grupo é só do robô; a palavra de antes, de
+ * frase, volta como ampla), e a campanha ganha as negativas que faltam (`FORA_DA_BUSCA`). Cada mudança vale sozinha:
+ * a palavra que o Google barrar fica de fora sem barrar as outras. Logo depois de criar (a criação leva só as
+ * primeiras) e a cada medida do impulso no ar: o impulso de antes (com os nomes da CBO, quase todos "baixo volume de
+ * pesquisas", e sem as buscas largas) passa a ter as de hoje.
+ */
+async function acertarPalavras(t: Tarefa, conta: string, ids: { grupo?: string | null; campanha?: string | null } = {}) {
+  const grupoId = ids.grupo ?? t.grupo_id;
+  const campanhaId = ids.campanha ?? t.campanha_id;
+  if (!t.vaga || !grupoId || !campanhaId) return;
+  const queremos = new Set(texto(t, t.texto_simples).todas);
+  const [atuais, negativas] = await Promise.all([
+    consultar<LinhaDaPalavra>(
+      `SELECT ad_group_criterion.resource_name, ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type ` +
+        `FROM ad_group_criterion WHERE ad_group.id = ${Number(grupoId)} AND ad_group_criterion.type = 'KEYWORD' ` +
+        `AND ad_group_criterion.negative = FALSE AND ad_group_criterion.status != 'REMOVED'`,
+      conta,
+    ),
+    consultar<LinhaDaNegativa>(
+      `SELECT campaign_criterion.keyword.text FROM campaign_criterion WHERE campaign.id = ${Number(campanhaId)} ` +
+        `AND campaign_criterion.type = 'KEYWORD' AND campaign_criterion.negative = TRUE ` +
+        `AND campaign_criterion.status != 'REMOVED'`,
+      conta,
+    ),
+  ]);
+  const temos = new Set<string>();
+  const sair: string[] = [];
+  for (const l of atuais) {
+    const c = l.adGroupCriterion;
+    if (!c?.resourceName) continue;
+    const texto = (c.keyword?.text ?? "").toLowerCase();
+    if (queremos.has(texto) && c.keyword?.matchType === "BROAD" && !temos.has(texto)) temos.add(texto);
+    else sair.push(c.resourceName);
+  }
+  const entrar = [...queremos].filter((p) => !temos.has(p));
+  const temNegativa = new Set(negativas.map((n) => (n.campaignCriterion?.keyword?.text ?? "").toLowerCase()));
+  const negativasNovas = FORA_DA_BUSCA.filter((n) => !temNegativa.has(n));
+  if (!entrar.length && !sair.length && !negativasNovas.length) return;
+  const grupo = recurso("adGroups", grupoId, conta);
+  const campanha = recurso("campaigns", campanhaId, conta);
+  const r = await mutar(
+    [
+      ...sair.map((nome) => ({ adGroupCriterionOperation: { remove: nome } })),
+      ...entrar.map((text) => ({
+        adGroupCriterionOperation: { create: { adGroup: grupo, status: "ENABLED", keyword: { text, matchType: "BROAD" } } },
+      })),
+      ...negativasNovas.map((text) => ({
+        campaignCriterionOperation: { create: { campaign: campanha, negative: true, keyword: { text, matchType: "BROAD" } } },
+      })),
+    ],
+    conta,
+    { parcial: true },
+  );
+  if (r.partialFailureError?.message) {
+    console.error(`Publike: impulso ${t.codigo}, palavras que o Google não aceitou:`, r.partialFailureError.message.slice(0, 400));
+  }
 }
 
 /**
@@ -743,7 +859,11 @@ async function criarGrupo(a: Acesso, t: Tarefa) {
   });
   if (error) throw new Error(error.message);
   // a vaga fechou (ou o admin parou) enquanto o Google criava: tira o grupo de novo
-  if ((data as { remover?: boolean } | null)?.remover && criados.grupo) await removerGrupo(criados.grupo, conta);
+  if ((data as { remover?: boolean } | null)?.remover && criados.grupo) {
+    await removerGrupo(criados.grupo, conta);
+    return;
+  }
+  await palavrasDepoisDeCriar(t, conta, { grupo: criados.grupo, campanha: k.campanha_id });
 }
 
 async function criar(a: Acesso, t: Tarefa) {
@@ -785,6 +905,16 @@ async function criar(a: Acesso, t: Tarefa) {
     return;
   }
   if (ids.campanha) await porSitelinks(sitelinksDaVaga(t.vaga!), t.codigo, ids.campanha, conta);
+  await palavrasDepoisDeCriar(t, conta, { grupo: ids.grupo, campanha: ids.campanha });
+}
+
+/** A criação leva só as primeiras palavras (`PALAVRAS_AO_NASCER`); as outras entram já, sem esperar a medida. */
+async function palavrasDepoisDeCriar(t: Tarefa, conta: string, ids: { grupo?: string | null; campanha?: string | null }) {
+  try {
+    await acertarPalavras(t, conta, ids);
+  } catch (e) {
+    console.error(`Publike: impulso ${t.codigo} nasceu só com as primeiras palavras:`, e instanceof Error ? e.message : e);
+  }
 }
 
 type LinhaDoAnuncio = {
@@ -884,6 +1014,12 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
     } catch (e) {
       // o raio também fica para a próxima medida
       console.error(`Publike: o raio do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
+    }
+    try {
+      await acertarPalavras(t, conta);
+    } catch (e) {
+      // as palavras também ficam para a próxima medida
+      console.error(`Publike: as palavras do impulso ${t.codigo} não mudaram:`, e instanceof Error ? e.message : e);
     }
   }
   const hoje = hojeEmBrasilia();

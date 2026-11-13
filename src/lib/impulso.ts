@@ -33,7 +33,10 @@ export type VagaDoImpulso = {
 export type TextoDoAnuncio = {
   titulos: string[];
   descricoes: string[];
+  /** as palavras-chave que vão na criação da campanha (as primeiras de `todas`) */
   palavras: string[];
+  /** todas as buscas da vaga (`buscasDaVaga`): o robô põe as que faltam no grupo depois de criar e a cada medida */
+  todas: string[];
   caminho1: string;
   caminho2: string;
 };
@@ -119,16 +122,541 @@ function umDeCada(grupos: (string | null | undefined)[][], max: number, quantos:
 const SO_O_CARGO =
   /^(auxiliar|assistente|operador|operadora|ajudante|atendente|técnico|técnica|analista|agente|encarregado|encarregada|supervisor|supervisora|gerente|coordenador|coordenadora)$/i;
 
+const semAcento = (t: string) => t.normalize("NFD").replace(/\p{Mn}/gu, "");
+
+/** O texto para comparar: minúsculas, sem acento e sem pontuação. */
+const comparavel = (t: string) =>
+  semAcento(t.toLowerCase())
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/** A palavra do começo que diz uma função ("movimentador", "ajudante"), não um lugar ou um detalhe ("veículos"). */
+const FUNCAO_NO_COMECO =
+  /^(auxiliar|ajudante|assistente|operador|operadora|tecnico|tecnica|trabalhador|trabalhadora|agente|encarregad[oa]|[a-z]+(dor|dora|ista|ante|ente|eiro|eira))\b/;
+
 /**
- * Os nomes da função para as palavras-chave do anúncio: a do título, curta e em minúsculas, e os outros nomes dela
- * (da CBO), até 4.
+ * O nome da CBO como as pessoas buscam: o parêntese sai ("Carregador (veículos de transportes terrestres)" →
+ * "carregador") e, quando ele é outra função, vira mais um nome ("Chapa (movimentador de mercadoria)" → "chapa" e
+ * "movimentador de mercadoria"). Fora o que sozinho é só o cargo ("auxiliar").
  */
-function basesDaFuncao(titulo: string, sinonimos: string[] = []) {
-  const f = funcaoCurta(funcaoDoTitulo(titulo)).toLowerCase();
-  return [...new Set([f, ...sinonimos.map((s) => funcaoCurta(s).toLowerCase())])].slice(0, 4);
+export function limparNomeDaCbo(nome: string): string[] {
+  const m = /^(.*?)\s*\(([^)]*)\)\s*(.*)$/.exec(nome.trim());
+  const nomes = [m ? `${m[1]} ${m[3]}` : nome];
+  if (m && FUNCAO_NO_COMECO.test(comparavel(m[2]))) nomes.push(m[2]);
+  return nomes
+    .map((n) => n.replace(/\s+/g, " ").trim().toLowerCase())
+    .filter((n) => n.length >= 3 && !n.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w))));
 }
 
-const semAcento = (t: string) => t.normalize("NFD").replace(/\p{Mn}/gu, "");
+/**
+ * As famílias de funções que se trocam entre si: quem busca uma também topa a outra ("movimentador de mercadorias",
+ * "ajudante de carga e descarga", "chapa"). `sinais`: o pedaço do nome da função (sem acento) que põe a vaga na
+ * família; `buscas`: os nomes que as pessoas digitam no Google para essas vagas. O anúncio da vaga aparece para
+ * todos eles (claude/plano-impulsionar-vaga.md, 13/11/2026).
+ */
+const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
+  {
+    sinais:
+      /\b(movimentador|carregador|carga e descarga|descarga|chapa\b|ajudante de deposito|auxiliar de deposito|ajudante de caminhao|ajudante de motorista|estivador)/,
+    buscas: [
+      "ajudante de carga e descarga",
+      "auxiliar de carga e descarga",
+      "carga e descarga",
+      "movimentador de mercadorias",
+      "ajudante de depósito",
+      "auxiliar de depósito",
+      "ajudante de caminhão",
+      "chapa",
+      "carregador",
+      "separador de mercadorias",
+      "auxiliar de logística",
+      "auxiliar de armazém",
+      "ajudante geral",
+    ],
+  },
+  {
+    sinais: /\b(estoqu|separador|separadora|conferente|almoxarif|logistic|expedi|armazen|armazem)/,
+    buscas: [
+      "auxiliar de estoque",
+      "estoquista",
+      "separador de mercadorias",
+      "separador de pedidos",
+      "conferente",
+      "conferente de mercadorias",
+      "auxiliar de logística",
+      "auxiliar de expedição",
+      "auxiliar de almoxarifado",
+      "almoxarife",
+      "auxiliar de armazém",
+      "operador de logística",
+      "movimentador de mercadorias",
+    ],
+  },
+  {
+    sinais: /\b(producao|operador de maquina|montador|montadora|embalador|embaladora|auxiliar de linha|auxiliar de fabrica)/,
+    buscas: [
+      "auxiliar de produção",
+      "ajudante de produção",
+      "operador de produção",
+      "auxiliar de linha de produção",
+      "operador de máquinas",
+      "embalador",
+      "montador",
+      "auxiliar de fábrica",
+      "ajudante geral",
+    ],
+  },
+  {
+    sinais: /\b(cozinh|chapeir|pizzaiol|salgadeir|sushiman|churrasqueir|copeir)/,
+    buscas: [
+      "auxiliar de cozinha",
+      "ajudante de cozinha",
+      "cozinheiro",
+      "cozinheira",
+      "chapeiro",
+      "auxiliar de cozinha industrial",
+      "salgadeira",
+      "pizzaiolo",
+      "copeira",
+      "auxiliar de restaurante",
+    ],
+  },
+  {
+    sinais: /\b(garcom|garconete|cumim|atendente de restaurante|atendente de lanchonete|barman|barista|maitre)/,
+    buscas: [
+      "garçom",
+      "garçonete",
+      "cumim",
+      "auxiliar de garçom",
+      "atendente de restaurante",
+      "atendente de lanchonete",
+      "barman",
+      "barista",
+    ],
+  },
+  {
+    sinais: /\b(padeir|confeiteir|padaria|confeitaria)/,
+    buscas: [
+      "padeiro",
+      "auxiliar de padeiro",
+      "auxiliar de padaria",
+      "ajudante de padaria",
+      "confeiteiro",
+      "confeiteira",
+      "balconista de padaria",
+    ],
+  },
+  {
+    sinais: /\b(acougu|desossador)/,
+    buscas: ["açougueiro", "auxiliar de açougue", "balconista de açougue", "desossador"],
+  },
+  {
+    sinais: /\b(limpeza|faxin|zelador|zeladora|servicos gerais|camareir|conservacao|asg\b|higieniza)/,
+    buscas: [
+      "auxiliar de limpeza",
+      "auxiliar de serviços gerais",
+      "serviços gerais",
+      "faxineira",
+      "faxineiro",
+      "zelador",
+      "camareira",
+      "auxiliar de conservação",
+      "auxiliar de higienização",
+    ],
+  },
+  {
+    sinais: /\b(recepcion|auxiliar de atendimento|atendente\b(?! de (restaurante|lanchonete|farmacia|drogaria|telemarketing|call center|padaria|acougue)))/,
+    buscas: [
+      "recepcionista",
+      "atendente",
+      "auxiliar de atendimento",
+      "atendente de recepção",
+      "auxiliar de recepção",
+      "atendente de loja",
+    ],
+  },
+  {
+    sinais: /\b(telemarket|teleatend|call center|sac\b|operador de atendimento)/,
+    buscas: [
+      "operador de telemarketing",
+      "atendente de telemarketing",
+      "telemarketing",
+      "teleatendente",
+      "atendente de call center",
+      "operador de sac",
+    ],
+  },
+  {
+    sinais: /\b(vendedor|vendedora|vendas|consultor de vendas|consultora de vendas|representante comercial|promotor|promotora|balconista)/,
+    buscas: [
+      "vendedor",
+      "vendedora",
+      "vendedor interno",
+      "vendedor externo",
+      "consultor de vendas",
+      "atendente de loja",
+      "balconista",
+      "representante comercial",
+      "promotor de vendas",
+    ],
+  },
+  {
+    sinais: /\b(operador de caixa|operadora de caixa|caixa\b|repositor|repositora|empacotador|fiscal de caixa|fiscal de loja)/,
+    buscas: [
+      "operador de caixa",
+      "operadora de caixa",
+      "caixa de supermercado",
+      "repositor",
+      "repositor de mercadorias",
+      "empacotador",
+      "fiscal de caixa",
+      "auxiliar de loja",
+      "supermercado",
+      "atacadista",
+    ],
+  },
+  {
+    sinais: /\b(administrativ|secretari|auxiliar de escritorio|assistente de escritorio)/,
+    buscas: [
+      "auxiliar administrativo",
+      "assistente administrativo",
+      "auxiliar de escritório",
+      "assistente de escritório",
+      "secretária",
+      "auxiliar de secretaria",
+    ],
+  },
+  {
+    sinais: /\b(recursos humanos|rh|departamento pessoal|dp|folha de pagamento|recrutamento)\b/,
+    buscas: [
+      "auxiliar de rh",
+      "assistente de rh",
+      "auxiliar de recursos humanos",
+      "auxiliar de departamento pessoal",
+      "assistente de departamento pessoal",
+      "analista de departamento pessoal",
+    ],
+  },
+  {
+    sinais:
+      /\b(fiscal(?! de (loja|caixa|prevencao|perdas|piso|salao|obra|patio|transporte|onibus))|fiscais|tribut|imposto|contab|contador|contadora)/,
+    buscas: [
+      "auxiliar fiscal",
+      "assistente fiscal",
+      "analista fiscal",
+      "auxiliar de escrita fiscal",
+      "auxiliar contábil",
+      "assistente contábil",
+      "analista contábil",
+      "auxiliar de contabilidade",
+      "escritório de contabilidade",
+    ],
+  },
+  {
+    sinais: /\b(financ|contas a pagar|contas a receber|tesour|faturament|cobranca)/,
+    buscas: [
+      "auxiliar financeiro",
+      "assistente financeiro",
+      "analista financeiro",
+      "contas a pagar",
+      "contas a receber",
+      "auxiliar de faturamento",
+      "auxiliar de cobrança",
+      "assistente de cobrança",
+    ],
+  },
+  {
+    sinais: /\b(motorista|condutor)/,
+    // o ajudante de motorista é da carga e descarga (sem "lookbehind" na regex: o Safari antigo não entende)
+    menos: /\bajudante de motorista\b/,
+    buscas: [
+      "motorista",
+      "motorista cnh d",
+      "motorista cnh c",
+      "motorista cnh b",
+      "motorista de caminhão",
+      "motorista entregador",
+      "motorista de van",
+    ],
+  },
+  {
+    sinais: /\b(entregador|entregadora|motoboy|motofret|motoentregador)/,
+    buscas: ["entregador", "motoboy", "entregador de moto", "motoentregador", "motofretista", "entregador de delivery"],
+  },
+  {
+    sinais: /\b(pedreiro|servente de pedreiro|servente de obra|ajudante de obra|auxiliar de obra|obras\b|construcao civil|armador|carpinteiro|mestre de obra|azulejista|gesseiro)/,
+    buscas: [
+      "ajudante de pedreiro",
+      "servente de pedreiro",
+      "servente de obras",
+      "ajudante de obras",
+      "auxiliar de obras",
+      "pedreiro",
+      "construção civil",
+      "armador",
+      "carpinteiro",
+      "ajudante geral",
+    ],
+  },
+  {
+    sinais: /\b(manutencao|eletricista|encanador|bombeiro hidraulico|pintor|marceneiro|serralheiro|soldador|predial)/,
+    buscas: [
+      "auxiliar de manutenção",
+      "manutenção predial",
+      "oficial de manutenção",
+      "técnico de manutenção",
+      "eletricista",
+      "auxiliar de eletricista",
+      "encanador",
+      "pintor",
+    ],
+  },
+  {
+    sinais: /\b(porteir|portaria|vigia\b|vigilante|agente de seguranca|seguranca patrimonial|seguranca\b(?! do trabalho)|controlador de acesso|controladora de acesso)/,
+    buscas: [
+      "porteiro",
+      "porteiro noturno",
+      "controlador de acesso",
+      "auxiliar de portaria",
+      "vigia",
+      "vigilante",
+      "segurança",
+    ],
+  },
+  {
+    sinais: /\b(enfermag|enfermeir)/,
+    buscas: ["técnico de enfermagem", "técnico em enfermagem", "auxiliar de enfermagem", "enfermeiro", "enfermeira"],
+  },
+  {
+    sinais: /\b(cuidador|cuidadora|acompanhante de idoso|baba\b)/,
+    buscas: ["cuidador de idosos", "cuidadora de idosos", "cuidador", "acompanhante de idosos", "babá", "cuidadora infantil"],
+  },
+  {
+    sinais: /\b(farmac|drogaria)/,
+    buscas: ["atendente de farmácia", "balconista de farmácia", "auxiliar de farmácia", "operador de caixa farmácia", "farmacêutico"],
+  },
+  {
+    sinais: /\b(cabeleireir|manicure|pedicure|esteticist|barbeir|maquiador|depilador|sobrancelha|salao de beleza)/,
+    buscas: [
+      "manicure",
+      "cabeleireira",
+      "cabeleireiro",
+      "barbeiro",
+      "esteticista",
+      "designer de sobrancelha",
+      "auxiliar de cabeleireiro",
+    ],
+  },
+  {
+    sinais: /\b(mecanic|funileir|lanterneir|auto pecas|autopecas)/,
+    buscas: ["mecânico", "auxiliar de mecânico", "ajudante de mecânico", "mecânico de automóveis", "mecânico de motos", "funileiro"],
+  },
+  {
+    sinais: /\b(frentista|lavador|lava jato|borracheir|polidor)/,
+    buscas: ["frentista", "lavador de carros", "lava jato", "borracheiro", "polidor automotivo"],
+  },
+  {
+    sinais: /\b(domestic|empregada|caseir|jardineir|passadeir|diarista)/,
+    buscas: ["empregada doméstica", "doméstica", "diarista", "caseiro", "jardineiro", "passadeira"],
+  },
+  {
+    sinais: /\b(professor|professora|auxiliar de sala|auxiliar de classe|auxiliar de creche|monitor escolar|monitora escolar|pedagog|recreador)/,
+    buscas: ["professor", "professora", "auxiliar de sala", "auxiliar de professor", "auxiliar de creche", "monitor escolar", "recreador"],
+  },
+  {
+    sinais: /\b(suporte tecnico|informatica|ti|desenvolvedor|programador|help desk|helpdesk)\b/,
+    buscas: ["suporte técnico", "técnico de informática", "auxiliar de ti", "analista de suporte", "help desk", "desenvolvedor", "programador"],
+  },
+  {
+    sinais: /\b(costureir|costura|overloquista|modelista)/,
+    buscas: ["costureira", "costureiro", "auxiliar de costura", "costureira industrial", "overloquista"],
+  },
+];
+
+/**
+ * As buscas das famílias da vaga, pela função do título; só sem família pelo título, pelo nome oficial da CBO (a CBO
+ * vem de uma regra e pode errar: o título é o que a empresa escreveu).
+ */
+function buscasDaFamilia(funcao: string, nomeDaCbo?: string) {
+  const familias = (t: string) => {
+    const x = ` ${comparavel(t)} `;
+    return FAMILIAS.filter((f) => f.sinais.test(x) && !f.menos?.test(x));
+  };
+  const achadas = familias(funcao).length ? familias(funcao) : nomeDaCbo ? familias(nomeDaCbo) : [];
+  return [...new Set(achadas.flatMap((f) => f.buscas))];
+}
+
+/** As cidades em volta de Goiânia: quem mora nelas também busca "vagas em Goiânia". */
+const PERTO_DE_GOIANIA = new Set([
+  "aparecida de goiania",
+  "senador canedo",
+  "trindade",
+  "goianira",
+  "neropolis",
+  "hidrolandia",
+  "bela vista de goias",
+  "abadia de goias",
+  "aragoiania",
+  "guapo",
+  "bonfinopolis",
+  "caldazinha",
+  "brazabrantes",
+  "nova veneza",
+  "santo antonio de goias",
+  "terezopolis de goias",
+  "inhumas",
+  "caturai",
+  "goianapolis",
+]);
+
+/**
+ * As buscas largas de quem procura emprego (as que mais trazem gente na campanha geral: "encontre empregos perto de
+ * você", "vagas de emprego goiânia", "preciso de trabalho"): o lugar da campanha já é o raio da vaga, então quem busca
+ * assim perto dela vê esta vaga. Sempre com "emprego", "trabalho" ou "vaga de": "vagas perto de mim" sozinho também é
+ * de estacionamento.
+ */
+function buscasLargas(v: VagaDoImpulso) {
+  const cidade = v.cidade.trim().toLowerCase();
+  const bairro = v.bairro.trim().toLowerCase();
+  return [
+    `vagas de emprego ${cidade}`,
+    `empregos ${cidade}`,
+    `emprego em ${cidade}`,
+    `vagas ${cidade}`,
+    `vagas de emprego ${bairro}`,
+    `emprego ${bairro}`,
+    "vagas de emprego perto de mim",
+    "empregos perto de mim",
+    "encontre empregos perto de você",
+    "emprego perto de casa",
+    "vagas de emprego",
+    "vaga de emprego",
+    "empregos",
+    "vagas de trabalho",
+    "oportunidade de emprego",
+    "estão contratando",
+    "empresas contratando",
+    "contrata se",
+    "preciso de emprego",
+    "preciso de trabalho",
+    "procuro emprego",
+    "procurando emprego",
+    "vagas urgentes",
+    "emprego urgente",
+    ...(PERTO_DE_GOIANIA.has(comparavel(cidade)) ? ["vagas de emprego goiânia", "empregos goiânia"] : []),
+  ];
+}
+
+/** As buscas da forma de contratar, do horário e do jeito da vaga ("jovem aprendiz", "vagas clt", "trabalho noturno"). */
+function buscasDaForma(v: VagaDoImpulso) {
+  const cidade = v.cidade.trim().toLowerCase();
+  const lista: string[] = [];
+  const porRegime: Record<string, string[]> = {
+    clt: ["vagas clt", `vagas clt ${cidade}`, "emprego carteira assinada", `vaga carteira assinada ${cidade}`],
+    aprendiz: ["jovem aprendiz", `jovem aprendiz ${cidade}`, "vagas jovem aprendiz", "menor aprendiz"],
+    estagio: ["vaga de estágio", `vagas de estágio ${cidade}`, "estágio remunerado", "estagiário"],
+    trainee: ["programa de trainee", "vaga de trainee"],
+    temporario: ["vaga temporária", "emprego temporário", `emprego temporário ${cidade}`],
+    intermitente: ["vaga intermitente", "trabalho intermitente"],
+    diaria: ["trabalho por diária", "vaga diária", `freelancer ${cidade}`, "vagas freelancer"],
+    freelance: ["vagas freelancer", `freelancer ${cidade}`, `freela ${cidade}`],
+  };
+  lista.push(...(porRegime[v.regime ?? ""] ?? []));
+  const porJornada: Record<string, string[]> = {
+    meio_periodo: ["emprego meio período", "trabalho meio período", "vaga meio período"],
+    noturno: ["vagas noturnas", "trabalho noturno", "emprego noturno"],
+    escala_12x36: ["escala 12x36", "vaga 12x36"],
+    fim_de_semana: ["trabalho fim de semana", "vagas fim de semana", "emprego final de semana"],
+  };
+  lista.push(...(porJornada[v.jornada ?? ""] ?? []));
+  if (v.modelo === "remoto") lista.push("vaga home office", "trabalho remoto", "emprego home office");
+  return lista;
+}
+
+/** Quantas palavras vão no grupo quando a campanha nasce (as outras entram logo depois, uma a uma). */
+export const PALAVRAS_AO_NASCER = 15;
+/** O máximo de palavras no grupo de uma vaga. */
+const MAXIMO_DE_PALAVRAS = 220;
+
+/**
+ * Todas as buscas da vaga, da mais perto à mais longe (claude/plano-impulsionar-vaga.md, 13/11/2026: "toda e qualquer
+ * variação possível da vaga"):
+ * 1. a função do título (inteira e curta), com "vaga de", "emprego de", "trabalho de", a cidade, o bairro, "perto de
+ *    mim", "urgente" e "contratando";
+ * 2. os nomes da CBO (`nomesDaCbo`: o oficial e os sinônimos, limpos) e os das funções da mesma família
+ *    (`FAMILIAS`), com "vaga de", "emprego de" e a cidade;
+ * 3. as buscas largas de emprego perto da vaga (`buscasLargas`).
+ * Todas de correspondência ampla: o Google pega também o plural, o sem acento e o jeito parecido de escrever. As
+ * primeiras `PALAVRAS_AO_NASCER` vão na criação (o que já passava pela política do Google); as outras, logo depois.
+ */
+export function buscasDaVaga(v: VagaDoImpulso, nomesDaCbo: string[] = []) {
+  const funcao = funcaoDoTitulo(v.titulo);
+  const cidade = v.cidade.trim().toLowerCase();
+  const bairro = v.bairro.trim().toLowerCase();
+  const curta = funcaoCurta(funcao).toLowerCase();
+  const inteira = funcaoInteira(funcao)?.toLowerCase();
+  const soCargo = (n: string) => n.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w)));
+  const principais = [...new Set([curta, inteira].filter((n): n is string => Boolean(n) && !soCargo(n!)))];
+  const daCbo = [...new Set(nomesDaCbo.map((n) => n.toLowerCase()).filter((n) => !soCargo(n)))];
+  const daFamilia = buscasDaFamilia(funcao, nomesDaCbo[0]);
+  // primeiro o nome da CBO que também é o que se busca na família (o mais buscado da mesma função), depois a família,
+  // por fim os outros nomes da CBO (os oficiais, que quase ninguém digita)
+  const naFamilia = new Set(daFamilia.map(comparavel));
+  const outros = [
+    ...new Set([
+      ...daCbo.filter((n) => naFamilia.has(comparavel(n))),
+      ...daFamilia,
+      ...daCbo.filter((n) => !naFamilia.has(comparavel(n))),
+    ]),
+  ].filter((n) => !principais.includes(n));
+  const largas = buscasLargas(v);
+  const daForma = buscasDaForma(v);
+  // sem a função no título ("Jovem aprendiz", "Estágio"), a forma de contratar é a busca da vaga
+  const formaNaFrente = v.regime === "aprendiz" || v.regime === "estagio" || v.regime === "trainee";
+
+  const nascer = [
+    ...principais.flatMap((n) => [`vaga de ${n}`, `emprego de ${n}`, `vaga de ${n} ${cidade}`]),
+    ...(formaNaFrente ? daForma.slice(0, 3) : []),
+    ...outros.slice(0, 4).map((n) => `vaga de ${n}`),
+    `vagas de emprego ${cidade}`,
+    `vagas de emprego ${bairro}`,
+    "empregos perto de mim",
+    `empregos ${cidade}`,
+    "vagas de emprego perto de mim",
+    "vagas de emprego",
+  ];
+  const resto = [
+    ...principais.flatMap((n) => [
+      `vagas de ${n}`,
+      `trabalho de ${n}`,
+      `emprego de ${n} ${cidade}`,
+      `vaga de ${n} ${bairro}`,
+      `vaga de ${n} perto de mim`,
+      `vaga de ${n} urgente`,
+      `${n} contratando`,
+    ]),
+    ...outros.flatMap((n) => [`vaga de ${n}`, `emprego de ${n}`, `vaga de ${n} ${cidade}`]),
+    ...largas,
+    ...daForma,
+  ];
+
+  const vistas = new Set<string>();
+  const limpar = (lista: string[]) => {
+    const saida: string[] = [];
+    for (const p of lista) {
+      const l = palavraLimpa(p);
+      if (l && !vistas.has(l)) {
+        vistas.add(l);
+        saida.push(l);
+      }
+    }
+    return saida;
+  };
+  // as primeiras ficam no começo de todas (a ordem é a de importância)
+  const daCriacao = limpar(nascer);
+  const todas = [...daCriacao, ...limpar(resto)].slice(0, MAXIMO_DE_PALAVRAS);
+  return { primeiras: daCriacao.slice(0, PALAVRAS_AO_NASCER), todas };
+}
 
 /**
  * A palavra (sem acento) que nunca vai sozinha para a lista da campanha geral: o cargo sem a função e a busca de
@@ -207,7 +735,8 @@ function caminho(t: string) {
 
 /**
  * O texto do anúncio. `simples`: a segunda tentativa, depois de o Google recusar a primeira (só a função, o lugar e o
- * convite, sem salário nem regime). `sinonimos`: outros nomes da função (da CBO), para as palavras-chave.
+ * convite, sem salário nem regime). `sinonimos`: os nomes da função na CBO, já limpos (`limparNomeDaCbo`), para as
+ * palavras-chave.
  */
 export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; sinonimos?: string[] } = {}): TextoDoAnuncio {
   const funcao = funcaoCurta(funcaoDoTitulo(v.titulo));
@@ -305,41 +834,14 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
         4,
       );
 
-  const bases = basesDaFuncao(v.titulo, opcoes.sinonimos);
-  const palavras: string[] = [];
-  const vistas = new Set<string>();
-  for (const b of bases) {
-    for (const p of [
-      `vaga ${b}`,
-      `vaga de ${b}`,
-      `emprego de ${b}`,
-      `vaga ${b} ${cidade}`,
-      `emprego ${b} ${cidade}`,
-      `${b} ${cidade}`,
-      `vaga ${b} ${bairro}`,
-    ]) {
-      const limpa = palavraLimpa(p);
-      if (limpa && !vistas.has(limpa)) {
-        vistas.add(limpa);
-        palavras.push(limpa);
-      }
-    }
-  }
-
-  // as buscas largas de quem procura emprego perto (as que mais trazem gente na campanha geral da Publike: "vagas de
-  // emprego em goiânia", "empregos perto de mim"); o anúncio mostra esta vaga, e o lugar da campanha já é o perto dela
-  const largas = [
-    ...new Set(
-      [`vagas de emprego ${cidade}`, `vagas de emprego ${bairro}`, "empregos perto de mim"]
-        .map(palavraLimpa)
-        .filter((p): p is string => Boolean(p) && !vistas.has(p as string)),
-    ),
-  ];
+  // as buscas da vaga: as primeiras vão na criação; as outras, logo depois (`acertarPalavras`, em impulsos.ts)
+  const buscas = buscasDaVaga(v, opcoes.sinonimos);
 
   return {
     titulos: minimos.length >= 3 ? minimos : [...minimos, "Vaga de emprego", "Candidatura grátis", "Veja a vaga"].slice(0, 3),
     descricoes: descricoes.length >= 2 ? descricoes : [...descricoes, "Veja a vaga e candidate-se pelo Publike."].slice(0, 2),
-    palavras: [...palavras.slice(0, 15 - largas.length), ...largas],
+    palavras: buscas.primeiras,
+    todas: buscas.todas,
     caminho1: "vagas",
     caminho2: caminho(funcao) || "emprego",
   };

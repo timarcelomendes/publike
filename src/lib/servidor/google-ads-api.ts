@@ -157,11 +157,22 @@ export function recurso(tipo: string, id: string | number, conta = contaDeAnunci
   return `customers/${conta}/${tipo}/${id}`;
 }
 
-export type RespostaDoMutate = { mutateOperationResponses?: Record<string, { resourceName?: string }>[] };
+export type RespostaDoMutate = {
+  mutateOperationResponses?: Record<string, { resourceName?: string }>[];
+  /** com `parcial`: o que o Google recusou (as outras mudanças valeram) */
+  partialFailureError?: { message?: string };
+};
 
-/** Várias mudanças de uma vez, tudo ou nada (os ids temporários negativos ligam umas às outras). */
-export function mutar(operacoes: unknown[], conta = contaDeAnuncios()) {
-  return chamar<RespostaDoMutate>(`customers/${conta}/googleAds:mutate`, { mutateOperations: operacoes }, conta);
+/**
+ * Várias mudanças de uma vez, tudo ou nada (os ids temporários negativos ligam umas às outras). `parcial`: cada
+ * mudança vale sozinha, e a recusada vem em `partialFailureError` (as palavras-chave: uma barrada não barra as outras).
+ */
+export function mutar(operacoes: unknown[], conta = contaDeAnuncios(), opcoes: { parcial?: boolean } = {}) {
+  return chamar<RespostaDoMutate>(
+    `customers/${conta}/googleAds:mutate`,
+    opcoes.parcial ? { mutateOperations: operacoes, partialFailure: true } : { mutateOperations: operacoes },
+    conta,
+  );
 }
 
 /** Uma consulta GAQL, com as páginas. */
