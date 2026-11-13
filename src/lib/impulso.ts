@@ -41,13 +41,21 @@ export type TextoDoAnuncio = {
   caminho2: string;
 };
 
-const POR: Record<string, string> = { hora: "por hora", dia: "por dia", semana: "por semana", mes: "por mês" };
+const POR: Record<string, string> = {
+  hora: "por hora",
+  dia: "por dia",
+  semana: "por semana",
+  mes: "por mês",
+};
 
 /** "AUXILIAR DE COZINHA (M/F) - URGENTE!" → "Auxiliar de cozinha": a função, sem enfeite. */
 export function funcaoDoTitulo(titulo: string) {
   let t = titulo
     .replace(/\(.*?\)|\[.*?\]/g, " ")
-    .replace(/\b(urgente|contrata-se|contratamos|precisa-se|oportunidade)\b/gi, " ")
+    .replace(
+      /\b(urgente|contrata-se|contratamos|precisa-se|oportunidade)\b/gi,
+      " ",
+    )
     .replace(/^\s*(vagas?|emprego)\s+(de|para|p\/)\s+/i, "")
     // "Auxiliar fiscal p/ escritório": o "p/" é "para" (senão a função curta vira "Auxiliar fiscal p")
     .replace(/(^|\s)p\/\s*/gi, "$1para ")
@@ -59,11 +67,24 @@ export function funcaoDoTitulo(titulo: string) {
     .trim();
   const letras = t.replace(/[^A-Za-zÀ-ÿ]/g, "");
   const maiusculas = t.replace(/[^A-ZÀ-Þ]/g, "");
-  if (letras.length > 3 && maiusculas.length / letras.length > 0.6) t = t.toLowerCase();
+  if (letras.length > 3 && maiusculas.length / letras.length > 0.6)
+    t = t.toLowerCase();
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : "Vaga de emprego";
 }
 
-const LIGACOES = new Set(["de", "da", "do", "das", "dos", "e", "em", "para", "com", "a", "o"]);
+const LIGACOES = new Set([
+  "de",
+  "da",
+  "do",
+  "das",
+  "dos",
+  "e",
+  "em",
+  "para",
+  "com",
+  "a",
+  "o",
+]);
 
 /**
  * A função curta, para caber no título (até 28 letras): "Operador de empilhadeira e movimentação de cargas" →
@@ -79,7 +100,8 @@ export function funcaoCurta(funcao: string, max = 28) {
     if ([...saida, p].join(" ").length > max) break;
     saida.push(p);
   }
-  while (saida.length > 1 && LIGACOES.has(saida.at(-1)!.toLowerCase())) saida.pop();
+  while (saida.length > 1 && LIGACOES.has(saida.at(-1)!.toLowerCase()))
+    saida.pop();
   return saida.join(" ") || funcao.slice(0, max);
 }
 
@@ -87,12 +109,19 @@ export function funcaoCurta(funcao: string, max = 28) {
 export function salarioDaVaga(v: VagaDoImpulso) {
   if (v.pagamento_valor == null || v.pagamento_valor <= 0) return null;
   const de = formatarMoeda(Number(v.pagamento_valor));
-  return v.pagamento_ate && v.pagamento_ate > v.pagamento_valor ? `${de} a ${formatarMoeda(Number(v.pagamento_ate))}` : de;
+  return v.pagamento_ate && v.pagamento_ate > v.pagamento_valor
+    ? `${de} a ${formatarMoeda(Number(v.pagamento_ate))}`
+    : de;
 }
 
-const cabe = (t: string | null | undefined, max: number) => (t && t.length <= max ? t : null);
+const cabe = (t: string | null | undefined, max: number) =>
+  t && t.length <= max ? t : null;
 
-function semRepetir(lista: (string | null | undefined)[], max: number, quantos: number) {
+function semRepetir(
+  lista: (string | null | undefined)[],
+  max: number,
+  quantos: number,
+) {
   const vistos = new Set<string>();
   const saida: string[] = [];
   for (const x of lista) {
@@ -108,10 +137,16 @@ function semRepetir(lista: (string | null | undefined)[], max: number, quantos: 
 }
 
 /** De cada grupo, a primeira frase que cabe (sem repetir), até `quantos`. */
-function umDeCada(grupos: (string | null | undefined)[][], max: number, quantos: number) {
+function umDeCada(
+  grupos: (string | null | undefined)[][],
+  max: number,
+  quantos: number,
+) {
   const saida: string[] = [];
   for (const g of grupos) {
-    const [t] = semRepetir(g, max, 1).filter((x) => !saida.some((y) => y.toLowerCase() === x.toLowerCase()));
+    const [t] = semRepetir(g, max, 1).filter(
+      (x) => !saida.some((y) => y.toLowerCase() === x.toLowerCase()),
+    );
     if (t) saida.push(t);
     if (saida.length === quantos) break;
   }
@@ -145,7 +180,11 @@ export function limparNomeDaCbo(nome: string): string[] {
   if (m && FUNCAO_NO_COMECO.test(comparavel(m[2]))) nomes.push(m[2]);
   return nomes
     .map((n) => n.replace(/\s+/g, " ").trim().toLowerCase())
-    .filter((n) => n.length >= 3 && !n.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w))));
+    .filter(
+      (n) =>
+        n.length >= 3 &&
+        !n.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w))),
+    );
 }
 
 /**
@@ -175,7 +214,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(estoqu|separador|separadora|conferente|almoxarif|logistic|expedi|armazen|armazem)/,
+    sinais:
+      /\b(estoqu|separador|separadora|conferente|almoxarif|logistic|expedi|armazen|armazem)/,
     buscas: [
       "auxiliar de estoque",
       "estoquista",
@@ -193,7 +233,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(producao|operador de maquina|montador|montadora|embalador|embaladora|auxiliar de linha|auxiliar de fabrica)/,
+    sinais:
+      /\b(producao|operador de maquina|montador|montadora|embalador|embaladora|auxiliar de linha|auxiliar de fabrica)/,
     buscas: [
       "auxiliar de produção",
       "ajudante de produção",
@@ -207,7 +248,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(cozinh|chapeir|pizzaiol|salgadeir|sushiman|churrasqueir|copeir)/,
+    sinais:
+      /\b(cozinh|chapeir|pizzaiol|salgadeir|sushiman|churrasqueir|copeir)/,
     buscas: [
       "auxiliar de cozinha",
       "ajudante de cozinha",
@@ -222,7 +264,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(garcom|garconete|cumim|atendente de restaurante|atendente de lanchonete|barman|barista|maitre)/,
+    sinais:
+      /\b(garcom|garconete|cumim|atendente de restaurante|atendente de lanchonete|barman|barista|maitre)/,
     buscas: [
       "garçom",
       "garçonete",
@@ -248,10 +291,16 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
   },
   {
     sinais: /\b(acougu|desossador)/,
-    buscas: ["açougueiro", "auxiliar de açougue", "balconista de açougue", "desossador"],
+    buscas: [
+      "açougueiro",
+      "auxiliar de açougue",
+      "balconista de açougue",
+      "desossador",
+    ],
   },
   {
-    sinais: /\b(limpeza|faxin|zelador|zeladora|servicos gerais|camareir|conservacao|asg\b|higieniza)/,
+    sinais:
+      /\b(limpeza|faxin|zelador|zeladora|servicos gerais|camareir|conservacao|asg\b|higieniza)/,
     buscas: [
       "auxiliar de limpeza",
       "auxiliar de serviços gerais",
@@ -265,7 +314,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(recepcion|auxiliar de atendimento|atendente\b(?! de (restaurante|lanchonete|farmacia|drogaria|telemarketing|call center|padaria|acougue)))/,
+    sinais:
+      /\b(recepcion|auxiliar de atendimento|atendente\b(?! de (restaurante|lanchonete|farmacia|drogaria|telemarketing|call center|padaria|acougue)))/,
     buscas: [
       "recepcionista",
       "atendente",
@@ -276,7 +326,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(telemarket|teleatend|call center|sac\b|operador de atendimento)/,
+    sinais:
+      /\b(telemarket|teleatend|call center|sac\b|operador de atendimento)/,
     buscas: [
       "operador de telemarketing",
       "atendente de telemarketing",
@@ -287,7 +338,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(vendedor|vendedora|vendas|consultor de vendas|consultora de vendas|representante comercial|promotor|promotora|balconista)/,
+    sinais:
+      /\b(vendedor|vendedora|vendas|consultor de vendas|consultora de vendas|representante comercial|promotor|promotora|balconista)/,
     buscas: [
       "vendedor",
       "vendedora",
@@ -301,7 +353,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(operador de caixa|operadora de caixa|caixa\b|repositor|repositora|empacotador|fiscal de caixa|fiscal de loja)/,
+    sinais:
+      /\b(operador de caixa|operadora de caixa|caixa\b|repositor|repositora|empacotador|fiscal de caixa|fiscal de loja)/,
     buscas: [
       "operador de caixa",
       "operadora de caixa",
@@ -316,7 +369,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(administrativ|secretari|auxiliar de escritorio|assistente de escritorio)/,
+    sinais:
+      /\b(administrativ|secretari|auxiliar de escritorio|assistente de escritorio)/,
     buscas: [
       "auxiliar administrativo",
       "assistente administrativo",
@@ -327,7 +381,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(recursos humanos|rh|departamento pessoal|dp|folha de pagamento|recrutamento)\b/,
+    sinais:
+      /\b(recursos humanos|rh|departamento pessoal|dp|folha de pagamento|recrutamento)\b/,
     buscas: [
       "auxiliar de rh",
       "assistente de rh",
@@ -353,7 +408,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(financ|contas a pagar|contas a receber|tesour|faturament|cobranca)/,
+    sinais:
+      /\b(financ|contas a pagar|contas a receber|tesour|faturament|cobranca)/,
     buscas: [
       "auxiliar financeiro",
       "assistente financeiro",
@@ -381,10 +437,18 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
   },
   {
     sinais: /\b(entregador|entregadora|motoboy|motofret|motoentregador)/,
-    buscas: ["entregador", "motoboy", "entregador de moto", "motoentregador", "motofretista", "entregador de delivery"],
+    buscas: [
+      "entregador",
+      "motoboy",
+      "entregador de moto",
+      "motoentregador",
+      "motofretista",
+      "entregador de delivery",
+    ],
   },
   {
-    sinais: /\b(pedreiro|servente de pedreiro|servente de obra|ajudante de obra|auxiliar de obra|obras\b|construcao civil|armador|carpinteiro|mestre de obra|azulejista|gesseiro)/,
+    sinais:
+      /\b(pedreiro|servente de pedreiro|servente de obra|ajudante de obra|auxiliar de obra|obras\b|construcao civil|armador|carpinteiro|mestre de obra|azulejista|gesseiro)/,
     buscas: [
       "ajudante de pedreiro",
       "servente de pedreiro",
@@ -399,7 +463,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(manutencao|eletricista|encanador|bombeiro hidraulico|pintor|marceneiro|serralheiro|soldador|predial)/,
+    sinais:
+      /\b(manutencao|eletricista|encanador|bombeiro hidraulico|pintor|marceneiro|serralheiro|soldador|predial)/,
     buscas: [
       "auxiliar de manutenção",
       "manutenção predial",
@@ -412,7 +477,8 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
     ],
   },
   {
-    sinais: /\b(porteir|portaria|vigia\b|vigilante|agente de seguranca|seguranca patrimonial|seguranca\b(?! do trabalho)|controlador de acesso|controladora de acesso)/,
+    sinais:
+      /\b(porteir|portaria|vigia\b|vigilante|agente de seguranca|seguranca patrimonial|seguranca\b(?! do trabalho)|controlador de acesso|controladora de acesso)/,
     buscas: [
       "porteiro",
       "porteiro noturno",
@@ -425,18 +491,38 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
   },
   {
     sinais: /\b(enfermag|enfermeir)/,
-    buscas: ["técnico de enfermagem", "técnico em enfermagem", "auxiliar de enfermagem", "enfermeiro", "enfermeira"],
+    buscas: [
+      "técnico de enfermagem",
+      "técnico em enfermagem",
+      "auxiliar de enfermagem",
+      "enfermeiro",
+      "enfermeira",
+    ],
   },
   {
     sinais: /\b(cuidador|cuidadora|acompanhante de idoso|baba\b)/,
-    buscas: ["cuidador de idosos", "cuidadora de idosos", "cuidador", "acompanhante de idosos", "babá", "cuidadora infantil"],
+    buscas: [
+      "cuidador de idosos",
+      "cuidadora de idosos",
+      "cuidador",
+      "acompanhante de idosos",
+      "babá",
+      "cuidadora infantil",
+    ],
   },
   {
     sinais: /\b(farmac|drogaria)/,
-    buscas: ["atendente de farmácia", "balconista de farmácia", "auxiliar de farmácia", "operador de caixa farmácia", "farmacêutico"],
+    buscas: [
+      "atendente de farmácia",
+      "balconista de farmácia",
+      "auxiliar de farmácia",
+      "operador de caixa farmácia",
+      "farmacêutico",
+    ],
   },
   {
-    sinais: /\b(cabeleireir|manicure|pedicure|esteticist|barbeir|maquiador|depilador|sobrancelha|salao de beleza)/,
+    sinais:
+      /\b(cabeleireir|manicure|pedicure|esteticist|barbeir|maquiador|depilador|sobrancelha|salao de beleza)/,
     buscas: [
       "manicure",
       "cabeleireira",
@@ -449,27 +535,71 @@ const FAMILIAS: { sinais: RegExp; menos?: RegExp; buscas: string[] }[] = [
   },
   {
     sinais: /\b(mecanic|funileir|lanterneir|auto pecas|autopecas)/,
-    buscas: ["mecânico", "auxiliar de mecânico", "ajudante de mecânico", "mecânico de automóveis", "mecânico de motos", "funileiro"],
+    buscas: [
+      "mecânico",
+      "auxiliar de mecânico",
+      "ajudante de mecânico",
+      "mecânico de automóveis",
+      "mecânico de motos",
+      "funileiro",
+    ],
   },
   {
     sinais: /\b(frentista|lavador|lava jato|borracheir|polidor)/,
-    buscas: ["frentista", "lavador de carros", "lava jato", "borracheiro", "polidor automotivo"],
+    buscas: [
+      "frentista",
+      "lavador de carros",
+      "lava jato",
+      "borracheiro",
+      "polidor automotivo",
+    ],
   },
   {
     sinais: /\b(domestic|empregada|caseir|jardineir|passadeir|diarista)/,
-    buscas: ["empregada doméstica", "doméstica", "diarista", "caseiro", "jardineiro", "passadeira"],
+    buscas: [
+      "empregada doméstica",
+      "doméstica",
+      "diarista",
+      "caseiro",
+      "jardineiro",
+      "passadeira",
+    ],
   },
   {
-    sinais: /\b(professor|professora|auxiliar de sala|auxiliar de classe|auxiliar de creche|monitor escolar|monitora escolar|pedagog|recreador)/,
-    buscas: ["professor", "professora", "auxiliar de sala", "auxiliar de professor", "auxiliar de creche", "monitor escolar", "recreador"],
+    sinais:
+      /\b(professor|professora|auxiliar de sala|auxiliar de classe|auxiliar de creche|monitor escolar|monitora escolar|pedagog|recreador)/,
+    buscas: [
+      "professor",
+      "professora",
+      "auxiliar de sala",
+      "auxiliar de professor",
+      "auxiliar de creche",
+      "monitor escolar",
+      "recreador",
+    ],
   },
   {
-    sinais: /\b(suporte tecnico|informatica|ti|desenvolvedor|programador|help desk|helpdesk)\b/,
-    buscas: ["suporte técnico", "técnico de informática", "auxiliar de ti", "analista de suporte", "help desk", "desenvolvedor", "programador"],
+    sinais:
+      /\b(suporte tecnico|informatica|ti|desenvolvedor|programador|help desk|helpdesk)\b/,
+    buscas: [
+      "suporte técnico",
+      "técnico de informática",
+      "auxiliar de ti",
+      "analista de suporte",
+      "help desk",
+      "desenvolvedor",
+      "programador",
+    ],
   },
   {
     sinais: /\b(costureir|costura|overloquista|modelista)/,
-    buscas: ["costureira", "costureiro", "auxiliar de costura", "costureira industrial", "overloquista"],
+    buscas: [
+      "costureira",
+      "costureiro",
+      "auxiliar de costura",
+      "costureira industrial",
+      "overloquista",
+    ],
   },
 ];
 
@@ -482,7 +612,11 @@ function buscasDaFamilia(funcao: string, nomeDaCbo?: string) {
     const x = ` ${comparavel(t)} `;
     return FAMILIAS.filter((f) => f.sinais.test(x) && !f.menos?.test(x));
   };
-  const achadas = familias(funcao).length ? familias(funcao) : nomeDaCbo ? familias(nomeDaCbo) : [];
+  const achadas = familias(funcao).length
+    ? familias(funcao)
+    : nomeDaCbo
+      ? familias(nomeDaCbo)
+      : [];
   return [...new Set(achadas.flatMap((f) => f.buscas))];
 }
 
@@ -509,67 +643,62 @@ export const PERTO_DE_GOIANIA = new Set([
   "goianapolis",
 ]);
 
-/**
- * As buscas largas de quem procura emprego (as que mais trazem gente na campanha geral: "encontre empregos perto de
- * você", "vagas de emprego goiânia", "preciso de trabalho"): o lugar da campanha já é o raio da vaga, então quem busca
- * assim perto dela vê esta vaga. Sempre com "emprego", "trabalho" ou "vaga de": "vagas perto de mim" sozinho também é
- * de estacionamento.
- */
-function buscasLargas(v: VagaDoImpulso) {
-  const cidade = v.cidade.trim().toLowerCase();
-  const bairro = v.bairro.trim().toLowerCase();
-  return [
-    `vagas de emprego ${cidade}`,
-    `empregos ${cidade}`,
-    `emprego em ${cidade}`,
-    `vagas ${cidade}`,
-    `vagas de emprego ${bairro}`,
-    `emprego ${bairro}`,
-    "vagas de emprego perto de mim",
-    "empregos perto de mim",
-    "encontre empregos perto de você",
-    "emprego perto de casa",
-    "vagas de emprego",
-    "vaga de emprego",
-    "empregos",
-    "vagas de trabalho",
-    "oportunidade de emprego",
-    "estão contratando",
-    "empresas contratando",
-    "contrata se",
-    "preciso de emprego",
-    "preciso de trabalho",
-    "procuro emprego",
-    "procurando emprego",
-    "vagas urgentes",
-    "emprego urgente",
-    ...(PERTO_DE_GOIANIA.has(comparavel(cidade)) ? ["vagas de emprego goiânia", "empregos goiânia"] : []),
-  ];
-}
-
 /** As buscas da forma de contratar, do horário e do jeito da vaga ("jovem aprendiz", "vagas clt", "trabalho noturno"). */
 function buscasDaForma(v: VagaDoImpulso) {
   const cidade = v.cidade.trim().toLowerCase();
   const lista: string[] = [];
   const porRegime: Record<string, string[]> = {
-    clt: ["vagas clt", `vagas clt ${cidade}`, "emprego carteira assinada", `vaga carteira assinada ${cidade}`],
-    aprendiz: ["jovem aprendiz", `jovem aprendiz ${cidade}`, "vagas jovem aprendiz", "menor aprendiz"],
-    estagio: ["vaga de estágio", `vagas de estágio ${cidade}`, "estágio remunerado", "estagiário"],
+    clt: [
+      "vagas clt",
+      `vagas clt ${cidade}`,
+      "emprego carteira assinada",
+      `vaga carteira assinada ${cidade}`,
+    ],
+    aprendiz: [
+      "jovem aprendiz",
+      `jovem aprendiz ${cidade}`,
+      "vagas jovem aprendiz",
+      "menor aprendiz",
+    ],
+    estagio: [
+      "vaga de estágio",
+      `vagas de estágio ${cidade}`,
+      "estágio remunerado",
+      "estagiário",
+    ],
     trainee: ["programa de trainee", "vaga de trainee"],
-    temporario: ["vaga temporária", "emprego temporário", `emprego temporário ${cidade}`],
+    temporario: [
+      "vaga temporária",
+      "emprego temporário",
+      `emprego temporário ${cidade}`,
+    ],
     intermitente: ["vaga intermitente", "trabalho intermitente"],
-    diaria: ["trabalho por diária", "vaga diária", `freelancer ${cidade}`, "vagas freelancer"],
+    diaria: [
+      "trabalho por diária",
+      "vaga diária",
+      `freelancer ${cidade}`,
+      "vagas freelancer",
+    ],
     freelance: ["vagas freelancer", `freelancer ${cidade}`, `freela ${cidade}`],
   };
   lista.push(...(porRegime[v.regime ?? ""] ?? []));
   const porJornada: Record<string, string[]> = {
-    meio_periodo: ["emprego meio período", "trabalho meio período", "vaga meio período"],
+    meio_periodo: [
+      "emprego meio período",
+      "trabalho meio período",
+      "vaga meio período",
+    ],
     noturno: ["vagas noturnas", "trabalho noturno", "emprego noturno"],
     escala_12x36: ["escala 12x36", "vaga 12x36"],
-    fim_de_semana: ["trabalho fim de semana", "vagas fim de semana", "emprego final de semana"],
+    fim_de_semana: [
+      "trabalho fim de semana",
+      "vagas fim de semana",
+      "emprego final de semana",
+    ],
   };
   lista.push(...(porJornada[v.jornada ?? ""] ?? []));
-  if (v.modelo === "remoto") lista.push("vaga home office", "trabalho remoto", "emprego home office");
+  if (v.modelo === "remoto")
+    lista.push("vaga home office", "trabalho remoto", "emprego home office");
   return lista;
 }
 
@@ -585,8 +714,11 @@ const MAXIMO_DE_PALAVRAS = 220;
  *    mim", "urgente" e "contratando";
  * 2. os nomes da CBO (`nomesDaCbo`: o oficial e os sinônimos, limpos) e os das funções da mesma família
  *    (`FAMILIAS`), com "vaga de", "emprego de" e a cidade;
- * 3. as buscas largas de emprego perto da vaga (`buscasLargas`).
- * Todas de correspondência ampla: o Google pega também o plural, o sem acento e o jeito parecido de escrever. As
+ * 3. com a forma de contratar na frente (aprendiz, estágio, trainee), as buscas dela (`buscasDaForma`).
+ * Nunca as buscas largas de emprego ("vagas de emprego", "empregos goiânia", "procuro emprego"): são as da campanha
+ * geral do Publike, que leva ao mesmo site e sempre ganha (13/11/2026: no Diagnóstico do Google, o impulso do
+ * Movimentador saía de "vagas de emprego em goiânia" porque a geral tinha a palavra igual ou classificação maior; os
+ * impulsos tiveram 0 vistas). Todas de correspondência ampla: o Google pega também o plural, o sem acento e o jeito parecido de escrever. As
  * primeiras `PALAVRAS_AO_NASCER` vão na criação (o que já passava pela política do Google); as outras, logo depois.
  */
 export function buscasDaVaga(v: VagaDoImpulso, nomesDaCbo: string[] = []) {
@@ -595,9 +727,18 @@ export function buscasDaVaga(v: VagaDoImpulso, nomesDaCbo: string[] = []) {
   const bairro = v.bairro.trim().toLowerCase();
   const curta = funcaoCurta(funcao).toLowerCase();
   const inteira = funcaoInteira(funcao)?.toLowerCase();
-  const soCargo = (n: string) => n.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w)));
-  const principais = [...new Set([curta, inteira].filter((n): n is string => Boolean(n) && !soCargo(n!)))];
-  const daCbo = [...new Set(nomesDaCbo.map((n) => n.toLowerCase()).filter((n) => !soCargo(n)))];
+  const soCargo = (n: string) =>
+    n.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w)));
+  const principais = [
+    ...new Set(
+      [curta, inteira].filter((n): n is string => Boolean(n) && !soCargo(n!)),
+    ),
+  ];
+  const daCbo = [
+    ...new Set(
+      nomesDaCbo.map((n) => n.toLowerCase()).filter((n) => !soCargo(n)),
+    ),
+  ];
   const daFamilia = buscasDaFamilia(funcao, nomesDaCbo[0]);
   // primeiro o nome da CBO que também é o que se busca na família (o mais buscado da mesma função), depois a família,
   // por fim os outros nomes da CBO (os oficiais, que quase ninguém digita)
@@ -609,21 +750,19 @@ export function buscasDaVaga(v: VagaDoImpulso, nomesDaCbo: string[] = []) {
       ...daCbo.filter((n) => !naFamilia.has(comparavel(n))),
     ]),
   ].filter((n) => !principais.includes(n));
-  const largas = buscasLargas(v);
   const daForma = buscasDaForma(v);
   // sem a função no título ("Jovem aprendiz", "Estágio"), a forma de contratar é a busca da vaga
-  const formaNaFrente = v.regime === "aprendiz" || v.regime === "estagio" || v.regime === "trainee";
+  const formaNaFrente =
+    v.regime === "aprendiz" || v.regime === "estagio" || v.regime === "trainee";
 
   const nascer = [
-    ...principais.flatMap((n) => [`vaga de ${n}`, `emprego de ${n}`, `vaga de ${n} ${cidade}`]),
+    ...principais.flatMap((n) => [
+      `vaga de ${n}`,
+      `emprego de ${n}`,
+      `vaga de ${n} ${cidade}`,
+    ]),
     ...(formaNaFrente ? daForma.slice(0, 3) : []),
     ...outros.slice(0, 4).map((n) => `vaga de ${n}`),
-    `vagas de emprego ${cidade}`,
-    `vagas de emprego ${bairro}`,
-    "empregos perto de mim",
-    `empregos ${cidade}`,
-    "vagas de emprego perto de mim",
-    "vagas de emprego",
   ];
   const resto = [
     ...principais.flatMap((n) => [
@@ -635,9 +774,12 @@ export function buscasDaVaga(v: VagaDoImpulso, nomesDaCbo: string[] = []) {
       `vaga de ${n} urgente`,
       `${n} contratando`,
     ]),
-    ...outros.flatMap((n) => [`vaga de ${n}`, `emprego de ${n}`, `vaga de ${n} ${cidade}`]),
-    ...largas,
-    ...daForma,
+    ...outros.flatMap((n) => [
+      `vaga de ${n}`,
+      `emprego de ${n}`,
+      `vaga de ${n} ${cidade}`,
+    ]),
+    ...(formaNaFrente ? daForma : []),
   ];
 
   const vistas = new Set<string>();
@@ -674,7 +816,9 @@ function funcaoInteira(nome: string) {
   if (nome.length <= 28) return nome;
   const corte = nome.split(/\s(?:e|para|com|-|–)\s|,|\//)[0]?.trim() ?? "";
   // o corte que sobra numa palavra só fica largo demais ("Instalador e reparador de…" → "instalador")
-  return corte.length >= 3 && corte.length <= 45 && corte.includes(" ") ? corte : null;
+  return corte.length >= 3 && corte.length <= 45 && corte.includes(" ")
+    ? corte
+    : null;
 }
 
 /**
@@ -697,7 +841,8 @@ export function frasesSemDisputa(titulo: string, sinonimos: string[] = []) {
     for (const x of [b, semLigacao]) {
       for (const y of [x, semAcento(x)]) {
         const p = palavraLimpa(y);
-        if (p && !p.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w)))) frases.add(p);
+        if (p && !p.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w))))
+          frases.add(p);
       }
     }
   }
@@ -711,7 +856,9 @@ function palavraLimpa(t: string) {
     .replace(/[^a-z0-9à-ÿ\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return p.length >= 3 && p.length <= 80 && p.split(" ").length <= 10 ? p : null;
+  return p.length >= 3 && p.length <= 80 && p.split(" ").length <= 10
+    ? p
+    : null;
 }
 
 /** Um pedaço do endereço que aparece no anúncio ("publike.org/vagas/auxiliar"): sem acento, até 15 letras. */
@@ -738,12 +885,16 @@ function caminho(t: string) {
  * convite, sem salário nem regime). `sinonimos`: os nomes da função na CBO, já limpos (`limparNomeDaCbo`), para as
  * palavras-chave.
  */
-export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; sinonimos?: string[] } = {}): TextoDoAnuncio {
+export function textoDoAnuncio(
+  v: VagaDoImpulso,
+  opcoes: { simples?: boolean; sinonimos?: string[] } = {},
+): TextoDoAnuncio {
   const funcao = funcaoCurta(funcaoDoTitulo(v.titulo));
   const f = funcao.toLowerCase();
   const sal = salarioDaVaga(v);
   const por = v.pagamento_unidade ? POR[v.pagamento_unidade] : null;
-  const regime = v.regime && v.regime in REGIMES ? REGIMES[v.regime as Regime] : null;
+  const regime =
+    v.regime && v.regime in REGIMES ? REGIMES[v.regime as Regime] : null;
   const jornada = nomeJornada(v.jornada);
   const cidade = v.cidade.trim();
   const bairro = v.bairro.trim();
@@ -755,7 +906,17 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
   const curta = SO_O_CARGO.test(curtaCrua) ? funcao : curtaCrua;
   const c = curta.toLowerCase();
   const titulos = opcoes.simples
-    ? semRepetir([funcao, `Vaga em ${cidade}`, "Vaga de emprego", "Candidatura grátis", "Veja a vaga"], 30, 5)
+    ? semRepetir(
+        [
+          funcao,
+          `Vaga em ${cidade}`,
+          "Vaga de emprego",
+          "Candidatura grátis",
+          "Veja a vaga",
+        ],
+        30,
+        5,
+      )
     : semRepetir(
         [
           funcao,
@@ -788,7 +949,16 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
         15,
       );
   // os títulos mínimos (3), se a vaga tiver nomes muito longos
-  const minimos = semRepetir([...titulos, "Vaga de emprego", "Candidatura grátis", "Veja a vaga no Publike"], 30, 15);
+  const minimos = semRepetir(
+    [
+      ...titulos,
+      "Vaga de emprego",
+      "Candidatura grátis",
+      "Veja a vaga no Publike",
+    ],
+    30,
+    15,
+  );
 
   const lugar = `${bairro}, ${cidade}`;
   const descricoes = opcoes.simples
@@ -808,8 +978,12 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
         [
           [
             `${funcao} em ${lugar}.${sal ? ` ${sal}${por ? ` ${por}` : ""}.` : ""} Veja a vaga e candidate-se.`,
-            sal ? `${funcao} em ${bairro}. ${sal}${por ? ` ${por}` : ""}. Veja a vaga e candidate-se.` : null,
-            sal ? `${funcao}. ${sal}${por ? ` ${por}` : ""}. Veja a vaga e candidate-se.` : null,
+            sal
+              ? `${funcao} em ${bairro}. ${sal}${por ? ` ${por}` : ""}. Veja a vaga e candidate-se.`
+              : null,
+            sal
+              ? `${funcao}. ${sal}${por ? ` ${por}` : ""}. Veja a vaga e candidate-se.`
+              : null,
             `${funcao} em ${lugar}. Veja a vaga e candidate-se.`,
             `Vaga de ${f} em ${cidade}. Veja a vaga e candidate-se.`,
           ],
@@ -828,7 +1002,9 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
             `Candidate-se à vaga de ${f} pelo celular, em poucos toques e sem pagar nada.`,
             `Candidate-se à vaga de ${c} pelo celular, sem pagar nada.`,
           ],
-          ["Curtiu a vaga e deu match: você conversa direto com quem contrata. É grátis."],
+          [
+            "Curtiu a vaga e deu match: você conversa direto com quem contrata. É grátis.",
+          ],
         ],
         90,
         4,
@@ -838,8 +1014,22 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
   const buscas = buscasDaVaga(v, opcoes.sinonimos);
 
   return {
-    titulos: minimos.length >= 3 ? minimos : [...minimos, "Vaga de emprego", "Candidatura grátis", "Veja a vaga"].slice(0, 3),
-    descricoes: descricoes.length >= 2 ? descricoes : [...descricoes, "Veja a vaga e candidate-se pelo Publike."].slice(0, 2),
+    titulos:
+      minimos.length >= 3
+        ? minimos
+        : [
+            ...minimos,
+            "Vaga de emprego",
+            "Candidatura grátis",
+            "Veja a vaga",
+          ].slice(0, 3),
+    descricoes:
+      descricoes.length >= 2
+        ? descricoes
+        : [...descricoes, "Veja a vaga e candidate-se pelo Publike."].slice(
+            0,
+            2,
+          ),
     palavras: buscas.primeiras,
     todas: buscas.todas,
     caminho1: "vagas",
@@ -854,7 +1044,11 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
  * negativas do grupo da vaga. Guardado no impulso (`privado.impulsos.palavras_ia`, migração 20270508120000): o robô
  * aplica em cima de `buscasDaVaga` a cada conferência, sem chamar a IA de novo.
  */
-export type RevisaoDasPalavras = { acrescentar: string[]; tirar: string[]; negativas: string[] };
+export type RevisaoDasPalavras = {
+  acrescentar: string[];
+  tirar: string[];
+  negativas: string[];
+};
 
 /** As palavras que dizem que a busca é de emprego (sem acento). */
 const INTENCAO_DE_EMPREGO =
@@ -888,7 +1082,13 @@ export function limparRevisao(
 ): RevisaoDasPalavras {
   const textos = (x: unknown, campo: string) =>
     (Array.isArray(x) ? x : [])
-      .map((i) => (typeof i === "string" ? i : i && typeof i === "object" ? (i as Record<string, unknown>)[campo] : null))
+      .map((i) =>
+        typeof i === "string"
+          ? i
+          : i && typeof i === "object"
+            ? (i as Record<string, unknown>)[campo]
+            : null,
+      )
       .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
   const naLista = new Map(lista.map((p) => [comparavel(p), p]));
   const guardadas = new Set(protegidas.map(comparavel));
@@ -899,14 +1099,19 @@ export function limparRevisao(
     if (p && !guardadas.has(comparavel(p)) && !tirar.includes(p)) tirar.push(p);
     if (tirar.length === 40) break;
   }
-  const ficam = new Set(lista.filter((p) => !tirar.includes(p)).map(comparavel));
+  const ficam = new Set(
+    lista.filter((p) => !tirar.includes(p)).map(comparavel),
+  );
 
   const acrescentar: string[] = [];
   for (const t of textos(bruta.acrescentar, "busca")) {
     const limpa = palavraLimpa(t);
     if (!limpa || NUNCA_NA_BUSCA.test(comparavel(limpa))) continue;
-    const busca = INTENCAO_DE_EMPREGO.test(comparavel(limpa)) ? limpa : palavraLimpa(`vaga de ${limpa}`);
-    if (!busca || ficam.has(comparavel(busca)) || acrescentar.includes(busca)) continue;
+    const busca = INTENCAO_DE_EMPREGO.test(comparavel(limpa))
+      ? limpa
+      : palavraLimpa(`vaga de ${limpa}`);
+    if (!busca || ficam.has(comparavel(busca)) || acrescentar.includes(busca))
+      continue;
     acrescentar.push(busca);
     ficam.add(comparavel(busca));
     if (acrescentar.length === 40) break;
@@ -920,8 +1125,14 @@ export function limparRevisao(
     if (!limpa) continue;
     const c = comparavel(limpa);
     const partes = c.split(" ");
-    if (partes.length > 3 || INTENCAO_DE_EMPREGO.test(c) || NUNCA_NA_BUSCA.test(c)) continue;
-    if (partes.some((w) => palavrasQueFicam.has(w) && !LIGACOES.has(w))) continue;
+    if (
+      partes.length > 3 ||
+      INTENCAO_DE_EMPREGO.test(c) ||
+      NUNCA_NA_BUSCA.test(c)
+    )
+      continue;
+    if (partes.some((w) => palavrasQueFicam.has(w) && !LIGACOES.has(w)))
+      continue;
     if (!negativas.includes(limpa)) negativas.push(limpa);
     if (negativas.length === 20) break;
   }
@@ -929,10 +1140,15 @@ export function limparRevisao(
 }
 
 /** As buscas da vaga com a revisão da IA por cima: sai o que ela tirou, entra o que ela pôs (até 260). */
-export function buscasComARevisao(todas: string[], revisao: RevisaoDasPalavras | null) {
+export function buscasComARevisao(
+  todas: string[],
+  revisao: RevisaoDasPalavras | null,
+) {
   if (!revisao) return todas;
   const sai = new Set(revisao.tirar);
-  return [...new Set([...todas.filter((p) => !sai.has(p)), ...revisao.acrescentar])].slice(0, 260);
+  return [
+    ...new Set([...todas.filter((p) => !sai.has(p)), ...revisao.acrescentar]),
+  ].slice(0, 260);
 }
 
 /** No quadro "Vagas impulsionadas na região": até 6 vagas, no máximo 2 de cada cliente. */
@@ -945,15 +1161,21 @@ const DO_MESMO_CLIENTE = 2;
  * (a mesma para todo mundo naquela hora) e cada cliente fica com até 2: ao longo do dia, toda vaga impulsionada passa
  * pelo quadro. Sem outros clientes para completar, o lugar que sobra volta para quem tem mais vagas.
  */
-export function vagasDoQuadro<T extends { id: string; autor_id: string }>(impulsionadas: T[], agora: number): T[] {
+export function vagasDoQuadro<T extends { id: string; autor_id: string }>(
+  impulsionadas: T[],
+  agora: number,
+): T[] {
   const hora = Math.floor(agora / 3_600_000);
   const vez = (id: string) => {
     // FNV-1a de 32 bits: a mesma vaga cai num lugar diferente a cada hora, sem sorteio
     let h = 0x811c9dc5;
-    for (const c of `${hora}:${id}`) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
+    for (const c of `${hora}:${id}`)
+      h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
     return h;
   };
-  const ordem = [...impulsionadas].sort((x, y) => vez(x.id) - vez(y.id) || x.id.localeCompare(y.id));
+  const ordem = [...impulsionadas].sort(
+    (x, y) => vez(x.id) - vez(y.id) || x.id.localeCompare(y.id),
+  );
   const porCliente = new Map<string, number>();
   const escolhidas = new Set<T>();
   for (const v of ordem) {

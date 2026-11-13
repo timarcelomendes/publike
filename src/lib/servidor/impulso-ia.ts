@@ -1,6 +1,12 @@
 import "server-only";
 import { REGIMES, nomeJornada } from "@/lib/constantes";
-import { funcaoDoTitulo, limparRevisao, salarioDaVaga, type RevisaoDasPalavras, type VagaDoImpulso } from "@/lib/impulso";
+import {
+  funcaoDoTitulo,
+  limparRevisao,
+  salarioDaVaga,
+  type RevisaoDasPalavras,
+  type VagaDoImpulso,
+} from "@/lib/impulso";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { chamarIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
 import type { Regime } from "@/lib/tipos";
@@ -15,7 +21,7 @@ type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
 
 const SISTEMA = `Você cuida das palavras-chave do Google Ads de uma vaga de emprego impulsionada pelo Publike, um site de vagas de Goiânia e região (Goiás, Brasil). O anúncio aparece na pesquisa do Google só para quem está perto da vaga (o lugar já é o raio em volta dela), e as palavras são de correspondência ampla: o Google já pega plural, sem acento e erro de digitação.
 
-Você recebe a vaga e a lista de buscas que o Publike montou: a função do título, os nomes oficiais da CBO, as funções parecidas e as buscas largas de emprego. Melhore a lista para trazer mais gente certa para esta vaga:
+Você recebe a vaga e a lista de buscas que o Publike montou: a função do título, os nomes oficiais da CBO e as funções parecidas. Melhore a lista para trazer mais gente certa para esta vaga:
 - acrescentar: até 30 buscas que quem procura este trabalho digita e que faltam na lista: o nome popular da função em Goiás, o jeito de falar do dia a dia ("chapa", "ajudante geral"), funções equivalentes que a pessoa toparia, a busca com a cidade ou o bairro. Escreva como as pessoas buscam, em minúsculas, até 8 palavras, com "vaga", "emprego" ou "trabalho"; ou só o nome da função, que o Publike completa com "vaga de".
 - tirar: buscas da lista que trazem gente errada para esta vaga (outra função, outro nível de experiência, sentido duplo). Copie exatamente como está na lista. Não tire as três primeiras: são a função do título.
 - negativas: até 15 palavras curtas (de 1 a 3) que aparecem em buscas que não são de quem procura esta vaga (por exemplo, para carregador: "celular", "bateria", "usb"). Nunca a própria função nem "vaga", "emprego" ou "trabalho".
@@ -23,6 +29,7 @@ Você recebe a vaga e a lista de buscas que o Publike montou: a função do tít
 Regras que não mudam:
 - Nada de idade, sexo, gênero, cor, religião, estado civil, gravidez, deficiência ou aparência (Lei 9.029/1995 e CLT, art. 373-A). "Jovem aprendiz" é o nome do contrato e pode.
 - Nada de nome de empresa, de outro site de vagas ou de órgão público.
+- Nada de busca larga de emprego, sem a função ("vagas de emprego", "empregos goiânia", "procuro emprego", "vagas clt"): essas são da campanha geral do Publike, e o anúncio da vaga perde para ela.
 - Nada que prometa o que a vaga não diz.
 Para cada item, diga o porquê em até 12 palavras. Se a lista já está boa, devolva listas vazias.`;
 
@@ -38,7 +45,11 @@ const ITEM = (campo: string) => ({
 
 const ESQUEMA = {
   type: "object",
-  properties: { acrescentar: ITEM("busca"), tirar: ITEM("busca"), negativas: ITEM("palavra") },
+  properties: {
+    acrescentar: ITEM("busca"),
+    tirar: ITEM("busca"),
+    negativas: ITEM("palavra"),
+  },
   required: ["acrescentar", "tirar", "negativas"],
   additionalProperties: false,
 };
@@ -64,12 +75,16 @@ function descrever(v: VagaDoImpulso, descricao: string) {
   return [
     `Título: ${v.titulo}`,
     `Função: ${funcaoDoTitulo(v.titulo)}`,
-    v.regime ? `Contratação: ${REGIMES[v.regime as Regime]?.nome ?? v.regime}` : null,
+    v.regime
+      ? `Contratação: ${REGIMES[v.regime as Regime]?.nome ?? v.regime}`
+      : null,
     v.jornada ? `Horário: ${nomeJornada(v.jornada) ?? v.jornada}` : null,
     sal ? `Pagamento: ${sal}` : null,
     v.vagas && v.vagas > 1 ? `Vagas: ${v.vagas}` : null,
     `Local: ${v.bairro}, ${v.cidade} (GO)`,
-    descricao ? `Descrição: ${descricao.replace(/\s+/g, " ").slice(0, 800)}` : null,
+    descricao
+      ? `Descrição: ${descricao.replace(/\s+/g, " ").slice(0, 800)}`
+      : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -100,7 +115,11 @@ const ESQUEMA_BUSCAS = {
       type: "array",
       items: {
         type: "object",
-        properties: { vaga: { type: "integer" }, busca: { type: "string" }, porque: { type: "string" } },
+        properties: {
+          vaga: { type: "integer" },
+          busca: { type: "string" },
+          porque: { type: "string" },
+        },
         required: ["vaga", "busca", "porque"],
         additionalProperties: false,
       },
@@ -124,13 +143,20 @@ export type VagaParaJulgar = {
 export async function julgarBuscasComIA(
   modelo: string,
   vagas: VagaParaJulgar[],
-): Promise<{ fora: { vaga: number; busca: string; porque: string }[]; erro?: string }> {
-  const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+): Promise<{
+  fora: { vaga: number; busca: string; porque: string }[];
+  erro?: string;
+}> {
+  const plural = (n: number, um: string, varios: string) =>
+    `${n} ${n === 1 ? um : varios}`;
   const mensagem = vagas
     .map(
       (x, n) =>
         `<vaga n="${n + 1}">\n${descrever(x.vaga, x.descricao)}\nBuscas:\n${x.buscas
-          .map((b) => `- ${b.busca} (${plural(b.impressoes, "vista", "vistas")}, ${plural(b.cliques, "clique", "cliques")})`)
+          .map(
+            (b) =>
+              `- ${b.busca} (${plural(b.impressoes, "vista", "vistas")}, ${plural(b.cliques, "clique", "cliques")})`,
+          )
           .join("\n")}\n</vaga>`,
     )
     .join("\n\n");
@@ -147,12 +173,26 @@ export async function julgarBuscasComIA(
     if (parada) return { fora: [], erro: `A IA parou (${parada}).` };
     const bruta = lerJson<{ fora?: unknown }>(texto);
     const fora = (Array.isArray(bruta.fora) ? bruta.fora : [])
-      .map((i) => (i && typeof i === "object" ? (i as Record<string, unknown>) : {}))
-      .filter((i) => Number.isInteger(i.vaga) && typeof i.busca === "string" && typeof i.porque === "string")
-      .map((i) => ({ vaga: Number(i.vaga), busca: String(i.busca), porque: String(i.porque).slice(0, 120) }));
+      .map((i) =>
+        i && typeof i === "object" ? (i as Record<string, unknown>) : {},
+      )
+      .filter(
+        (i) =>
+          Number.isInteger(i.vaga) &&
+          typeof i.busca === "string" &&
+          typeof i.porque === "string",
+      )
+      .map((i) => ({
+        vaga: Number(i.vaga),
+        busca: String(i.busca),
+        porque: String(i.porque).slice(0, 120),
+      }));
     return { fora };
   } catch (e) {
-    return { fora: [], erro: (e instanceof Error ? e.message : String(e)).slice(0, 300) };
+    return {
+      fora: [],
+      erro: (e instanceof Error ? e.message : String(e)).slice(0, 300),
+    };
   }
 }
 
@@ -178,8 +218,20 @@ export async function revisarComIA(
       esquema: { nome: "palavras_do_impulso", schema: ESQUEMA },
       tempoLimite: 30_000,
     });
-    if (parada) return { acrescentar: [], tirar: [], negativas: [], modelo, em, erro: `A IA parou (${parada}).` };
-    const bruta = lerJson<{ acrescentar?: unknown; tirar?: unknown; negativas?: unknown }>(texto);
+    if (parada)
+      return {
+        acrescentar: [],
+        tirar: [],
+        negativas: [],
+        modelo,
+        em,
+        erro: `A IA parou (${parada}).`,
+      };
+    const bruta = lerJson<{
+      acrescentar?: unknown;
+      tirar?: unknown;
+      negativas?: unknown;
+    }>(texto);
     const r = limparRevisao(bruta, lista, protegidas);
     // o porquê de cada item que valeu (para o Admin mostrar)
     const porque: Record<string, string> = {};
@@ -188,13 +240,26 @@ export async function revisarComIA(
       ["tirar", "busca"],
       ["negativas", "palavra"],
     ] as const) {
-      for (const i of Array.isArray(bruta[campo]) ? (bruta[campo] as Record<string, unknown>[]) : []) {
-        const k = typeof i?.[chave] === "string" ? (i[chave] as string).toLowerCase().trim() : "";
-        if (k && typeof i.porque === "string") porque[k] = i.porque.slice(0, 120);
+      for (const i of Array.isArray(bruta[campo])
+        ? (bruta[campo] as Record<string, unknown>[])
+        : []) {
+        const k =
+          typeof i?.[chave] === "string"
+            ? (i[chave] as string).toLowerCase().trim()
+            : "";
+        if (k && typeof i.porque === "string")
+          porque[k] = i.porque.slice(0, 120);
       }
     }
     return { ...r, porque, modelo, em };
   } catch (e) {
-    return { acrescentar: [], tirar: [], negativas: [], modelo, em, erro: (e instanceof Error ? e.message : String(e)).slice(0, 300) };
+    return {
+      acrescentar: [],
+      tirar: [],
+      negativas: [],
+      modelo,
+      em,
+      erro: (e instanceof Error ? e.message : String(e)).slice(0, 300),
+    };
   }
 }
