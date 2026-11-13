@@ -16,6 +16,8 @@ import {
   Sparkles,
   Zap,
   ExternalLink,
+  ChevronRight,
+  CloudDownload,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -651,12 +653,24 @@ export function PublicarAnuncio({
               {atalho === "foto" && lerComIA && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
               {/* empresa com as vagas na Gupy: todas de uma vez (sem conta, entra antes) */}
               {enderecoPublico !== false && (
-                <p className="text-body-sm text-ink-muted">
-                  Suas vagas estão na Gupy?{" "}
-                  <Link href="/painel/anuncios/importar" className="underline underline-offset-2 hover:text-ink">
-                    Importe todas de uma vez
-                  </Link>
-                </p>
+                <Link
+                  href="/painel/anuncios/importar"
+                  className="group relative mt-1 flex items-center gap-3 rounded-md border-2 border-terra/40 bg-terra/5 p-3 transition-colors hover:border-terra hover:bg-terra/10"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-terra text-on-terra">
+                    <CloudDownload aria-hidden className="size-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-label">Suas vagas estão na Gupy? Importe todas de uma vez</span>
+                    <span className="block text-body-sm text-ink-muted">
+                      Cole o link da página de vagas e publique as que quiser. O candidato se candidata no seu site.
+                    </span>
+                  </span>
+                  <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted group-hover:text-ink" />
+                  <Selo variante="novo" className="absolute -top-2.5 right-3 px-2! py-0.5!">
+                    Novo
+                  </Selo>
+                </Link>
               )}
             </div>
           ) : null
