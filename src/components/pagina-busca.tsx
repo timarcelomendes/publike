@@ -20,6 +20,7 @@ import {
   tituloDaBusca,
 } from "@/lib/paginas-busca";
 import { nomeDoBairro } from "@/lib/formato";
+import { vagasDoQuadro } from "@/lib/impulso";
 import { pracaDaCidade } from "@/lib/pracas";
 import { anunciosNoAr, vagasImpulsionadas } from "@/lib/servidor/paginas-busca";
 import { funcoesDasVagasDaPraca } from "@/lib/servidor/paginas-funcao";
@@ -161,12 +162,13 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
   const itens = area ? daCidade.filter((a) => a.categoria === area.slug) : daCidade;
   const vaga = tipo === "vaga";
   // as vagas impulsionadas da região (a praça toda: em Goiânia, também as de Aparecida), num quadro à parte, acima da
-  // lista de sempre, que não muda de ordem (migração 20270506120000, 13/11/2026); as do impulso mais novo primeiro
+  // lista de sempre, que não muda de ordem (migração 20270506120000, 13/11/2026); até 2 de cada cliente, na ordem que
+  // gira a cada hora (`vagasDoQuadro`)
   const destaques = vaga
-    ? todos
-        .filter((a) => impulsionadas[a.id] && (!area || a.categoria === area.slug))
-        .sort((x, y) => impulsionadas[y.id].localeCompare(impulsionadas[x.id]))
-        .slice(0, 6)
+    ? vagasDoQuadro(
+        todos.filter((a) => impulsionadas[a.id] && (!area || a.categoria === area.slug)),
+        agora,
+      )
     : [];
   const caminho = caminhoDaBusca(tipo, cidade, area?.slug);
 

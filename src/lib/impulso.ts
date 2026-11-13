@@ -934,3 +934,39 @@ export function buscasComARevisao(todas: string[], revisao: RevisaoDasPalavras |
   const sai = new Set(revisao.tirar);
   return [...new Set([...todas.filter((p) => !sai.has(p)), ...revisao.acrescentar])].slice(0, 260);
 }
+
+/** No quadro "Vagas impulsionadas na região": até 6 vagas, no máximo 2 de cada cliente. */
+export const VAGAS_NO_QUADRO = 6;
+const DO_MESMO_CLIENTE = 2;
+
+/**
+ * As vagas do quadro "Vagas impulsionadas na região" (13/11/2026). Antes, as do impulso mais novo vinham primeiro: um
+ * cliente com 7 vagas impulsionadas ocupava as 6 e as outras vagas pagas não apareciam. Agora a ordem gira a cada hora
+ * (a mesma para todo mundo naquela hora) e cada cliente fica com até 2: ao longo do dia, toda vaga impulsionada passa
+ * pelo quadro. Sem outros clientes para completar, o lugar que sobra volta para quem tem mais vagas.
+ */
+export function vagasDoQuadro<T extends { id: string; autor_id: string }>(impulsionadas: T[], agora: number): T[] {
+  const hora = Math.floor(agora / 3_600_000);
+  const vez = (id: string) => {
+    // FNV-1a de 32 bits: a mesma vaga cai num lugar diferente a cada hora, sem sorteio
+    let h = 0x811c9dc5;
+    for (const c of `${hora}:${id}`) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
+    return h;
+  };
+  const ordem = [...impulsionadas].sort((x, y) => vez(x.id) - vez(y.id) || x.id.localeCompare(y.id));
+  const porCliente = new Map<string, number>();
+  const escolhidas = new Set<T>();
+  for (const v of ordem) {
+    if (escolhidas.size === VAGAS_NO_QUADRO) break;
+    const ja = porCliente.get(v.autor_id) ?? 0;
+    if (ja >= DO_MESMO_CLIENTE) continue;
+    porCliente.set(v.autor_id, ja + 1);
+    escolhidas.add(v);
+  }
+  for (const v of ordem) {
+    if (escolhidas.size === VAGAS_NO_QUADRO) break;
+    escolhidas.add(v);
+  }
+  // na ordem da hora (as que completaram entram no lugar delas)
+  return ordem.filter((v) => escolhidas.has(v));
+}
