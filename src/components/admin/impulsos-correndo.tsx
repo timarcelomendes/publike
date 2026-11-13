@@ -7,7 +7,7 @@ import { Selo } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
 import type { CampanhaDoAdmin, ImpulsoDoAdmin } from "@/lib/acoes/admin-impulsos";
-import { formatarData, formatarMoeda, plural, tempoRelativo } from "@/lib/formato";
+import { formatarData, formatarMoeda, formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { PararCampanha, PararImpulso } from "./impulsos";
 import { Filtro, ORIGENS } from "./impulsos-historico";
 import { NOME_DA_ORIGEM, NOME_DA_SITUACAO, VARIANTE_DA_SITUACAO, ehCorrendo, origemDo } from "./impulsos-nomes";
@@ -183,13 +183,63 @@ function situacaoDaCampanha(k: CampanhaDoAdmin) {
   return "criando no Google";
 }
 
+/**
+ * Os números do cliente (a campanha dele e as vagas sozinhas): o gasto no Google contra a verba, com a barra, e as
+ * vistas, os cliques (com a taxa de clique), as curtidas e quanto custou cada clique e cada curtida.
+ */
+function NumerosDoCliente({ c }: { c: Cliente }) {
+  const soma = somaDos([...c.vagas, ...c.avulsos]);
+  const verba =
+    Number(c.campanha?.verba ?? 0) + c.avulsos.reduce((t, i) => t + Number(i.verba ?? 0), 0);
+  const parte = verba > 0 ? Math.min(100, (100 * soma.gasto) / verba) : 0;
+  const taxa = soma.impressoes > 0 ? (100 * soma.cliques) / soma.impressoes : null;
+  const numeros: { rotulo: string; valor: string; detalhe?: string }[] = [
+    { rotulo: "Vistas", valor: formatarNumero(soma.impressoes) },
+    {
+      rotulo: "Cliques",
+      valor: formatarNumero(soma.cliques),
+      detalhe: taxa === null ? undefined : `${taxa.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% das vistas`,
+    },
+    { rotulo: "Por clique", valor: soma.cliques > 0 ? reais(soma.gasto / soma.cliques) : "—" },
+    {
+      rotulo: "Curtidas",
+      valor: formatarNumero(soma.curtidas),
+      detalhe: soma.curtidas > 0 ? `${reais(soma.gasto / soma.curtidas)} cada` : undefined,
+    },
+  ];
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <p className="flex flex-wrap items-baseline justify-between gap-x-4 text-body-sm">
+          <span>
+            <span className="text-label tabular-nums">{reais(soma.gasto)}</span>
+            <span className="text-ink-muted"> gastos de {reais(verba)} no Google</span>
+          </span>
+          <span className="text-ink-muted tabular-nums">{Math.round(parte)}% da verba</span>
+        </p>
+        <span className="block h-1.5 overflow-hidden rounded-pill bg-surface-300" aria-hidden>
+          <span className="block h-full rounded-pill bg-ink" style={{ width: `${parte}%` }} />
+        </span>
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+        {numeros.map((n) => (
+          <div key={n.rotulo} className="min-w-0">
+            <dt className="text-caption text-ink-muted">{n.rotulo}</dt>
+            <dd className="text-label tabular-nums">
+              {n.valor}
+              {n.detalhe && <span className="ml-1.5 text-caption font-normal text-ink-muted">{n.detalhe}</span>}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 /** O cartão do cliente: o cabeçalho e a campanha inteiros; embaixo, as vagas que passaram nos filtros (`linhas`). */
 function CartaoDoCliente({ c, linhas, agora }: { c: Cliente; linhas: ImpulsoDoAdmin[]; agora: number }) {
   const k = c.campanha;
   const vagasCorrendo = c.vagas.filter((i) => ehCorrendo(i.situacao));
-  const soma = somaDos([...c.vagas, ...c.avulsos]);
-  const gastoCampanha = somaDos(c.vagas).gasto;
-  const parte = k ? Math.min(100, (100 * gastoCampanha) / Math.max(Number(k.verba), 1)) : 0;
   const podeParar = vagasCorrendo.some((i) => !i.pausar);
   const escondidas = c.vagas.length + c.avulsos.length - linhas.length;
   return (
@@ -221,27 +271,13 @@ function CartaoDoCliente({ c, linhas, agora }: { c: Cliente; linhas: ImpulsoDoAd
 
       {(k || c.avulsos.length > 1) && (
         <div className="flex flex-col gap-2 border-b border-line px-4 py-3">
-          {k && (
-            <div className="flex flex-col gap-1.5">
-              <p className="flex flex-wrap justify-between gap-x-4 text-body-sm">
-                <span>
-                  <span className="text-label tabular-nums">{reais(gastoCampanha)}</span>
-                  <span className="text-ink-muted"> de {reais(Number(k.verba))} no Google</span>
-                </span>
-                <span className="text-ink-muted tabular-nums">{numerosDa(soma)}</span>
-              </p>
-              <span className="block h-1.5 overflow-hidden rounded-pill bg-surface-300" aria-hidden>
-                <span className="block h-full rounded-pill bg-ink" style={{ width: `${parte}%` }} />
-              </span>
-            </div>
-          )}
+          <NumerosDoCliente c={c} />
           {k?.erro && (
             <p className="text-body-sm break-words text-danger">
               {k.erro}
               {k.erro_desde && ` (desde ${tempoRelativo(k.erro_desde, agora)})`}
             </p>
           )}
-          {!k && <p className="text-body-sm text-ink-muted tabular-nums">{numerosDa(soma)}</p>}
         </div>
       )}
 
