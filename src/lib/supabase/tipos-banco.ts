@@ -3680,6 +3680,10 @@ export type Database = {
       impulsionar_sem_pagar: { Args: { p_anuncio: string; p_jeito: string }; Returns: Json };
       contar_visita_do_impulso: { Args: { p_codigo: string; p_anuncio: string; p_visitante: string }; Returns: boolean };
       contar_curtida_do_impulso: { Args: { p_codigo: string; p_visitante: string; p_anuncio: string }; Returns: boolean };
+      contar_passo_do_impulso: {
+        Args: { p_codigo: string; p_visitante: string; p_anuncio: string; p_passo: string };
+        Returns: boolean;
+      };
       servidor_compra_impulso: {
         Args: { p_chave: string; p_conta: string; p_anuncio: string; p_dias: number; p_forma: string; p_sandbox: boolean };
         Returns: Json;
@@ -3703,6 +3707,7 @@ export type Database = {
       servidor_impulso_estorno_pedido: { Args: { p_chave: string; p_id: string }; Returns: undefined };
       servidor_impulso_numeros: { Args: { p_chave: string; p_id: string; p_linhas: Json }; Returns: undefined };
       admin_impulsos: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_impulso_caminho: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_salvar_impulso: { Args: { p_precos: Json; p_config: Json | null }; Returns: undefined };
       // o impulso pelo admin (migração 20270424120000)
       admin_vagas_para_impulso: { Args: { p_busca?: string | null; p_tipo?: string | null; p_conta?: string | null }; Returns: Json };

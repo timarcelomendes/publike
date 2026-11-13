@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { avisarDeuMatch, pedirConversa } from "@/lib/abrir-conversa";
 import { chamarAcao } from "@/lib/acao-segura";
 import { caminhoConversa } from "@/lib/conversas";
+import { avisarPassoDoImpulso } from "@/lib/impulso-passos";
 import {
   curtirAnuncio,
   descurtirAnuncio,
@@ -130,9 +131,11 @@ export function PainelCurtir({
     const el = quadro.current;
     // a página tem o quadro duas vezes (celular e computador): só o que está à mostra
     if (!continuar || !el || el.offsetParent === null) return;
+    // voltou com a conta aberta: o passo "entrou" do caminho do impulso (a vaga com perguntas não curte sozinha)
+    avisarPassoDoImpulso(anuncioId, "entrou");
     el.scrollIntoView({ block: "center" });
     botaoCurtir.current?.focus({ preventScroll: true });
-  }, [continuar]);
+  }, [continuar, anuncioId]);
   // voltou da folha de entrar (?curtir=auto) e a vaga não tem perguntas: a curtida que a pessoa pediu sai sozinha, uma
   // vez, pelo quadro que está à mostra (a página tem o quadro duas vezes: celular e computador)
   const sozinha = continuar && curtirSozinho && perguntas.length === 0;
@@ -160,21 +163,27 @@ export function PainelCurtir({
         return;
       }
       setPedeWhatsapp(false);
+      avisarPassoDoImpulso(anuncioId, "respondeu");
       curtir();
     });
   }
 
   function curtir() {
     setErro(null);
+    // o caminho de quem chegou pelo anúncio do impulso (src/lib/impulso-passos.ts): cada passo conta uma vez
+    avisarPassoDoImpulso(anuncioId, "tocou");
     if (!logado) {
       // a folha de entrar por cima da página; sem ela, o /entrar (no serviço, "Entre para pedir o serviço")
       const proximo = `/anuncio/${anuncioId}?curtir=auto${servico ? "&servico=1" : ""}`;
       if (!pedirEntrar({ proximo })) router.push(`/entrar?next=${encodeURIComponent(proximo)}`);
       return;
     }
+    avisarPassoDoImpulso(anuncioId, "entrou");
     if (perguntas.length) {
+      avisarPassoDoImpulso(anuncioId, "pedido");
       const falta = faltandoResponder(perguntas, respostas);
       setFaltando(falta);
+      if (!falta.length) avisarPassoDoImpulso(anuncioId, "respondeu");
       if (falta.length) {
         setErro(falta.length === 1 ? "Responda à pergunta marcada para curtir." : "Responda às perguntas marcadas para curtir.");
         return;
@@ -184,6 +193,7 @@ export function PainelCurtir({
       const r = await chamarAcao(() => curtirAnuncio(anuncioId, texto, perguntas.length ? respostas : null));
       if (!r.ok) {
         if ("pedirWhatsapp" in r && r.pedirWhatsapp) {
+          avisarPassoDoImpulso(anuncioId, "pedido");
           setPedeWhatsapp(true);
           window.setTimeout(() => campoWhatsapp.current?.focus(), 50);
         } else if ("ir" in r && r.ir) router.push(r.ir);

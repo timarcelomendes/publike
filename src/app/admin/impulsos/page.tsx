@@ -214,7 +214,12 @@ async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
         })}
       </nav>
 
-      {aba === "agora" && <Agora d={d} agora={agora} ligado={g.ligado} />}
+      {aba === "agora" && (
+        <>
+          <Agora d={d} agora={agora} ligado={g.ligado} />
+          <CaminhoDoAnuncio cliques={new Map(d.impulsos.map((i) => [i.id, i.totais.cliques]))} />
+        </>
+      )}
       {aba === "novo" && <Novo d={d} conta={conta} ligado={g.ligado} />}
       {aba === "historico" && (
         <>
@@ -546,6 +551,95 @@ function ResultadoPorTipoDeVaga({ linhas }: { linhas: ResultadoPorTipo[] }) {
                   <td className="px-3 py-2.5 text-right">{formatarNumero(Number(l.curtidas))}</td>
                   <td className="px-3 py-2.5 text-right">{porClique(l)}</td>
                   <td className="px-5 py-2.5 text-right sm:pr-6">{porCurtida(l)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Secao>
+  );
+}
+
+type Caminho = {
+  id: string;
+  codigo: string;
+  titulo: string;
+  situacao: string;
+  conta: string;
+  abriu: number;
+  tocou: number;
+  entrou: number;
+  pedido: number;
+  respondeu: number;
+  curtiu: number;
+};
+
+type Passo = keyof Caminho | "cliques";
+
+// a porcentagem de cada passo é sobre o passo de onde a pessoa vem (as perguntas e o WhatsApp só em algumas vagas: a
+// curtida conta sobre quem entrou)
+const PASSOS: { chave: Passo; nome: string; sobre?: Passo }[] = [
+  { chave: "cliques", nome: "Clicou no Google" },
+  { chave: "abriu", nome: "Abriu a vaga", sobre: "cliques" },
+  { chave: "tocou", nome: "Tocou em Curtir", sobre: "abriu" },
+  { chave: "entrou", nome: "Entrou ou criou a conta", sobre: "tocou" },
+  { chave: "pedido", nome: "Viu perguntas ou WhatsApp" },
+  { chave: "respondeu", nome: "Respondeu", sobre: "pedido" },
+  { chave: "curtiu", nome: "Curtiu", sobre: "entrou" },
+];
+
+// o caminho de quem chega pelo anúncio (src/lib/impulso-passos.ts): onde a pessoa para entre o clique e a curtida
+async function CaminhoDoAnuncio({ cliques }: { cliques: Map<string, number> }) {
+  const admin = await ehAdminLocal();
+  const c = admin ? criarClienteAdmin() : await criarClienteServidor();
+  const { data, error } = await c.rpc("admin_impulso_caminho");
+  const linhas = (data ?? []) as unknown as Caminho[];
+  const valor = (l: Caminho, chave: Passo) =>
+    chave === "cliques" ? Number(cliques.get(l.id) ?? 0) : Number(l[chave] ?? 0);
+  return (
+    <Secao
+      titulo="O caminho de quem chega pelo anúncio"
+      descricao="Quantas pessoas chegaram a cada passo, uma vez cada (os impulsos correndo e os dos últimos 30 dias). O passo com a queda maior é onde a pessoa desiste. As perguntas e o WhatsApp só aparecem nas vagas que pedem. O meio do caminho conta desde 12/11/2026."
+    >
+      {error ? (
+        <p className="text-body-sm text-ink-muted">Rode a migração 20270505120000_impulso_caminho.sql para ver o caminho.</p>
+      ) : linhas.length === 0 ? (
+        <p className="text-body-sm text-ink-muted">Nenhum impulso nos últimos 30 dias.</p>
+      ) : (
+        <div className="-mx-5 overflow-x-auto sm:-mx-6">
+          <table className="w-full min-w-[52rem] text-left text-body-sm">
+            <thead className="text-ink-muted">
+              <tr className="border-b border-line">
+                <th className="px-5 py-2 font-normal sm:pl-6">Vaga</th>
+                {PASSOS.map((p, n) => (
+                  <th key={p.chave} className={`py-2 text-right font-normal ${n === PASSOS.length - 1 ? "px-5 sm:pr-6" : "px-3"}`}>
+                    {p.nome}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
+              {linhas.map((l) => (
+                <tr key={l.id} className="border-b border-line align-top last:border-0">
+                  <td className="px-5 py-2.5 sm:pl-6">
+                    <span className="block text-label">{l.titulo}</span>
+                    <span className="block text-caption text-ink-muted">
+                      {l.conta}
+                      {ehCorrendo(l.situacao) ? ", correndo" : ", encerrado"}
+                    </span>
+                  </td>
+                  {PASSOS.map((p, n) => {
+                    const v = valor(l, p.chave);
+                    const antes = p.sobre ? valor(l, p.sobre) : 0;
+                    const parte = antes > 0 ? Math.min(100, Math.round((100 * v) / antes)) : null;
+                    return (
+                      <td key={p.chave} className={`py-2.5 text-right ${n === PASSOS.length - 1 ? "px-5 sm:pr-6" : "px-3"}`}>
+                        <span className={p.chave === "curtiu" ? "text-label" : undefined}>{formatarNumero(v)}</span>
+                        {parte !== null && <span className="block text-caption text-ink-muted">{parte}%</span>}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
