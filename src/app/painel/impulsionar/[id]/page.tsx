@@ -1,4 +1,4 @@
-import { Rocket } from "lucide-react";
+import { Gift, Rocket } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -258,6 +258,12 @@ function ImpulsoValendo({ i, ajuste }: { i: Impulso; ajuste: boolean }) {
             <Rocket aria-hidden className="size-5 text-terra-text" />
             Impulso de {i.dias} dias
           </h3>
+          {i.origem === "admin" && (
+            <p className="flex items-center gap-1.5 text-label text-terra-text">
+              <Gift aria-hidden className="size-4 shrink-0" />
+              Presente do Publike, sem custo para você
+            </p>
+          )}
           <p className="max-w-2xl text-body-sm text-ink-muted">{texto}</p>
         </div>
         <SeloDaSituacao i={i} />

@@ -446,8 +446,8 @@ export function NovoImpulso({
               {!cliente.campanha &&
                 `Cerca de ${formatarMoeda(Math.round((verba / Math.max(dias, 1)) * 100) / 100)} por dia para todas juntas. `}
               {raios.length === 1
-                ? `Aparece para quem está a até ${raios[0]} km de cada vaga.`
-                : `Aparece para quem está a até ${raios.at(-1)} km das vagas (o raio de cada tipo vai de ${raios[0]} a ${raios.at(-1)} km).`}{" "}
+                ? `Aparece na cidade de cada vaga e nas vizinhas a até ${raios[0]} km.`
+                : `Aparece na cidade de cada vaga e nas vizinhas (o raio de cada tipo vai de ${raios[0]} a ${raios.at(-1)} km).`}{" "}
               Os dias contam quando o Google aprovar o primeiro anúncio.
             </p>
 
@@ -455,7 +455,10 @@ export function NovoImpulso({
               <input type="checkbox" checked={avisar} onChange={(e) => setAvisar(e.target.checked)} className="mt-1 size-4" />
               <span>
                 Avisar o cliente
-                <span className="block text-body-sm text-ink-muted">Um aviso só no sino, com as vagas.</span>
+                <span className="block text-body-sm text-ink-muted">
+                  Um aviso só no sino, como presente de boas-vindas do Publike, com o link para o cliente ver como o
+                  anúncio sai no Google e acompanhar os números.
+                </span>
               </span>
             </label>
 
