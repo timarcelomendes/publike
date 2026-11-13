@@ -203,6 +203,23 @@ export function ConfigImpulsos({ precos, config }: { precos: PrecoImpulso[]; con
         </p>
       </fieldset>
 
+      {c.teto_clique !== undefined && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-label">Lance</legend>
+          <Reais
+            rotulo="Teto do clique"
+            valor={c.teto_clique}
+            mudar={(v) => setC({ ...c, teto_clique: v })}
+            min={0.5}
+            passo="0.1"
+          />
+          <p className="text-body-sm text-ink-muted">
+            Quanto o impulso paga, no máximo, por clique no Google. Vale para o impulso que nasce e, ao salvar, para os
+            que já estão no ar. O gasto continua preso à verba de cada impulso.
+          </p>
+        </fieldset>
+      )}
+
       {c.motor_ligado !== undefined && (
         <fieldset className="flex flex-col gap-4">
           <legend className="text-label">Ajuste diário (beta)</legend>
@@ -225,7 +242,7 @@ export function ConfigImpulsos({ precos, config }: { precos: PrecoImpulso[]; con
           </label>
           <div className="flex flex-wrap gap-4">
             <Reais
-              rotulo="Teto do clique"
+              rotulo="Teto do clique no ajuste"
               valor={c.motor_teto_clique ?? 3.5}
               mudar={(v) => setC({ ...c, motor_teto_clique: v })}
               min={1}
@@ -240,7 +257,7 @@ export function ConfigImpulsos({ precos, config }: { precos: PrecoImpulso[]; con
             />
           </div>
           <p className="text-body-sm text-ink-muted">
-            O lance começa em R$ 2 por clique e nunca passa do teto. O raio cresce de 5 em 5 km, quando há menos de 30
+            O lance começa no teto do clique e nunca passa do teto do ajuste. O raio cresce de 5 em 5 km, quando há menos de 30
             vistas por dia e a verba sobra.
           </p>
         </fieldset>

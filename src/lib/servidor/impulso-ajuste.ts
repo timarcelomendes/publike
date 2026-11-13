@@ -295,6 +295,11 @@ async function ajustar(a: AcessoDoRobo, item: ItemDoAjuste, regras: Regras) {
     const raio = parou ? null : decidirRaio(s, regras, item.tipo === "cliente");
     if (raio) mudancas.push(raio);
     if (operacoes.length) await mutar(operacoes, conta);
+    // o lance do ajuste é o mais novo: o teto das Regras só volta a valer se mudar de novo (migração 20270512120000)
+    if (lance) {
+      const { error: e } = await a.cliente.rpc("servidor_teto_aplicado", { p_chave: a.chave, p_tipo: item.tipo, p_id: item.id });
+      if (e && e.code !== "PGRST202") console.error("Publike: falha ao marcar o teto do ajuste:", e.message);
+    }
 
     // 2. as buscas de verdade, vaga por vaga (o grupo dela), com a IA
     const buscas: Record<string, { fora: string[]; vistas: string[] }> = {};

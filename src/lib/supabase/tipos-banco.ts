@@ -3699,6 +3699,8 @@ export type Database = {
       servidor_ajustes_para_fazer: { Args: { p_chave: string }; Returns: Json };
       servidor_ajuste_comecou: { Args: { p_chave: string; p_tipo: string; p_id: string }; Returns: boolean };
       servidor_impulsos_pegar_vez: { Args: { p_chave: string; p_vez: string }; Returns: boolean };
+      servidor_teto_do_impulso: { Args: { p_chave: string }; Returns: Json };
+      servidor_teto_aplicado: { Args: { p_chave: string; p_tipo: string; p_id: string }; Returns: undefined };
       servidor_impulsos_soltar_vez: { Args: { p_chave: string; p_vez: string }; Returns: undefined };
       servidor_ajuste_feito: {
         Args: {

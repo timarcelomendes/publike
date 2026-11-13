@@ -178,33 +178,95 @@ function lugarDaVaga(v: NonNullable<Tarefa["vaga"]>): Lugar {
  * primeiro dia, enquanto a geral tinha mais de mil (12/11/2026). Gastada a verba do dia, a geral volta a aparecer.
  */
 const TETO_DO_CLIQUE = 2;
-const LANCE = {
-  targetImpressionShare: {
-    location: "TOP_OF_PAGE",
-    locationFractionMicros: "800000",
-    cpcBidCeilingMicros: String(TETO_DO_CLIQUE * 1_000_000),
-  },
+/** O teto vem das Regras (`config_impulso.teto_clique`, migração 20270512120000); sem ela, R$ 2. */
+function lance(teto = volta.teto) {
+  return {
+    targetImpressionShare: {
+      location: "TOP_OF_PAGE",
+      locationFractionMicros: "800000",
+      cpcBidCeilingMicros: String(Math.round(teto * 1_000_000)),
+    },
+  };
+}
+
+/** O último dia inteiro no Google, no fuso da conta (o de Brasília), como `servidor_impulso_olhado` manda. */
+function fimNoGoogle(ate: string) {
+  return `${new Date(ate).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })} 23:59:59`;
+}
+
+/**
+ * Na medição, a campanha igual ao banco: a de antes (no "máximo de cliques") passa para o lance de agora (`lance`), e
+ * o fim no Google fica o do banco (13/11/2026: o prazo estendido no banco não chegava ao Google, e a campanha parava
+ * no fim velho). Um mutate só, e só quando algo mudou.
+ */
+async function acertarCampanha(campanhaId: string, conta: string, ate: string | null) {
+  const [linha] = await consultar<{ campaign?: { biddingStrategyType?: string; endDateTime?: string } }>(
+    `SELECT campaign.bidding_strategy_type, campaign.end_date_time FROM campaign WHERE campaign.id = ${Number(campanhaId)}`,
+    conta,
+  );
+  const mascara: string[] = [];
+  const update: Record<string, unknown> = { resourceName: recurso("campaigns", campanhaId, conta) };
+  if (linha?.campaign?.biddingStrategyType === "TARGET_SPEND") {
+    mascara.push(
+      "targetImpressionShare.location",
+      "targetImpressionShare.locationFractionMicros",
+      "targetImpressionShare.cpcBidCeilingMicros",
+    );
+    Object.assign(update, lance());
+  }
+  if (ate && Date.parse(ate) > Date.now()) {
+    const fim = fimNoGoogle(ate);
+    if (linha?.campaign && linha.campaign.endDateTime !== fim) {
+      mascara.push("endDateTime");
+      update.endDateTime = fim;
+    }
+  }
+  if (!mascara.length) return;
+  await mutar([{ campaignOperation: { updateMask: mascara.join(","), update } }], conta);
+}
+
+type TetoDoImpulso = {
+  teto?: number;
+  campanhas?: { tipo: "impulso" | "cliente"; id: string; codigo: string; campanha_id: string; conta_google: string | null }[];
 };
 
-/** As campanhas de antes (no "máximo de cliques") passam para o lance de agora (`LANCE`). Na medição; uma vez só. */
-async function acertarLance(campanhaId: string, conta: string) {
-  const [linha] = await consultar<{ campaign?: { biddingStrategyType?: string } }>(
-    `SELECT campaign.bidding_strategy_type FROM campaign WHERE campaign.id = ${Number(campanhaId)}`,
-    conta,
-  );
-  if (linha?.campaign?.biddingStrategyType !== "TARGET_SPEND") return;
-  await mutar(
-    [
-      {
-        campaignOperation: {
-          updateMask:
-            "targetImpressionShare.location,targetImpressionShare.locationFractionMicros,targetImpressionShare.cpcBidCeilingMicros",
-          update: { resourceName: recurso("campaigns", campanhaId, conta), ...LANCE },
-        },
-      },
-    ],
-    conta,
-  );
+/**
+ * O teto do clique das Regras (migração 20270512120000): fica guardado para o impulso que nasce nesta volta e, quando
+ * mudou, vai para as campanhas no ar que ainda não o receberam (até 20 por volta). O erro não segura o robô: a
+ * campanha fica para a volta seguinte. Sem a migração, R$ 2.
+ */
+async function tetoDasRegras(a: Acesso) {
+  const { data, error } = await a.cliente.rpc("servidor_teto_do_impulso", { p_chave: a.chave });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler o teto do clique:", error.message);
+    volta.teto = TETO_DO_CLIQUE;
+    return;
+  }
+  const d = (data ?? {}) as TetoDoImpulso;
+  volta.teto = Number(d.teto) >= 0.5 ? Number(d.teto) : TETO_DO_CLIQUE;
+  for (const k of d.campanhas ?? []) {
+    const conta = k.conta_google || contaDeAnuncios();
+    try {
+      await mutar(
+        [
+          {
+            campaignOperation: {
+              updateMask: "targetImpressionShare.cpcBidCeilingMicros",
+              update: {
+                resourceName: recurso("campaigns", k.campanha_id, conta),
+                targetImpressionShare: { cpcBidCeilingMicros: String(Math.round(volta.teto * 1_000_000)) },
+              },
+            },
+          },
+        ],
+        conta,
+      );
+      await a.cliente.rpc("servidor_teto_aplicado", { p_chave: a.chave, p_tipo: k.tipo, p_id: k.id });
+      console.info(`Publike: o impulso ${k.codigo} passou a pagar até R$ ${volta.teto.toFixed(2)} por clique.`);
+    } catch (e) {
+      console.error(`Publike: o teto do impulso ${k.codigo} não mudou:`, e instanceof Error ? e.message : e);
+    }
+  }
 }
 
 type LinhaDoLugar = {
@@ -418,8 +480,8 @@ function operacoesDaBaseDaCampanha(o: { codigo: string; nome: string; porDia: nu
           status: "ENABLED",
           advertisingChannelType: "SEARCH",
           campaignBudget: orcamento,
-          // no alto da página, até R$ 2 por clique (LANCE: com o máximo de cliques, não aparecia)
-          ...LANCE,
+          // no alto da página, até o teto das Regras por clique (`lance`: com o máximo de cliques, não aparecia)
+          ...lance(),
           networkSettings: {
             targetGoogleSearch: true,
             targetSearchNetwork: false,
@@ -723,7 +785,7 @@ async function palavrasFeitas(a: Acesso, t: Tarefa) {
 }
 
 /** A volta do robô: quando começou e quantas revisões da IA já fez (uma por volta, no começo: a IA leva segundos). */
-const volta = { inicio: 0, revisoes: 0 };
+const volta = { inicio: 0, revisoes: 0, teto: TETO_DO_CLIQUE };
 
 /** A descrição da vaga (pública), para a IA entender o trabalho. */
 export async function descricaoDaVaga(a: Acesso, id: string) {
@@ -1137,13 +1199,13 @@ type LinhaDosNumeros = {
 /**
  * Os números do Google, por dia, do dia em que entrou no ar até hoje (o de hoje vai mudando a cada medida: a cada 2
  * horas, pela migração 20270501120000; antes, só o de ontem, e o Admin mostrava R$ 0 o dia inteiro). Com a vaga no
- * ar, acerta antes o lance das campanhas de antes (`acertarLance`) e o raio que mudou no admin (`acertarLugar`).
+ * ar, acerta antes o lance das campanhas de antes e o fim no Google (`acertarCampanha`) e o raio que mudou no admin (`acertarLugar`).
  */
 async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
   if (!t.campanha_id || !t.medir_desde) return;
   if (t.acao === "medir" && t.situacao === "no_ar") {
     try {
-      await acertarLance(t.campanha_id, conta);
+      await acertarCampanha(t.campanha_id, conta, t.ate);
     } catch (e) {
       // o lance fica para a próxima medida; os números não esperam por ele
       console.error(`Publike: o lance do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
@@ -1376,6 +1438,7 @@ async function umaVoltaDoRobo(a: Acesso): Promise<{ feitos: number; motivo?: str
   const inicio = Date.now();
   volta.inicio = inicio;
   volta.revisoes = 0;
+  if (googleAdsLigado()) await tetoDasRegras(a);
   let feitos = googleAdsLigado() ? await cuidarDasCampanhas(a, alertas) : 0;
   const { data, error } = await a.cliente.rpc("servidor_impulsos_para_cuidar", { p_chave: a.chave });
   if (error) {

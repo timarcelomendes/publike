@@ -50,6 +50,8 @@ export type ConfigImpulso = {
   motor_ligado?: boolean;
   motor_teto_clique?: number;
   motor_raio_max?: number;
+  // o teto do clique do impulso, ao nascer e nos que estão no ar (migração 20270512120000; antes dela, não vem)
+  teto_clique?: number;
 };
 
 /** Um impulso na lista do admin (admin_impulsos). */
@@ -137,6 +139,12 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
     !(Number.isInteger(config.motor_raio_max) && config.motor_raio_max >= 0 && config.motor_raio_max <= 30)
   )
     return { ok: false, erro: "O raio a mais do ajuste diário vai de 0 a 30 km." };
+  if (config.teto_clique !== undefined) {
+    if (!(config.teto_clique >= 0.5 && config.teto_clique <= 10))
+      return { ok: false, erro: "O teto do clique vai de R$ 0,50 a R$ 10." };
+    if (config.motor_teto_clique !== undefined && config.teto_clique > config.motor_teto_clique)
+      return { ok: false, erro: "O teto do clique não pode passar do teto do ajuste diário." };
+  }
   const { error } = await c.rpc("admin_salvar_impulso", {
     p_precos: precos as unknown as Json,
     p_config: config as unknown as Json,
@@ -145,7 +153,8 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
     if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270423120000_impulsionar.sql primeiro." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
-  // o raio mudou: o banco manda medir os impulsos no ar (migração 20270504120000), e o robô troca o raio no Google já
+  // o raio mudou: o banco manda medir os impulsos no ar (migração 20270504120000), e o robô troca o raio no Google já;
+  // o teto mudou: o robô leva o novo às campanhas no ar na mesma volta (migração 20270512120000)
   after(() => cuidarDosImpulsos().catch(() => {}));
   refresh();
   return { ok: true, mensagem: "Salvo." };
