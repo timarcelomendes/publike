@@ -4,7 +4,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { ConfigImpulsos, PararCampanha, PararImpulso, TestarGoogleAds } from "@/components/admin/impulsos";
+import {
+  AtualizarImpulsos,
+  ConfigImpulsos,
+  PararCampanha,
+  PararImpulso,
+  TestarGoogleAds,
+} from "@/components/admin/impulsos";
 import { ListaDeAjustes, type AjusteDoAdmin } from "@/components/admin/impulsos-ajustes";
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
 import {
@@ -37,6 +43,8 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Impulsos" };
+// o "Atualizar" roda uma volta do robô dentro da ação (até uns 35 segundos)
+export const maxDuration = 60;
 
 // O impulso da vaga no Google (claude/plano-impulsionar-vaga.md; por cliente e por tipo de vaga desde 12/11/2026,
 // claude/plano-impulsos-por-cliente.md). A tela em abas, na ordem do uso: Agora (o que precisa de atenção, os números
@@ -297,6 +305,12 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
         </Secao>
       )}
 
+      <div className="-mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <p className="max-w-xl pt-1.5 text-body-sm text-ink-muted">
+          Os números vêm do Google a cada 2 horas. Para ver os de agora, atualize.
+        </p>
+        {ligado && <AtualizarImpulsos />}
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Numero
           rotulo="Correndo agora"
@@ -308,8 +322,9 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
           }
         />
         <Numero
-          rotulo="Gasto no mês (R$)"
-          valor={Math.round(gasto)}
+          rotulo="Gasto no mês"
+          valor={Math.round(gasto * 100) / 100}
+          moeda
           detalhe={`no Google, de ${reais(Number(d.mes.verba))} separados`}
         />
         <Numero
@@ -321,7 +336,12 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
               : plural(cliques, "clique", "cliques")
           }
         />
-        <Numero rotulo="Vendido no mês (R$)" valor={Math.round(Number(d.mes.entrou))} detalhe="Impulsos pagos pelos clientes" />
+        <Numero
+          rotulo="Vendido no mês"
+          valor={Math.round(Number(d.mes.entrou) * 100) / 100}
+          moeda
+          detalhe="Impulsos pagos pelos clientes"
+        />
       </div>
 
       <Secao

@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { LoaderCircle, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
+  atualizarImpulsos,
   pararCampanhaDoCliente,
   pararImpulsoPeloAdmin,
   salvarImpulsoAdmin,
@@ -278,6 +281,42 @@ export function TestarGoogleAds() {
     <div className="flex flex-col gap-2">
       <Botao tamanho="sm" variante="secundario" disabled={pendente} className="self-start" onClick={() => rodar(testarGoogleAds)}>
         {pendente ? "Testando…" : "Testar a ligação"}
+      </Botao>
+      {mensagem}
+    </div>
+  );
+}
+
+/**
+ * O "Atualizar" da aba Agora: busca os números no Google já, sem esperar a medida de 2 em 2 horas
+ * (`atualizarImpulsos`). Quando o robô estava no meio de uma volta, a tela se atualiza sozinha 1 minuto depois.
+ */
+export function AtualizarImpulsos() {
+  const router = useRouter();
+  const { rodar, pendente, mensagem } = useAcao();
+  const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (espera.current) clearTimeout(espera.current);
+    },
+    [],
+  );
+  return (
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <Botao
+        tamanho="sm"
+        variante="secundario"
+        disabled={pendente}
+        onClick={() =>
+          rodar(atualizarImpulsos, (r) => {
+            if (!r.ok || !(r as { esperar?: boolean }).esperar) return;
+            if (espera.current) clearTimeout(espera.current);
+            espera.current = setTimeout(() => router.refresh(), 70_000);
+          })
+        }
+      >
+        {pendente ? <LoaderCircle aria-hidden className="animate-spin" /> : <RefreshCw aria-hidden />}
+        {pendente ? "Buscando no Google…" : "Atualizar"}
       </Botao>
       {mensagem}
     </div>

@@ -351,6 +351,37 @@ export async function impulsionarCliente(dados: {
   };
 }
 
+/**
+ * O "Atualizar" da aba Agora (13/11/2026, pedido do Marcelo): os números de cada impulso no ar vêm do Google já, sem
+ * esperar a medida de 2 em 2 horas. O banco põe os impulsos no ar na fila da medida (`admin_medir_impulsos_agora`) e o
+ * robô roda uma volta aqui mesmo. Quando a volta das filas está no meio (uma por vez), a medida fica para a volta
+ * seguinte, em 1 minuto, e a tela se atualiza sozinha (`AtualizarImpulsos`).
+ */
+export async function atualizarImpulsos(): Promise<Resultado & { esperar?: boolean }> {
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  if (!situacaoGoogleAds().ligado) return { ok: false, erro: "Ligue o Google Ads antes (veja o alto da página)." };
+  const { data, error } = await c.rpc("admin_medir_impulsos_agora");
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270514120000_impulso_atualizar_agora.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  if (!Number(data)) {
+    refresh();
+    return { ok: true, mensagem: "Nenhum impulso no ar para buscar no Google. A tela foi atualizada." };
+  }
+  const volta = await cuidarDosImpulsos().catch(() => null);
+  refresh();
+  return volta?.feitos
+    ? { ok: true, mensagem: "Pronto: os números são os do Google agora." }
+    : {
+        ok: true,
+        mensagem: "O robô estava no meio de uma volta. Os números do Google chegam em 1 minuto, e a tela se atualiza sozinha.",
+        esperar: true,
+      };
+}
+
 /** Para a campanha do cliente inteira: as vagas antes do ar voltam; as no ar saem do Google na próxima volta. */
 export async function pararCampanhaDoCliente(id: string): Promise<Resultado> {
   const c = await clienteDosImpulsos();

@@ -3757,6 +3757,8 @@ export type Database = {
         Returns: undefined;
       };
       admin_impulso_ajustes: { Args: Record<PropertyKey, never>; Returns: Json };
+      // o "Atualizar" de Admin › Impulsos: os impulsos no ar voltam para a fila da medida (migração 20270514120000)
+      admin_medir_impulsos_agora: { Args: Record<PropertyKey, never>; Returns: number };
       // a campanha geral fora das buscas das funções com impulso no ar (migração 20270504120000)
       servidor_impulsos_sem_disputa: { Args: { p_chave: string }; Returns: Json };
       servidor_impulsos_sem_disputa_feita: { Args: { p_chave: string; p_assinatura: string }; Returns: undefined };

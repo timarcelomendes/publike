@@ -46,9 +46,12 @@ export function Numero({
   alerta,
   hoje,
   textoHoje = "hoje",
+  moeda,
 }: {
   rotulo: string;
   valor: number;
+  /** o valor em reais, com os centavos ("R$ 5,26") */
+  moeda?: boolean;
   detalhe?: ReactNode;
   /** quanto foi hoje (desde a meia-noite em Goiânia), embaixo do número */
   hoje?: number;
@@ -65,7 +68,16 @@ export function Numero({
         {Icone && <Icone aria-hidden className="size-4" />}
         {rotulo}
       </span>
-      <span className={`font-display text-h1 ${alerta ? "text-terra-text" : "text-ink"}`}>{formatarNumero(valor)}</span>
+      <span className={`font-display text-h1 ${alerta ? "text-terra-text" : "text-ink"}`}>
+        {moeda ? (
+          <>
+            <span className="text-h3">R$ </span>
+            {valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </>
+        ) : (
+          formatarNumero(valor)
+        )}
+      </span>
       {hoje !== undefined && (
         <span className="text-label text-ink">
           {hoje > 0 ? "+" : ""}
