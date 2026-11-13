@@ -2,7 +2,11 @@
 
 import { ExternalLink } from "lucide-react";
 import { useId, useState, useTransition } from "react";
-import type { ListaParaImportar, ResultadoImportacao, VagaParaImportar } from "@/lib/importar-gupy";
+import type {
+  ListaParaImportar,
+  ResultadoImportacao,
+  VagaParaImportar,
+} from "@/lib/importar-gupy";
 import { Aviso, Selo } from "../ui/basicos";
 import { Botao, BotaoLink } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
@@ -20,7 +24,8 @@ const MOTIVO: Record<Exclude<VagaParaImportar["situacao"], "pode">, string> = {
   ja: "Já está no Publike",
 };
 
-const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+const plural = (n: number, um: string, varios: string) =>
+  `${n} ${n === 1 ? um : varios}`;
 
 /** As que dá para importar, até o máximo de uma vez. */
 const escolhaInicial = (l: Lista) =>
@@ -39,7 +44,10 @@ export function ImportarDaGupy({
   listaInicial = null,
 }: {
   listar: (link: string) => Promise<ListaParaImportar>;
-  importar: (links: string[], confirmou: boolean) => Promise<ResultadoImportacao>;
+  importar: (
+    links: string[],
+    confirmou: boolean,
+  ) => Promise<ResultadoImportacao>;
   /** para onde ir depois de publicar */
   depois: { href: string; rotulo: string };
   /** a equipe do Publike publica em nome da empresa (a confirmação é a autorização dela) */
@@ -48,12 +56,15 @@ export function ImportarDaGupy({
   listaInicial?: Lista | null;
 }) {
   const idLink = useId();
+  const idPergunta = useId();
   const [link, setLink] = useState("");
   const [lista, setLista] = useState<Lista | null>(listaInicial);
   const [escolhidas, setEscolhidas] = useState<Set<string>>(() =>
     listaInicial ? escolhaInicial(listaInicial) : new Set(),
   );
   const [confirmou, setConfirmou] = useState(false);
+  /** a segunda pergunta, depois do clique em Publicar */
+  const [conferindo, setConferindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [buscando, iniciarBusca] = useTransition();
@@ -72,6 +83,7 @@ export function ImportarDaGupy({
       setLista(r);
       setEscolhidas(escolhaInicial(r));
       setConfirmou(false);
+      setConferindo(false);
     });
   }
 
@@ -87,7 +99,10 @@ export function ImportarDaGupy({
   function publicar() {
     if (!lista) return;
     setErro(null);
-    const links = lista.vagas.filter((v) => escolhidas.has(v.link)).map((v) => v.link);
+    setConferindo(false);
+    const links = lista.vagas
+      .filter((v) => escolhidas.has(v.link))
+      .map((v) => v.link);
     iniciarPublicar(async () => {
       const r = await importar(links, confirmou);
       if (!r.ok) {
@@ -99,7 +114,9 @@ export function ImportarDaGupy({
       setLista({
         ...lista,
         vagas: lista.vagas.map((v) =>
-          links.includes(v.link) && !falharam.has(v.link) ? { ...v, situacao: "ja" } : v,
+          links.includes(v.link) && !falharam.has(v.link)
+            ? { ...v, situacao: "ja" }
+            : v,
         ),
       });
       setEscolhidas(new Set([...falharam].filter((l) => links.includes(l))));
@@ -107,7 +124,8 @@ export function ImportarDaGupy({
     });
   }
 
-  const tituloDe = (l: string) => lista?.vagas.find((v) => v.link === l)?.titulo ?? l;
+  const tituloDe = (l: string) =>
+    lista?.vagas.find((v) => v.link === l)?.titulo ?? l;
   const podem = lista?.vagas.filter((v) => v.situacao === "pode") ?? [];
   const cheio = lista ? escolhidas.size >= lista.maximo : false;
 
@@ -146,7 +164,8 @@ export function ImportarDaGupy({
             </Botao>
           </div>
           <p className="text-body-sm text-ink-muted">
-            É o endereço da página onde a Gupy mostra todas as vagas da empresa, como https://suaempresa.gupy.io.
+            É o endereço da página onde a Gupy mostra todas as vagas da empresa,
+            como https://suaempresa.gupy.io.
           </p>
         </form>
       )}
@@ -159,7 +178,13 @@ export function ImportarDaGupy({
 
       {resultado && (
         <Aviso
-          tipo={resultado.falhas.length ? (resultado.publicadas ? "alerta" : "erro") : "sucesso"}
+          tipo={
+            resultado.falhas.length
+              ? resultado.publicadas
+                ? "alerta"
+                : "erro"
+              : "sucesso"
+          }
           titulo={
             resultado.publicadas
               ? `Pronto: ${plural(resultado.publicadas, "vaga publicada", "vagas publicadas")}.`
@@ -168,15 +193,18 @@ export function ImportarDaGupy({
         >
           {resultado.publicadas > 0 && (
             <p>
-              Cada uma tem o botão “Candidatar no site da empresa”, que leva à página dela na Gupy. Confira e edite pelo
-              painel, se precisar.
+              Cada uma tem o botão “Candidatar no site da empresa”, que leva à
+              página dela na Gupy. Confira e edite pelo painel, se precisar.
             </p>
           )}
           {resultado.falhas.length > 0 && (
             <ul className="list-disc pl-5">
               {resultado.falhas.map((f) => (
                 <li key={f.link}>
-                  <span className="font-semibold">{f.titulo === f.link ? tituloDe(f.link) : f.titulo}</span>: {f.erro}
+                  <span className="font-semibold">
+                    {f.titulo === f.link ? tituloDe(f.link) : f.titulo}
+                  </span>
+                  : {f.erro}
                 </li>
               ))}
             </ul>
@@ -195,13 +223,16 @@ export function ImportarDaGupy({
         <section aria-label="Vagas da Gupy" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h3 className="text-h3">
-              {plural(lista.vagas.length, "vaga", "vagas")} na Gupy{lista.empresa ? ` (${lista.empresa})` : ""}
+              {plural(lista.vagas.length, "vaga", "vagas")} na Gupy
+              {lista.empresa ? ` (${lista.empresa})` : ""}
             </h3>
             <p className="text-body-sm text-ink-muted">
-              {escolhidas.size} de {podem.length} escolhidas · até {lista.maximo} de uma vez
+              {escolhidas.size} de {podem.length} escolhidas · até{" "}
+              {lista.maximo} de uma vez
             </p>
           </div>
-          {(lista.total > lista.vagas.length + lista.naoAbriram || lista.naoAbriram > 0) && (
+          {(lista.total > lista.vagas.length + lista.naoAbriram ||
+            lista.naoAbriram > 0) && (
             <p className="text-body-sm text-ink-muted">
               {lista.naoAbriram > 0 &&
                 `${plural(lista.naoAbriram, "vaga não abriu", "vagas não abriram")} agora: busque de novo daqui a pouco. `}
@@ -215,7 +246,9 @@ export function ImportarDaGupy({
               const marcada = escolhidas.has(v.link);
               return (
                 <li key={v.link} className="flex items-start gap-3 p-3">
-                  <label className={`flex min-w-0 flex-1 items-start gap-3 ${pode ? "cursor-pointer" : ""}`}>
+                  <label
+                    className={`flex min-w-0 flex-1 items-start gap-3 ${pode ? "cursor-pointer" : ""}`}
+                  >
                     <input
                       type="checkbox"
                       checked={marcada}
@@ -224,13 +257,24 @@ export function ImportarDaGupy({
                       className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className={`block text-label ${pode ? "" : "text-ink-muted"}`}>{v.titulo}</span>
+                      <span
+                        className={`block text-label ${pode ? "" : "text-ink-muted"}`}
+                      >
+                        {v.titulo}
+                      </span>
                       <span className="block text-body-sm text-ink-muted">
                         {[v.lugar, v.resumo].filter(Boolean).join(" · ")}
                       </span>
                       {!pode && (
                         <Selo variante="contorno" className="mt-1.5">
-                          {MOTIVO[v.situacao as Exclude<VagaParaImportar["situacao"], "pode">]}
+                          {
+                            MOTIVO[
+                              v.situacao as Exclude<
+                                VagaParaImportar["situacao"],
+                                "pode"
+                              >
+                            ]
+                          }
                         </Selo>
                       )}
                     </span>
@@ -254,7 +298,10 @@ export function ImportarDaGupy({
                 <input
                   type="checkbox"
                   checked={confirmou}
-                  onChange={(e) => setConfirmou(e.target.checked)}
+                  onChange={(e) => {
+                    setConfirmou(e.target.checked);
+                    setConferindo(false);
+                  }}
                   className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
                 />
                 <span className="text-body-sm">
@@ -264,24 +311,77 @@ export function ImportarDaGupy({
                 </span>
               </label>
               <p className="text-body-sm text-ink-muted">
-                Cada vaga sai com o botão “Candidatar no site da empresa”, que leva à página dela na Gupy, e com o
-                salário a combinar (a Gupy quase nunca mostra; dá para editar depois). Uma vez por dia o Publike confere
-                o link: a vaga que fechar na Gupy sai daqui.
+                Cada vaga sai com o botão “Candidatar no site da empresa”, que
+                leva à página dela na Gupy, e com o salário a combinar (a Gupy
+                quase nunca mostra; dá para editar depois). Uma vez por dia o
+                Publike confere o link: a vaga que fechar na Gupy sai daqui.
               </p>
-              <div>
-                <Botao
-                  variante="primario"
-                  onClick={publicar}
-                  disabled={!escolhidas.size || !confirmou || publicando}
+              {conferindo || publicando ? (
+                <div
+                  role="alertdialog"
+                  aria-labelledby={idPergunta}
+                  className="flex flex-col gap-3 rounded-md border-2 border-ink p-4"
                 >
-                  {publicando
-                    ? "Publicando… (pode levar 1 minuto)"
-                    : `Publicar ${plural(escolhidas.size, "vaga", "vagas")}`}
-                </Botao>
-              </div>
+                  <p id={idPergunta} className="text-label">
+                    {equipe
+                      ? "Tem certeza de que esta página da Gupy é da empresa desta conta, e de que ela autorizou?"
+                      : "Tem certeza de que esta página da Gupy pertence à sua empresa?"}
+                  </p>
+                  <p className="text-body-sm break-all">
+                    <a
+                      href={lista.pagina}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      {lista.pagina}
+                    </a>
+                    {lista.empresa ? ` (${lista.empresa})` : ""}
+                  </p>
+                  {!equipe && (
+                    <p className="text-body-sm text-ink-muted">
+                      Vagas de outra empresa publicadas como suas saem do ar, e
+                      a conta pode ser suspensa.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Botao
+                      variante="primario"
+                      onClick={publicar}
+                      disabled={publicando}
+                      autoFocus
+                    >
+                      {publicando
+                        ? "Publicando… (pode levar 1 minuto)"
+                        : `Sim, publicar ${plural(escolhidas.size, "vaga", "vagas")}`}
+                    </Botao>
+                    <Botao
+                      variante="secundario"
+                      onClick={() => setConferindo(false)}
+                      disabled={publicando}
+                    >
+                      Voltar
+                    </Botao>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Botao
+                    variante="primario"
+                    onClick={() => setConferindo(true)}
+                    disabled={!escolhidas.size || !confirmou}
+                  >
+                    {`Publicar ${plural(escolhidas.size, "vaga", "vagas")}`}
+                  </Botao>
+                </div>
+              )}
             </>
           ) : (
-            !resultado && <p className="text-body-sm text-ink-muted">Nenhuma destas vagas dá para publicar agora.</p>
+            !resultado && (
+              <p className="text-body-sm text-ink-muted">
+                Nenhuma destas vagas dá para publicar agora.
+              </p>
+            )
           )}
         </section>
       )}
