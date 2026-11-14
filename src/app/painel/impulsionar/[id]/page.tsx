@@ -1,4 +1,4 @@
-import { Gift, Rocket } from "lucide-react";
+import { Gift, Rocket, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -44,11 +44,22 @@ type Impulso = {
   ate: string | null;
   encerrado_em: string | null;
   pausar: boolean;
+  /**
+   * A garantia da verba (migração 20270518120000; antes dela, não vem): quando o prazo foi estendido porque o Google
+   * usou menos de 80% da verba, e o fim de antes. Na vaga da campanha do cliente, os da campanha.
+   */
+  estendido_em?: string | null;
+  ate_original?: string | null;
+  /** o crédito que o impulso deixou: o que o Google não usou, a vaga que fechou, o cancelado */
+  virou_credito?: { dias: number; verba: number } | null;
   totais: TotaisDoImpulso;
   por_dia: DiaDoImpulso[];
   /** o ajuste diário, em beta (migração 20270509120000; antes dela, não vem) */
   ajustes?: DiaDoAjuste[];
 };
+
+/** O que o Google não usar vira crédito no pago, no de crédito e no grátis (o presente do Publike, não). */
+const deixaCredito = (i: Impulso) => i.origem !== "admin";
 
 /** A verba que o cliente vê: a da vaga ou, na campanha de várias vagas dele, a de todas juntas. */
 function rotuloDaVerba(i: Impulso) {
@@ -164,6 +175,18 @@ async function Conteudo({
                       <SeloDaSituacao i={i} />
                     </p>
                     {i.motivo && i.situacao !== "encerrado" && <p className="text-body-sm text-ink-muted">{i.motivo}</p>}
+                    {i.estendido_em && i.ate_original && (
+                      <p className="text-body-sm text-ink-muted">
+                        Teve menos busca no Google do que o esperado e seguiu no ar depois de {dataCurta(i.ate_original)}{" "}
+                        pela garantia da verba, sem custo.
+                      </p>
+                    )}
+                    {i.virou_credito && (
+                      <p className="text-body-sm">
+                        Virou crédito: {i.virou_credito.dias} {i.virou_credito.dias === 1 ? "dia" : "dias"}, com{" "}
+                        {formatarMoeda(i.virou_credito.verba)} para o anúncio de outra vaga.
+                      </p>
+                    )}
                     {i.aprovado_em && (
                       <NumerosDoImpulso
                         totais={i.totais}
@@ -200,6 +223,7 @@ async function Conteudo({
                 ...(d.ajuste_ligado
                   ? ["Toda manhã, o ajuste diário (beta) acerta a verba, o lance, as buscas e o raio pelos números do dia anterior."]
                   : []),
+                "Garantia da verba: se até o fim o Google usar menos de 80% dela, o anúncio segue no ar sem custo pelo mesmo prazo, até usar o resto.",
                 "No fim, chega o relatório: quantos viram, clicaram e curtiram.",
               ].map((passo, n) => (
                 <li key={passo} className="flex gap-3">
@@ -215,7 +239,8 @@ async function Conteudo({
             </ol>
             <p className="text-body-sm text-ink-muted">
               O anúncio aparece só pelo lugar e pelo que a pessoa pesquisou, nunca por idade ou sexo. Se a vaga fechar
-              antes do fim, o anúncio para sozinho e os dias que faltam viram crédito para outra vaga, por 90 dias.
+              antes do fim, o anúncio para sozinho. O que o Google não usar, no fim ou quando a vaga fecha, vira
+              crédito para outra vaga, por 90 dias (a partir de R$ 10).
             </p>
           </section>
         </aside>
@@ -241,8 +266,16 @@ function SeloDaSituacao({ i }: { i: Impulso }) {
 }
 
 function ImpulsoValendo({ i, ajuste }: { i: Impulso; ajuste: boolean }) {
+  // a garantia da verba: o Google usou menos de 80% da verba no prazo, e o anúncio segue no ar (migração 20270518120000)
+  const naGarantia = i.situacao === "no_ar" && Boolean(i.estendido_em);
   const texto =
-    i.situacao === "no_ar" && i.ate
+    naGarantia && i.ate
+      ? `A vaga teve menos busca no Google do que o esperado${
+          i.ate_original ? `: até ${dataCurta(i.ate_original)}, o anúncio usou menos de 80% da verba` : ""
+        }. Ele segue no ar até usar o resto, no máximo até ${dataCurta(i.ate)}.${
+          deixaCredito(i) ? " O que sobrar no fim vira crédito para outra vaga." : ""
+        }`
+      : i.situacao === "no_ar" && i.ate
       ? `A vaga aparece no Google para quem procura perto até ${dataCurta(i.ate)}. Os números do dia chegam na manhã seguinte.`
       : i.situacao === "em_revisao"
         ? "O anúncio já está no Google, esperando a revisão, que leva até 1 dia útil. Os dias começam a contar quando for aprovado."
@@ -262,6 +295,12 @@ function ImpulsoValendo({ i, ajuste }: { i: Impulso; ajuste: boolean }) {
             <p className="flex items-center gap-1.5 text-label text-terra-text">
               <Gift aria-hidden className="size-4 shrink-0" />
               Presente do Publike, sem custo para você
+            </p>
+          )}
+          {naGarantia && (
+            <p className="flex items-center gap-1.5 text-label text-cerrado-text">
+              <ShieldCheck aria-hidden className="size-4 shrink-0" />
+              Garantia da verba: mais {i.dias} {i.dias === 1 ? "dia" : "dias"} no ar, sem custo
             </p>
           )}
           <p className="max-w-2xl text-body-sm text-ink-muted">{texto}</p>
@@ -332,8 +371,8 @@ async function Oferta({ d }: { d: DoImpulso }) {
       {d.credito > 0 && (
         <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
           <p className="text-body">
-            Você tem <strong>{d.credito} {d.credito === 1 ? "dia" : "dias"} de crédito</strong>, de um impulso que
-            parou porque a vaga fechou.
+            Você tem <strong>{d.credito} {d.credito === 1 ? "dia" : "dias"} de crédito</strong>, de impulsos
+            anteriores.
           </p>
           <ImpulsionarSemPagar anuncio={d.vaga.id} jeito="credito" dias={d.credito} />
         </div>

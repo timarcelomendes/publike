@@ -198,6 +198,8 @@ export function HistoricoDeImpulsos({
                       </Selo>
                       {i.pausar && <Selo variante="novo">Parando</Selo>}
                       {i.sandbox && <Selo variante="contorno">Teste</Selo>}
+                      {/* a garantia da verba estendeu o prazo (migração 20270518120000) */}
+                      {i.estendido_em && <Selo variante="aviso">Garantia</Selo>}
                     </span>
                   </td>
                   <td className="min-w-44 px-3 py-3">

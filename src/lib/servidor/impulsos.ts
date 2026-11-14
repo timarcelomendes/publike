@@ -2037,6 +2037,18 @@ async function fazer(a: Acesso, t: Tarefa) {
       await olhar(a, t, conta);
       break;
     case "pausar":
+      // no ar, os números até agora antes de tirar: o crédito é o que o Google não usou (garantia da verba, 14/11/2026,
+      // migração 20270518120000). Sem os números, para do mesmo jeito, com o gasto da última medida.
+      if (t.situacao === "no_ar" && t.campanha_id) {
+        try {
+          await medir(a, t, conta, true);
+        } catch (e) {
+          console.error(
+            `Publike: os números do impulso ${t.codigo} não vieram antes de parar:`,
+            e instanceof Error ? e.message : e,
+          );
+        }
+      }
       await tirar();
       await a.cliente.rpc("servidor_impulso_pausado", {
         p_chave: a.chave,

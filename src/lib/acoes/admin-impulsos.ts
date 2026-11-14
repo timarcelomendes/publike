@@ -84,6 +84,9 @@ export type ImpulsoDoAdmin = {
   campanha_cliente_id?: string | null;
   /** o tipo da vaga pelo título (null: Outros) */
   tipo?: string | null;
+  /** a garantia da verba (migração 20270518120000): quando o prazo foi estendido e o fim de antes */
+  estendido_em?: string | null;
+  ate_original?: string | null;
   totais: { impressoes: number; cliques: number; visitas: number; curtidas: number };
 };
 
@@ -103,6 +106,9 @@ export type CampanhaDoAdmin = {
   erro: string | null;
   erro_desde: string | null;
   campanha_id: string | null;
+  /** a garantia da verba (migração 20270518120000): quando o prazo foi estendido e o fim de antes */
+  estendido_em?: string | null;
+  ate_original?: string | null;
 };
 
 /** O que cada tipo de vaga rendeu nos últimos 90 dias. */

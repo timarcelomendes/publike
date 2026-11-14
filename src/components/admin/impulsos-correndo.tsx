@@ -188,8 +188,14 @@ function numerosDa(t: { impressoes: number; cliques: number; curtidas: number })
   return `${plural(t.impressoes, "vista", "vistas")}, ${plural(t.cliques, "clique", "cliques")}, ${plural(t.curtidas, "curtida", "curtidas")}`;
 }
 
+/** A garantia da verba (migração 20270518120000): o prazo foi estendido porque o Google usou menos de 80% da verba. */
+function naGarantia(x: { estendido_em?: string | null; ate_original?: string | null }) {
+  return x.estendido_em ? `na garantia da verba${x.ate_original ? `, era até ${formatarData(x.ate_original)}` : ""}` : "";
+}
+
 function situacaoDaCampanha(k: CampanhaDoAdmin) {
-  if (k.situacao === "no_ar") return k.ate ? `no ar até ${formatarData(k.ate)}` : "no ar";
+  if (k.situacao === "no_ar")
+    return k.ate ? `no ar até ${formatarData(k.ate)}${k.estendido_em ? ` (${naGarantia(k)})` : ""}` : "no ar";
   if (k.situacao === "em_revisao") return "anúncios em revisão no Google";
   return "criando no Google";
 }
@@ -308,12 +314,15 @@ function CartaoDoCliente({ c, linhas, agora }: { c: Cliente; linhas: ImpulsoDoAd
                   <Selo variante={VARIANTE_DA_SITUACAO[i.situacao] ?? "neutro"}>{NOME_DA_SITUACAO[i.situacao] ?? i.situacao}</Selo>
                   {i.automatico && <Selo variante="novo">Automático</Selo>}
                   <Selo variante="contorno">{i.tipo ?? "Outros"}</Selo>
+                  {i.estendido_em && i.situacao === "no_ar" && <Selo variante="aviso">Garantia</Selo>}
                   {i.pausar && <Selo variante="novo">Parando</Selo>}
                 </p>
                 <p className="mt-0.5 text-body-sm text-ink-muted">
                   {!i.campanha_cliente_id &&
                     `${i.automatico ? NOME_DA_ORIGEM.automatico : NOME_DA_ORIGEM[i.origem]}, ${plural(i.dias, "dia", "dias")}${
-                      i.ate && i.situacao === "no_ar" ? ` até ${formatarData(i.ate)}` : ""
+                      i.ate && i.situacao === "no_ar"
+                        ? ` até ${formatarData(i.ate)}${i.estendido_em ? ` (${naGarantia(i)})` : ""}`
+                        : ""
                     }. `}
                   <span className="tabular-nums">
                     {reais(Number(i.gasto ?? 0))} no Google, {numerosDa(i.totais)}

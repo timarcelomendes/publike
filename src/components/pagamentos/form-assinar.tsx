@@ -451,7 +451,7 @@ export function FormAssinar({
           </p>
           <p className="text-body-sm text-ink-muted">
             {modo.tipo === "impulso"
-              ? "Cobrado hoje, uma vez só. Os dias contam quando o Google aprovar o anúncio, em até 1 dia útil; até lá, dá para cancelar e o dinheiro volta. Se a vaga fechar antes do fim, os dias que faltam viram crédito para outra vaga."
+              ? `Cobrado hoje, uma vez só. Os dias contam quando o Google aprovar o anúncio, em até 1 dia útil; até lá, dá para cancelar e o dinheiro volta. Garantia da verba: se o Google usar menos de 80% dela no prazo, o anúncio segue no ar mais ${diasDoImpulso} dias sem custo, e o que ele não usar, no fim ou se a vaga fechar antes, vira crédito para outra vaga.`
               : modo.tipo === "faixa"
               ? `Cobrado hoje: a diferença dos ${modo.dias} ${modo.dias === 1 ? "dia" : "dias"} que faltam${
                   modo.ate ? ` até ${dataDoDia(modo.ate)}` : ""

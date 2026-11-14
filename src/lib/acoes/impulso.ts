@@ -20,7 +20,10 @@ const COOKIE_IMPULSO = "publike_impulso";
 const CODIGO = /^[a-z0-9]{6,20}$/;
 const VISITANTE = /^[A-Za-z0-9_-]{16,64}$/;
 
-/** Impulsionar sem pagar: com os dias de crédito (de um impulso interrompido) ou o primeiro grátis. */
+/**
+ * Impulsionar sem pagar: com os dias de crédito (de um impulso interrompido ou da verba que o Google não usou,
+ * migração 20270518120000) ou o primeiro grátis.
+ */
 export async function impulsionarSemPagar(anuncio: string, jeito: "credito" | "cortesia"): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncio) || (jeito !== "credito" && jeito !== "cortesia")) return { ok: false, erro: "Pedido inválido." };
