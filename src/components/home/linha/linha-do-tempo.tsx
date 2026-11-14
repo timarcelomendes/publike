@@ -287,18 +287,7 @@ export async function LinhaDoTempo({
   }
   // as vagas impulsionadas perto de quem vê, no alto da linha (claude/plano-destaque-das-vagas-impulsionadas.md)
   const quadro = d.aba === "tudo" || d.aba === "vaga" ? await vagasDoQuadroDaLinha(d) : [];
-  if (quadro.length) {
-    blocos.push(
-      <QuadroDeImpulsionadas
-        key="impulsionadas"
-        vagas={quadro.map((q) => q.vaga)}
-        codigos={Object.fromEntries(quadro.map((q) => [q.vaga.id, q.impulso]))}
-        agora={d.agora}
-        usuarioId={d.usuarioId}
-      />,
-    );
-    contam.push(false);
-  }
+
   for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes, d.porQue), d.aba === "tudo")) {
     if (p.tipo === "dia") {
       blocos.push(
@@ -363,6 +352,17 @@ export async function LinhaDoTempo({
   return (
     <>
       {pergunta && <div className="mb-3">{pergunta}</div>}
+      {/* fora da linha do tempo (o traço não passa por ele) */}
+      {quadro.length > 0 && (
+        <div className="mb-4">
+          <QuadroDeImpulsionadas
+            vagas={quadro.map((q) => q.vaga)}
+            codigos={Object.fromEntries(quadro.map((q) => [q.vaga.id, q.impulso]))}
+            agora={d.agora}
+            usuarioId={d.usuarioId}
+          />
+        </div>
+      )}
       {/* até onde a linha busca fica no topo, na linha da ordem (RaioDaLinha, em topo-da-conta.tsx) */}
       <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
         {/* o traço da linha, no meio da coluna dos nós */}
