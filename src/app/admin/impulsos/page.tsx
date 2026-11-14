@@ -18,6 +18,8 @@ import { ehCorrendo, quemPediu } from "@/components/admin/impulsos-nomes";
 import { NovoImpulso } from "@/components/admin/impulsos-novo";
 import { ChaveDaGeral } from "@/components/admin/impulsos-chave-da-geral";
 import { ConfigDoPacote } from "@/components/admin/impulsos-pacote";
+import { GruposDaGeral, type LinhaDoGrupo } from "@/components/admin/impulsos-grupos";
+import { candidatosDosDados, planoDoDia } from "@/lib/servidor/grupos-da-geral";
 import { TiposDeVaga } from "@/components/admin/impulsos-tipos";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
@@ -643,10 +645,19 @@ async function CaminhoDoAnuncio({ cliques }: { cliques: Map<string, number> }) {
 async function Regras({ d }: { d: Dados }) {
   const admin = await ehAdminLocal();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const { data } = await c.rpc("admin_tipos_de_vaga");
+  const [{ data }, { data: dg }] = await Promise.all([c.rpc("admin_tipos_de_vaga"), c.rpc("admin_grupos_da_geral")]);
   const t = (data ?? null) as { tipos: TipoDeVaga[]; outros: number } | null;
+  const grupos = dg ? gruposParaOAdmin(dg as Parameters<typeof planoDoDia>[0] & GruposDoBanco) : null;
   return (
     <>
+      {grupos && (
+        <Secao
+          titulo="Grupos por função e cidade na campanha geral"
+          descricao="Um grupo para cada função e cidade com vaga no ar, dentro da campanha geral: as palavras da IA, conferidas pelas regras, e o anúncio que leva à página da função ou da cidade. Quantos ficam ligados: a diferença que os pacotes põem no orçamento, dividida pela verba de cada grupo. O robô acerta uma vez por dia, depois das 6h, e logo depois de salvar aqui."
+        >
+          <GruposDaGeral {...grupos} />
+        </Secao>
+      )}
       <Secao
         titulo="Tipos de vaga"
         descricao="Cada vaga entra no primeiro tipo da lista que tiver uma das palavras no título (pelo começo da palavra e sem acento: “contab” pega contábil e contabilidade). Os dias e a verba do tipo são o ponto de partida do impulso pelo admin e do automático; o raio vale para todo impulso daquele tipo, também os que já estão no ar. Vazio segue a regra geral, logo abaixo."
@@ -685,4 +696,60 @@ async function Regras({ d }: { d: Dados }) {
       </Secao>
     </>
   );
+}
+
+type GruposDoBanco = {
+  ligados?: boolean;
+  verba?: number | string;
+  entrada?: number;
+  alvo?: number | string;
+  base?: number | string;
+  feita_em?: string | null;
+  erro?: string | null;
+  erro_em?: string | null;
+  grupos?: {
+    tipo: "funcao" | "cidade";
+    chave: string;
+    nome: string;
+    pagina: string;
+    grupo_id: string | null;
+    situacao: "fora" | "ligado" | "pausado";
+    palavras?: string[];
+    erro?: string | null;
+  }[];
+};
+
+/** Os grupos da campanha geral para o Admin: as candidatas de agora, as que entram na conta e as que já estão no Google. */
+function gruposParaOAdmin(d: Parameters<typeof planoDoDia>[0] & GruposDoBanco) {
+  const plano = planoDoDia({ ...d, ligados: true });
+  const entram = new Set(plano.escolhidos.map((x) => `${x.tipo}:${x.chave}`));
+  const guardados = new Map((d.grupos ?? []).map((g) => [`${g.tipo}:${g.chave}`, g]));
+  const linhas: LinhaDoGrupo[] = candidatosDosDados(d).map((x) => {
+    const g = guardados.get(`${x.tipo}:${x.chave}`);
+    return {
+      chave: x.chave,
+      tipo: x.tipo,
+      nome: x.nome,
+      pagina: x.pagina,
+      vagas: x.vagas,
+      impulsionadas: x.impulsionadas,
+      entra: entram.has(`${x.tipo}:${x.chave}`),
+      situacao: g?.situacao ?? "fora",
+      palavras: g?.palavras ?? [],
+      erro: g?.erro ?? null,
+    };
+  });
+  // os grupos que estão no Google sem vaga no ar agora (o robô pausa na volta seguinte)
+  for (const g of d.grupos ?? [])
+    if (!linhas.some((l) => l.tipo === g.tipo && l.chave === g.chave) && g.situacao !== "fora")
+      linhas.push({ ...g, vagas: 0, impulsionadas: 0, entra: false, palavras: g.palavras ?? [], erro: g.erro ?? null });
+  linhas.sort((x, y) => Number(y.entra) - Number(x.entra) || y.impulsionadas - x.impulsionadas || y.vagas - x.vagas);
+  return {
+    config: { ligados: Boolean(d.ligados), verba: Number(d.verba ?? 10), entrada: Number(d.entrada ?? 2) },
+    alvo: Number(d.alvo ?? 0),
+    base: Number(d.base ?? 0),
+    linhas,
+    feitaEm: d.feita_em ?? null,
+    erro: { texto: d.erro ?? null, em: d.erro_em ?? null },
+  };
 }

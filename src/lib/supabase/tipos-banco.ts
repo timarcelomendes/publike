@@ -3718,6 +3718,12 @@ export type Database = {
       };
       servidor_geral_do_dia: { Args: { p_chave: string }; Returns: Json };
       servidor_geral_feita: { Args: { p_chave: string; p_valor: number; p_erro: string | null }; Returns: undefined };
+      // os grupos da campanha geral por função e por cidade (migração 20270522120000)
+      servidor_grupos_da_geral: { Args: { p_chave: string }; Returns: Json };
+      servidor_grupo_da_geral: { Args: { p_chave: string; p_grupo: Json }; Returns: undefined };
+      servidor_grupos_feita: { Args: { p_chave: string; p_erro: string | null }; Returns: undefined };
+      admin_grupos_da_geral: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_salvar_grupos: { Args: { p_config: Json }; Returns: Json };
       admin_dar_pacotes: {
         Args: { p_anuncios: string[]; p_candidatos: number; p_dias: number | null; p_avisar: boolean };
         Returns: Json;

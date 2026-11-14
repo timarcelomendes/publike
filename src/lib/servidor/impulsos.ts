@@ -53,6 +53,7 @@ import {
 } from "./impulso-ia";
 import { estornarCobranca } from "./asaas";
 import { acessoFila } from "./filas";
+import { cuidarDosGrupos } from "./grupos-da-geral";
 import {
   consultar,
   contaDeAnuncios,
@@ -2370,6 +2371,9 @@ async function umaVoltaDoRobo(
     await semDisputaComAGeral(a);
   // o pacote de candidatos (migração 20270519120000): a campanha geral ganha a verba dos pacotes no ar
   if (googleAdsLigado() && Date.now() - inicio < 38_000) await cuidarDaGeral(a);
+  // os grupos por função e por cidade na campanha geral (migração 20270522120000): só com folga, porque a IA leva até
+  // 25 s e a volta tem 60 s
+  if (googleAdsLigado() && Date.now() - inicio < 20_000) await cuidarDosGrupos(a, inicio + 28_000);
   return alertas.length
     ? {
         feitos,

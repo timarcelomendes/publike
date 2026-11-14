@@ -1105,6 +1105,11 @@ export function limparBusca(t: string) {
   return palavraLimpa(t);
 }
 
+/** Se a busca cai na regra do que nunca entra num anúncio de vaga (`NUNCA_NA_BUSCA`). */
+export function buscaProibida(t: string) {
+  return NUNCA_NA_BUSCA.test(comparavel(t));
+}
+
 /**
  * Confere o que a IA devolveu antes de ir para o Google:
  * - **acrescentar:** limpa; sem a palavra de emprego, é o nome de uma função e vira "vaga de …"; fora o que já está
