@@ -93,7 +93,7 @@ export function GruposDaGeral({
           </span>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-body-sm text-ink-muted">Vagas no ar para entrar</span>
+          <span className="text-body-sm text-ink-muted">Mínimo de vagas no ar</span>
           <input
             type="number"
             min={1}
@@ -102,9 +102,14 @@ export function GruposDaGeral({
             value={c.entrada}
             onChange={(e) => setC({ ...c, entrada: Number(e.target.value) })}
             className={`${classesEntrada} w-28`}
+            aria-describedby={`${id}-entrada`}
           />
         </label>
       </div>
+      <p id={`${id}-entrada`} className="-mt-3 max-w-3xl text-body-sm text-ink-muted">
+        Uma função ou cidade só ganha grupo com pelo menos {plural(c.entrada, "vaga", "vagas")} no ar. A que tem vaga
+        impulsionada entra sempre, mesmo com menos.
+      </p>
       <p className="max-w-3xl text-body-sm text-ink-muted" aria-live="polite">
         Orçamento de agora: {reais(alvo)} por dia, com {reais(base)} de base. A diferença dos pacotes, {reais(diferenca)},
         paga {cabem === 0 ? "nenhum grupo" : `até ${plural(cabem, "grupo", "grupos")}`} de {reais(c.verba)}.{" "}
