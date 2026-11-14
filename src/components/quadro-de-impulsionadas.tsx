@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { DadosCard } from "@/lib/tipos";
 import { CardAnuncio } from "./card-anuncio";
+import { ConviteParaImpulsionar } from "./convite-para-impulsionar";
 
 /**
  * O quadro "Vagas impulsionadas na região" no alto da busca e da linha do tempo (claude/plano-destaque-das-vagas-
@@ -27,9 +29,11 @@ export function QuadroDeImpulsionadas({
         <h2 id="quadro-impulsionadas" className="text-h3">
           Vagas impulsionadas na região
         </h2>
-        <p className="mt-1 text-body-sm text-ink-muted">
-          Quem contrata pagou para mostrar estas vagas aqui. As outras vêm logo abaixo, na ordem de sempre.
-        </p>
+        {/* sem a frase "Quem contrata pagou..." (14/11/2026, Marcelo: "acho que nao é legal"): quem procura trabalho vê
+            só o título; quem contrata, o convite para impulsionar */}
+        <Suspense fallback={null}>
+          <ConviteParaImpulsionar />
+        </Suspense>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2">
         {vagas.map((a) => (

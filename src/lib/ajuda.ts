@@ -152,7 +152,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "O que é impulsionar a vaga?",
-        r: "Sua vaga entra no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade, para onde o anúncio do Publike no Google leva quem procura emprego. Você escolhe quantos candidatos quer, e só conta quem curtir a vaga depois de chegar pelo destaque (quem curte e desfaz não conta). Chegou o último, o pacote acaba e você recebe o aviso; no máximo, ele fica 30 dias. O que não chegar vira saldo para usar em outra vaga, por 90 dias, e você pode parar quando quiser. Na vaga, toque em Impulsionar para ver se já está à venda para a sua conta. Fora do quadro, a lista do Publike não muda: todas as vagas aparecem na ordem de sempre.",
+        r: "Sua vaga entra no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade, da busca e da linha do tempo, e num espaço patrocinado no meio da busca. As páginas de vagas são para onde o anúncio do Publike no Google leva quem procura emprego. Você escolhe quantos candidatos quer, e só conta quem curtir a vaga depois de chegar pelo destaque (quem curte e desfaz não conta). Chegou o último, o pacote acaba e você recebe o aviso; no máximo, ele fica 30 dias. O que não chegar vira saldo para usar em outra vaga, por 90 dias, e você pode parar quando quiser. Na vaga, toque em Impulsionar para ver se já está à venda para a sua conta. Fora do quadro e do espaço patrocinado, a lista do Publike não muda: as outras vagas aparecem na ordem de sempre.",
       },
       {
         p: "Um candidato disse que começou a trabalhar. O que faço?",

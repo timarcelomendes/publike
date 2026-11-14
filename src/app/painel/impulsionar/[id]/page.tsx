@@ -596,7 +596,7 @@ function ComoFuncionaOPacote({ dias }: { dias: number }) {
       <Passos
         passos={[
           "Você escolhe quantos candidatos quer para a vaga.",
-          "A vaga entra no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade. É para lá que o anúncio do Publike no Google leva quem procura emprego.",
+          "A vaga entra no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade, da busca e da linha do tempo, e num espaço patrocinado no meio da busca. É para as páginas de vagas que o anúncio do Publike no Google leva quem procura emprego.",
           "Cada pacote no ar aumenta o anúncio do Publike no Google: chega mais gente, e a sua vaga está na frente dela.",
           "Cada pessoa que curtir a vaga depois de chegar pelo destaque é um candidato do pacote. Quem curte e desfaz não conta.",
           `Chegou o último candidato, o pacote acaba e você recebe o aviso. No máximo, ele fica ${dias} dias.`,
@@ -604,7 +604,8 @@ function ComoFuncionaOPacote({ dias }: { dias: number }) {
         ]}
       />
       <p className="text-body-sm text-ink-muted">
-        Pagar não muda a ordem da lista do Publike: todas as vagas continuam logo abaixo do quadro, na ordem de sempre.
+        Fora do quadro e do espaço patrocinado, pagar não muda a lista do Publike: as outras vagas seguem na ordem de
+        sempre.
       </p>
     </section>
   );

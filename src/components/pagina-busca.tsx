@@ -28,6 +28,7 @@ import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloCbo } from "@/lib/funco
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, TipoAnuncio } from "@/lib/tipos";
 import { CardAnuncio } from "./card-anuncio";
+import { ConviteParaImpulsionar } from "./convite-para-impulsionar";
 import { AvisarBusca } from "./explorar/avisar-busca";
 import { DadosEstruturados } from "./dados-estruturados";
 import { BotaoLink } from "./ui/botao";
@@ -287,9 +288,11 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
           <h2 id="vagas-impulsionadas" className="text-h3">
             Vagas impulsionadas na região
           </h2>
-          <p className="mt-1 max-w-3xl text-body-sm text-ink-muted">
-            Quem contrata pagou para mostrar estas vagas aqui. Todas as vagas vêm logo abaixo, na ordem de sempre.
-          </p>
+          {/* sem a frase "Quem contrata pagou..." (14/11/2026): o título basta para quem procura trabalho; quem contrata
+              vê o convite para impulsionar */}
+          <Suspense fallback={null}>
+            <ConviteParaImpulsionar className="max-w-3xl" />
+          </Suspense>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {destaques.map((a) => (
               <li key={a.id} className="grid">

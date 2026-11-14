@@ -190,7 +190,7 @@ export function CardAnuncio({
   ) : proprio ? (
     <Selo variante="contorno">Seu anúncio</Selo>
   ) : impulsionada ? (
-    <Selo variante="aviso" title="Quem contrata pagou para mostrar esta vaga em destaque">
+    <Selo variante="aviso">
       <Zap aria-hidden />
       Impulsionada
     </Selo>
