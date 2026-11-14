@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { contarVisitaDoImpulso } from "@/lib/acoes/impulso";
-import { CAMPANHA_DO_IMPULSO, PARAMETRO_DO_DESTAQUE } from "@/lib/impulso";
+import { CAMPANHA_DO_IMPULSO, PARAMETRO_DO_DESTAQUE, PARAMETRO_DO_LUGAR, type LugarDoDestaque } from "@/lib/impulso";
 
 const CODIGO = /^[a-z0-9]{6,20}$/;
 
@@ -23,9 +23,13 @@ export function visitanteDoNavegador(): string {
  * A visita que veio do quadro "Vagas impulsionadas na região" (migração 20270519120000), antes de curtir direto do
  * cartão: a curtida que vem logo depois conta para quem impulsionou. Nunca falha (sem rede, a curtida segue sem contar).
  */
-export async function contarVisitaDoQuadro(codigo: string, anuncioId: string): Promise<void> {
+export async function contarVisitaDoQuadro(
+  codigo: string,
+  anuncioId: string,
+  lugar: LugarDoDestaque = "quadro",
+): Promise<void> {
   if (!CODIGO.test(codigo)) return;
-  await contarVisitaDoImpulso(codigo, anuncioId, visitanteDoNavegador(), "quadro").catch(() => {});
+  await contarVisitaDoImpulso(codigo, anuncioId, visitanteDoNavegador(), lugar).catch(() => {});
 }
 
 /**
@@ -42,11 +46,20 @@ export function ContarImpulso({ anuncioId }: { anuncioId: string }) {
     const doGoogle = p.get("utm_campaign") === CAMPANHA_DO_IMPULSO ? (p.get("utm_content") ?? "").toLowerCase() : "";
     const codigo = CODIGO.test(doQuadro) ? doQuadro : doGoogle;
     if (!CODIGO.test(codigo)) return;
-    const origem = codigo === doQuadro ? "quadro" : p.get("utm_term") === "sitelink" ? "link" : "google";
+    // o espaço patrocinado no meio da lista traz também ?no=lista (migração 20270521120000)
+    const origem =
+      codigo === doQuadro
+        ? p.get(PARAMETRO_DO_LUGAR) === "lista"
+          ? "lista"
+          : "quadro"
+        : p.get("utm_term") === "sitelink"
+          ? "link"
+          : "google";
     contarVisitaDoImpulso(codigo, anuncioId, visitanteDoNavegador(), origem).catch(() => {});
-    if (origem === "quadro") {
+    if (codigo === doQuadro) {
       const url = new URL(window.location.href);
       url.searchParams.delete(PARAMETRO_DO_DESTAQUE);
+      url.searchParams.delete(PARAMETRO_DO_LUGAR);
       window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
     }
   }, [anuncioId]);

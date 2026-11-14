@@ -12,7 +12,7 @@ import {
 } from "@/lib/formato";
 import { candidaturaNoSite } from "@/lib/candidatura";
 import { nomeBeneficio } from "@/lib/constantes";
-import { linkDoDestaque } from "@/lib/impulso";
+import { linkDoDestaque, type LugarDoDestaque } from "@/lib/impulso";
 import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { ResumoComentarios } from "@/lib/comentarios";
 import type { DadosCard } from "@/lib/tipos";
@@ -106,6 +106,7 @@ export function CardAnuncio({
   comentarios = null,
   impulsionada = false,
   impulso = null,
+  lugar = "quadro",
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -142,6 +143,11 @@ export function CardAnuncio({
    * direto do cartão conta a visita antes, para quem impulsionou.
    */
   impulso?: string | null;
+  /**
+   * O quadro ou o espaço patrocinado no meio da lista (migração 20270521120000; claude/plano-destaque-das-vagas-
+   * impulsionadas.md): na lista, a borda na cor do quadro, e a visita conta como "lista".
+   */
+  lugar?: LugarDoDestaque;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -262,7 +268,7 @@ export function CardAnuncio({
   return (
     <article
       id={`anuncio-${anuncio.id}`}
-      className="group/cartao @container relative flex min-w-0 flex-col rounded-lg border border-line bg-surface-200 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4"
+      className={`group/cartao @container relative flex min-w-0 flex-col rounded-lg border ${impulsionada && lugar === "lista" ? "border-terra/50" : "border-line"} bg-surface-200 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4`}
     >
       {vagas > 1 && (
         // o raio de dentro do cartão (o de fora menos a borda)
@@ -325,7 +331,7 @@ export function CardAnuncio({
           <div className="min-w-0 flex-1">
             <h3 className="text-h3 group-data-[visao=grade]/visao:line-clamp-2 group-data-[visao=grade]/visao:text-label group-data-[visao=lista]/visao:line-clamp-2 group-data-[visao=lista]/visao:text-label group-data-[visao=lista]/visao:sm:text-body-lg">
               <Link
-                href={linkDoDestaque(anuncio.id, impulso)}
+                href={linkDoDestaque(anuncio.id, impulso, "", lugar)}
                 className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
               >
                 {anuncio.titulo}
@@ -461,7 +467,7 @@ export function CardAnuncio({
                   <span className="text-label text-ink-muted">Vaga preenchida</span>
                 ) : noSite ? (
                   <Link
-                    href={linkDoDestaque(anuncio.id, impulso)}
+                    href={linkDoDestaque(anuncio.id, impulso, "", lugar)}
                     className="relative z-10 inline-flex min-h-11 shrink-0 items-center rounded-pill border border-line-strong px-4 text-label text-ink hover:bg-surface-300"
                   >
                     Ver a vaga
@@ -475,6 +481,7 @@ export function CardAnuncio({
                     servico={servico}
                     quem={anuncio.autor_nome}
                     impulso={impulso}
+                    lugar={lugar}
                   />
                 )}
               </span>

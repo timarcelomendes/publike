@@ -226,7 +226,7 @@ function NumerosDoCliente({ c }: { c: Cliente }) {
     const pacote: { rotulo: string; valor: string }[] = [
       { rotulo: "Candidatos", valor: `${formatarNumero(chegaram)} de ${formatarNumero(alvo)}` },
       { rotulo: "Visitas", valor: formatarNumero(visitas) },
-      { rotulo: "Pelo quadro", valor: formatarNumero(quadro) },
+      { rotulo: "No Publike", valor: formatarNumero(quadro) },
       { rotulo: "Curtidas", valor: formatarNumero(soma.curtidas) },
     ];
     return (
@@ -360,8 +360,8 @@ function CartaoDoCliente({ c, linhas, agora }: { c: Cliente; linhas: ImpulsoDoAd
                       i.ate && i.situacao === "no_ar" ? `, no destaque até ${formatarData(i.ate)}` : ""
                     }. `}
                     <span className="tabular-nums">
-                      {plural(i.totais.visitas, "visita", "visitas")} ({formatarNumero(i.totais.visitas_quadro ?? 0)} pelo
-                      quadro), {plural(i.totais.curtidas, "curtida", "curtidas")}
+                      {plural(i.totais.visitas, "visita", "visitas")} ({formatarNumero(i.totais.visitas_quadro ?? 0)} no
+                      Publike), {plural(i.totais.curtidas, "curtida", "curtidas")}
                       {i.verba_dia ? `. Soma ${reais(Number(i.verba_dia))} por dia à campanha geral` : ""}
                     </span>
                   </p>

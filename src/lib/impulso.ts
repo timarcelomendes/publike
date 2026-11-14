@@ -15,10 +15,23 @@ export const CAMPANHA_DO_IMPULSO = "impulso";
  * visita para quem impulsionou e tira o parâmetro do endereço.
  */
 export const PARAMETRO_DO_DESTAQUE = "destaque";
+/** Onde estava o cartão: sem ele, o quadro; "lista", o espaço patrocinado no meio da lista (migração 20270521120000). */
+export const PARAMETRO_DO_LUGAR = "no";
+export type LugarDoDestaque = "quadro" | "lista";
 
-/** O endereço da vaga a partir do quadro, com o código do impulso (sem código, o endereço de sempre). */
-export function linkDoDestaque(anuncioId: string, codigo: string | null | undefined, extra = "") {
-  const resto = [codigo && /^[a-z0-9]{6,20}$/.test(codigo) ? `${PARAMETRO_DO_DESTAQUE}=${codigo}` : "", extra]
+/** O endereço da vaga a partir do quadro (ou do espaço patrocinado), com o código do impulso (sem código, o de sempre). */
+export function linkDoDestaque(
+  anuncioId: string,
+  codigo: string | null | undefined,
+  extra = "",
+  lugar: LugarDoDestaque = "quadro",
+) {
+  const valido = Boolean(codigo && /^[a-z0-9]{6,20}$/.test(codigo));
+  const resto = [
+    valido ? `${PARAMETRO_DO_DESTAQUE}=${codigo}` : "",
+    valido && lugar === "lista" ? `${PARAMETRO_DO_LUGAR}=lista` : "",
+    extra,
+  ]
     .filter(Boolean)
     .join("&");
   return `/anuncio/${anuncioId}${resto ? `?${resto}` : ""}`;
@@ -1189,6 +1202,8 @@ const DO_MESMO_CLIENTE = 2;
 export function vagasDoQuadro<T extends { id: string; autor_id: string }>(
   impulsionadas: T[],
   agora: number,
+  /** quantas cabem (na busca e na linha do tempo, uma linha: claude/plano-destaque-das-vagas-impulsionadas.md) */
+  limite = VAGAS_NO_QUADRO,
 ): T[] {
   const hora = Math.floor(agora / 3_600_000);
   const vez = (id: string) => {
@@ -1204,14 +1219,14 @@ export function vagasDoQuadro<T extends { id: string; autor_id: string }>(
   const porCliente = new Map<string, number>();
   const escolhidas = new Set<T>();
   for (const v of ordem) {
-    if (escolhidas.size === VAGAS_NO_QUADRO) break;
+    if (escolhidas.size >= limite) break;
     const ja = porCliente.get(v.autor_id) ?? 0;
     if (ja >= DO_MESMO_CLIENTE) continue;
     porCliente.set(v.autor_id, ja + 1);
     escolhidas.add(v);
   }
   for (const v of ordem) {
-    if (escolhidas.size === VAGAS_NO_QUADRO) break;
+    if (escolhidas.size >= limite) break;
     escolhidas.add(v);
   }
   // na ordem da hora (as que completaram entram no lugar delas)

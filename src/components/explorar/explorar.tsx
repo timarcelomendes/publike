@@ -40,8 +40,11 @@ import { obterLocal } from "@/lib/local";
 import { passosDaPrioridade } from "@/lib/regioes";
 import { acharBuscaSalva, dadosDoDeOnde, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
 import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
+import { vagasImpulsionadas, type VagaImpulsionada } from "@/lib/servidor/paginas-busca";
+import { destaquesDaLista } from "@/lib/destaques";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
+import { QuadroDeImpulsionadas } from "../quadro-de-impulsionadas";
 import { extrasDe, matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
@@ -349,6 +352,19 @@ export async function Explorar({
     // tem a palavra no título vem antes (do mais perto ao mais longe dentro de cada grupo)
     anuncios = ordenarPeloTitulo(anuncios, termo);
   }
+  // as vagas impulsionadas (claude/plano-destaque-das-vagas-impulsionadas.md): só as que passaram no filtro desta lista,
+  // no quadro do alto e nos espaços patrocinados. Fora de "Combina mais" (a lista do currículo), dos "Só os meus" e de
+  // quem contrata.
+  const comDestaque = !contrata && !filtros.meus && !combina && filtros.tipo !== "servico";
+  const impulsionadas: Record<string, VagaImpulsionada> = comDestaque
+    ? await vagasImpulsionadas().catch(() => ({}))
+    : {};
+  const destaques = destaquesDaLista(
+    anuncios,
+    (a) => a.tipo === "vaga" && a.autor_id !== usuario?.id && Boolean(impulsionadas[a.id]),
+    agora,
+  );
+  anuncios = destaques.lista;
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id);
   const temMinhas = Boolean(usuario) && anuncios.some((a) => a.autor_id === usuario?.id);
   const [resposta, curtidas, salvasAgora, minhas, logos, comentarios] = await Promise.all([
@@ -512,6 +528,9 @@ export async function Explorar({
               extras={extrasDe(requisitos?.get(a.id), false)}
               salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}
               minha={soOlhar ? null : (minhaPorId.get(a.id) ?? null)}
+              impulsionada={destaques.patrocinadas.has(a.id)}
+              impulso={destaques.patrocinadas.has(a.id) ? (impulsionadas[a.id]?.codigo ?? null) : null}
+              lugar="lista"
             />
           </Fragment>
         ))}
@@ -737,11 +756,29 @@ export async function Explorar({
     </>
   );
 
+  // o quadro no alto da lista (só com vaga impulsionada que passou no filtro)
+  const quadro = destaques.quadro.length ? (
+    <QuadroDeImpulsionadas
+      vagas={destaques.quadro.map((a) => ({ ...a, autor_foto: logos[a.autor_id] ?? null }))}
+      codigos={impulsionadas}
+      agora={agora}
+      usuarioId={usuario ? (soOlhar ? "so-olhar" : usuario.id) : null}
+    />
+  ) : null;
+  const listaComQuadro = quadro ? (
+    <div className="flex flex-col gap-6">
+      {quadro}
+      {lista}
+    </div>
+  ) : (
+    lista
+  );
+
   const listaComPerguntas =
     n === 0 && perguntas ? (
       <div className="flex flex-col gap-4">
         {avisoDoCurriculo}
-        {lista}
+        {listaComQuadro}
         {perguntas}
       </div>
     ) : perguntas || linhaDoMatch || avisoDoCurriculo ? (
@@ -749,10 +786,10 @@ export async function Explorar({
         {avisoDoCurriculo}
         {linhaDoMatch}
         {perguntas}
-        {lista}
+        {listaComQuadro}
       </div>
     ) : (
-      lista
+      listaComQuadro
     );
 
   // feed: uma linha só com o lugar (casa ou GPS) e os atalhos de ordem (Para você, Perto de casa,

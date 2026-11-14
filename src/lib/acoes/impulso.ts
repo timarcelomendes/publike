@@ -78,10 +78,10 @@ export async function contarVisitaDoImpulso(
   codigo: string,
   anuncio: string,
   visitante: string,
-  origem: "google" | "link" | "quadro" = "google",
+  origem: "google" | "link" | "quadro" | "lista" = "google",
 ): Promise<void> {
   if (MODO_DEMO || !CODIGO.test(codigo) || !UUID.test(anuncio) || !VISITANTE.test(visitante)) return;
-  if (origem !== "google" && origem !== "link" && origem !== "quadro") return;
+  if (origem !== "google" && origem !== "link" && origem !== "quadro" && origem !== "lista") return;
   const supabase = await criarClienteServidor();
   let { data, error } = await supabase.rpc("contar_visita_do_impulso", {
     p_codigo: codigo,

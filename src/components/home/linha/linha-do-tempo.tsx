@@ -30,6 +30,11 @@ import {
   TicketDaVaga,
 } from "./objetos";
 import { RegistrarVisita } from "./registrar-visita";
+import { QuadroDeImpulsionadas } from "../../quadro-de-impulsionadas";
+import { QUADRO_DA_LISTA } from "@/lib/destaques";
+import { distanciaKm } from "@/lib/descobrir";
+import { vagasDoQuadro } from "@/lib/impulso";
+import { anunciosNoAr, vagasImpulsionadas, type AnuncioNoAr, type VagaImpulsionada } from "@/lib/servidor/paginas-busca";
 import { PerguntaDaConquista } from "../../conquistas/pergunta-da-conquista";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
@@ -280,6 +285,20 @@ export async function LinhaDoTempo({
     );
     contam.push(false);
   }
+  // as vagas impulsionadas perto de quem vê, no alto da linha (claude/plano-destaque-das-vagas-impulsionadas.md)
+  const quadro = d.aba === "tudo" || d.aba === "vaga" ? await vagasDoQuadroDaLinha(d) : [];
+  if (quadro.length) {
+    blocos.push(
+      <QuadroDeImpulsionadas
+        key="impulsionadas"
+        vagas={quadro.map((q) => q.vaga)}
+        codigos={Object.fromEntries(quadro.map((q) => [q.vaga.id, q.impulso]))}
+        agora={d.agora}
+        usuarioId={d.usuarioId}
+      />,
+    );
+    contam.push(false);
+  }
   for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes, d.porQue), d.aba === "tudo")) {
     if (p.tipo === "dia") {
       blocos.push(
@@ -357,4 +376,25 @@ export async function LinhaDoTempo({
       </section>
     </>
   );
+}
+
+/**
+ * O quadro da linha do tempo: as vagas impulsionadas da praça dentro do raio de quem vê (e da categoria escolhida), sem
+ * as da própria conta, até uma linha, na ordem que gira a cada hora.
+ */
+async function vagasDoQuadroDaLinha(
+  d: DadosDaLinha,
+): Promise<{ vaga: AnuncioNoAr; impulso: VagaImpulsionada }[]> {
+  const [impulsionadas, daPraca] = await Promise.all([
+    vagasImpulsionadas().catch((): Record<string, VagaImpulsionada> => ({})),
+    anunciosNoAr("vaga").catch(() => [] as AnuncioNoAr[]),
+  ]);
+  const perto = daPraca.filter(
+    (a) =>
+      impulsionadas[a.id] &&
+      a.autor_id !== d.usuarioId &&
+      (!d.filtros.categoria || a.categoria === d.filtros.categoria) &&
+      distanciaKm(d.filtros.lat, d.filtros.lng, a.lat, a.lng) <= d.filtros.raio,
+  );
+  return vagasDoQuadro(perto, d.agora, QUADRO_DA_LISTA).map((vaga) => ({ vaga, impulso: impulsionadas[vaga.id] }));
 }

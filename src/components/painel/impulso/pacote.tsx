@@ -29,12 +29,12 @@ export function BarraDoPacote({ alvo, chegaram }: { alvo: number; chegaram: numb
   );
 }
 
-/** As visitas e as curtidas que vieram do destaque, com a parte do quadro do Publike. */
+/** As visitas e as curtidas que vieram do destaque, com a parte do Publike (o quadro e o espaço na lista). */
 export function NumerosDoPacote({ totais }: { totais: TotaisDoImpulso }) {
   const quadro = totais.visitas_quadro ?? 0;
   const itens: [string, number, string][] = [
     ["Visitas", totais.visitas, "na vaga, vindas do destaque"],
-    ["Pelo quadro", quadro, "das visitas, pelo quadro do Publike"],
+    ["No Publike", quadro, "das visitas, pelo quadro e pela lista do Publike"],
     ["Curtiram", totais.curtidas, "a vaga depois de chegar pelo destaque"],
   ];
   return (

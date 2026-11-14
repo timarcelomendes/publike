@@ -216,7 +216,7 @@ export function HistoricoDeImpulsos({
                       <span className="block text-ink-muted">
                         {i.origem === "compra" ? `${formatarMoeda(i.valor)}, ` : ""}
                         {formatarNumero(i.totais.visitas)} {i.totais.visitas === 1 ? "visita" : "visitas"} (
-                        {formatarNumero(i.totais.visitas_quadro ?? 0)} pelo quadro)
+                        {formatarNumero(i.totais.visitas_quadro ?? 0)} no Publike)
                       </span>
                     </td>
                   ) : (
