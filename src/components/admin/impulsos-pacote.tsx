@@ -2,34 +2,20 @@
 
 import { useState } from "react";
 import { salvarPacoteAdmin, type ConfigPacote, type PacoteAVenda } from "@/lib/acoes/admin-impulsos";
-import { formatarDataHora, formatarMoeda } from "@/lib/formato";
+import { formatarMoeda } from "@/lib/formato";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 import { Inteiro, Reais } from "./impulsos";
 
 // Admin › Impulsos › Regras › Pacote de candidatos (claude/plano-nova-venda-do-impulso.md; migração 20270519120000):
-// os pacotes à venda e o preço, os dias no destaque, a verba que cada pacote soma à campanha geral e o robô que acerta
-// o orçamento dela. A venda nasce desligada (14/11/2026: "Venda desligada, piloto antes").
+// os pacotes à venda e o preço, os dias no destaque, a verba que cada pacote soma à campanha geral e a base, o máximo,
+// a conta e a campanha do robô que acerta o orçamento dela. A venda nasce desligada (14/11/2026: "Venda desligada,
+// piloto antes"); o robô liga e desliga na chave do alto da página (impulsos-chave-da-geral.tsx).
 
 const reais = (v: number) => formatarMoeda(Math.round(v * 100) / 100);
 
-export function ConfigDoPacote({
-  pacotes,
-  config,
-  alvo,
-  noAr,
-  ultima,
-}: {
-  pacotes: PacoteAVenda[];
-  config: ConfigPacote;
-  /** quanto a campanha geral deve ter por dia agora (a base mais a verba dos pacotes no ar, até o máximo) */
-  alvo: number | null;
-  /** quantos pacotes estão no ar */
-  noAr: number;
-  /** a última vez que o robô acertou a campanha geral, o valor e o último erro */
-  ultima: { em: string | null; valor: number | null; erro: string | null; erro_em: string | null };
-}) {
+export function ConfigDoPacote({ pacotes, config }: { pacotes: PacoteAVenda[]; config: ConfigPacote }) {
   const [p, setP] = useState(pacotes);
   const [c, setC] = useState(config);
   const { rodar, pendente, mensagem } = useAcao();
@@ -101,21 +87,11 @@ export function ConfigDoPacote({
 
       <fieldset className="flex flex-col gap-4">
         <legend className="text-label">Campanha geral (a mãe)</legend>
-        <label className="flex items-start gap-2 text-body">
-          <input
-            type="checkbox"
-            checked={c.geral_ligada}
-            onChange={(e) => setC({ ...c, geral_ligada: e.target.checked })}
-            className="mt-1 size-4"
-          />
-          <span>
-            O robô acerta o orçamento da campanha geral
-            <span className="block text-body-sm text-ink-muted">
-              A base mais a verba de cada pacote no ar, até o máximo: de manhã e quando entra um pacote novo. Ligado, mude
-              o orçamento por aqui, não no Google Ads (o robô volta para este valor na manhã seguinte).
-            </span>
-          </span>
-        </label>
+        <p className="max-w-3xl text-body-sm text-ink-muted">
+          Com a chave “Campanha geral no automático” ligada, no alto desta página, o robô deixa o orçamento dela na base
+          mais a verba de cada pacote no ar, até o máximo: de manhã e quando entra um pacote novo. Ligada, mude o orçamento
+          por aqui, não no Google Ads (o robô volta para este valor na manhã seguinte).
+        </p>
         <div className="flex flex-wrap gap-4">
           <Reais rotulo="Base por dia" valor={c.geral_base} mudar={(v) => setC({ ...c, geral_base: v })} />
           <Reais rotulo="Máximo por dia" valor={c.geral_maximo} mudar={(v) => setC({ ...c, geral_maximo: v })} />
@@ -141,21 +117,6 @@ export function ConfigDoPacote({
             />
           </label>
         </div>
-        <p className="text-body-sm text-ink-muted">
-          {alvo !== null &&
-            `Agora: ${reais(alvo)} por dia (${noAr === 1 ? "1 pacote no ar" : `${noAr} pacotes no ar`}). `}
-          {ultima.em
-            ? `O robô acertou em ${formatarDataHora(ultima.em)} para ${reais(Number(ultima.valor ?? 0))} por dia.`
-            : c.geral_ligada
-              ? "O robô ainda não acertou a campanha."
-              : "Desligado: o orçamento fica como estiver no Google Ads."}
-        </p>
-        {ultima.erro && (
-          <p className="text-body-sm break-words text-danger">
-            {ultima.erro_em ? `${formatarDataHora(ultima.erro_em)}: ` : ""}
-            {ultima.erro}
-          </p>
-        )}
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-3">

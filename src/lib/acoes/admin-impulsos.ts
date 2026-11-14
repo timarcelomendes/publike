@@ -61,6 +61,8 @@ export type ConfigImpulso = {
   geral_valor?: number | null;
   geral_erro?: string | null;
   geral_erro_em?: string | null;
+  // desligada a chave, a campanha ainda volta para a base na próxima volta do robô (migração 20270520120000)
+  geral_voltar?: boolean;
 };
 
 /** As chaves das regras do impulso no Google: o formulário delas não mexe no pacote de candidatos (nem o contrário). */
@@ -272,7 +274,7 @@ export async function salvarPacoteAdmin(pacotes: PacoteAVenda[], config: ConfigP
       pacote_ligado: config.pacote_ligado,
       pacote_dias: config.pacote_dias,
       pacote_verba_dia: Math.round(config.pacote_verba_dia * 100) / 100,
-      geral_ligada: config.geral_ligada,
+      // a chave (ligada ou não) fica com ligarCampanhaGeral, no alto da página
       geral_conta: conta,
       geral_campanha_id: campanha,
       geral_base: Math.round(config.geral_base * 100) / 100,
@@ -287,6 +289,33 @@ export async function salvarPacoteAdmin(pacotes: PacoteAVenda[], config: ConfigP
   if (config.geral_ligada) after(() => cuidarDosImpulsos().catch(() => {}));
   refresh();
   return { ok: true, mensagem: "Salvo." };
+}
+
+/**
+ * A chave da campanha geral, no alto de Admin › Impulsos (migração 20270520120000). Ligada, o robô deixa o orçamento
+ * dela na base mais a verba de cada pacote no ar, até o máximo; desligada, devolve à base uma vez, se tinha subido, e não
+ * mexe mais. O robô roda logo em seguida, para o Google Ads mudar na hora.
+ */
+export async function ligarCampanhaGeral(ligada: boolean): Promise<Resultado> {
+  if (typeof ligada !== "boolean") return { ok: false, erro: "Escolha ligar ou desligar." };
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  const { error } = await c.rpc("admin_salvar_impulso", {
+    p_precos: [] as unknown as Json,
+    p_config: { geral_ligada: ligada } as unknown as Json,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270519120000 primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  return {
+    ok: true,
+    mensagem: ligada
+      ? "Ligada. O robô acerta a campanha geral em instantes."
+      : "Desligada. Se o robô tinha subido a campanha geral, ela volta para a base em instantes.",
+  };
 }
 
 /**

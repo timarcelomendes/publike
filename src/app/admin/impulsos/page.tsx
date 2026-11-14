@@ -16,6 +16,7 @@ import { ListaDeAjustes, type AjusteDoAdmin } from "@/components/admin/impulsos-
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
 import { ehCorrendo, quemPediu } from "@/components/admin/impulsos-nomes";
 import { NovoImpulso } from "@/components/admin/impulsos-novo";
+import { ChaveDaGeral } from "@/components/admin/impulsos-chave-da-geral";
 import { ConfigDoPacote } from "@/components/admin/impulsos-pacote";
 import { TiposDeVaga } from "@/components/admin/impulsos-tipos";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
@@ -192,6 +193,24 @@ async function Conteudo({ aba, conta, produto }: { aba: Aba; conta: string | nul
             {travados.length === 0 ? "Nenhum travado" : plural(travados.length, "travado", "travados")}
           </Situacao>
         </div>
+        {d.pacotes && (
+          <ChaveDaGeral
+            ligada={Boolean(d.config.geral_ligada)}
+            pronta={Boolean(d.config.geral_conta && d.config.geral_campanha_id)}
+            alvo={d.geral_alvo == null ? null : Number(d.geral_alvo)}
+            base={Number(d.config.geral_base ?? 60)}
+            maximo={Number(d.config.geral_maximo ?? 150)}
+            porPacote={Number(d.config.pacote_verba_dia ?? 0)}
+            noAr={pacotesNoAr}
+            ultima={{
+              em: d.config.geral_feita_em ?? null,
+              valor: d.config.geral_valor == null ? null : Number(d.config.geral_valor),
+              erro: d.config.geral_erro ?? null,
+              erro_em: d.config.geral_erro_em ?? null,
+            }}
+            voltando={Boolean(d.config.geral_voltar)}
+          />
+        )}
         {!g.ligado && (
           <ol className="flex max-w-2xl list-decimal flex-col gap-1 pl-5 text-body-sm text-ink-muted">
             <li>No Google Cloud do Publike, ative a Google Ads API e peça o acesso Explorer (vem na hora).</li>
@@ -654,14 +673,6 @@ async function Regras({ d }: { d: Dados }) {
               geral_campanha_id: d.config.geral_campanha_id ?? null,
               geral_base: Number(d.config.geral_base ?? 60),
               geral_maximo: Number(d.config.geral_maximo ?? 150),
-            }}
-            alvo={d.geral_alvo == null ? null : Number(d.geral_alvo)}
-            noAr={d.impulsos.filter((i) => i.produto === "candidatos" && i.situacao === "no_ar").length}
-            ultima={{
-              em: d.config.geral_feita_em ?? null,
-              valor: d.config.geral_valor == null ? null : Number(d.config.geral_valor),
-              erro: d.config.geral_erro ?? null,
-              erro_em: d.config.geral_erro_em ?? null,
             }}
           />
         </Secao>
