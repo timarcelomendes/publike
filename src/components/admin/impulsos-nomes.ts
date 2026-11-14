@@ -31,6 +31,24 @@ export const NOME_DA_ORIGEM: Record<string, string> = {
   cliente: "Campanha do cliente",
 };
 
+/** O pacote de candidatos (migração 20270519120000): sem campanha no Google, no quadro até chegarem os candidatos. */
+export function ehPacote(i: Pick<ImpulsoDoAdmin, "produto">) {
+  return i.produto === "candidatos";
+}
+
+/** O nome da situação: o pacote fala de destaque e de saldo. */
+export function nomeDaSituacao(i: Pick<ImpulsoDoAdmin, "situacao" | "produto">) {
+  if (ehPacote(i) && i.situacao === "no_ar") return "No destaque";
+  if (ehPacote(i) && i.situacao === "credito") return "Virou saldo";
+  return NOME_DA_SITUACAO[i.situacao] ?? i.situacao;
+}
+
+/** "3 de 5 candidatos" do pacote (a curtida desfeita não conta). */
+export function candidatosDoPacote(i: Pick<ImpulsoDoAdmin, "alvo" | "entregues">) {
+  const alvo = Number(i.alvo ?? 0);
+  return `${Math.min(Number(i.entregues ?? 0), alvo)} de ${alvo} ${alvo === 1 ? "candidato" : "candidatos"}`;
+}
+
 /** O impulso ainda corre (criando, em revisão ou no ar). */
 export function ehCorrendo(situacao: string) {
   return situacao === "pago" || situacao === "em_revisao" || situacao === "no_ar";

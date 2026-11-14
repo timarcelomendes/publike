@@ -22,7 +22,7 @@ import {
 import { nomeDoBairro } from "@/lib/formato";
 import { vagasDoQuadro } from "@/lib/impulso";
 import { pracaDaCidade } from "@/lib/pracas";
-import { anunciosNoAr, vagasImpulsionadas } from "@/lib/servidor/paginas-busca";
+import { anunciosNoAr, vagasImpulsionadas, type VagaImpulsionada } from "@/lib/servidor/paginas-busca";
 import { funcoesDasVagasDaPraca } from "@/lib/servidor/paginas-funcao";
 import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -156,7 +156,7 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
     anunciosNoAr(tipo, cidade),
     agoraDaRequisicao(),
     tipo === "vaga" ? funcoesDasVagasDaPraca(cidade) : Promise.resolve({} as Record<string, string>),
-    tipo === "vaga" ? vagasImpulsionadas() : Promise.resolve({} as Record<string, string>),
+    tipo === "vaga" ? vagasImpulsionadas() : Promise.resolve({} as Record<string, VagaImpulsionada>),
   ]);
   const daCidade = todos.filter((a) => a.cidade === cidade);
   const itens = area ? daCidade.filter((a) => a.categoria === area.slug) : daCidade;
@@ -293,7 +293,14 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
           <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {destaques.map((a) => (
               <li key={a.id} className="grid">
-                <CardAnuncio anuncio={a} agora={agora} usuarioId={null} impulsionada />
+                <CardAnuncio
+                  anuncio={a}
+                  agora={agora}
+                  usuarioId={null}
+                  impulsionada
+                  // o código do impulso: a visita e a curtida que vêm do quadro contam para quem impulsionou
+                  impulso={impulsionadas[a.id]?.codigo ?? null}
+                />
               </li>
             ))}
           </ul>

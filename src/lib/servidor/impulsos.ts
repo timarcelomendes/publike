@@ -2270,6 +2270,56 @@ export async function cuidarDosImpulsos(): Promise<{
   }
 }
 
+/**
+ * A campanha geral (a mãe; claude/plano-nova-venda-do-impulso.md, migração 20270519120000): com o robô ligado em
+ * Admin › Impulsos, o orçamento por dia dela passa a ser a base mais a verba de cada pacote de candidatos no ar, até o
+ * máximo. O banco diz quando acertar: de manhã, uma vez por dia, e na hora em que o valor sobe com um pacote novo;
+ * depois de um erro, espera 1 hora. Orçamento compartilhado com outras campanhas fica como está (o robô avisa no Admin).
+ */
+async function cuidarDaGeral(a: Acesso) {
+  const { data, error } = await a.cliente.rpc("servidor_geral_do_dia", { p_chave: a.chave });
+  if (error) {
+    // sem a migração ainda: nada a fazer
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler a campanha geral:", error.message);
+    return;
+  }
+  const d = data as { fazer?: boolean; conta?: string; campanha_id?: string; valor?: number | string } | null;
+  const valor = Number(d?.valor);
+  if (!d?.fazer || !d.conta || !d.campanha_id || !(valor > 0)) return;
+  let erro: string | null = null;
+  try {
+    const [linha] = await consultar<{
+      campaign?: { campaignBudget?: string };
+      campaignBudget?: { explicitlyShared?: boolean };
+    }>(
+      `SELECT campaign.campaign_budget, campaign_budget.explicitly_shared FROM campaign ` +
+        `WHERE campaign.id = ${Number(d.campanha_id)}`,
+      d.conta,
+    );
+    const orcamento = linha?.campaign?.campaignBudget;
+    if (!orcamento) throw new Error(`a campanha ${d.campanha_id} não foi achada na conta ${d.conta}`);
+    if (linha?.campaignBudget?.explicitlyShared)
+      throw new Error("o orçamento da campanha geral é compartilhado com outras campanhas: o robô não mexe nele");
+    await mutar(
+      [
+        {
+          campaignBudgetOperation: {
+            updateMask: "amountMicros",
+            // em centavos inteiros (o Google recusa frações do centavo)
+            update: { resourceName: orcamento, amountMicros: String(Math.round(valor * 100) * 10_000) },
+          },
+        },
+      ],
+      d.conta,
+    );
+  } catch (e) {
+    erro = e instanceof Error ? e.message : String(e);
+    console.error("Publike: falha ao acertar o orçamento da campanha geral:", erro);
+  }
+  const { error: e2 } = await a.cliente.rpc("servidor_geral_feita", { p_chave: a.chave, p_valor: valor, p_erro: erro });
+  if (e2) console.error("Publike: falha ao guardar o orçamento da campanha geral:", e2.message);
+}
+
 /** Uma rodada do robô. Devolve quantos impulsos andaram e, quando um erro dura mais de 6 horas, o motivo. */
 async function umaVoltaDoRobo(
   a: Acesso,
@@ -2318,6 +2368,8 @@ async function umaVoltaDoRobo(
   // depois das vagas (a que entrou no ar ou acabou nesta volta já conta): a campanha geral fora das funções delas
   if (googleAdsLigado() && Date.now() - inicio < 35_000)
     await semDisputaComAGeral(a);
+  // o pacote de candidatos (migração 20270519120000): a campanha geral ganha a verba dos pacotes no ar
+  if (googleAdsLigado() && Date.now() - inicio < 38_000) await cuidarDaGeral(a);
   return alertas.length
     ? {
         feitos,

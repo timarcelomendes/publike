@@ -55,6 +55,49 @@ export type ConfigImpulso = {
   motor_raio_max?: number;
   // o teto do clique do impulso, ao nascer e nos que estão no ar (migração 20270512120000; antes dela, não vem)
   teto_clique?: number;
+} & Partial<ConfigPacote> & {
+  // a campanha geral (migração 20270519120000): a última vez que o robô acertou o orçamento, o valor e o último erro
+  geral_feita_em?: string | null;
+  geral_valor?: number | null;
+  geral_erro?: string | null;
+  geral_erro_em?: string | null;
+};
+
+/** As chaves das regras do impulso no Google: o formulário delas não mexe no pacote de candidatos (nem o contrário). */
+const CHAVES_DO_GOOGLE = [
+  "cortesia_ligada",
+  "cortesia_dias",
+  "cortesia_verba",
+  "raio_capital",
+  "raio_outras",
+  "auto_ligado",
+  "auto_verba_mes",
+  "auto_dias",
+  "auto_verba",
+  "auto_simultaneos",
+  "auto_avisar",
+  "motor_ligado",
+  "motor_teto_clique",
+  "motor_raio_max",
+  "teto_clique",
+] as const;
+
+/** Um pacote de candidatos à venda (migração 20270519120000). */
+export type PacoteAVenda = { candidatos: number; valor: number; ligado: boolean };
+
+/**
+ * O pacote de candidatos (claude/plano-nova-venda-do-impulso.md; migração 20270519120000): a venda, os dias no destaque,
+ * a verba por dia que cada pacote soma à campanha geral e a campanha geral que o robô acerta.
+ */
+export type ConfigPacote = {
+  pacote_ligado: boolean;
+  pacote_dias: number;
+  pacote_verba_dia: number;
+  geral_ligada: boolean;
+  geral_conta: string | null;
+  geral_campanha_id: string | null;
+  geral_base: number;
+  geral_maximo: number;
 };
 
 /** Um impulso na lista do admin (admin_impulsos). */
@@ -87,7 +130,19 @@ export type ImpulsoDoAdmin = {
   /** a garantia da verba (migração 20270518120000): quando o prazo foi estendido e o fim de antes */
   estendido_em?: string | null;
   ate_original?: string | null;
-  totais: { impressoes: number; cliques: number; visitas: number; curtidas: number };
+  /** o pacote de candidatos (migração 20270519120000): quantos ele traz, quantos chegaram e a verba por dia na geral */
+  produto?: "google" | "candidatos";
+  alvo?: number | null;
+  entregues?: number | null;
+  verba_dia?: number | null;
+  totais: {
+    impressoes: number;
+    cliques: number;
+    visitas: number;
+    curtidas: number;
+    visitas_quadro?: number;
+    curtidas_quadro?: number;
+  };
 };
 
 /** A campanha de um cliente (várias vagas numa campanha só no Google). */
@@ -166,9 +221,11 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
     if (config.motor_teto_clique !== undefined && config.teto_clique > config.motor_teto_clique)
       return { ok: false, erro: "O teto do clique não pode passar do teto do ajuste diário." };
   }
+  // só as regras do impulso no Google: o pacote de candidatos tem o próprio formulário (salvarPacoteAdmin)
+  const soDoGoogle = Object.fromEntries(CHAVES_DO_GOOGLE.filter((k) => k in config).map((k) => [k, config[k]]));
   const { error } = await c.rpc("admin_salvar_impulso", {
     p_precos: precos as unknown as Json,
-    p_config: config as unknown as Json,
+    p_config: soDoGoogle as unknown as Json,
   });
   if (error) {
     if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270423120000_impulsionar.sql primeiro." };
@@ -179,6 +236,103 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
   after(() => cuidarDosImpulsos().catch(() => {}));
   refresh();
   return { ok: true, mensagem: "Salvo." };
+}
+
+/**
+ * O pacote de candidatos (migração 20270519120000): os preços, a venda, os dias no destaque, a verba por dia na campanha
+ * geral e o robô que acerta o orçamento dela. Mudou a campanha geral, o robô acerta na volta seguinte.
+ */
+export async function salvarPacoteAdmin(pacotes: PacoteAVenda[], config: ConfigPacote): Promise<Resultado> {
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  for (const p of pacotes) {
+    if (!(Number.isInteger(p.candidatos) && p.candidatos >= 1 && p.candidatos <= 100))
+      return { ok: false, erro: "O pacote vai de 1 a 100 candidatos." };
+    if (!(p.valor >= 5 && p.valor <= 10000))
+      return { ok: false, erro: `Confira o preço do pacote de ${p.candidatos} candidatos (de R$ 5 a R$ 10.000).` };
+  }
+  if (!(Number.isInteger(config.pacote_dias) && config.pacote_dias >= 1 && config.pacote_dias <= 60))
+    return { ok: false, erro: "O pacote fica no destaque de 1 a 60 dias." };
+  if (!(config.pacote_verba_dia >= 0 && config.pacote_verba_dia <= 100))
+    return { ok: false, erro: "A verba por dia de cada pacote na campanha geral vai de R$ 0 a R$ 100." };
+  if (!(config.geral_base >= 1 && config.geral_base <= 5000) || !(config.geral_maximo >= 1 && config.geral_maximo <= 5000))
+    return { ok: false, erro: "A base e o máximo da campanha geral vão de R$ 1 a R$ 5.000 por dia." };
+  if (config.geral_maximo < config.geral_base)
+    return { ok: false, erro: "O máximo da campanha geral não pode ser menor que a base." };
+  const conta = (config.geral_conta ?? "").replace(/\D/g, "");
+  const campanha = (config.geral_campanha_id ?? "").replace(/\D/g, "");
+  if (conta && conta.length !== 10) return { ok: false, erro: "A conta do Google Ads tem 10 números (948-395-5066)." };
+  if (campanha && campanha.length > 20) return { ok: false, erro: "Confira o número da campanha geral." };
+  if (config.geral_ligada && (!conta || !campanha))
+    return { ok: false, erro: "Para o robô acertar a campanha geral, diga a conta e o número da campanha." };
+  const { error } = await c.rpc("admin_salvar_impulso", {
+    p_precos: [] as unknown as Json,
+    p_config: {
+      pacotes,
+      pacote_ligado: config.pacote_ligado,
+      pacote_dias: config.pacote_dias,
+      pacote_verba_dia: Math.round(config.pacote_verba_dia * 100) / 100,
+      geral_ligada: config.geral_ligada,
+      geral_conta: conta,
+      geral_campanha_id: campanha,
+      geral_base: Math.round(config.geral_base * 100) / 100,
+      geral_maximo: Math.round(config.geral_maximo * 100) / 100,
+    } as unknown as Json,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270519120000 primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  // com o robô ligado, o orçamento da campanha geral acerta já
+  if (config.geral_ligada) after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  return { ok: true, mensagem: "Salvo." };
+}
+
+/**
+ * O presente do Publike no piloto (migração 20270519120000): um pacote de candidatos em cada vaga escolhida, sem custo
+ * para o cliente. A vaga entra no quadro das vagas impulsionadas na hora; não precisa do Google Ads ligado.
+ */
+export async function darPacotes(dados: {
+  anuncios: string[];
+  candidatos: number;
+  dias: number;
+  avisar: boolean;
+}): Promise<Resultado> {
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  const anuncios = [...new Set(dados.anuncios)].filter((id) => UUID.test(id));
+  if (!anuncios.length || anuncios.length > 50) return { ok: false, erro: "Escolha de 1 a 50 vagas." };
+  if (!(Number.isInteger(dados.candidatos) && dados.candidatos >= 1 && dados.candidatos <= 100))
+    return { ok: false, erro: "O pacote vai de 1 a 100 candidatos." };
+  if (!(Number.isInteger(dados.dias) && dados.dias >= 1 && dados.dias <= 60))
+    return { ok: false, erro: "O pacote fica no destaque de 1 a 60 dias." };
+  const { data, error } = await c.rpc("admin_dar_pacotes", {
+    p_anuncios: anuncios,
+    p_candidatos: dados.candidatos,
+    p_dias: dados.dias,
+    p_avisar: dados.avisar,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270519120000 primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  const r = data as { ok?: boolean; erro?: string; feitas?: number; fora?: { titulo: string; motivo: string }[] } | null;
+  if (!r?.ok) {
+    const motivo = r?.fora?.[0] ? ` ${r.fora[0].titulo}: ${r.fora[0].motivo}` : "";
+    return { ok: false, erro: `${r?.erro ?? "Não deu para dar o pacote."}${motivo}` };
+  }
+  // a verba da campanha geral sobe com os pacotes novos
+  after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  const feitas = Number(r.feitas ?? 0);
+  const fora = r.fora?.length ?? 0;
+  return {
+    ok: true,
+    mensagem:
+      (feitas === 1 ? "A vaga entrou no destaque." : `As ${feitas} vagas entraram no destaque.`) +
+      (fora ? ` ${fora === 1 ? "Uma não pôde" : `${fora} não puderam`}: ${r.fora!.map((x) => x.titulo).join(", ")}.` : ""),
+  };
 }
 
 const comTracos = (c: string) => c.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");

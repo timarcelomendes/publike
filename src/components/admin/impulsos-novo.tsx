@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowLeft, Rocket, Search } from "lucide-react";
+import { ArrowLeft, Rocket, Search, Users } from "lucide-react";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { Selo } from "@/components/ui/basicos";
 import { Botao, classesBotao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
 import { useAcao } from "@/components/ui/usar-acao";
-import { impulsionarCliente, vagasParaImpulso, type VagaParaImpulso } from "@/lib/acoes/admin-impulsos";
+import { darPacotes, impulsionarCliente, vagasParaImpulso, type VagaParaImpulso } from "@/lib/acoes/admin-impulsos";
 import { formatarData, formatarMoeda, plural } from "@/lib/formato";
 import { diasQueCabem, VERBA_MINIMA_POR_DIA } from "@/lib/impulso";
 import { Inteiro, Reais } from "./impulsos";
@@ -14,7 +14,8 @@ import { Inteiro, Reais } from "./impulsos";
 // Admin › Impulsos › Novo impulso (migração 20270430120000): o admin escolhe vagas de um cliente (pelo nome, pelo
 // título ou pelo tipo) e elas entram numa campanha só no Google, com uma verba para todas. A verba e os dias de partida
 // saem das regras dos tipos das vagas escolhidas. Um cliente por vez: o cliente com campanha correndo ganha as vagas
-// novas nela.
+// novas nela. No modo "pacote" (o presente do piloto; migração 20270519120000), cada vaga marcada ganha um pacote de
+// candidatos: entra no quadro das vagas impulsionadas até chegarem os candidatos ou acabar o prazo.
 
 type TipoCurto = { id: string; nome: string };
 
@@ -90,10 +91,16 @@ function LinhaDaVaga({
 }
 
 export function NovoImpulso({
+  modo = "google",
+  pacoteDias = 30,
   tipos,
   contaInicial,
   vagasIniciais,
 }: {
+  /** o pacote de candidatos (o presente do piloto) ou a campanha no Google */
+  modo?: "pacote" | "google";
+  /** os dias no destaque de partida do pacote (as regras do pacote) */
+  pacoteDias?: number;
   tipos: TipoCurto[];
   /** aberto pelo "Mais vagas" de um cliente: as vagas dele já vêm do servidor */
   contaInicial: string | null;
@@ -111,6 +118,10 @@ export function NovoImpulso({
   const [diasEscolhidos, setDias] = useState<number | null>(null);
   const [verbaEscolhida, setVerba] = useState<number | null>(null);
   const [avisar, setAvisar] = useState(true);
+  // o pacote de candidatos: quantos por vaga e por quantos dias, no máximo
+  const pacote = modo === "pacote";
+  const [candidatos, setCandidatos] = useState(5);
+  const [diasDoPacote, setDiasDoPacote] = useState(pacoteDias);
   const { rodar, pendente, mensagem } = useAcao();
 
   function procurar(filtro: { busca: string; tipo: FiltroTipo; conta: string | null }) {
@@ -369,13 +380,15 @@ export function NovoImpulso({
           if (!cliente) return;
           rodar(
             () =>
-              impulsionarCliente({
-                conta: cliente.id,
-                anuncios: marcadas.map((v) => v.id),
-                dias: cliente.campanha ? null : dias,
-                verba,
-                avisar,
-              }),
+              pacote
+                ? darPacotes({ anuncios: marcadas.map((v) => v.id), candidatos, dias: diasDoPacote, avisar })
+                : impulsionarCliente({
+                    conta: cliente.id,
+                    anuncios: marcadas.map((v) => v.id),
+                    dias: cliente.campanha ? null : dias,
+                    verba,
+                    avisar,
+                  }),
             (r) => {
               if (!r.ok) return;
               setEscolhidas({});
@@ -390,8 +403,9 @@ export function NovoImpulso({
           <>
             <h3 className="text-label">Nada marcado ainda</h3>
             <p className="text-body-sm text-ink-muted">
-              Marque vagas de um cliente. Elas entram numa campanha só no Google, com uma verba para todas: o Google põe o
-              dinheiro nas vagas que mais aparecem na busca. A verba é do Publike; o cliente não paga nada.
+              {pacote
+                ? "Marque vagas de um cliente. Cada uma ganha um pacote de candidatos: entra no quadro das vagas impulsionadas até chegarem os candidatos. O cliente não paga nada."
+                : "Marque vagas de um cliente. Elas entram numa campanha só no Google, com uma verba para todas: o Google põe o dinheiro nas vagas que mais aparecem na busca. A verba é do Publike; o cliente não paga nada."}
             </p>
             {mensagem}
           </>
@@ -414,7 +428,20 @@ export function NovoImpulso({
               )}
             </div>
 
-            {cliente.campanha ? (
+            {pacote ? (
+              <>
+                <div className="flex flex-wrap gap-4">
+                  <Inteiro rotulo="Candidatos por vaga" valor={candidatos} mudar={setCandidatos} max={100} />
+                  <Inteiro rotulo="Dias no destaque, no máximo" valor={diasDoPacote} mudar={setDiasDoPacote} max={60} />
+                </div>
+                <p className="text-body-sm text-ink-muted">
+                  {n === 1 ? "A vaga entra" : `As ${n} vagas entram`} no quadro “Vagas impulsionadas na região” agora, até
+                  chegarem {candidatos === 1 ? "o candidato" : `os ${candidatos} candidatos`}
+                  {n === 1 ? "" : " de cada uma"} ou passarem os dias. Conta quem curtir a vaga depois de chegar pelo
+                  destaque.
+                </p>
+              </>
+            ) : cliente.campanha ? (
               <p className="text-body-sm">
                 {n === 1 ? "A vaga entra" : "As vagas entram"} na campanha que já corre
                 {cliente.campanha.ate ? ` até ${formatarData(cliente.campanha.ate)}` : ""}. A verba soma à dela.
@@ -423,56 +450,60 @@ export function NovoImpulso({
               <Inteiro rotulo="Dias" valor={dias} mudar={setDias} max={30} />
             )}
 
-            <div className="flex flex-col gap-1">
-              <Reais
-                rotulo={cliente.campanha ? "Verba a mais no Google" : "Verba no Google (total)"}
-                valor={verba}
-                mudar={setVerba}
-              />
-              <p className="text-body-sm text-ink-muted">
-                Sugestão pelos tipos: {formatarMoeda(sugestao)}.
-                {verbaEscolhida !== null && Math.abs(verbaEscolhida - sugestao) > 0.009 && (
-                  <>
-                    {" "}
-                    <button
-                      type="button"
-                      className="text-terra-text underline underline-offset-2"
-                      onClick={() => setVerba(null)}
-                    >
-                      Usar a sugestão
-                    </button>
-                  </>
-                )}
-              </p>
-            </div>
+            {!pacote && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <Reais
+                    rotulo={cliente.campanha ? "Verba a mais no Google" : "Verba no Google (total)"}
+                    valor={verba}
+                    mudar={setVerba}
+                  />
+                  <p className="text-body-sm text-ink-muted">
+                    Sugestão pelos tipos: {formatarMoeda(sugestao)}.
+                    {verbaEscolhida !== null && Math.abs(verbaEscolhida - sugestao) > 0.009 && (
+                      <>
+                        {" "}
+                        <button
+                          type="button"
+                          className="text-terra-text underline underline-offset-2"
+                          onClick={() => setVerba(null)}
+                        >
+                          Usar a sugestão
+                        </button>
+                      </>
+                    )}
+                  </p>
+                </div>
 
-            <p className="text-body-sm text-ink-muted">
-              {!cliente.campanha &&
-                `Cerca de ${formatarMoeda(Math.round((verba / Math.max(dias, 1)) * 100) / 100)} por dia para todas juntas. `}
-              {raios.length === 1
-                ? `Aparece na cidade de cada vaga e nas vizinhas a até ${raios[0]} km.`
-                : `Aparece na cidade de cada vaga e nas vizinhas (o raio de cada tipo vai de ${raios[0]} a ${raios.at(-1)} km).`}{" "}
-              Os dias contam quando o Google aprovar o primeiro anúncio.
-            </p>
-            {poucoPorDia && (
-              <p role="alert" className="text-body-sm text-danger">
-                Menos de {formatarMoeda(VERBA_MINIMA_POR_DIA)} por dia não vale a pena: o anúncio quase não aparece no
-                Google.{" "}
-                {cabem >= 1 ? (
-                  <>
-                    Com {formatarMoeda(verba)}, até {plural(cabem, "dia", "dias")}.{" "}
-                    <button
-                      type="button"
-                      className="text-terra-text underline underline-offset-2"
-                      onClick={() => setDias(cabem)}
-                    >
-                      Usar {plural(cabem, "dia", "dias")}
-                    </button>
-                  </>
-                ) : (
-                  `Ponha ao menos ${formatarMoeda(VERBA_MINIMA_POR_DIA)} de verba.`
+                <p className="text-body-sm text-ink-muted">
+                  {!cliente.campanha &&
+                    `Cerca de ${formatarMoeda(Math.round((verba / Math.max(dias, 1)) * 100) / 100)} por dia para todas juntas. `}
+                  {raios.length === 1
+                    ? `Aparece na cidade de cada vaga e nas vizinhas a até ${raios[0]} km.`
+                    : `Aparece na cidade de cada vaga e nas vizinhas (o raio de cada tipo vai de ${raios[0]} a ${raios.at(-1)} km).`}{" "}
+                  Os dias contam quando o Google aprovar o primeiro anúncio.
+                </p>
+                {poucoPorDia && (
+                  <p role="alert" className="text-body-sm text-danger">
+                    Menos de {formatarMoeda(VERBA_MINIMA_POR_DIA)} por dia não vale a pena: o anúncio quase não aparece no
+                    Google.{" "}
+                    {cabem >= 1 ? (
+                      <>
+                        Com {formatarMoeda(verba)}, até {plural(cabem, "dia", "dias")}.{" "}
+                        <button
+                          type="button"
+                          className="text-terra-text underline underline-offset-2"
+                          onClick={() => setDias(cabem)}
+                        >
+                          Usar {plural(cabem, "dia", "dias")}
+                        </button>
+                      </>
+                    ) : (
+                      `Ponha ao menos ${formatarMoeda(VERBA_MINIMA_POR_DIA)} de verba.`
+                    )}
+                  </p>
                 )}
-              </p>
+              </>
             )}
 
             <label className="flex items-start gap-2 text-body">
@@ -480,21 +511,29 @@ export function NovoImpulso({
               <span>
                 Avisar o cliente
                 <span className="block text-body-sm text-ink-muted">
-                  Um aviso só no sino, como presente de boas-vindas do Publike, com o link para o cliente ver como o
-                  anúncio sai no Google e acompanhar os números.
+                  {pacote
+                    ? "Um aviso no sino e por e-mail, como presente do Publike, com o link para o cliente acompanhar os candidatos."
+                    : "Um aviso só no sino, como presente de boas-vindas do Publike, com o link para o cliente ver como o anúncio sai no Google e acompanhar os números."}
                 </span>
               </span>
             </label>
 
             <div className="flex flex-wrap gap-2">
-              <Botao type="submit" variante="primario" tamanho="sm" disabled={pendente || verba < n || poucoPorDia}>
-                <Rocket aria-hidden />
-                {pendente
-                  ? "Impulsionando…"
-                  : cliente.campanha
-                    ? `Pôr ${n === 1 ? "a vaga" : `as ${n} vagas`} na campanha`
-                    : `Impulsionar ${n === 1 ? "a vaga" : `${n} vagas`}`}
-              </Botao>
+              {pacote ? (
+                <Botao type="submit" variante="primario" tamanho="sm" disabled={pendente}>
+                  <Users aria-hidden />
+                  {pendente ? "Dando o pacote…" : `Dar o pacote ${n === 1 ? "à vaga" : `às ${n} vagas`}`}
+                </Botao>
+              ) : (
+                <Botao type="submit" variante="primario" tamanho="sm" disabled={pendente || verba < n || poucoPorDia}>
+                  <Rocket aria-hidden />
+                  {pendente
+                    ? "Impulsionando…"
+                    : cliente.campanha
+                      ? `Pôr ${n === 1 ? "a vaga" : `as ${n} vagas`} na campanha`
+                      : `Impulsionar ${n === 1 ? "a vaga" : `${n} vagas`}`}
+                </Botao>
+              )}
               <Botao
                 tamanho="sm"
                 variante="fantasma"

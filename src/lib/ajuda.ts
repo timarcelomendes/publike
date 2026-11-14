@@ -152,7 +152,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "O que é impulsionar a vaga?",
-        r: "Sua vaga vira um anúncio na busca do Google, para quem procura esse trabalho perto do bairro dela. Na vaga, toque em Impulsionar, escolha 3, 7 ou 15 dias e pague por Pix ou cartão. O Publike monta o anúncio com a função, o lugar e o salário, e o Google revisa (costuma levar algumas horas). Os dias só começam a contar quando o anúncio entra no ar. Na mesma tela você acompanha quantas vezes ele apareceu, quantas pessoas clicaram e quantas curtiram a vaga. Tem a garantia da verba: se até o fim o Google usar menos de 80% dela, o anúncio segue no ar sem custo pelo mesmo prazo, até usar o resto. O que ele não usar, no fim ou se você pausar ou preencher a vaga antes, vira crédito para outra vaga, por 90 dias (a partir de R$ 10). Se o Google não aprovar, o valor volta inteiro. O anúncio aparece por lugar e pela busca, nunca por idade, sexo ou aparência, como pede a lei.",
+        r: "Sua vaga entra no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade, para onde o anúncio do Publike no Google leva quem procura emprego. Você escolhe quantos candidatos quer, e só conta quem curtir a vaga depois de chegar pelo destaque (quem curte e desfaz não conta). Chegou o último, o pacote acaba e você recebe o aviso; no máximo, ele fica 30 dias. O que não chegar vira saldo para usar em outra vaga, por 90 dias, e você pode parar quando quiser. Na vaga, toque em Impulsionar para ver se já está à venda para a sua conta. Fora do quadro, a lista do Publike não muda: todas as vagas aparecem na ordem de sempre.",
       },
       {
         p: "Um candidato disse que começou a trabalhar. O que faço?",

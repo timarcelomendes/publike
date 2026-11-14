@@ -11,6 +11,20 @@ import type { Regime } from "./tipos";
 export const CAMPANHA_DO_IMPULSO = "impulso";
 
 /**
+ * O parâmetro do cartão do quadro "Vagas impulsionadas na região" (migração 20270519120000): a página da vaga conta a
+ * visita para quem impulsionou e tira o parâmetro do endereço.
+ */
+export const PARAMETRO_DO_DESTAQUE = "destaque";
+
+/** O endereço da vaga a partir do quadro, com o código do impulso (sem código, o endereço de sempre). */
+export function linkDoDestaque(anuncioId: string, codigo: string | null | undefined, extra = "") {
+  const resto = [codigo && /^[a-z0-9]{6,20}$/.test(codigo) ? `${PARAMETRO_DO_DESTAQUE}=${codigo}` : "", extra]
+    .filter(Boolean)
+    .join("&");
+  return `/anuncio/${anuncioId}${resto ? `?${resto}` : ""}`;
+}
+
+/**
  * A menor verba por dia do impulso pelo admin (13/11/2026, Marcelo: "menos de R$ 10,00 por dia não vale a pena"): com
  * R$ 4 por dia, as campanhas ficaram com 0 vistas. O banco confere de novo (admin_impulsionar_cliente).
  */

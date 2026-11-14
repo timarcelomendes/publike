@@ -1,13 +1,14 @@
-import { Gift, Rocket, ShieldCheck } from "lucide-react";
+import { Gift, Rocket, ShieldCheck, Users } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
 import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
-import { CancelarImpulso, ImpulsionarSemPagar } from "@/components/painel/impulso/acoes";
+import { CancelarImpulso, ImpulsionarSemPagar, PararPacote, UsarSaldo } from "@/components/painel/impulso/acoes";
 import { AjustesDoImpulso, type DiaDoAjuste } from "@/components/painel/impulso/ajustes";
 import { NumerosDoImpulso, type DiaDoImpulso, type TotaisDoImpulso } from "@/components/painel/impulso/numeros";
+import { BarraDoPacote, NumerosDoPacote } from "@/components/painel/impulso/pacote";
 import { PreviaDoAnuncio } from "@/components/painel/impulso/previa";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
@@ -22,11 +23,14 @@ import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 
-export const metadata: Metadata = { title: "Impulsionar no Google", robots: { index: false } };
+export const metadata: Metadata = { title: "Impulsionar a vaga", robots: { index: false } };
 
-// O impulso da vaga (claude/plano-impulsionar-vaga.md; migração 20270423120000): a vaga anunciada no Google para quem
-// está perto, por 3, 7 ou 15 dias, com o relatório no fim. Tudo automático: pagou, o robô cria o anúncio; aprovou, os dias
-// contam; acabou, chega o relatório. Dentro do Publike nada muda (regra de 24/10).
+// O impulso da vaga. Desde 14/11/2026, o pacote de candidatos (claude/plano-nova-venda-do-impulso.md; migração
+// 20270519120000): a vaga entra no quadro "Vagas impulsionadas na região", no alto das páginas de vagas da cidade, até
+// chegarem os candidatos do pacote; só conta quem curtir depois de chegar pelo destaque, e o que não chegar vira saldo.
+// Antes, o anúncio da vaga no Google por 3, 7 ou 15 dias (claude/plano-impulsionar-vaga.md; migração 20270423120000),
+// com a venda desligada desde 14/11: a página ainda mostra os que correm e os relatórios dos anteriores. Fora o quadro,
+// a lista do Publike não muda (regra de 24/10).
 
 type Impulso = {
   id: string;
@@ -56,7 +60,17 @@ type Impulso = {
   por_dia: DiaDoImpulso[];
   /** o ajuste diário, em beta (migração 20270509120000; antes dela, não vem) */
   ajustes?: DiaDoAjuste[];
+  /**
+   * O pacote de candidatos (migração 20270519120000; antes dela, não vem): quantos candidatos ele traz, quantos já
+   * chegaram (com a curtida de pé) e quantos viraram saldo no fim.
+   */
+  produto?: "google" | "candidatos";
+  alvo?: number | null;
+  entregues?: number | null;
+  virou_saldo?: number | null;
 };
+
+const ehPacote = (i: Impulso) => i.produto === "candidatos";
 
 /** O que o Google não usar vira crédito no pago, no de crédito e no grátis (o presente do Publike, não). */
 const deixaCredito = (i: Impulso) => i.origem !== "admin";
@@ -75,10 +89,26 @@ type DoImpulso = {
   cortesia: { dias: number } | null;
   raio: number | null;
   impulsos: Impulso[];
-  compra_pendente: { id: string; situacao: string; dias: number; cobranca: string | null } | null;
+  compra_pendente: {
+    id: string;
+    situacao: string;
+    dias: number;
+    cobranca: string | null;
+    /** o pacote de candidatos (migração 20270519120000) */
+    candidatos?: number | null;
+  } | null;
   /** o ajuste diário ligado (migração 20270509120000) */
   ajuste_ligado?: boolean;
+  /** o pacote de candidatos (migração 20270519120000; antes dela, não vem): os à venda, os dias no destaque e o saldo */
+  pacote_ligado?: boolean;
+  pacote_dias?: number | null;
+  pacotes?: { candidatos: number; valor: number }[];
+  saldo?: number;
+  saldo_ate?: string | null;
 };
+
+/** A venda de antes (o anúncio da vaga no Google): os planos, o grátis ou os dias de crédito. */
+const temOfertaDoGoogle = (d: DoImpulso) => d.precos.length > 0 || Boolean(d.cortesia) || d.credito > 0;
 
 const VALENDO = new Set(["pago", "em_revisao", "no_ar"]);
 
@@ -109,9 +139,9 @@ async function Conteudo({
   const cabecalho = (
     <CabecalhoDaPagina
       voltar={{ href: `/painel/anuncio/${id}`, nome: "Vaga" }}
-      titulo="Impulsionar no Google"
+      titulo="Impulsionar a vaga"
       selo={<Selo variante="novo">Novo</Selo>}
-      descricao="Sua vaga anunciada no Google para quem procura emprego perto dela, por 3, 7 ou 15 dias. No fim, você recebe quantos viram, clicaram e curtiram. Dentro do Publike nada muda: a vaga aparece para todos do mesmo jeito."
+      descricao="Sua vaga em destaque para quem procura emprego na região, no alto das páginas de vagas do Publike, até chegarem os candidatos que você quer. Só conta quem curtir a vaga depois de chegar pelo destaque."
     />
   );
   if (error) {
@@ -130,24 +160,36 @@ async function Conteudo({
   const valendo = d.impulsos.find((i) => VALENDO.has(i.situacao)) ?? null;
   const anteriores = d.impulsos.filter((i) => i !== valendo);
   const cartao = primeiro(sp.cartao);
+  // o anúncio da vaga no Google (o produto de antes): com um correndo ou, sem o pacote à venda (nem saldo), com a venda
+  // de antes ligada
+  const comPacote = (Boolean(d.pacote_ligado) && (d.pacotes?.length ?? 0) > 0) || (d.saldo ?? 0) > 0;
+  const doGoogle = valendo
+    ? !ehPacote(valendo)
+    : !comPacote && !d.compra_pendente?.candidatos && googleAdsLigado() && temOfertaDoGoogle(d);
 
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
       {cartao === "ok" && !valendo && (
         <Aviso tipo="sucesso" titulo="Cartão recebido">
-          Assim que o pagamento for confirmado, o anúncio vai para o Google sozinho. Pode levar alguns minutos.
+          Assim que o pagamento for confirmado, o impulso começa sozinho. Pode levar alguns minutos.
         </Aviso>
       )}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         <div className="flex min-w-0 flex-col gap-6">
           {valendo ? (
-            <ImpulsoValendo i={valendo} ajuste={Boolean(d.ajuste_ligado)} />
+            ehPacote(valendo) ? (
+              <PacoteValendo i={valendo} />
+            ) : (
+              <ImpulsoValendo i={valendo} ajuste={Boolean(d.ajuste_ligado)} />
+            )
           ) : d.compra_pendente ? (
             <Aviso tipo="info" titulo="Esperando o pagamento">
               <span className="flex flex-col items-start gap-2">
                 <span>
-                  O impulso de {d.compra_pendente.dias} dias começa assim que o pagamento for confirmado.
+                  {d.compra_pendente.candidatos
+                    ? `O pacote de ${d.compra_pendente.candidatos} candidatos começa assim que o pagamento for confirmado.`
+                    : `O impulso de ${d.compra_pendente.dias} dias começa assim que o pagamento for confirmado.`}
                 </span>
                 {d.compra_pendente.cobranca && (
                   <BotaoLink href={`/painel/faturas/${d.compra_pendente.cobranca}?pix=1`} tamanho="sm">
@@ -165,84 +207,64 @@ async function Conteudo({
                 Impulsos anteriores
               </h3>
               <ul className="flex flex-col gap-4">
-                {anteriores.map((i) => (
-                  <li key={i.id} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-                    <p className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-label">
-                        {i.dias} dias · {dataCurta(i.criado_em)}
-                        {i.encerrado_em ? ` a ${dataCurta(i.encerrado_em)}` : ""}
-                      </span>
-                      <SeloDaSituacao i={i} />
-                    </p>
-                    {i.motivo && i.situacao !== "encerrado" && <p className="text-body-sm text-ink-muted">{i.motivo}</p>}
-                    {i.estendido_em && i.ate_original && (
-                      <p className="text-body-sm text-ink-muted">
-                        Teve menos busca no Google do que o esperado e seguiu no ar depois de {dataCurta(i.ate_original)}{" "}
-                        pela garantia da verba, sem custo.
+                {anteriores.map((i) =>
+                  ehPacote(i) ? (
+                    <li key={i.id} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+                      <PacoteAnterior i={i} />
+                    </li>
+                  ) : (
+                    <li key={i.id} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+                      <p className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-label">
+                          {i.dias} dias · {dataCurta(i.criado_em)}
+                          {i.encerrado_em ? ` a ${dataCurta(i.encerrado_em)}` : ""}
+                        </span>
+                        <SeloDaSituacao i={i} />
                       </p>
-                    )}
-                    {i.virou_credito && (
-                      <p className="text-body-sm">
-                        Virou crédito: {i.virou_credito.dias} {i.virou_credito.dias === 1 ? "dia" : "dias"}, com{" "}
-                        {formatarMoeda(i.virou_credito.verba)} para o anúncio de outra vaga.
-                      </p>
-                    )}
-                    {i.aprovado_em && (
-                      <NumerosDoImpulso
-                        totais={i.totais}
-                        porDia={i.por_dia}
-                        verba={i.verba}
-                        gasto={i.gasto}
-                        rotuloDaVerba={rotuloDaVerba(i)}
-                      />
-                    )}
-                    <AjustesDoImpulso ajustes={i.ajustes ?? []} noAr={false} />
-                  </li>
-                ))}
+                      {i.motivo && i.situacao !== "encerrado" && <p className="text-body-sm text-ink-muted">{i.motivo}</p>}
+                      {i.estendido_em && i.ate_original && (
+                        <p className="text-body-sm text-ink-muted">
+                          Teve menos busca no Google do que o esperado e seguiu no ar depois de {dataCurta(i.ate_original)}{" "}
+                          pela garantia da verba, sem custo.
+                        </p>
+                      )}
+                      {i.virou_credito && (
+                        <p className="text-body-sm">
+                          Virou crédito: {i.virou_credito.dias} {i.virou_credito.dias === 1 ? "dia" : "dias"}, com{" "}
+                          {formatarMoeda(i.virou_credito.verba)} para o anúncio de outra vaga.
+                        </p>
+                      )}
+                      {i.aprovado_em && (
+                        <NumerosDoImpulso
+                          totais={i.totais}
+                          porDia={i.por_dia}
+                          verba={i.verba}
+                          gasto={i.gasto}
+                          rotuloDaVerba={rotuloDaVerba(i)}
+                        />
+                      )}
+                      <AjustesDoImpulso ajustes={i.ajustes ?? []} noAr={false} />
+                    </li>
+                  ),
+                )}
               </ul>
             </section>
           )}
         </div>
         <aside className="flex flex-col gap-6 xl:sticky xl:top-24">
-          <section aria-labelledby="previa" className="flex flex-col gap-3">
-            <h3 id="previa" className="text-h3">
-              Como o anúncio sai
-            </h3>
-            <PreviaDoAnuncio vaga={d.vaga} raio={d.raio} />
-          </section>
-          <section aria-labelledby="como" className="flex flex-col gap-3">
-            <h3 id="como" className="text-h3">
-              Como funciona
-            </h3>
-            <ol className="flex flex-col gap-2.5 text-body-sm">
-              {[
-                "Você escolhe 3, 7 ou 15 dias e paga no Pix ou no cartão. No Rápido, o mesmo valor vai para o Google em menos dias: mais gente por dia.",
-                "O Publike cria o anúncio no Google, com a função, o salário e o bairro da vaga.",
-                "O Google revisa em até 1 dia útil. Aprovou, os dias começam a contar.",
-                "Quem pesquisa a função perto da vaga vê o anúncio e abre a vaga no Publike.",
-                ...(d.ajuste_ligado
-                  ? ["Toda manhã, o ajuste diário (beta) acerta a verba, o lance, as buscas e o raio pelos números do dia anterior."]
-                  : []),
-                "Garantia da verba: se até o fim o Google usar menos de 80% dela, o anúncio segue no ar sem custo pelo mesmo prazo, até usar o resto.",
-                "No fim, chega o relatório: quantos viram, clicaram e curtiram.",
-              ].map((passo, n) => (
-                <li key={passo} className="flex gap-3">
-                  <span
-                    aria-hidden
-                    className="grid size-6 shrink-0 place-items-center rounded-pill bg-surface-300 text-caption font-bold"
-                  >
-                    {n + 1}
-                  </span>
-                  <span className="pt-0.5">{passo}</span>
-                </li>
-              ))}
-            </ol>
-            <p className="text-body-sm text-ink-muted">
-              O anúncio aparece só pelo lugar e pelo que a pessoa pesquisou, nunca por idade ou sexo. Se a vaga fechar
-              antes do fim, o anúncio para sozinho. O que o Google não usar, no fim ou quando a vaga fecha, vira
-              crédito para outra vaga, por 90 dias (a partir de R$ 10).
-            </p>
-          </section>
+          {doGoogle ? (
+            <>
+              <section aria-labelledby="previa" className="flex flex-col gap-3">
+                <h3 id="previa" className="text-h3">
+                  Como o anúncio sai
+                </h3>
+                <PreviaDoAnuncio vaga={d.vaga} raio={d.raio} />
+              </section>
+              <ComoFuncionaNoGoogle ajuste={Boolean(d.ajuste_ligado)} />
+            </>
+          ) : (
+            <ComoFuncionaOPacote dias={d.pacote_dias ?? 30} />
+          )}
         </aside>
       </div>
     </div>
@@ -250,6 +272,17 @@ async function Conteudo({
 }
 
 function SeloDaSituacao({ i }: { i: Impulso }) {
+  if (ehPacote(i)) {
+    const [variante, nome] =
+      i.situacao === "no_ar"
+        ? (["match", "No destaque"] as const)
+        : i.situacao === "credito"
+          ? (["contorno", "Virou saldo"] as const)
+          : i.situacao === "devolvido"
+            ? (["contorno", "Devolvido"] as const)
+            : (["contorno", "Terminou"] as const);
+    return <Selo variante={variante}>{nome}</Selo>;
+  }
   const [variante, nome] =
     i.situacao === "no_ar"
       ? (["match", "No ar no Google"] as const)
@@ -347,10 +380,14 @@ async function Oferta({ d }: { d: DoImpulso }) {
       </Aviso>
     );
   }
-  if (!googleAdsLigado() || (d.precos.length === 0 && !d.cortesia && d.credito === 0)) {
+  const saldo = d.saldo ?? 0;
+  const pacotes = d.pacote_ligado ? (d.pacotes ?? []) : [];
+  const google = googleAdsLigado() && temOfertaDoGoogle(d);
+  if (saldo === 0 && pacotes.length === 0 && !google) {
     return (
       <Aviso tipo="info" titulo="O impulso chega em breve">
-        Assim que estiver à venda, você impulsiona a vaga por aqui.
+        Assim que estiver à venda, você impulsiona a vaga por aqui: ela aparece em destaque para quem procura emprego na
+        região, e você só gasta com quem curtir a vaga.
       </Aviso>
     );
   }
@@ -359,6 +396,33 @@ async function Oferta({ d }: { d: DoImpulso }) {
       <h3 id="impulsionar" className="text-h3">
         Impulsionar “{d.vaga.titulo}”
       </h3>
+      {saldo > 0 && (
+        <div className="flex flex-col gap-3 rounded-lg border border-cerrado-text/40 bg-cerrado/10 p-4 sm:p-5">
+          <p className="text-body">
+            Você tem <strong>{saldo} {saldo === 1 ? "candidato" : "candidatos"} de saldo</strong>, de pacotes anteriores
+            {d.saldo_ate ? `. O que vence primeiro vale até ${dataCurta(d.saldo_ate)}` : ""}. Use nesta vaga, sem pagar
+            nada.
+          </p>
+          <UsarSaldo anuncio={d.vaga.id} saldo={saldo} />
+        </div>
+      )}
+      {pacotes.length > 0 &&
+        (d.pode_pagar ? (
+          <FormularioDoPacote d={d} pacotes={pacotes} />
+        ) : (
+          <Aviso tipo="info" titulo="Os pagamentos ainda não estão abertos para a sua conta">
+            Logo você vai poder pagar o pacote por aqui.
+          </Aviso>
+        ))}
+      {google && <OfertaDoGoogle d={d} />}
+    </section>
+  );
+}
+
+/** A venda de antes (o anúncio da vaga no Google por 3, 7 ou 15 dias), enquanto estiver ligada no Admin. */
+function OfertaDoGoogle({ d }: { d: DoImpulso }) {
+  return (
+    <>
       {d.cortesia && (
         <div className="flex flex-col gap-3 rounded-lg border border-cerrado-text/40 bg-cerrado/10 p-4 sm:p-5">
           <p className="text-body">
@@ -378,12 +442,39 @@ async function Oferta({ d }: { d: DoImpulso }) {
         </div>
       )}
       {d.precos.length > 0 &&
-        (d.pode_pagar ? <FormularioDoImpulso d={d} /> : (
+        (d.pode_pagar ? (
+          <FormularioDoImpulso d={d} />
+        ) : (
           <Aviso tipo="info" titulo="Os pagamentos ainda não estão abertos para a sua conta">
             Logo você vai poder pagar o impulso por aqui.
           </Aviso>
         ))}
-    </section>
+    </>
+  );
+}
+
+async function FormularioDoPacote({ d, pacotes }: { d: DoImpulso; pacotes: { candidatos: number; valor: number }[] }) {
+  const [pag, perfil, cobranca] = await Promise.all([
+    pagamentosDaConta(),
+    obterMeuPerfil().catch(() => null),
+    meuEnderecoDeCobranca(),
+  ]);
+  return (
+    <div className="max-w-3xl">
+      <FormAssinar
+        recurso="completo"
+        planos={[]}
+        primeiro={null}
+        modo={{ tipo: "pacote", anuncio: d.vaga.id, dias: d.pacote_dias ?? 30, opcoes: pacotes }}
+        inicial={{
+          documento: pag?.cliente?.cpf_cnpj ?? perfil?.cnpj ?? "",
+          nome: pag?.cliente?.nome ?? perfil?.nome ?? "",
+          email: pag?.cliente?.email ?? perfil?.email ?? "",
+          telefone: cobranca?.telefone ?? perfil?.whatsapp ?? "",
+          endereco: cobranca?.endereco ?? null,
+        }}
+      />
+    </div>
   );
 }
 
@@ -409,5 +500,140 @@ async function FormularioDoImpulso({ d }: { d: DoImpulso }) {
         }}
       />
     </div>
+  );
+}
+
+function PacoteValendo({ i }: { i: Impulso }) {
+  const alvo = i.alvo ?? 0;
+  const chegaram = Math.min(i.entregues ?? 0, alvo);
+  const faltam = alvo - chegaram;
+  return (
+    <section
+      aria-labelledby="valendo"
+      className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h3 id="valendo" className="flex flex-wrap items-center gap-2 text-h3">
+            <Users aria-hidden className="size-5 text-terra-text" />
+            Pacote de {alvo} {alvo === 1 ? "candidato" : "candidatos"}
+          </h3>
+          {i.origem === "admin" && (
+            <p className="flex items-center gap-1.5 text-label text-terra-text">
+              <Gift aria-hidden className="size-4 shrink-0" />
+              Presente do Publike, sem custo para você
+            </p>
+          )}
+          {i.origem === "credito" && <p className="text-label text-ink-muted">Feito com o seu saldo de candidatos</p>}
+          <p className="max-w-2xl text-body-sm text-ink-muted">
+            A vaga está no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade, até chegarem
+            {alvo === 1 ? " o candidato" : ` os ${alvo} candidatos`}
+            {i.ate ? `, no máximo até ${dataCurta(i.ate)}` : ""}. Conta quem curtir a vaga depois de chegar pelo
+            destaque.
+          </p>
+        </div>
+        <SeloDaSituacao i={i} />
+      </div>
+      <BarraDoPacote alvo={alvo} chegaram={chegaram} />
+      <NumerosDoPacote totais={i.totais} />
+      <PararPacote id={i.id} origem={i.origem} faltam={faltam} />
+    </section>
+  );
+}
+
+function PacoteAnterior({ i }: { i: Impulso }) {
+  const alvo = i.alvo ?? 0;
+  const chegaram = Math.min(i.entregues ?? 0, alvo);
+  return (
+    <>
+      <p className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-label">
+          Pacote de {alvo} {alvo === 1 ? "candidato" : "candidatos"} · {dataCurta(i.criado_em)}
+          {i.encerrado_em ? ` a ${dataCurta(i.encerrado_em)}` : ""}
+        </span>
+        <SeloDaSituacao i={i} />
+      </p>
+      <p className="text-body-sm">
+        {chegaram === alvo
+          ? `Chegaram os ${alvo} candidatos.`
+          : `Chegaram ${chegaram} de ${alvo} ${alvo === 1 ? "candidato" : "candidatos"}.`}
+        {i.motivo && chegaram < alvo ? ` ${i.motivo}` : ""}
+      </p>
+      {(i.virou_saldo ?? 0) > 0 && (
+        <p className="text-body-sm">
+          Virou saldo: {i.virou_saldo} {i.virou_saldo === 1 ? "candidato" : "candidatos"} para outra vaga, por 90 dias.
+        </p>
+      )}
+      <NumerosDoPacote totais={i.totais} />
+    </>
+  );
+}
+
+function Passos({ passos }: { passos: string[] }) {
+  return (
+    <ol className="flex flex-col gap-2.5 text-body-sm">
+      {passos.map((passo, n) => (
+        <li key={passo} className="flex gap-3">
+          <span
+            aria-hidden
+            className="grid size-6 shrink-0 place-items-center rounded-pill bg-surface-300 text-caption font-bold"
+          >
+            {n + 1}
+          </span>
+          <span className="pt-0.5">{passo}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function ComoFuncionaOPacote({ dias }: { dias: number }) {
+  return (
+    <section aria-labelledby="como" className="flex flex-col gap-3">
+      <h3 id="como" className="text-h3">
+        Como funciona
+      </h3>
+      <Passos
+        passos={[
+          "Você escolhe quantos candidatos quer para a vaga.",
+          "A vaga entra no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade. É para lá que o anúncio do Publike no Google leva quem procura emprego.",
+          "Cada pacote no ar aumenta o anúncio do Publike no Google: chega mais gente, e a sua vaga está na frente dela.",
+          "Cada pessoa que curtir a vaga depois de chegar pelo destaque é um candidato do pacote. Quem curte e desfaz não conta.",
+          `Chegou o último candidato, o pacote acaba e você recebe o aviso. No máximo, ele fica ${dias} dias.`,
+          "O que não chegar vira saldo para outra vaga, por 90 dias. Você pode parar quando quiser e usar o saldo em outra vaga.",
+        ]}
+      />
+      <p className="text-body-sm text-ink-muted">
+        Pagar não muda a ordem da lista do Publike: todas as vagas continuam logo abaixo do quadro, na ordem de sempre.
+      </p>
+    </section>
+  );
+}
+
+function ComoFuncionaNoGoogle({ ajuste }: { ajuste: boolean }) {
+  return (
+    <section aria-labelledby="como" className="flex flex-col gap-3">
+      <h3 id="como" className="text-h3">
+        Como funciona
+      </h3>
+      <Passos
+        passos={[
+          "Você escolhe 3, 7 ou 15 dias e paga no Pix ou no cartão. No Rápido, o mesmo valor vai para o Google em menos dias: mais gente por dia.",
+          "O Publike cria o anúncio no Google, com a função, o salário e o bairro da vaga.",
+          "O Google revisa em até 1 dia útil. Aprovou, os dias começam a contar.",
+          "Quem pesquisa a função perto da vaga vê o anúncio e abre a vaga no Publike.",
+          ...(ajuste
+            ? ["Toda manhã, o ajuste diário (beta) acerta a verba, o lance, as buscas e o raio pelos números do dia anterior."]
+            : []),
+          "Garantia da verba: se até o fim o Google usar menos de 80% dela, o anúncio segue no ar sem custo pelo mesmo prazo, até usar o resto.",
+          "No fim, chega o relatório: quantos viram, clicaram e curtiram.",
+        ]}
+      />
+      <p className="text-body-sm text-ink-muted">
+        O anúncio aparece só pelo lugar e pelo que a pessoa pesquisou, nunca por idade ou sexo. Se a vaga fechar antes do
+        fim, o anúncio para sozinho. O que o Google não usar, no fim ou quando a vaga fecha, vira crédito para outra vaga,
+        por 90 dias (a partir de R$ 10).
+      </p>
+    </section>
   );
 }

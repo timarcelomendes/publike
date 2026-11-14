@@ -324,7 +324,7 @@ export function AtualizarImpulsos() {
 }
 
 /** Para um impulso pela tabela do admin (com a confirmação no próprio lugar). */
-export function PararImpulso({ id, noAr }: { id: string; noAr: boolean }) {
+export function PararImpulso({ id, noAr, pacote = false }: { id: string; noAr: boolean; pacote?: boolean }) {
   const [certeza, setCerteza] = useState(false);
   const { rodar, pendente, mensagem } = useAcao();
   if (!certeza)
@@ -335,7 +335,9 @@ export function PararImpulso({ id, noAr }: { id: string; noAr: boolean }) {
     );
   return (
     <span className="flex flex-col items-start gap-1">
-      <span className="text-body-sm">{noAr ? "Tirar do Google agora?" : "Cancelar antes de entrar no ar?"}</span>
+      <span className="text-body-sm">
+        {pacote ? "Tirar do destaque agora?" : noAr ? "Tirar do Google agora?" : "Cancelar antes de entrar no ar?"}
+      </span>
       <span className="flex gap-1">
         <Botao tamanho="sm" variante="primario" disabled={pendente} onClick={() => rodar(() => pararImpulsoPeloAdmin(id))}>
           Parar

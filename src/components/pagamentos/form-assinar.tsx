@@ -8,6 +8,7 @@ import {
   assinar,
   buscarCepDeCobranca,
   comprarImpulso,
+  comprarPacote,
   comprarPorTrintaDias,
   mudarDeFaixa,
   type ResultadoAssinar,
@@ -50,6 +51,14 @@ type Modo =
       anuncio: string;
       /** dias_rapido: o Rápido do plano, a mesma verba em menos dias (migração 20270516120000) */
       opcoes: { dias: number; valor: number; verba: number; dias_rapido?: number | null }[];
+    }
+  /** o pacote de candidatos da vaga (migração 20270519120000): quantos candidatos e o preço de cada pacote */
+  | {
+      tipo: "pacote";
+      anuncio: string;
+      /** por quantos dias, no máximo, a vaga fica no destaque */
+      dias: number;
+      opcoes: { candidatos: number; valor: number }[];
     };
 
 export function FormAssinar({
@@ -90,6 +99,11 @@ export function FormAssinar({
   const [rapido, setRapido] = useState(false);
   const comRapido = Boolean(opcaoImpulso?.dias_rapido);
   const diasDoImpulso = comRapido && rapido ? opcaoImpulso!.dias_rapido! : dias;
+  // o pacote de candidatos: o do meio já vem escolhido (o de 10, na tabela de começo)
+  const [candidatos, setCandidatos] = useState(
+    modo.tipo === "pacote" ? (modo.opcoes[Math.floor((modo.opcoes.length - 1) / 2)]?.candidatos ?? 0) : 0,
+  );
+  const opcaoPacote = modo.tipo === "pacote" ? modo.opcoes.find((o) => o.candidatos === candidatos) : undefined;
   const [documento, setDocumento] = useState(formatarDocumento(inicial.documento));
   const [nome, setNome] = useState(inicial.nome);
   const [email, setEmail] = useState(inicial.email);
@@ -141,6 +155,8 @@ export function FormAssinar({
       const r: ResultadoAssinar = await chamarAcao(() =>
         modo.tipo === "impulso"
           ? comprarImpulso({ ...pagador, anuncio: modo.anuncio, dias, rapido: comRapido && rapido })
+          : modo.tipo === "pacote"
+          ? comprarPacote({ ...pagador, anuncio: modo.anuncio, candidatos })
           : modo.tipo === "trinta"
           ? comprarPorTrintaDias({ ...pagador, plano })
           : modo.tipo === "faixa"
@@ -215,7 +231,34 @@ export function FormAssinar({
         </fieldset>
       )}
 
-      {!troca && modo.tipo !== "faixa" && modo.tipo !== "impulso" && (
+      {modo.tipo === "pacote" && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-2 text-label">Quantos candidatos</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {modo.opcoes.map((o) => (
+              <label key={o.candidatos} className={`${OPCAO} ${candidatos === o.candidatos ? MARCADA : SOLTA}`}>
+                <input
+                  type="radio"
+                  name="candidatos"
+                  value={o.candidatos}
+                  checked={candidatos === o.candidatos}
+                  onChange={() => setCandidatos(o.candidatos)}
+                  className="mt-1 size-4 accent-terra"
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-label">{o.candidatos} candidatos</span>
+                  <span className="text-h3 tabular-nums">{formatarMoeda(o.valor)}</span>
+                  <span className="text-body-sm text-ink-muted">
+                    {formatarMoeda(Math.round((o.valor / o.candidatos) * 100) / 100)} por candidato
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {!troca && modo.tipo !== "faixa" && modo.tipo !== "impulso" && modo.tipo !== "pacote" && (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-label">Plano</legend>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -429,12 +472,14 @@ export function FormAssinar({
         </fieldset>
       )}
 
-      {(escolhido || modo.tipo === "faixa" || opcaoImpulso) && (
+      {(escolhido || modo.tipo === "faixa" || opcaoImpulso || opcaoPacote) && (
         <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
           <p className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-body">
               {modo.tipo === "impulso"
                 ? `Impulso no Google · ${diasDoImpulso} dias${comRapido && rapido ? " (Rápido)" : ""}`
+                : modo.tipo === "pacote"
+                ? `Pacote de ${candidatos} candidatos`
                 : modo.tipo === "faixa"
                   ? `${NOME_PRODUTO[recurso]}: a diferença`
                   : `${NOME_PRODUTO[recurso]} · ${escolhido ? NOME_CICLO[escolhido.ciclo].toLowerCase() : ""}`}
@@ -443,6 +488,8 @@ export function FormAssinar({
               {formatarMoeda(
                 modo.tipo === "impulso"
                   ? (opcaoImpulso?.valor ?? 0)
+                  : modo.tipo === "pacote"
+                  ? (opcaoPacote?.valor ?? 0)
                   : modo.tipo === "faixa"
                     ? modo.diferenca
                     : (escolhido?.valor ?? 0),
@@ -450,7 +497,9 @@ export function FormAssinar({
             </span>
           </p>
           <p className="text-body-sm text-ink-muted">
-            {modo.tipo === "impulso"
+            {modo.tipo === "pacote"
+              ? `Cobrado hoje, uma vez só. A vaga entra no destaque assim que o pagamento for confirmado e fica até chegarem os ${candidatos} candidatos, por no máximo ${modo.dias} dias. Só conta quem curtir a vaga depois de chegar pelo destaque. O que não chegar fica de saldo para outra vaga, por 90 dias, e você pode parar e passar o saldo para outra vaga quando quiser.`
+              : modo.tipo === "impulso"
               ? `Cobrado hoje, uma vez só. Os dias contam quando o Google aprovar o anúncio, em até 1 dia útil; até lá, dá para cancelar e o dinheiro volta. Garantia da verba: se o Google usar menos de 80% dela no prazo, o anúncio segue no ar mais ${diasDoImpulso} dias sem custo, e o que ele não usar, no fim ou se a vaga fechar antes, vira crédito para outra vaga.`
               : modo.tipo === "faixa"
               ? `Cobrado hoje: a diferença dos ${modo.dias} ${modo.dias === 1 ? "dia" : "dias"} que faltam${

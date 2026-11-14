@@ -442,6 +442,62 @@ export async function comprarPorTrintaDias(dados: DadosDoPagador & { plano: stri
 }
 
 /**
+ * A cobrança de uma compra da vaga (o impulso no Google ou o pacote de candidatos): uma vez só, como os 30 dias. O
+ * cartão volta para a página do impulso da vaga; o Pix abre a fatura.
+ */
+async function cobrarDaVaga(
+  p: Preparado,
+  forma: "cartao" | "pix",
+  compra: { id: string; valor: number; anuncio: string; curto: string; descricao: string },
+): Promise<ResultadoAssinar> {
+  const { a, sandbox, cliente } = p;
+  if (forma === "cartao") {
+    const site = urlDosEmails();
+    if (!site)
+      return {
+        ok: false,
+        erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para o cartão voltar ao Publike.",
+      };
+    const volta = `${site}/painel/impulsionar/${compra.anuncio}`;
+    const ck = await criarCheckoutAvulso(sandbox, {
+      cliente,
+      valor: compra.valor,
+      nome: compra.curto,
+      descricao: compra.descricao,
+      ref: compra.id,
+      voltar: { ok: `${volta}?cartao=ok`, cancelou: `${volta}?cartao=cancelou`, expirou: `${volta}?cartao=expirou` },
+    });
+    const { error: e2 } = await a.cliente.rpc("servidor_compra_asaas", {
+      p_chave: a.chave,
+      p_compra: compra.id,
+      p_asaas_id: "",
+      p_checkout_id: ck.id,
+    });
+    if (e2) throw new Error(e2.message);
+    return { ok: true, ir: linkDoCheckout(sandbox, ck.id), externo: true };
+  }
+
+  const pag = await criarCobrancaPix(sandbox, {
+    cliente,
+    valor: compra.valor,
+    vencimento: new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
+    descricao: `Publike · ${compra.descricao}`,
+    ref: compra.id,
+  });
+  const { error: e3 } = await a.cliente.rpc("servidor_compra_asaas", {
+    p_chave: a.chave,
+    p_compra: compra.id,
+    p_asaas_id: pag.id,
+    p_checkout_id: "",
+  });
+  if (e3) throw new Error(e3.message);
+  const fatura = await gravarAvulsa(a, sandbox, pag, false);
+  after(() => enviarPushPendentes());
+  const id = fatura?.cobranca_id;
+  return { ok: true, ir: id ? `/painel/faturas/${id}?pix=1` : `/painel/impulsionar/${compra.anuncio}` };
+}
+
+/**
  * O impulso da vaga no Google (claude/plano-impulsionar-vaga.md; migração 20270423120000): uma cobrança só, como os 30
  * dias. Pago, o robô cria o anúncio no Google sozinho; o cartão volta para a página do impulso da vaga.
  */
@@ -453,7 +509,7 @@ export async function comprarImpulso(
   try {
     const p = await prepararPagador(dados, () => null);
     if (!p.ok) return p;
-    const { a, conta, sandbox, cliente } = p;
+    const { a, conta, sandbox } = p;
     const { data, error } = await a.cliente.rpc("servidor_compra_impulso", {
       p_chave: a.chave,
       p_conta: conta,
@@ -468,52 +524,58 @@ export async function comprarImpulso(
     const r = (data ?? {}) as { erro?: string; id?: string; valor?: number; dias?: number; titulo?: string };
     if (r.erro) return { ok: false, erro: r.erro };
     if (!r.id || !r.valor || !r.dias) throw new Error("compra sem id");
-    const descricao = `Impulso no Google por ${r.dias} dias: ${(r.titulo ?? "vaga").slice(0, 80)}`;
-
-    if (dados.forma === "cartao") {
-      const site = urlDosEmails();
-      if (!site)
-        return {
-          ok: false,
-          erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para o cartão voltar ao Publike.",
-        };
-      const volta = `${site}/painel/impulsionar/${dados.anuncio}`;
-      const ck = await criarCheckoutAvulso(sandbox, {
-        cliente,
-        valor: Number(r.valor),
-        nome: `Publike Impulso ${r.dias} dias`,
-        descricao,
-        ref: r.id,
-        voltar: { ok: `${volta}?cartao=ok`, cancelou: `${volta}?cartao=cancelou`, expirou: `${volta}?cartao=expirou` },
-      });
-      const { error: e2 } = await a.cliente.rpc("servidor_compra_asaas", {
-        p_chave: a.chave,
-        p_compra: r.id,
-        p_asaas_id: "",
-        p_checkout_id: ck.id,
-      });
-      if (e2) throw new Error(e2.message);
-      return { ok: true, ir: linkDoCheckout(sandbox, ck.id), externo: true };
-    }
-
-    const pag = await criarCobrancaPix(sandbox, {
-      cliente,
+    return await cobrarDaVaga(p, dados.forma, {
+      id: r.id,
       valor: Number(r.valor),
-      vencimento: new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
-      descricao: `Publike · ${descricao}`,
-      ref: r.id,
+      anuncio: dados.anuncio,
+      curto: `Publike Impulso ${r.dias} dias`,
+      descricao: `Impulso no Google por ${r.dias} dias: ${(r.titulo ?? "vaga").slice(0, 80)}`,
     });
-    const { error: e3 } = await a.cliente.rpc("servidor_compra_asaas", {
+  } catch (e) {
+    return { ok: false, erro: erroParaTela(e) };
+  }
+}
+
+/**
+ * O pacote de candidatos da vaga (claude/plano-nova-venda-do-impulso.md; migração 20270519120000): uma cobrança só.
+ * Pago, a vaga entra no quadro das vagas impulsionadas até chegarem os candidatos; o que não chegar vira saldo.
+ */
+export async function comprarPacote(
+  dados: DadosDoPagador & { anuncio: string; candidatos: number },
+): Promise<ResultadoAssinar> {
+  if (
+    !/^[0-9a-f-]{36}$/.test(String(dados.anuncio)) ||
+    !Number.isInteger(dados.candidatos) ||
+    dados.candidatos < 1 ||
+    dados.candidatos > 100
+  )
+    return { ok: false, erro: "Pedido inválido." };
+  try {
+    const p = await prepararPagador(dados, () => null);
+    if (!p.ok) return p;
+    const { a, conta, sandbox } = p;
+    const { data, error } = await a.cliente.rpc("servidor_compra_pacote", {
       p_chave: a.chave,
-      p_compra: r.id,
-      p_asaas_id: pag.id,
-      p_checkout_id: "",
+      p_conta: conta,
+      p_anuncio: dados.anuncio,
+      p_candidatos: dados.candidatos,
+      p_forma: dados.forma,
+      p_sandbox: sandbox,
     });
-    if (e3) throw new Error(e3.message);
-    const fatura = await gravarAvulsa(a, sandbox, pag, false);
-    after(() => enviarPushPendentes());
-    const id = fatura?.cobranca_id;
-    return { ok: true, ir: id ? `/painel/faturas/${id}?pix=1` : `/painel/impulsionar/${dados.anuncio}` };
+    if (error) {
+      if (error.code === "PGRST202") return { ok: false, erro: "O pacote de candidatos ainda não está à venda." };
+      throw new Error(error.message);
+    }
+    const r = (data ?? {}) as { erro?: string; id?: string; valor?: number; candidatos?: number; titulo?: string };
+    if (r.erro) return { ok: false, erro: r.erro };
+    if (!r.id || !r.valor || !r.candidatos) throw new Error("compra sem id");
+    return await cobrarDaVaga(p, dados.forma, {
+      id: r.id,
+      valor: Number(r.valor),
+      anuncio: dados.anuncio,
+      curto: `Publike ${r.candidatos} candidatos`,
+      descricao: `Pacote de ${r.candidatos} candidatos: ${(r.titulo ?? "vaga").slice(0, 80)}`,
+    });
   } catch (e) {
     return { ok: false, erro: erroParaTela(e) };
   }

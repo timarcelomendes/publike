@@ -1,9 +1,17 @@
 import { formatarMoeda, formatarNumero } from "@/lib/formato";
 
 export type DiaDoImpulso = { dia: string; impressoes: number; cliques: number; visitas: number; curtidas: number };
-export type TotaisDoImpulso = { impressoes: number; cliques: number; visitas: number; curtidas: number };
+export type TotaisDoImpulso = {
+  impressoes: number;
+  cliques: number;
+  visitas: number;
+  curtidas: number;
+  /** as que vieram do quadro do Publike (migração 20270519120000; antes dela, não vem) */
+  visitas_quadro?: number;
+  curtidas_quadro?: number;
+};
 
-const NOMES: [keyof TotaisDoImpulso, string, string][] = [
+const NOMES: [Exclude<keyof TotaisDoImpulso, "visitas_quadro" | "curtidas_quadro">, string, string][] = [
   ["impressoes", "Viram o anúncio", "quantas vezes ele apareceu no Google"],
   ["cliques", "Clicaram", "e abriram a vaga"],
   ["visitas", "Visitas", "na vaga, vindas do anúncio"],

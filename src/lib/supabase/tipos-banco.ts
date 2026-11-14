@@ -3692,13 +3692,45 @@ export type Database = {
       impulso_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       meus_impulsos: { Args: Record<PropertyKey, never>; Returns: Json };
       impulsionar_sem_pagar: { Args: { p_anuncio: string; p_jeito: string }; Returns: Json };
-      contar_visita_do_impulso: { Args: { p_codigo: string; p_anuncio: string; p_visitante: string }; Returns: boolean };
-      contar_curtida_do_impulso: { Args: { p_codigo: string; p_visitante: string; p_anuncio: string }; Returns: boolean };
+      // a origem (o anúncio no Google, o link na geral ou o quadro): migração 20270519120000
+      contar_visita_do_impulso: {
+        Args: { p_codigo: string; p_anuncio: string; p_visitante: string; p_origem?: string };
+        Returns: boolean;
+      };
+      // pela vaga e pelo navegador (migração 20270519120000) ou, antes, pelo código guardado
+      contar_curtida_do_impulso: {
+        Args: { p_visitante: string; p_anuncio: string } | { p_codigo: string; p_visitante: string; p_anuncio: string };
+        Returns: boolean;
+      };
+      // o pacote de candidatos (migração 20270519120000)
+      parar_pacote: { Args: { p_impulso: string }; Returns: Json };
+      usar_saldo_de_candidatos: { Args: { p_anuncio: string; p_candidatos: number }; Returns: Json };
+      servidor_compra_pacote: {
+        Args: {
+          p_chave: string;
+          p_conta: string;
+          p_anuncio: string;
+          p_candidatos: number;
+          p_forma: string;
+          p_sandbox: boolean;
+        };
+        Returns: Json;
+      };
+      servidor_geral_do_dia: { Args: { p_chave: string }; Returns: Json };
+      servidor_geral_feita: { Args: { p_chave: string; p_valor: number; p_erro: string | null }; Returns: undefined };
+      admin_dar_pacotes: {
+        Args: { p_anuncios: string[]; p_candidatos: number; p_dias: number | null; p_avisar: boolean };
+        Returns: Json;
+      };
       servidor_impulso_palavras_ia: { Args: { p_chave: string; p_id: string }; Returns: Json };
       servidor_impulso_salvar_palavras_ia: { Args: { p_chave: string; p_id: string; p_ia: Json }; Returns: undefined };
       servidor_impulso_palavras_em: { Args: { p_chave: string; p_id: string }; Returns: string | null };
       servidor_impulso_palavras_feitas: { Args: { p_chave: string; p_id: string }; Returns: undefined };
-      vagas_impulsionadas: { Args: Record<PropertyKey, never>; Returns: { anuncio_id: string; desde: string }[] };
+      vagas_impulsionadas: {
+        Args: Record<PropertyKey, never>;
+        // o código do impulso: migração 20270519120000
+        Returns: { anuncio_id: string; desde: string; codigo?: string | null }[];
+      };
       contar_passo_do_impulso: {
         Args: { p_codigo: string; p_visitante: string; p_anuncio: string; p_passo: string };
         Returns: boolean;

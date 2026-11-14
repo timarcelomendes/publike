@@ -11,7 +11,9 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 
 // O impulso da vaga (claude/plano-impulsionar-vaga.md): impulsionar com o crédito ou o primeiro grátis, cancelar antes
-// de entrar no ar e contar quem chegou pelo anúncio. A compra paga fica em acoes/assinatura.ts (comprarImpulso).
+// de entrar no ar e contar quem chegou pelo anúncio. O pacote de candidatos (claude/plano-nova-venda-do-impulso.md,
+// migração 20270519120000): parar e usar o saldo. As compras pagas ficam em acoes/assinatura.ts (comprarImpulso e
+// comprarPacote).
 
 type Resultado = { ok: true } | { ok: false; erro: string };
 
@@ -68,15 +70,32 @@ export async function cancelarImpulso(id: string): Promise<Resultado> {
   }
 }
 
-/** A visita que chegou pelo anúncio (a página da vaga, no navegador): conta uma por dia e guarda o cookie. */
-export async function contarVisitaDoImpulso(codigo: string, anuncio: string, visitante: string): Promise<void> {
+/**
+ * A visita que chegou pelo impulso (a página da vaga ou o cartão do quadro, no navegador): conta uma por dia e guarda o
+ * cookie. A origem diz por onde: o anúncio no Google, o link da vaga embaixo do anúncio geral ou o quadro do Publike.
+ */
+export async function contarVisitaDoImpulso(
+  codigo: string,
+  anuncio: string,
+  visitante: string,
+  origem: "google" | "link" | "quadro" = "google",
+): Promise<void> {
   if (MODO_DEMO || !CODIGO.test(codigo) || !UUID.test(anuncio) || !VISITANTE.test(visitante)) return;
+  if (origem !== "google" && origem !== "link" && origem !== "quadro") return;
   const supabase = await criarClienteServidor();
-  const { data } = await supabase.rpc("contar_visita_do_impulso", {
+  let { data, error } = await supabase.rpc("contar_visita_do_impulso", {
     p_codigo: codigo,
     p_anuncio: anuncio,
     p_visitante: visitante,
+    p_origem: origem,
   });
+  // antes da migração 20270519120000: sem a origem
+  if (error?.code === "PGRST202")
+    ({ data, error } = await supabase.rpc("contar_visita_do_impulso", {
+      p_codigo: codigo,
+      p_anuncio: anuncio,
+      p_visitante: visitante,
+    }));
   if (data === true || data === false) {
     (await cookies()).set(COOKIE_IMPULSO, `${codigo}.${visitante}`, {
       maxAge: 7 * 24 * 60 * 60,
@@ -88,11 +107,56 @@ export async function contarVisitaDoImpulso(codigo: string, anuncio: string, vis
   }
 }
 
-/** Depois de curtir: se a pessoa chegou pelo anúncio desta vaga nos últimos 7 dias, a curtida conta no impulso. */
+/**
+ * Depois de curtir: se este navegador chegou pelo impulso desta vaga nos últimos 7 dias, a curtida conta no impulso. O
+ * banco acha o impulso pela vaga e pelo navegador (migração 20270519120000): quem abriu duas vagas do quadro antes de
+ * curtir a primeira também conta. No pacote de candidatos, a curtida que completa o pacote o termina.
+ */
 export async function contarCurtidaDoImpulso(anuncio: string): Promise<void> {
   const valor = (await cookies()).get(COOKIE_IMPULSO)?.value ?? "";
   const [codigo, visitante] = valor.split(".");
   if (!codigo || !visitante || !CODIGO.test(codigo) || !VISITANTE.test(visitante) || !UUID.test(anuncio)) return;
   const supabase = await criarClienteServidor();
-  await supabase.rpc("contar_curtida_do_impulso", { p_codigo: codigo, p_visitante: visitante, p_anuncio: anuncio });
+  const { error } = await supabase.rpc("contar_curtida_do_impulso", { p_visitante: visitante, p_anuncio: anuncio });
+  // antes da migração 20270519120000: pelo código guardado
+  if (error?.code === "PGRST202")
+    await supabase.rpc("contar_curtida_do_impulso", { p_codigo: codigo, p_visitante: visitante, p_anuncio: anuncio });
+}
+
+/** Parar o pacote de candidatos no ar: o que não chegou vira saldo (no presente do Publike, ele só para). */
+export async function pararPacote(id: string): Promise<{ ok: true; saldo: number } | { ok: false; erro: string }> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  if (usuario.papel === "recrutador") return { ok: false, erro: "Só quem administra a conta pode parar o pacote." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("parar_pacote", { p_impulso: id });
+  if (error) return { ok: false, erro: "Não deu para parar agora. Tente de novo em instantes." };
+  const r = (data ?? {}) as { ok?: boolean; erro?: string; saldo?: number };
+  if (!r.ok) return { ok: false, erro: r.erro ?? "Não deu para parar agora." };
+  refresh();
+  return { ok: true, saldo: Number(r.saldo ?? 0) };
+}
+
+/** Usar o saldo de candidatos numa vaga: o pacote começa na hora, no quadro das vagas impulsionadas. */
+export async function usarSaldoDeCandidatos(anuncio: string, candidatos: number): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncio) || !Number.isInteger(candidatos) || candidatos < 1 || candidatos > 100)
+    return { ok: false, erro: "Pedido inválido." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  if (usuario.papel === "recrutador") return { ok: false, erro: "Só quem administra a conta pode usar o saldo." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("usar_saldo_de_candidatos", {
+    p_anuncio: anuncio,
+    p_candidatos: candidatos,
+  });
+  if (error) return { ok: false, erro: "Não deu para usar o saldo agora. Tente de novo em instantes." };
+  const r = (data ?? {}) as { ok?: boolean; erro?: string };
+  if (!r.ok) return { ok: false, erro: r.erro ?? "Não deu para usar o saldo agora." };
+  // a verba da campanha geral sobe com o pacote novo
+  after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  return { ok: true };
 }

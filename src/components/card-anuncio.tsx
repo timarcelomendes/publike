@@ -12,6 +12,7 @@ import {
 } from "@/lib/formato";
 import { candidaturaNoSite } from "@/lib/candidatura";
 import { nomeBeneficio } from "@/lib/constantes";
+import { linkDoDestaque } from "@/lib/impulso";
 import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { ResumoComentarios } from "@/lib/comentarios";
 import type { DadosCard } from "@/lib/tipos";
@@ -104,6 +105,7 @@ export function CardAnuncio({
   para = null,
   comentarios = null,
   impulsionada = false,
+  impulso = null,
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -135,6 +137,11 @@ export function CardAnuncio({
   comentarios?: ResumoComentarios | null;
   /** No quadro das vagas impulsionadas (páginas de vagas da cidade): o selo "Impulsionada" no alto. */
   impulsionada?: boolean;
+  /**
+   * No quadro, o código do impulso (migração 20270519120000): o cartão leva à vaga com ?destaque=<código>, e a curtida
+   * direto do cartão conta a visita antes, para quem impulsionou.
+   */
+  impulso?: string | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -318,7 +325,7 @@ export function CardAnuncio({
           <div className="min-w-0 flex-1">
             <h3 className="text-h3 group-data-[visao=grade]/visao:line-clamp-2 group-data-[visao=grade]/visao:text-label group-data-[visao=lista]/visao:line-clamp-2 group-data-[visao=lista]/visao:text-label group-data-[visao=lista]/visao:sm:text-body-lg">
               <Link
-                href={`/anuncio/${anuncio.id}`}
+                href={linkDoDestaque(anuncio.id, impulso)}
                 className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
               >
                 {anuncio.titulo}
@@ -454,7 +461,7 @@ export function CardAnuncio({
                   <span className="text-label text-ink-muted">Vaga preenchida</span>
                 ) : noSite ? (
                   <Link
-                    href={`/anuncio/${anuncio.id}`}
+                    href={linkDoDestaque(anuncio.id, impulso)}
                     className="relative z-10 inline-flex min-h-11 shrink-0 items-center rounded-pill border border-line-strong px-4 text-label text-ink hover:bg-surface-300"
                   >
                     Ver a vaga
@@ -467,6 +474,7 @@ export function CardAnuncio({
                     logado={usuarioId !== null}
                     servico={servico}
                     quem={anuncio.autor_nome}
+                    impulso={impulso}
                   />
                 )}
               </span>

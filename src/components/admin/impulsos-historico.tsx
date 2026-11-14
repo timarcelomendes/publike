@@ -7,7 +7,15 @@ import { classesEntrada } from "@/components/ui/campo";
 import type { ImpulsoDoAdmin } from "@/lib/acoes/admin-impulsos";
 import { formatarMoeda, formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { PararImpulso } from "./impulsos";
-import { NOME_DA_ORIGEM, NOME_DA_SITUACAO, VARIANTE_DA_SITUACAO, ehCorrendo, origemDo } from "./impulsos-nomes";
+import {
+  NOME_DA_ORIGEM,
+  VARIANTE_DA_SITUACAO,
+  candidatosDoPacote,
+  ehCorrendo,
+  ehPacote,
+  nomeDaSituacao,
+  origemDo,
+} from "./impulsos-nomes";
 
 // Admin › Impulsos › Histórico: os impulsos dos últimos tempos (os 200 mais novos e todos os que correm), com filtros
 // por situação, origem, tipo de vaga e cliente, sem ir ao servidor de novo.
@@ -193,29 +201,42 @@ export function HistoricoDeImpulsos({
                   </td>
                   <td className="px-3 py-3">
                     <span className="flex flex-wrap gap-1 whitespace-nowrap">
-                      <Selo variante={VARIANTE_DA_SITUACAO[i.situacao] ?? "neutro"}>
-                        {NOME_DA_SITUACAO[i.situacao] ?? i.situacao}
-                      </Selo>
+                      <Selo variante={VARIANTE_DA_SITUACAO[i.situacao] ?? "neutro"}>{nomeDaSituacao(i)}</Selo>
+                      {/* o pacote de candidatos (migração 20270519120000) */}
+                      {ehPacote(i) && <Selo variante="contorno">Pacote</Selo>}
                       {i.pausar && <Selo variante="novo">Parando</Selo>}
                       {i.sandbox && <Selo variante="contorno">Teste</Selo>}
                       {/* a garantia da verba estendeu o prazo (migração 20270518120000) */}
                       {i.estendido_em && <Selo variante="aviso">Garantia</Selo>}
                     </span>
                   </td>
-                  <td className="min-w-44 px-3 py-3">
-                    {NOME_DA_ORIGEM[origemDo(i)]}, {i.dias} {i.dias === 1 ? "dia" : "dias"}
-                    <span className="block text-ink-muted">
-                      {i.origem === "compra" ? `${formatarMoeda(i.valor)}, ` : ""}
-                      {i.campanha_cliente_id ? "parte de " : "até "}
-                      {formatarMoeda(i.verba)} no Google
-                    </span>
+                  {ehPacote(i) ? (
+                    <td className="min-w-44 px-3 py-3">
+                      {NOME_DA_ORIGEM[origemDo(i)]}, {candidatosDoPacote(i)}
+                      <span className="block text-ink-muted">
+                        {i.origem === "compra" ? `${formatarMoeda(i.valor)}, ` : ""}
+                        {formatarNumero(i.totais.visitas)} {i.totais.visitas === 1 ? "visita" : "visitas"} (
+                        {formatarNumero(i.totais.visitas_quadro ?? 0)} pelo quadro)
+                      </span>
+                    </td>
+                  ) : (
+                    <td className="min-w-44 px-3 py-3">
+                      {NOME_DA_ORIGEM[origemDo(i)]}, {i.dias} {i.dias === 1 ? "dia" : "dias"}
+                      <span className="block text-ink-muted">
+                        {i.origem === "compra" ? `${formatarMoeda(i.valor)}, ` : ""}
+                        {i.campanha_cliente_id ? "parte de " : "até "}
+                        {formatarMoeda(i.verba)} no Google
+                      </span>
+                    </td>
+                  )}
+                  <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">
+                    {ehPacote(i) ? "—" : formatarMoeda(Number(i.gasto ?? 0))}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{formatarMoeda(Number(i.gasto ?? 0))}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{formatarNumero(i.totais.cliques)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{ehPacote(i) ? "—" : formatarNumero(i.totais.cliques)}</td>
                   <td className="px-3 py-3 text-right tabular-nums">{formatarNumero(i.totais.curtidas)}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-ink-muted">{tempoRelativo(i.criado_em, agora)}</td>
                   <td className="px-5 py-3 sm:pr-6">
-                    {ehCorrendo(i.situacao) && !i.pausar && <PararImpulso id={i.id} noAr={i.situacao === "no_ar"} />}
+                    {ehCorrendo(i.situacao) && !i.pausar && <PararImpulso id={i.id} noAr={i.situacao === "no_ar"} pacote={ehPacote(i)} />}
                   </td>
                 </tr>
               ))}

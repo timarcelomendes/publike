@@ -193,10 +193,10 @@ export async function CabecalhoDaVaga({
             <span className="max-sm:sr-only">Editar a vaga</span>
           </Link>
           {noAr && (
-            // o impulso da vaga no Google (claude/plano-impulsionar-vaga.md): pago, fora do Publike
+            // o impulso da vaga: desde 14/11/2026, o pacote de candidatos (claude/plano-nova-venda-do-impulso.md)
             <Link
               href={`/painel/impulsionar/${id}`}
-              title="Anunciar a vaga no Google"
+              title="Impulsionar a vaga"
               className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300"
             >
               <Rocket aria-hidden className="size-[18px] text-terra-text" />

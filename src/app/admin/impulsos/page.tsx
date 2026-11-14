@@ -16,6 +16,7 @@ import { ListaDeAjustes, type AjusteDoAdmin } from "@/components/admin/impulsos-
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
 import { ehCorrendo, quemPediu } from "@/components/admin/impulsos-nomes";
 import { NovoImpulso } from "@/components/admin/impulsos-novo";
+import { ConfigDoPacote } from "@/components/admin/impulsos-pacote";
 import { TiposDeVaga } from "@/components/admin/impulsos-tipos";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
@@ -24,6 +25,7 @@ import type {
   CampanhaDoAdmin,
   ConfigImpulso,
   ImpulsoDoAdmin,
+  PacoteAVenda,
   PrecoImpulso,
   ResultadoPorTipo,
   TipoDeVaga,
@@ -65,7 +67,14 @@ type Dados = {
   campanhas?: CampanhaDoAdmin[];
   impulsos: ImpulsoDoAdmin[];
   por_tipo?: ResultadoPorTipo[];
+  /** o pacote de candidatos (migração 20270519120000; antes dela, não vem) */
+  pacotes?: PacoteAVenda[];
+  geral_alvo?: number | null;
+  saldo_clientes?: number;
 };
+
+/** Novo impulso: o pacote de candidatos (desde 14/11/2026) ou a campanha no Google (o de antes). */
+type Produto = "pacote" | "google";
 
 const ABAS = [
   { valor: "agora", nome: "Agora" },
@@ -83,7 +92,8 @@ export default function Impulsos({ searchParams }: PageProps<"/admin/impulsos">)
         const pedida = primeiro(sp.aba);
         const aba: Aba = ABAS.some((a) => a.valor === pedida) ? (pedida as Aba) : "agora";
         const conta = primeiro(sp.conta);
-        return <Conteudo aba={aba} conta={conta && UUID.test(conta) ? conta : null} />;
+        const produto: Produto = primeiro(sp.produto) === "google" ? "google" : "pacote";
+        return <Conteudo aba={aba} conta={conta && UUID.test(conta) ? conta : null} produto={produto} />;
       })}
     </Suspense>
   );
@@ -121,7 +131,7 @@ function clientesCorrendo(d: Dados): Cliente[] {
   return [...m.values()].sort((a, b) => Number(b.problema) - Number(a.problema) || b.recente.localeCompare(a.recente));
 }
 
-async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
+async function Conteudo({ aba, conta, produto }: { aba: Aba; conta: string | null; produto: Produto }) {
   // o admin do computador do dono ou, no site no ar, a equipe publike.org (Admin › Quem vê cada tela)
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/impulsos"))) notFound();
@@ -139,6 +149,9 @@ async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
   const g = situacaoGoogleAds();
   const contaGoogle = contaDeAnuncios();
   const algumAVenda = d.precos.some((p) => p.ligado);
+  // o pacote de candidatos (migração 20270519120000): à venda só com a venda ligada e um pacote ligado
+  const pacoteAVenda = Boolean(d.config.pacote_ligado) && (d.pacotes ?? []).some((p) => p.ligado);
+  const pacotesNoAr = d.impulsos.filter((i) => i.produto === "candidatos" && i.situacao === "no_ar").length;
   const correndo = d.impulsos.filter((i) => ehCorrendo(i.situacao));
   const travados = [
     ...correndo.filter((i) => i.erro),
@@ -150,10 +163,11 @@ async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-h2">Impulsos no Google</h1>
+            <h1 className="text-h2">Impulsos</h1>
             <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
-              A vaga vira anúncio na busca do Google, perto do bairro dela. O robô cria, acompanha a revisão, mede e
-              encerra sozinho.
+              Desde 14/11, o pacote de candidatos: a vaga entra no quadro “Vagas impulsionadas na região” até chegarem os
+              candidatos, e cada pacote no ar soma verba à campanha geral. Antes, a vaga virava anúncio na busca do
+              Google, perto do bairro dela, com o robô cuidando de tudo.
             </p>
           </div>
           {g.ligado && <TestarGoogleAds />}
@@ -162,7 +176,13 @@ async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
           <Situacao ok={g.ligado}>
             {g.ligado ? `Google Ads ligado na conta ${comTracos(contaGoogle)}` : `Falta no servidor: ${g.falta.join(", ")}`}
           </Situacao>
-          <Situacao ok={algumAVenda}>{algumAVenda ? "Impulso à venda" : "Nenhum impulso à venda"}</Situacao>
+          <Situacao ok={pacoteAVenda}>{pacoteAVenda ? "Pacote à venda" : "Pacote fora de venda"}</Situacao>
+          {d.pacotes && (
+            <Situacao ok={pacotesNoAr > 0}>
+              {pacotesNoAr > 0 ? plural(pacotesNoAr, "pacote no destaque", "pacotes no destaque") : "Nenhum pacote no destaque"}
+            </Situacao>
+          )}
+          {algumAVenda && <Situacao ok>Impulso no Google à venda</Situacao>}
           <Situacao ok={Boolean(d.config.auto_ligado)}>
             {d.config.auto_ligado
               ? `Automático: ${reais(Number(d.mes.automatico_verba ?? 0))} de ${reais(Number(d.config.auto_verba_mes))} no mês`
@@ -223,7 +243,7 @@ async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
           <VisaoGlobal clientes={clientesCorrendo(d)} />
         </Secao>
       )}
-      {aba === "novo" && <Novo d={d} conta={conta} ligado={g.ligado} />}
+      {aba === "novo" && <Novo d={d} conta={conta} ligado={g.ligado} produto={produto} />}
       {aba === "historico" && (
         <>
           <ResultadoPorTipoDeVaga linhas={d.por_tipo ?? []} />
@@ -361,11 +381,52 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
   );
 }
 
-async function Novo({ d, conta, ligado }: { d: Dados; conta: string | null; ligado: boolean }) {
-  if (!ligado) {
+async function Novo({
+  d,
+  conta,
+  ligado,
+  produto,
+}: {
+  d: Dados;
+  conta: string | null;
+  ligado: boolean;
+  produto: Produto;
+}) {
+  const escolha = (
+    <nav aria-label="O que dar" className="flex flex-wrap gap-2">
+      {(
+        [
+          ["pacote", "Pacote de candidatos"],
+          ["google", "Campanha no Google"],
+        ] as const
+      ).map(([valor, nome]) => (
+        <Link
+          key={valor}
+          href={`/admin/impulsos?aba=novo${valor === "google" ? "&produto=google" : ""}${conta ? `&conta=${conta}` : ""}`}
+          scroll={false}
+          aria-current={produto === valor ? "page" : undefined}
+          className={`inline-flex min-h-10 items-center rounded-pill border px-4 text-label transition-colors ${
+            produto === valor ? "border-ink bg-ink text-surface-100" : "border-line text-ink hover:bg-surface-300"
+          }`}
+        >
+          {nome}
+        </Link>
+      ))}
+    </nav>
+  );
+  if (produto === "google" && !ligado) {
     return (
       <Secao titulo="Novo impulso">
+        {escolha}
         <p className="text-body-sm text-ink-muted">Ligue o Google Ads primeiro (veja o alto da página).</p>
+      </Secao>
+    );
+  }
+  if (produto === "pacote" && !d.pacotes) {
+    return (
+      <Secao titulo="Novo impulso">
+        {escolha}
+        <p className="text-body-sm text-ink-muted">Rode a migração 20270519120000 para dar pacotes de candidatos.</p>
       </Secao>
     );
   }
@@ -380,10 +441,17 @@ async function Novo({ d, conta, ligado }: { d: Dados; conta: string | null; liga
   return (
     <Secao
       titulo="Novo impulso"
-      descricao="Procure o cliente, o título ou o tipo de vaga e marque as vagas de um cliente. Elas entram numa campanha só no Google, com uma verba para todas: o Google põe o dinheiro nas vagas que mais aparecem na busca. A verba é do Publike; o cliente não paga nada e não gasta o impulso grátis dele."
+      descricao={
+        produto === "pacote"
+          ? "Presente do Publike no piloto: procure o cliente, o título ou o tipo de vaga e marque as vagas de um cliente. Cada uma entra no quadro “Vagas impulsionadas na região” até chegarem os candidatos ou acabar o prazo, e soma verba à campanha geral. O cliente não paga nada; o que não chegar não vira saldo."
+          : "Procure o cliente, o título ou o tipo de vaga e marque as vagas de um cliente. Elas entram numa campanha só no Google, com uma verba para todas: o Google põe o dinheiro nas vagas que mais aparecem na busca. A verba é do Publike; o cliente não paga nada e não gasta o impulso grátis dele."
+      }
     >
+      {escolha}
       <NovoImpulso
-        key={conta ?? "busca"}
+        key={`${produto}:${conta ?? "busca"}`}
+        modo={produto}
+        pacoteDias={Number(d.config.pacote_dias ?? 30)}
         tipos={(d.tipos ?? []).map((t) => ({ id: t.id, nome: t.nome }))}
         contaInicial={conta}
         vagasIniciais={vagasIniciais}
@@ -570,9 +638,37 @@ async function Regras({ d }: { d: Dados }) {
           <p className="text-body-sm text-ink-muted">Rode a migração 20270430120000_impulso_por_cliente.sql para ver os tipos.</p>
         )}
       </Secao>
+      {d.pacotes && (
+        <Secao
+          titulo="Pacote de candidatos"
+          descricao="O cliente paga só pelos candidatos que chegarem pelo destaque; o que não chegar vira saldo dele. Os preços valem para as próximas compras."
+        >
+          <ConfigDoPacote
+            pacotes={d.pacotes}
+            config={{
+              pacote_ligado: Boolean(d.config.pacote_ligado),
+              pacote_dias: Number(d.config.pacote_dias ?? 30),
+              pacote_verba_dia: Number(d.config.pacote_verba_dia ?? 0),
+              geral_ligada: Boolean(d.config.geral_ligada),
+              geral_conta: d.config.geral_conta ?? null,
+              geral_campanha_id: d.config.geral_campanha_id ?? null,
+              geral_base: Number(d.config.geral_base ?? 60),
+              geral_maximo: Number(d.config.geral_maximo ?? 150),
+            }}
+            alvo={d.geral_alvo == null ? null : Number(d.geral_alvo)}
+            noAr={d.impulsos.filter((i) => i.produto === "candidatos" && i.situacao === "no_ar").length}
+            ultima={{
+              em: d.config.geral_feita_em ?? null,
+              valor: d.config.geral_valor == null ? null : Number(d.config.geral_valor),
+              erro: d.config.geral_erro ?? null,
+              erro_em: d.config.geral_erro_em ?? null,
+            }}
+          />
+        </Secao>
+      )}
       <Secao
-        titulo="Preços e regras gerais"
-        descricao="Os preços valem para as próximas compras; quem já pagou fica como comprou."
+        titulo="Impulso no Google: preços e regras gerais"
+        descricao="O produto de antes, com a venda desligada desde 14/11. Os preços valem para as próximas compras; quem já pagou fica como comprou."
       >
         <ConfigImpulsos precos={d.precos} config={d.config} />
       </Secao>

@@ -10,7 +10,15 @@ import type { CampanhaDoAdmin, ImpulsoDoAdmin } from "@/lib/acoes/admin-impulsos
 import { formatarData, formatarMoeda, formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { PararCampanha, PararImpulso } from "./impulsos";
 import { Filtro, ORIGENS } from "./impulsos-historico";
-import { NOME_DA_ORIGEM, NOME_DA_SITUACAO, VARIANTE_DA_SITUACAO, ehCorrendo, origemDo } from "./impulsos-nomes";
+import {
+  NOME_DA_ORIGEM,
+  VARIANTE_DA_SITUACAO,
+  candidatosDoPacote,
+  ehCorrendo,
+  ehPacote,
+  nomeDaSituacao,
+  origemDo,
+} from "./impulsos-nomes";
 
 // Admin › Impulsos › Agora › Correndo agora: as vagas que correm, por cliente, com filtros por origem, situação e
 // cliente ou vaga, sem ir ao servidor de novo (13/11/2026, Marcelo: "adicione filtros aqui"). Os mesmos filtros do
@@ -165,7 +173,9 @@ export function CorrendoAgora({ clientes, agora }: { clientes: Cliente[]; agora:
 export function numerosDoCliente(c: Cliente) {
   const todas = [...c.vagas, ...c.avulsos];
   const soma = somaDos(todas);
-  const verba = Number(c.campanha?.verba ?? 0) + c.avulsos.reduce((t, i) => t + Number(i.verba ?? 0), 0);
+  // o pacote de candidatos (migração 20270519120000) não tem verba própria no Google
+  const verba =
+    Number(c.campanha?.verba ?? 0) + c.avulsos.filter((i) => !ehPacote(i)).reduce((t, i) => t + Number(i.verba ?? 0), 0);
   const parte = verba > 0 ? Math.min(100, (100 * soma.gasto) / verba) : 0;
   const taxa = soma.impressoes > 0 ? (100 * soma.cliques) / soma.impressoes : null;
   const noAr = todas.filter((i) => i.situacao === "no_ar").length;
@@ -206,6 +216,30 @@ function situacaoDaCampanha(k: CampanhaDoAdmin) {
  */
 function NumerosDoCliente({ c }: { c: Cliente }) {
   const { soma, verba, parte, taxa } = numerosDoCliente(c);
+  const todas = [...c.vagas, ...c.avulsos];
+  // só pacotes de candidatos: quantos chegaram, as visitas (e as do quadro) e as curtidas
+  if (todas.length > 0 && todas.every(ehPacote)) {
+    const alvo = todas.reduce((t, i) => t + Number(i.alvo ?? 0), 0);
+    const chegaram = todas.reduce((t, i) => t + Math.min(Number(i.entregues ?? 0), Number(i.alvo ?? 0)), 0);
+    const visitas = todas.reduce((t, i) => t + i.totais.visitas, 0);
+    const quadro = todas.reduce((t, i) => t + (i.totais.visitas_quadro ?? 0), 0);
+    const pacote: { rotulo: string; valor: string }[] = [
+      { rotulo: "Candidatos", valor: `${formatarNumero(chegaram)} de ${formatarNumero(alvo)}` },
+      { rotulo: "Visitas", valor: formatarNumero(visitas) },
+      { rotulo: "Pelo quadro", valor: formatarNumero(quadro) },
+      { rotulo: "Curtidas", valor: formatarNumero(soma.curtidas) },
+    ];
+    return (
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+        {pacote.map((n) => (
+          <div key={n.rotulo} className="min-w-0">
+            <dt className="text-caption text-ink-muted">{n.rotulo}</dt>
+            <dd className="text-label tabular-nums">{n.valor}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
   const numeros: { rotulo: string; valor: string; detalhe?: string }[] = [
     { rotulo: "Vistas", valor: formatarNumero(soma.impressoes) },
     {
@@ -269,7 +303,9 @@ function CartaoDoCliente({ c, linhas, agora }: { c: Cliente; linhas: ImpulsoDoAd
               ? `Campanha do cliente, ${plural(vagasCorrendo.length, "vaga", "vagas")}, ${situacaoDaCampanha(k)}`
               : c.avulsos.every((i) => i.automatico)
                 ? plural(c.avulsos.length, "vaga no impulso automático", "vagas no impulso automático")
-                : plural(c.avulsos.length, "vaga impulsionada sozinha", "vagas impulsionadas sozinhas")}
+                : c.avulsos.every(ehPacote)
+                  ? plural(c.avulsos.length, "vaga com pacote de candidatos", "vagas com pacote de candidatos")
+                  : plural(c.avulsos.length, "vaga impulsionada sozinha", "vagas impulsionadas sozinhas")}
             {k && c.avulsos.length > 0 && `. Mais ${plural(c.avulsos.length, "vaga sozinha", "vagas sozinhas")}`}
           </p>
         </div>
@@ -311,23 +347,37 @@ function CartaoDoCliente({ c, linhas, agora }: { c: Cliente; linhas: ImpulsoDoAd
                   ) : (
                     <span className="text-label">{i.titulo}</span>
                   )}
-                  <Selo variante={VARIANTE_DA_SITUACAO[i.situacao] ?? "neutro"}>{NOME_DA_SITUACAO[i.situacao] ?? i.situacao}</Selo>
+                  <Selo variante={VARIANTE_DA_SITUACAO[i.situacao] ?? "neutro"}>{nomeDaSituacao(i)}</Selo>
                   {i.automatico && <Selo variante="novo">Automático</Selo>}
+                  {ehPacote(i) && <Selo variante="contorno">Pacote</Selo>}
                   <Selo variante="contorno">{i.tipo ?? "Outros"}</Selo>
                   {i.estendido_em && i.situacao === "no_ar" && <Selo variante="aviso">Garantia</Selo>}
                   {i.pausar && <Selo variante="novo">Parando</Selo>}
                 </p>
-                <p className="mt-0.5 text-body-sm text-ink-muted">
-                  {!i.campanha_cliente_id &&
-                    `${i.automatico ? NOME_DA_ORIGEM.automatico : NOME_DA_ORIGEM[i.origem]}, ${plural(i.dias, "dia", "dias")}${
-                      i.ate && i.situacao === "no_ar"
-                        ? ` até ${formatarData(i.ate)}${i.estendido_em ? ` (${naGarantia(i)})` : ""}`
-                        : ""
+                {ehPacote(i) ? (
+                  <p className="mt-0.5 text-body-sm text-ink-muted">
+                    {`${NOME_DA_ORIGEM[i.origem]}, ${candidatosDoPacote(i)}${
+                      i.ate && i.situacao === "no_ar" ? `, no destaque até ${formatarData(i.ate)}` : ""
                     }. `}
-                  <span className="tabular-nums">
-                    {reais(Number(i.gasto ?? 0))} no Google, {numerosDa(i.totais)}
-                  </span>
-                </p>
+                    <span className="tabular-nums">
+                      {plural(i.totais.visitas, "visita", "visitas")} ({formatarNumero(i.totais.visitas_quadro ?? 0)} pelo
+                      quadro), {plural(i.totais.curtidas, "curtida", "curtidas")}
+                      {i.verba_dia ? `. Soma ${reais(Number(i.verba_dia))} por dia à campanha geral` : ""}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-body-sm text-ink-muted">
+                    {!i.campanha_cliente_id &&
+                      `${i.automatico ? NOME_DA_ORIGEM.automatico : NOME_DA_ORIGEM[i.origem]}, ${plural(i.dias, "dia", "dias")}${
+                        i.ate && i.situacao === "no_ar"
+                          ? ` até ${formatarData(i.ate)}${i.estendido_em ? ` (${naGarantia(i)})` : ""}`
+                          : ""
+                      }. `}
+                    <span className="tabular-nums">
+                      {reais(Number(i.gasto ?? 0))} no Google, {numerosDa(i.totais)}
+                    </span>
+                  </p>
+                )}
                 {i.erro && corre && (
                   <p className="mt-0.5 text-body-sm break-words text-danger">
                     {i.erro}
@@ -338,7 +388,7 @@ function CartaoDoCliente({ c, linhas, agora }: { c: Cliente; linhas: ImpulsoDoAd
               </div>
               {corre && !i.pausar && (
                 <div className="sm:justify-self-end">
-                  <PararImpulso id={i.id} noAr={i.situacao === "no_ar"} />
+                  <PararImpulso id={i.id} noAr={i.situacao === "no_ar"} pacote={ehPacote(i)} />
                 </div>
               )}
             </li>

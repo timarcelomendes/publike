@@ -16,6 +16,8 @@ import {
 import { avisarDeuMatch, pedirConversa } from "@/lib/abrir-conversa";
 import { caminhoConversa } from "@/lib/conversas";
 import { linkWhatsApp } from "@/lib/formato";
+import { linkDoDestaque } from "@/lib/impulso";
+import { contarVisitaDoQuadro } from "./anuncio/contar-impulso";
 import { NuncaPague } from "./anuncio/nunca-pague";
 import { LinhaDoAvisoLigado } from "./aviso-ligado";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
@@ -60,6 +62,7 @@ export function BotaoCurtir({
   servico = false,
   quem,
   className = "",
+  impulso = null,
 }: {
   anuncioId: string;
   status: string | null;
@@ -69,6 +72,11 @@ export function BotaoCurtir({
   /** quem decide se aceita (o nome de quem publicou) */
   quem?: string;
   className?: string;
+  /**
+   * No quadro das vagas impulsionadas, o código do impulso (migração 20270519120000): antes de curtir (ou de entrar
+   * para curtir), a visita do quadro conta, e a curtida que vem em seguida conta para quem impulsionou.
+   */
+  impulso?: string | null;
 }) {
   const router = useRouter();
   const [otimista, setAtual] = useOptimistic(status);
@@ -177,8 +185,13 @@ export function BotaoCurtir({
       // a folha de entrar por cima da página (claude/plano-curtir-sem-pagina-de-entrar.md); sem ela, o /entrar (no
       // serviço, "Entre para pedir o serviço"). Depois de entrar, volta para a vaga e a curtida sai sozinha
       // (?curtir=auto; com perguntas da empresa, o quadro aparece com elas)
-      const proximo = `/anuncio/${anuncioId}?curtir=auto${servico ? "&servico=1" : ""}`;
-      if (!pedirEntrar({ proximo })) router.push(`/entrar?next=${encodeURIComponent(proximo)}`);
+      const proximo = linkDoDestaque(anuncioId, impulso, `curtir=auto${servico ? "&servico=1" : ""}`);
+      const abrir = () => {
+        if (!pedirEntrar({ proximo })) router.push(`/entrar?next=${encodeURIComponent(proximo)}`);
+      };
+      // do quadro: a visita conta antes (a curtida que sai sozinha na volta acha a visita)
+      if (impulso) void contarVisitaDoQuadro(impulso, anuncioId).finally(abrir);
+      else abrir();
       return;
     }
     if (respondido) {
@@ -188,6 +201,8 @@ export function BotaoCurtir({
     const curtindo = !curtido;
     iniciar(async () => {
       setAtual(curtido ? null : "pendente");
+      // do quadro: a visita conta antes da curtida, para a curtida contar para quem impulsionou
+      if (curtindo && impulso) await contarVisitaDoQuadro(impulso, anuncioId);
       // sem chegar ao servidor, volta { ok: false }: o coração desfaz e o erro aparece
       const r = await chamarAcao(() =>
         desfeito ? curtirDeNovo(anuncioId) : curtido ? descurtirAnuncio(anuncioId) : curtirAnuncio(anuncioId),
