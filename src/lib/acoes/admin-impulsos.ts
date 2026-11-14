@@ -667,12 +667,16 @@ export async function pararImpulsoPeloAdmin(id: string): Promise<Resultado> {
  * Os grupos da campanha geral por função e por cidade (migração 20270522120000): a chave, a verba por grupo e quantas
  * vagas no ar a função (ou a cidade) precisa para entrar. O robô age em seguida.
  */
+/** O menor "Mínimo de vagas no ar" dos grupos da campanha geral. */
+const MINIMO_DE_VAGAS_DO_GRUPO = 2;
+
 export async function salvarGruposAdmin(config: { ligados: boolean; verba: number; entrada: number }): Promise<Resultado> {
   if (typeof config.ligados !== "boolean") return { ok: false, erro: "Escolha ligar ou desligar." };
   if (!(config.verba >= 10 && config.verba <= 1000))
     return { ok: false, erro: "A verba por grupo vai de R$ 10 a R$ 1.000 por dia." };
-  if (!(Number.isInteger(config.entrada) && config.entrada >= 1 && config.entrada <= 50))
-    return { ok: false, erro: "A entrada vai de 1 a 50 vagas no ar." };
+  // pelo menos 2 (14/11/2026, Marcelo: "não pode permitir menos que 2 nesse campo"); a vaga impulsionada entra sempre
+  if (!(Number.isInteger(config.entrada) && config.entrada >= MINIMO_DE_VAGAS_DO_GRUPO && config.entrada <= 50))
+    return { ok: false, erro: `O mínimo de vagas no ar vai de ${MINIMO_DE_VAGAS_DO_GRUPO} a 50.` };
   const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   const { data, error } = await c.rpc("admin_salvar_grupos", {

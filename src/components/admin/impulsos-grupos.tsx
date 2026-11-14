@@ -96,7 +96,7 @@ export function GruposDaGeral({
           <span className="text-body-sm text-ink-muted">Mínimo de vagas no ar</span>
           <input
             type="number"
-            min={1}
+            min={2}
             max={50}
             step="1"
             value={c.entrada}
