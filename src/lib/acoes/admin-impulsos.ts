@@ -663,12 +663,13 @@ export async function pararImpulsoPeloAdmin(id: string): Promise<Resultado> {
   return { ok: true, mensagem: "Parado." };
 }
 
+/** O menor "Mínimo de vagas no ar" dos grupos da campanha geral. */
+const MINIMO_DE_VAGAS_DO_GRUPO = 2;
+
 /**
  * Os grupos da campanha geral por função e por cidade (migração 20270522120000): a chave, a verba por grupo e quantas
  * vagas no ar a função (ou a cidade) precisa para entrar. O robô age em seguida.
  */
-/** O menor "Mínimo de vagas no ar" dos grupos da campanha geral. */
-const MINIMO_DE_VAGAS_DO_GRUPO = 2;
 
 export async function salvarGruposAdmin(config: { ligados: boolean; verba: number; entrada: number }): Promise<Resultado> {
   if (typeof config.ligados !== "boolean") return { ok: false, erro: "Escolha ligar ou desligar." };
@@ -691,4 +692,35 @@ export async function salvarGruposAdmin(config: { ligados: boolean; verba: numbe
   after(() => cuidarDosImpulsos().catch(() => {}));
   refresh();
   return { ok: true, mensagem: config.ligados ? "Salvo. O robô acerta os grupos em instantes." : "Salvo." };
+}
+
+/**
+ * Os raios das vagas impulsionadas na campanha geral (migração 20270523120000): a chave, o tamanho do raio, o lance a
+ * mais e o lance mínimo (onde o clique já sai barato). O robô age em seguida.
+ */
+export async function salvarRaiosAdmin(config: {
+  ligados: boolean;
+  km: number;
+  lance: number;
+  minimo: number;
+}): Promise<Resultado> {
+  if (typeof config.ligados !== "boolean") return { ok: false, erro: "Escolha ligar ou desligar." };
+  if (!(config.km >= 3 && config.km <= 30)) return { ok: false, erro: "O raio vai de 3 a 30 km." };
+  const inteiro = (n: number) => Number.isInteger(n) && n >= 0 && n <= 300;
+  if (!inteiro(config.lance) || !inteiro(config.minimo)) return { ok: false, erro: "O lance a mais vai de 0% a 300%." };
+  if (config.minimo > config.lance) return { ok: false, erro: "O lance mínimo não pode passar do lance a mais." };
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  const { data, error } = await c.rpc("admin_salvar_raios", {
+    p_config: { ligados: config.ligados, km: Math.round(config.km * 10) / 10, lance: config.lance, minimo: config.minimo },
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270523120000 primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  const r = (data ?? {}) as { erro?: string };
+  if (r.erro) return { ok: false, erro: r.erro };
+  after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  return { ok: true, mensagem: config.ligados ? "Salvo. O robô acerta os raios em instantes." : "Salvo." };
 }

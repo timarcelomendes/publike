@@ -19,6 +19,8 @@ import { NovoImpulso } from "@/components/admin/impulsos-novo";
 import { ChaveDaGeral } from "@/components/admin/impulsos-chave-da-geral";
 import { ConfigDoPacote } from "@/components/admin/impulsos-pacote";
 import { GruposDaGeral, type LinhaDoGrupo } from "@/components/admin/impulsos-grupos";
+import { RaiosDaGeral, type LinhaDoRaio } from "@/components/admin/impulsos-raios";
+import type { PacoteComPonto, RaioGuardado } from "@/lib/raios-da-geral";
 import { candidatosDosDados, planoDoDia } from "@/lib/servidor/grupos-da-geral";
 import { TiposDeVaga } from "@/components/admin/impulsos-tipos";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
@@ -657,9 +659,14 @@ async function CaminhoDoAnuncio({ cliques }: { cliques: Map<string, number> }) {
 async function Regras({ d, antigo }: { d: Dados; antigo: boolean }) {
   const admin = await ehAdminLocal();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const [{ data }, { data: dg }] = await Promise.all([c.rpc("admin_tipos_de_vaga"), c.rpc("admin_grupos_da_geral")]);
+  const [{ data }, { data: dg }, { data: dr }] = await Promise.all([
+    c.rpc("admin_tipos_de_vaga"),
+    c.rpc("admin_grupos_da_geral"),
+    c.rpc("admin_raios_da_geral"),
+  ]);
   const t = (data ?? null) as { tipos: TipoDeVaga[]; outros: number } | null;
   const grupos = dg ? gruposParaOAdmin(dg as Parameters<typeof planoDoDia>[0] & GruposDoBanco) : null;
+  const raios = dr ? raiosParaOAdmin(dr as RaiosDoBanco) : null;
   return (
     <>
       {grupos && (
@@ -668,6 +675,14 @@ async function Regras({ d, antigo }: { d: Dados; antigo: boolean }) {
           descricao="Um grupo para cada função e cidade com vaga no ar, dentro da campanha geral: as palavras da IA, conferidas pelas regras, e o anúncio que leva à página da função ou da cidade. Quantos ficam ligados: a diferença que os pacotes põem no orçamento, dividida pela verba de cada grupo. O robô acerta uma vez por dia, depois das 6h, e logo depois de salvar aqui."
         >
           <GruposDaGeral {...grupos} />
+        </Secao>
+      )}
+      {raios && (
+        <Secao
+          titulo="Raios das vagas impulsionadas na campanha geral"
+          descricao="Cada pacote no ar ganha, na campanha geral, um raio em volta da vaga com o lance maior: quem está perto do estabelecimento vê o anúncio do Publike mais vezes. O dinheiro é o da campanha toda; o raio só dá preferência à região."
+        >
+          <RaiosDaGeral {...raios} />
         </Secao>
       )}
       {antigo && (
@@ -712,6 +727,49 @@ async function Regras({ d, antigo }: { d: Dados; antigo: boolean }) {
       )}
     </>
   );
+}
+
+type RaiosDoBanco = {
+  ligados?: boolean;
+  km?: number | string;
+  lance?: number;
+  minimo?: number;
+  feita_em?: string | null;
+  erro?: string | null;
+  erro_em?: string | null;
+  raios?: (RaioGuardado & { medido_em?: string | null })[];
+  pacotes?: PacoteComPonto[];
+};
+
+/** Os raios para a tela: um por pacote no ar (com o raio ou à espera dele) e os tirados nos últimos 7 dias. */
+function raiosParaOAdmin(d: RaiosDoBanco) {
+  const porImpulso = new Map((d.raios ?? []).map((r) => [r.impulso_id, r]));
+  const noAr = new Set((d.pacotes ?? []).map((p) => p.impulso_id));
+  const linha = (r: (typeof d.raios & object)[number] | undefined, p?: PacoteComPonto): LinhaDoRaio => ({
+    impulso: r?.impulso_id ?? p!.impulso_id,
+    titulo: r?.titulo ?? p?.titulo ?? "Vaga",
+    cliente: r?.cliente ?? p?.cliente ?? null,
+    situacao: !r || (r.situacao === "tirado" && p) ? "espera" : r.situacao === "ligado" ? "ligado" : r.situacao,
+    lance: r?.lance ?? null,
+    vistas: r?.vistas ?? null,
+    cliques: r?.cliques ?? null,
+    custo: r?.custo == null ? null : Number(r.custo),
+    erro: r?.erro ?? null,
+  });
+  return {
+    config: {
+      ligados: Boolean(d.ligados),
+      km: Number(d.km ?? 5),
+      lance: Number(d.lance ?? 50),
+      minimo: Number(d.minimo ?? 10),
+    },
+    linhas: [
+      ...(d.pacotes ?? []).map((p) => linha(porImpulso.get(p.impulso_id), p)),
+      ...(d.raios ?? []).filter((r) => !noAr.has(r.impulso_id)).map((r) => linha(r)),
+    ],
+    feitaEm: d.feita_em ?? null,
+    erro: { texto: d.erro ?? null, em: d.erro_em ?? null },
+  };
 }
 
 type GruposDoBanco = {

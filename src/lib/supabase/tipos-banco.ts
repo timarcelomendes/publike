@@ -3724,6 +3724,11 @@ export type Database = {
       servidor_grupos_feita: { Args: { p_chave: string; p_erro: string | null }; Returns: undefined };
       admin_grupos_da_geral: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_salvar_grupos: { Args: { p_config: Json }; Returns: Json };
+      servidor_raios_da_geral: { Args: { p_chave: string }; Returns: Json };
+      servidor_raio_da_geral: { Args: { p_chave: string; p_raio: Json }; Returns: undefined };
+      servidor_raios_feita: { Args: { p_chave: string; p_erro: string | null; p_medida: boolean }; Returns: undefined };
+      admin_raios_da_geral: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_salvar_raios: { Args: { p_config: Json }; Returns: Json };
       admin_dar_pacotes: {
         Args: { p_anuncios: string[]; p_candidatos: number; p_dias: number | null; p_avisar: boolean };
         Returns: Json;
