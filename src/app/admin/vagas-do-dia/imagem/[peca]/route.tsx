@@ -37,7 +37,10 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
   const baixar = sp.has("baixar");
   const agora = await agoraDaRequisicao();
   const agoraIso = new Date(agora).toISOString();
-  const capa = textoDaCapa({ titulo: sp.get("titulo"), cidade: sp.get("cidade"), periodo: sp.get("periodo") }, agora);
+  const capa = textoDaCapa(
+    { titulo: sp.get("titulo"), cidade: sp.get("cidade"), periodo: sp.get("periodo"), de: sp.get("de"), ate: sp.get("ate") },
+    agora,
+  );
 
   if (peca === "fim") {
     const total = numero(sp.get("total"), 1);

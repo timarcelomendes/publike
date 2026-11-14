@@ -1,5 +1,6 @@
 import { CalendarClock } from "lucide-react";
 import type { Metadata } from "next";
+import Form from "next/form";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
@@ -8,6 +9,7 @@ import { Filtros, linkCom, Secao } from "@/components/admin/ui";
 import { CarrosselDoInstagram } from "@/components/instagram/carrossel";
 import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { classesEntrada } from "@/components/ui/campo";
 import { CATEGORIAS } from "@/lib/constantes";
 import { primeiro } from "@/lib/formato";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
@@ -17,6 +19,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import {
   CIDADES_DO_DIA,
   CONTRATACOES_DO_DIA,
+  diaEmNumeros,
   diaPorExtenso,
   filtrarVagasDoDia,
   hashtagsDoDia,
@@ -25,8 +28,11 @@ import {
   linkDaBio,
   linkDoFimDosStories,
   linkDoStory,
+  MAX_BUSCA_DO_DIA,
   ordenarVagasDoDia,
+  PERIODO_DAS_DATAS,
   PERIODOS_DO_DIA,
+  periodoDoDia,
   textoDaCapa,
   tituloDaArea,
   tituloDaLegenda,
@@ -36,6 +42,9 @@ import {
 export const metadata: Metadata = { title: "Vagas do dia" };
 
 const BASE = "/admin/vagas-do-dia";
+/** O botão dos formulários desta página (o mesmo do "Usar este título"). */
+const BOTAO =
+  "inline-flex min-h-11 shrink-0 items-center rounded-md border border-line-strong px-4 text-label hover:bg-surface-300";
 
 export default function PaginaVagasDoDia({ searchParams }: PageProps<"/admin/vagas-do-dia">) {
   return (
@@ -50,21 +59,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
   const c = await acessoVagasDoDia();
   if (!c) notFound();
   const sp = await searchParams;
-  const periodo = PERIODOS_DO_DIA.find((p) => p.valor === primeiro(sp.periodo)) ?? PERIODOS_DO_DIA[0];
   const agora = await agoraDaRequisicao();
   const agoraIso = new Date(agora).toISOString();
-  const desde = new Date(agora - periodo.horas * 3600 * 1000).toISOString();
-  // os filtros (a área, a praça, só com salário e o jeito de contratar) e o título, todos no endereço
-  // (claude/plano-vagas-do-dia-por-area.md)
+  const hoje = diaEmNumeros(agora);
+  // o período: um dos prontos (Hoje, 3 dias, Semana, 15 dias) ou qualquer um (?periodo=datas&de=&ate=; 14/11/2026)
+  const periodo = periodoDoDia({ periodo: primeiro(sp.periodo), de: primeiro(sp.de), ate: primeiro(sp.ate) }, agora);
+  // os filtros (a área, a praça, só com salário, o jeito de contratar e a busca pelo título da vaga) e o título do post,
+  // todos no endereço (claude/plano-vagas-do-dia-por-area.md)
   const filtros = lerFiltrosDoDia({
     area: primeiro(sp.area),
     cidade: primeiro(sp.cidade),
     salario: primeiro(sp.salario),
     contratacao: primeiro(sp.contratacao),
+    busca: primeiro(sp.busca),
   });
   const titulo = primeiro(sp.titulo) ?? null;
-  const capa = textoDaCapa({ titulo, cidade: filtros.cidade, periodo: periodo.valor }, agora);
-  const todasNovas = ordenarVagasDoDia(await vagasNovasNoAr(c, desde, agoraIso));
+  const capa = textoDaCapa(
+    { titulo, cidade: filtros.cidade, periodo: periodo.valor, de: periodo.datas?.de, ate: periodo.datas?.ate },
+    agora,
+  );
+  const todasNovas = ordenarVagasDoDia(await vagasNovasNoAr(c, periodo.desde, agoraIso, periodo.antes));
   const novas = filtrarVagasDoDia(todasNovas, filtros);
   // quantas vagas cada área tem, com os outros filtros (para não marcar uma área vazia)
   const porArea = new Map<string, number>();
@@ -73,10 +87,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
   // o endereço com uma mudança (as vagas escolhidas recomeçam: a lista muda com os filtros)
   const atuais = {
     periodo: periodo.valor === "24h" ? null : periodo.valor,
+    de: periodo.datas?.de ?? null,
+    ate: periodo.datas?.ate ?? null,
     area: filtros.areas.join(",") || null,
     cidade: filtros.cidade === "todas" ? null : filtros.cidade,
     salario: filtros.comSalario ? "1" : null,
     contratacao: filtros.contratacao === "todas" ? null : filtros.contratacao,
+    busca: filtros.busca || null,
     titulo,
   };
   const link = (mudanca: Record<string, string | null>) => linkCom(BASE, atuais, mudanca).replace(/%2C/gi, ",");
@@ -92,6 +109,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
   if (titulo) consulta.set("titulo", titulo);
   if (filtros.cidade !== "todas") consulta.set("cidade", filtros.cidade);
   if (periodo.valor !== "24h") consulta.set("periodo", periodo.valor);
+  if (periodo.datas) {
+    consulta.set("de", periodo.datas.de);
+    consulta.set("ate", periodo.datas.ate);
+  }
   if (filtros.areas.length) consulta.set("area", filtros.areas.join(","));
   const extra = consulta.size ? `&${consulta.toString()}` : "";
   // as escolhidas no endereço (?v=) que são de antes do período continuam na lista
@@ -101,7 +122,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
   const iniciais = pedidas.length
     ? pedidas.filter((id) => candidatas.some((v) => v.id === id))
     : novas.slice(0, VAGAS_MARCADAS).map((v) => v.id);
-  const outrosPeriodos = PERIODOS_DO_DIA.filter((p) => p.horas > periodo.horas);
+  const horas = periodo.horas;
+  const outrosPeriodos = horas === null ? [] : PERIODOS_DO_DIA.filter((p) => p.horas > horas);
+  const quandoNoVazio = periodo.datas
+    ? `${periodo.datas.de === periodo.datas.ate ? "em" : "de"} ${periodo.quando}`
+    : periodo.valor === "24h"
+      ? "nas últimas 24 horas"
+      : `em ${periodo.nome.toLowerCase()}`;
   const site = urlDosEmails() ?? "https://publike.org";
   const [antes, depois] = linkDoStory(site, "@").split("@");
 
@@ -120,10 +147,56 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
         <Linha nome="Publicadas">
           <Filtros
             rotulo="Publicadas"
-            opcoes={PERIODOS_DO_DIA.map((p) => ({ valor: p.valor, nome: p.nome }))}
+            opcoes={[
+              ...PERIODOS_DO_DIA.map((p) => ({ valor: p.valor, nome: p.nome })),
+              { valor: PERIODO_DAS_DATAS, nome: "Escolher datas" },
+            ]}
             atual={periodo.valor}
-            link={(v) => link({ periodo: v === "24h" ? null : v, titulo: null })}
+            link={(v) =>
+              v === PERIODO_DAS_DATAS
+                ? link({ periodo: v, titulo: null })
+                : link({ periodo: v === "24h" ? null : v, de: null, ate: null, titulo: null })
+            }
           />
+          {periodo.datas && (
+            // qualquer período (14/11/2026, Marcelo: "Incluir opções para buscar qualquer período"): de uma data a outra
+            <Form action={BASE} scroll={false} className="mt-3 flex flex-wrap items-end gap-2">
+              <Ocultos valores={{ ...atuais, de: null, ate: null, titulo: null }} />
+              <Data nome="de" rotulo="De" valor={periodo.datas.de} hoje={hoje} />
+              <Data nome="ate" rotulo="Até" valor={periodo.datas.ate} hoje={hoje} />
+              <button type="submit" className={BOTAO}>
+                Ver as vagas
+              </button>
+            </Form>
+          )}
+        </Linha>
+        <Linha nome="Buscar">
+          {/* pelo título da vaga (14/11/2026, Marcelo: "e por título da vaga"): todas as palavras, sem olhar acento */}
+          <Form action={BASE} scroll={false} role="search" className="flex flex-wrap items-center gap-2">
+            <Ocultos valores={{ ...atuais, busca: null }} />
+            <input
+              key={filtros.busca}
+              type="search"
+              name="busca"
+              defaultValue={filtros.busca}
+              maxLength={MAX_BUSCA_DO_DIA}
+              placeholder="Título da vaga, como auxiliar de cozinha"
+              aria-label="Buscar pelo título da vaga"
+              className={`${classesEntrada} min-w-0 flex-1 basis-56`}
+            />
+            <button type="submit" className={BOTAO}>
+              Buscar
+            </button>
+            {filtros.busca && (
+              <Link
+                href={link({ busca: null })}
+                scroll={false}
+                className="inline-flex min-h-11 items-center px-2 text-label underline"
+              >
+                Limpar a busca
+              </Link>
+            )}
+          </Form>
         </Linha>
         <Linha nome="Área">
           <nav aria-label="Área" className="flex flex-wrap gap-2">
@@ -179,7 +252,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
       {candidatas.length === 0 ? (
         <Vazio
           icone={CalendarClock}
-          titulo={`Nenhuma vaga nova ${periodo.valor === "24h" ? "nas últimas 24 horas" : `em ${periodo.nome.toLowerCase()}`}${todasNovas.length ? " com esses filtros" : ""}`}
+          titulo={`Nenhuma vaga nova ${quandoNoVazio}${todasNovas.length ? " com esses filtros" : ""}`}
           acao={
             outrosPeriodos.length > 0 ? (
               <BotaoLink href={link({ periodo: outrosPeriodos[0].valor, titulo: null })} scroll={false}>
@@ -213,5 +286,27 @@ function Linha({ nome, children }: { nome: string; children: ReactNode }) {
       <p className="text-label text-ink-muted sm:w-28 sm:shrink-0 sm:pt-2.5">{nome}</p>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
+  );
+}
+
+/** Os outros filtros do endereço, escondidos no formulário (o Form manda só o que está nele). */
+function Ocultos({ valores }: { valores: Record<string, string | null> }) {
+  return (
+    <>
+      {Object.entries(valores).map(([nome, valor]) =>
+        valor ? <input key={nome} type="hidden" name={nome} value={valor} /> : null,
+      )}
+    </>
+  );
+}
+
+/** Uma data do período escolhido (o calendário do celular abre no toque), até hoje. */
+function Data({ nome, rotulo, valor, hoje }: { nome: string; rotulo: string; valor: string; hoje: string }) {
+  return (
+    <label className="flex w-44 flex-col gap-1 text-body-sm text-ink-muted">
+      {rotulo}
+      {/* a chave troca o campo quando o endereço muda (o defaultValue sozinho não muda o que está escrito) */}
+      <input key={valor} type="date" name={nome} defaultValue={valor} max={hoje} required className={classesEntrada} />
+    </label>
   );
 }

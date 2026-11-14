@@ -44,6 +44,111 @@ export const PERIODOS_DO_DIA = [
 ] as const;
 export type PeriodoDoDia = (typeof PERIODOS_DO_DIA)[number]["valor"];
 
+/**
+ * Qualquer período (14/11/2026, Marcelo: "Incluir opções para buscar qualquer período e por título da vaga"):
+ * ?periodo=datas&de=2026-11-01&ate=2026-11-10, as datas no horário de Brasília. Sem as datas, os últimos 30 dias.
+ */
+export const PERIODO_DAS_DATAS = "datas";
+/** Os dias que "Escolher datas" mostra antes de escolher (até hoje). */
+const DIAS_DAS_DATAS = 30;
+const UM_DIA = 24 * 3600 * 1000;
+export type DatasDoDia = { de: string; ate: string };
+
+/** O período da página, pronto: de quando a quando ler as vagas e o que vai na capa. */
+export type PeriodoEscolhido = {
+  /** "24h", "3d", "7d", "15d" ou "datas" */
+  valor: string;
+  /** o nome do botão ("Semana"); nas datas, o "quando" */
+  nome: string;
+  /** o título que sugere para o post */
+  titulo: string;
+  /** "quinta, 5 de novembro" ou "2 a 8 de novembro" */
+  quando: string;
+  /** o selo dos stories */
+  selo: string;
+  /** desde quando ler as vagas (ISO) */
+  desde: string;
+  /** antes de quando (ISO): só nas datas escolhidas; nos outros, até agora */
+  antes: string | null;
+  /** as datas escolhidas; null nos períodos prontos */
+  datas: DatasDoDia | null;
+  /** as horas do período pronto; null nas datas */
+  horas: number | null;
+};
+
+const DATA = /^\d{4}-\d{2}-\d{2}$/;
+/** Uma hora de uma data no horário de Brasília (sem horário de verão desde 2019). */
+const emBrasilia = (dia: string, hora = "00:00") => Date.parse(`${dia}T${hora}:00-03:00`);
+/** A data, se existe de verdade ("2026-02-30" não). */
+const dataValida = (d: string | null | undefined) =>
+  d && DATA.test(d) && diaEmNumeros(emBrasilia(d, "12:00")) === d ? d : null;
+
+/** As datas do endereço: as que existem, nenhuma depois de hoje, a primeira antes da segunda (trocadas, desviram). */
+export function lerDatasDoDia(de: string | null | undefined, ate: string | null | undefined, agora: number): DatasDoDia {
+  const hoje = diaEmNumeros(agora);
+  const ateHoje = (d: string) => (d > hoje ? hoje : d);
+  const fim = ateHoje(dataValida(ate) ?? hoje);
+  const inicio = ateHoje(dataValida(de) ?? diaEmNumeros(emBrasilia(fim, "12:00") - (DIAS_DAS_DATAS - 1) * UM_DIA));
+  return inicio <= fim ? { de: inicio, ate: fim } : { de: fim, ate: inicio };
+}
+
+/** Quando, nas datas escolhidas: um dia só, "terça, 10 de novembro"; mais, "1 a 10 de novembro". */
+export function quandoDasDatas(d: DatasDoDia) {
+  const [inicio, fim] = [emBrasilia(d.de, "12:00"), emBrasilia(d.ate, "12:00")];
+  return d.de === d.ate ? diaPorExtenso(inicio) : intervaloPorExtenso(inicio, fim);
+}
+
+/** O período do endereço (?periodo=, e nas datas &de= e &ate=): um dos prontos ou as datas escolhidas. */
+export function periodoDoDia(
+  sp: { periodo?: string | null; de?: string | null; ate?: string | null },
+  agora: number,
+): PeriodoEscolhido {
+  if (sp.periodo === PERIODO_DAS_DATAS) {
+    const datas = lerDatasDoDia(sp.de, sp.ate, agora);
+    const soHoje = datas.de === datas.ate && datas.ate === diaEmNumeros(agora);
+    const quando = quandoDasDatas(datas);
+    return {
+      valor: PERIODO_DAS_DATAS,
+      nome: quando,
+      titulo: soHoje ? "Vagas do dia" : "Vagas novas",
+      quando,
+      selo: soHoje ? "HOJE" : "VAGAS NOVAS",
+      desde: new Date(emBrasilia(datas.de)).toISOString(),
+      antes: new Date(emBrasilia(datas.ate) + UM_DIA).toISOString(),
+      datas,
+      horas: null,
+    };
+  }
+  const p = PERIODOS_DO_DIA.find((x) => x.valor === sp.periodo) ?? PERIODOS_DO_DIA[0];
+  return {
+    valor: p.valor,
+    nome: p.nome,
+    titulo: p.titulo,
+    quando: quandoDoDia(p.horas, agora),
+    selo: p.horas <= 24 ? "HOJE" : "VAGAS NOVAS",
+    desde: new Date(agora - p.horas * 3600 * 1000).toISOString(),
+    antes: null,
+    datas: null,
+    horas: p.horas,
+  };
+}
+
+/** A busca pelo título da vaga tem até 60 letras. */
+export const MAX_BUSCA_DO_DIA = 60;
+const semAcento = (t: string) => t.normalize("NFD").replace(/\p{Mn}/gu, "").toLowerCase();
+
+/**
+ * O título tem todas as palavras da busca, em qualquer ordem e sem olhar acento nem maiúscula: "aux cozinha" acha
+ * "Auxiliar de Cozinha".
+ */
+export function tituloTemABusca(titulo: string, busca: string) {
+  const t = semAcento(titulo);
+  return semAcento(busca)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .every((p) => t.includes(p));
+}
+
 // Os filtros de Admin › Vagas do dia (claude/plano-vagas-do-dia-por-area.md): a área (uma ou mais), a praça, só as
 // que dizem o salário e o jeito de contratar. Ficam no endereço (?area=alimentacao,comercio&cidade=anapolis…).
 
@@ -67,6 +172,8 @@ export type FiltrosDoDia = {
   cidade: (typeof CIDADES_DO_DIA)[number]["valor"];
   comSalario: boolean;
   contratacao: (typeof CONTRATACOES_DO_DIA)[number]["valor"];
+  /** a busca pelo título da vaga (?busca=); vazia, todas */
+  busca: string;
 };
 
 /** Os filtros do endereço: só os valores conhecidos. */
@@ -75,21 +182,21 @@ export function lerFiltrosDoDia(sp: {
   cidade?: string | null;
   salario?: string | null;
   contratacao?: string | null;
+  busca?: string | null;
 }): FiltrosDoDia {
   const areas = [...new Set((sp.area ?? "").split(",").map((a) => a.trim()))].filter((a) =>
     CATEGORIAS.some((c) => c.slug === a),
   );
   const cidade = CIDADES_DO_DIA.find((c) => c.valor === sp.cidade)?.valor ?? "todas";
   const contratacao = CONTRATACOES_DO_DIA.find((c) => c.valor === sp.contratacao)?.valor ?? "todas";
-  return { areas, cidade, comSalario: sp.salario === "1", contratacao };
+  const busca = (sp.busca ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_BUSCA_DO_DIA);
+  return { areas, cidade, comSalario: sp.salario === "1", contratacao, busca };
 }
 
 /** As vagas que passam nos filtros (`semArea`: sem olhar a área, para contar quantas há em cada uma). */
-export function filtrarVagasDoDia<T extends Pick<VagaDoDia, "categoria" | "cidade" | "pagamento_valor" | "regime">>(
-  vagas: T[],
-  f: FiltrosDoDia,
-  semArea = false,
-): T[] {
+export function filtrarVagasDoDia<
+  T extends Pick<VagaDoDia, "titulo" | "categoria" | "cidade" | "pagamento_valor" | "regime">,
+>(vagas: T[], f: FiltrosDoDia, semArea = false): T[] {
   const praca = CIDADES_DO_DIA.find((c) => c.valor === f.cidade);
   return vagas.filter(
     (v) =>
@@ -97,7 +204,8 @@ export function filtrarVagasDoDia<T extends Pick<VagaDoDia, "categoria" | "cidad
       (!praca?.cidade || pracaDaCidade(v.cidade)?.cidade === praca.cidade) &&
       (!f.comSalario || v.pagamento_valor != null) &&
       (f.contratacao === "todas" ||
-        (f.contratacao === "carteira" ? DE_CARTEIRA.has(v.regime ?? "") : DE_FREELA.has(v.regime ?? ""))),
+        (f.contratacao === "carteira" ? DE_CARTEIRA.has(v.regime ?? "") : DE_FREELA.has(v.regime ?? ""))) &&
+      (!f.busca || tituloTemABusca(v.titulo, f.busca)),
   );
 }
 
@@ -133,34 +241,37 @@ export function tituloDaArea(area: string) {
   return c ? limparTituloDoDia(`Vagas de ${c.nome.charAt(0).toLowerCase()}${c.nome.slice(1)}`) : null;
 }
 
-/** Quando: hoje, "quinta, 5 de novembro"; nos outros períodos, "2 a 8 de novembro" (ou "28 de outubro a 5 de novembro"). */
-export function quandoDoDia(horas: number, agora: number) {
-  if (horas <= 24) return diaPorExtenso(agora);
+/** "2 a 8 de novembro" ou "28 de outubro a 5 de novembro", no horário de Brasília. */
+function intervaloPorExtenso(inicio: number, fim: number) {
   const fuso = { timeZone: "America/Sao_Paulo" } as const;
-  const inicio = new Date(agora - horas * 3600 * 1000);
-  const fim = new Date(agora);
-  const mes = (d: Date) => new Intl.DateTimeFormat("pt-BR", { ...fuso, month: "long" }).format(d);
-  const diaDe = (d: Date) => new Intl.DateTimeFormat("pt-BR", { ...fuso, day: "numeric" }).format(d);
+  const mes = (d: number) => new Intl.DateTimeFormat("pt-BR", { ...fuso, month: "long" }).format(new Date(d));
+  const diaDe = (d: number) => new Intl.DateTimeFormat("pt-BR", { ...fuso, day: "numeric" }).format(new Date(d));
   return mes(inicio) === mes(fim)
     ? `${diaDe(inicio)} a ${diaDe(fim)} de ${mes(fim)}`
     : `${diaDe(inicio)} de ${mes(inicio)} a ${diaDe(fim)} de ${mes(fim)}`;
 }
 
+/** Quando: hoje, "quinta, 5 de novembro"; nos outros períodos, "2 a 8 de novembro" (ou "28 de outubro a 5 de novembro"). */
+export function quandoDoDia(horas: number, agora: number) {
+  if (horas <= 24) return diaPorExtenso(agora);
+  return intervaloPorExtenso(agora - horas * 3600 * 1000, agora);
+}
+
 /** O que vai na capa: o título, onde, quando e o selo dos stories ("HOJE" ou "VAGAS NOVAS"). */
 export type TextoDaCapa = { titulo: string; lugar: string; quando: string; selo: string };
 
-/** O texto da capa a partir do que está no endereço (o título vazio fica o do período). */
+/** O texto da capa a partir do que está no endereço (o título vazio fica o do período; nas datas, &de= e &ate=). */
 export function textoDaCapa(
-  sp: { titulo?: string | null; cidade?: string | null; periodo?: string | null },
+  sp: { titulo?: string | null; cidade?: string | null; periodo?: string | null; de?: string | null; ate?: string | null },
   agora: number,
 ): TextoDaCapa {
-  const periodo = PERIODOS_DO_DIA.find((p) => p.valor === sp.periodo) ?? PERIODOS_DO_DIA[0];
+  const periodo = periodoDoDia(sp, agora);
   const { cidade } = lerFiltrosDoDia({ cidade: sp.cidade });
   return {
     titulo: limparTituloDoDia(sp.titulo) ?? periodo.titulo,
     lugar: lugarDoDia(cidade),
-    quando: quandoDoDia(periodo.horas, agora),
-    selo: periodo.horas <= 24 ? "HOJE" : "VAGAS NOVAS",
+    quando: periodo.quando,
+    selo: periodo.selo,
   };
 }
 

@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
 
   const dia = diaPorExtenso(agora);
   const sp = request.nextUrl.searchParams;
-  const capa = textoDaCapa({ titulo: sp.get("titulo"), cidade: sp.get("cidade"), periodo: sp.get("periodo") }, agora);
+  const capa = textoDaCapa(
+    { titulo: sp.get("titulo"), cidade: sp.get("cidade"), periodo: sp.get("periodo"), de: sp.get("de"), ate: sp.get("ate") },
+    agora,
+  );
   const filtros = lerFiltrosDoDia({ area: sp.get("area"), cidade: sp.get("cidade") });
   const site = urlDosEmails() ?? "https://publike.org";
   const zip = await pacoteDoDia(

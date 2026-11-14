@@ -84,20 +84,27 @@ export async function acessoVagasDoDia(): Promise<ClienteBanco | null> {
   return null;
 }
 
-/** As vagas no ar publicadas desde `desde`, as mais novas primeiro (até 300: a página filtra por área e cidade). */
-export async function vagasNovasNoAr(c: ClienteBanco, desde: string, agora: string): Promise<VagaDoDia[]> {
-  const linhas = await ler((colunas) =>
-    c
+/**
+ * As vagas no ar publicadas desde `desde` (e, nas datas escolhidas, antes de `antes`), as mais novas primeiro (até 300:
+ * a página filtra por área, cidade e título).
+ */
+export async function vagasNovasNoAr(
+  c: ClienteBanco,
+  desde: string,
+  agora: string,
+  antes: string | null = null,
+): Promise<VagaDoDia[]> {
+  const linhas = await ler((colunas) => {
+    const consulta = c
       .from("anuncios")
       .select(colunas)
       .eq("tipo", "vaga")
       .eq("status", "ativo")
       .is("preenchida_em", null)
       .gt("expira_em", agora)
-      .gte("criado_em", desde)
-      .order("criado_em", { ascending: false })
-      .limit(300),
-  );
+      .gte("criado_em", desde);
+    return (antes ? consulta.lt("criado_em", antes) : consulta).order("criado_em", { ascending: false }).limit(300);
+  });
   return linhas.filter(noAr(agora)).map(paraVaga);
 }
 
