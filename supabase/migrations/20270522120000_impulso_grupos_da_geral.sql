@@ -62,7 +62,7 @@ security definer
 set search_path = ''
 as $$
   with vagas as (
-    select a.id, a.cidade,
+    select a.id, a.cidade, a.titulo,
            exists (select 1 from public.vagas_impulsionadas() q where q.anuncio_id = a.id) as impulsionada
       from public.anuncios a
      where a.tipo = 'vaga' and a.status = 'ativo' and a.preenchida_em is null
@@ -81,9 +81,11 @@ as $$
     'grupos', coalesce((select jsonb_agg(to_jsonb(g) order by g.tipo, g.nome) from privado.grupos_da_geral g), '[]'::jsonb),
     -- por função e cidade (o robô soma as cidades da praça)
     'funcoes', coalesce((select jsonb_agg(jsonb_build_object('cbo', x.cbo, 'cidade', x.cidade, 'vagas', x.vagas,
-                                                             'impulsionadas', x.imp))
+                                                             'impulsionadas', x.imp, 'titulos', x.titulos))
                            from (select f.cbo, v.cidade, count(*)::int as vagas,
-                                        count(*) filter (where v.impulsionada)::int as imp
+                                        count(*) filter (where v.impulsionada)::int as imp,
+                                        -- os títulos das vagas (as impulsionadas primeiro), para o nome do dia a dia
+                                        (array_agg(v.titulo order by v.impulsionada desc, v.titulo))[1:3] as titulos
                                    from vagas v join privado.funcoes_das_vagas f on f.anuncio_id = v.id
                                   where f.cbo is not null
                                   group by f.cbo, v.cidade) x), '[]'::jsonb),

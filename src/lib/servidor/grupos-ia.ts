@@ -58,6 +58,7 @@ export async function palavrasDoGrupoComIA(
       mensagem: [
         c.tipo === "cidade" ? `CIDADE: ${c.nome} (Goiás)` : `FUNÇÃO: ${c.nome}`,
         c.tipo === "funcao" && c.sinonimos?.length ? `Nomes na CBO: ${c.sinonimos.join("; ")}` : "",
+        c.tipo === "funcao" && c.titulos?.length ? `Títulos das vagas no ar: ${c.titulos.join("; ")}` : "",
         `<lista>\n${base.join("\n")}\n</lista>`,
       ]
         .filter(Boolean)

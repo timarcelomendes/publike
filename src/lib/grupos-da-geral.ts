@@ -20,6 +20,8 @@ export type Candidato = {
   impulsionadas: number;
   /** os outros nomes da função (os da CBO, já limpos), para as palavras */
   sinonimos?: string[];
+  /** os títulos das vagas da função (até 3), para a IA entender o trabalho */
+  titulos?: string[];
 };
 
 /** A verba mínima por grupo, por dia (13/11/2026: "menos de R$ 10,00 por dia não vale a pena"). */

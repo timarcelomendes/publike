@@ -12,7 +12,7 @@ import {
   textoDoGrupo,
   type Candidato,
 } from "@/lib/grupos-da-geral";
-import { limparNomeDaCbo } from "@/lib/impulso";
+import { funcaoCurta, funcaoDoTitulo, limparNomeDaCbo } from "@/lib/impulso";
 import { caminhoDaBusca } from "@/lib/paginas-busca";
 import { PRACA_PADRAO } from "@/lib/pracas";
 import type { Json } from "@/lib/supabase/tipos-banco";
@@ -51,7 +51,7 @@ type Dados = {
   conta?: string | null;
   campanha_id?: string | null;
   grupos?: GrupoGuardado[];
-  funcoes?: { cbo: string; cidade: string | null; vagas: number; impulsionadas: number }[];
+  funcoes?: { cbo: string; cidade: string | null; vagas: number; impulsionadas: number; titulos?: string[] }[];
   cidades?: { cidade: string; vagas: number; impulsionadas: number }[];
 };
 
@@ -63,19 +63,24 @@ const chaveDe = (g: { tipo: string; chave: string }) => `${g.tipo}:${g.chave}`;
 /** As funções e cidades da praça com vaga no ar, como candidatas a grupo. */
 export function candidatosDosDados(d: Pick<Dados, "funcoes" | "cidades">): Candidato[] {
   const daPraca = new Set<string>(PRACA_PADRAO.cidades);
-  const porCbo = new Map<string, { vagas: number; impulsionadas: number }>();
+  const porCbo = new Map<string, { vagas: number; impulsionadas: number; titulos: string[] }>();
   for (const f of d.funcoes ?? []) {
     if (!f.cidade || !daPraca.has(f.cidade)) continue;
-    const s = porCbo.get(f.cbo) ?? { vagas: 0, impulsionadas: 0 };
+    const s = porCbo.get(f.cbo) ?? { vagas: 0, impulsionadas: 0, titulos: [] };
     s.vagas += f.vagas;
     s.impulsionadas += f.impulsionadas;
+    // as da vaga impulsionada vêm primeiro
+    s.titulos = f.impulsionadas > 0 ? [...(f.titulos ?? []), ...s.titulos] : [...s.titulos, ...(f.titulos ?? [])];
     porCbo.set(f.cbo, s);
   }
   const lista: Candidato[] = [];
   for (const [cbo, s] of porCbo) {
     const daLista = funcaoDaListaPeloCbo(cbo);
     const o = ocupacao(cbo);
-    const nome = daLista?.nome ?? (o?.nome ? limparNomeDaCbo(o.nome)[0] : null);
+    // fora da lista dos 70, o nome oficial da CBO nem sempre é como se busca ("Alimentador de linha de produção" para
+    // "Auxiliar de produção de padaria"): vale a função do título da vaga
+    const doTitulo = s.titulos[0] ? funcaoCurta(funcaoDoTitulo(s.titulos[0]), 40).toLowerCase() : null;
+    const nome = daLista?.nome ?? doTitulo ?? (o?.nome ? limparNomeDaCbo(o.nome)[0] : null);
     if (!nome) continue;
     lista.push({
       tipo: "funcao",
@@ -88,6 +93,7 @@ export function candidatosDosDados(d: Pick<Dados, "funcoes" | "cidades">): Candi
       vagas: s.vagas,
       impulsionadas: s.impulsionadas,
       sinonimos: sinonimosDaCbo([o?.nome, ...(o?.sinonimos ?? [])]),
+      titulos: [...new Set(s.titulos)].slice(0, 3),
     });
   }
   // as cidades da praça menos a principal (as buscas de Goiânia já são do grupo geral)
