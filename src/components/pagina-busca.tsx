@@ -297,7 +297,7 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
                   anuncio={a}
                   agora={agora}
                   usuarioId={null}
-                  impulsionada
+                  // sem o selo "Impulsionada" (14/11/2026): o título do quadro já diz, e o selo cortava o nome
                   // o código do impulso: a visita e a curtida que vêm do quadro contam para quem impulsionou
                   impulso={impulsionadas[a.id]?.codigo ?? null}
                 />

@@ -38,7 +38,7 @@ export function QuadroDeImpulsionadas({
               anuncio={a}
               agora={agora}
               usuarioId={usuarioId}
-              impulsionada
+              // sem o selo "Impulsionada": o título do quadro já diz, e o selo cortava o nome de quem contrata
               impulso={codigos[a.id]?.codigo ?? null}
             />
           </li>
