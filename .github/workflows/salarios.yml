@@ -88,8 +88,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: caged-go
-          key: caged-go-v1-${{ steps.meses.outputs.ultimo }}
-          restore-keys: caged-go-v1-
+          key: caged-go-v2-${{ steps.meses.outputs.ultimo }}
+          # v2: com o ramo (subclasse do CNAE) na 4ª coluna, para o que cada ramo contrata
+          restore-keys: caged-go-v2-
 
       - name: Baixar e filtrar os meses que faltam
         if: steps.meses.outputs.novo == 'sim'
@@ -131,4 +132,18 @@ jobs:
           if [ "$codigo" != "200" ]; then
             echo "::error title=Salários::O site respondeu $codigo ao receber as faixas."
             exit 1
+          fi
+
+      - name: O que cada ramo contrata (para a base de empresas)
+        if: steps.meses.outputs.novo == 'sim'
+        run: |
+          node scripts/salarios/caged.mjs ramos ramos.json caged-go/go-*.tsv
+          node -e 'const r=require("./ramos.json"); require("fs").writeFileSync("ramos-post.json", JSON.stringify({acao:"ramos", linhas:r.linhas}))'
+          resposta=$(curl -sS --max-time 120 -w '\n%{http_code}' -X POST -H "Authorization: Bearer $SEGREDO" \
+            -H "Content-Type: application/json" --data-binary @ramos-post.json "$SITE/api/empresas" || true)
+          codigo=$(printf '%s' "$resposta" | tail -n1)
+          echo "$resposta" | sed '$d'
+          if [ "$codigo" != "200" ]; then
+            # os salários já foram; só avisa
+            echo "::warning title=Ramos::O site respondeu $codigo ao receber o que cada ramo contrata."
           fi

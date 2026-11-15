@@ -26,6 +26,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/usuarios", nome: "Usuários" },
       { href: "/admin/empresas", nome: "Empresas" },
       { href: "/admin/convites", nome: "Convites" },
+      { href: "/admin/receita", nome: "Base da Receita" },
       { href: "/admin/moderadores", nome: "Moderadores" },
       { href: "/admin/testadores", nome: "Testadores do app" },
     ],
@@ -106,6 +107,8 @@ export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" |
   { href: "/admin/impulsos", nome: "Impulsos", precisa: "equipe" },
   // o retorno aos candidatos e "A empresa respondeu o candidato?" (migração 20270531120000; só a equipe publike.org)
   { href: "/admin/retorno", nome: "Retorno", precisa: "equipe" },
+  // a base de empresas da Receita (migração 20270602120000; só a equipe publike.org)
+  { href: "/admin/receita", nome: "Base da Receita", precisa: "equipe" },
 ];
 
 /** Todas as telas da lista, com o nome (as do menu e as que só existem no site, como Números). */

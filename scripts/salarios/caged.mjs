@@ -97,6 +97,7 @@ async function lerArquivo(arquivo, guardar, contas) {
         aprendiz: achar("indicadoraprendiz"),
         intermitente: achar("indtrabintermitente"),
         competencia: achar("competenciamov", "competencia"),
+        subclasse: achar("subclasse", "cnae20subclasse", "cnae2subclasse"),
       };
       const faltam = ["municipio", "cbo", "saldo", "salario", "horas"].filter((c) => colunas[c] < 0);
       if (faltam.length)
@@ -148,7 +149,9 @@ async function lerArquivo(arquivo, guardar, contas) {
       continue;
     }
     contas.mantidas++;
-    guardar(`${municipio}\t${cbo}\t${salario.toFixed(2)}\n`);
+    // o ramo (a subclasse do CNAE, 7 dígitos) vai na 4ª coluna, para o `ramos` (o que cada ramo contrata)
+    const subclasse = colunas.subclasse >= 0 ? (v[colunas.subclasse] ?? "").trim().replace(/\D/g, "").padStart(7, "0") : "";
+    guardar(`${municipio}\t${cbo}\t${salario.toFixed(2)}\t${/^[0-9]{7}$/.test(subclasse) && subclasse !== "0000000" ? subclasse : ""}\n`);
   }
 }
 
@@ -268,6 +271,41 @@ async function calcular(saida, opcoes, arquivos) {
   );
 }
 
+/**
+ * O que cada ramo contrata (claude/plano-base-de-empresas-da-receita.md, parte 3): as contratações de cada função (CBO)
+ * por ramo (subclasse do CNAE) em Goiás nos meses filtrados, só os pares com 3 ou mais.
+ *   node scripts/salarios/caged.mjs ramos ramos.json go-*.tsv
+ */
+async function ramos(saida, opcoes, arquivos) {
+  if (!saida || !arquivos.length) throw new Error("Use: ramos <saida.json> go-AAAAMM.tsv...");
+  const minimo = Number(opcoes.minimo ?? 3);
+  const contas = new Map();
+  let semRamo = 0;
+  for (const arquivo of arquivos) {
+    for (const linha of readFileSync(arquivo, "utf8").split("\n")) {
+      if (!linha) continue;
+      const [, cbo, , cnae] = linha.split("\t");
+      if (!cnae) {
+        semRamo++;
+        continue;
+      }
+      const chave = `${cnae}\t${cbo}`;
+      contas.set(chave, (contas.get(chave) ?? 0) + 1);
+    }
+  }
+  const linhas = [];
+  for (const [chave, n] of contas) {
+    if (n < minimo) continue;
+    const [cnae, cbo] = chave.split("\t");
+    linhas.push({ cnae, cbo, contratacoes: n });
+  }
+  linhas.sort((a, b) => a.cnae.localeCompare(b.cnae) || b.contratacoes - a.contratacoes);
+  writeFileSync(saida, JSON.stringify({ linhas }));
+  console.log(
+    JSON.stringify({ saida, pares: linhas.length, ramos: new Set(linhas.map((l) => l.cnae)).size, semRamo }),
+  );
+}
+
 async function principal() {
   const [comando, ...resto] = process.argv.slice(2);
   const opcoes = {};
@@ -278,7 +316,8 @@ async function principal() {
   }
   if (comando === "filtrar") return filtrar(posicionais[0], posicionais.slice(1));
   if (comando === "calcular") return calcular(posicionais[0], opcoes, posicionais.slice(1));
-  throw new Error("Comandos: filtrar, calcular (veja o começo de scripts/salarios/caged.mjs).");
+  if (comando === "ramos") return ramos(posicionais[0], opcoes, posicionais.slice(1));
+  throw new Error("Comandos: filtrar, calcular, ramos (veja o começo de scripts/salarios/caged.mjs).");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

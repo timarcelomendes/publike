@@ -1,0 +1,162 @@
+# A base de empresas da Receita (claude/plano-base-de-empresas-da-receita.md, parte 0): toda quarta, confere se a Receita
+# publicou um mês novo dos dados abertos do CNPJ. Se publicou, baixa um zip por vez, fica só com o que serve (as empresas
+# ativas das cidades das praças, fora o MEI, e as agências de RH de Goiás), põe no mapa com o CNEFE do IBGE
+# (scripts/empresas/receita.mjs) e manda para o site em lotes (POST /api/empresas). Nada de sócios nem CPF.
+#
+# Usa o mesmo segredo das filas, em Settings › Secrets and variables › Actions:
+#   - segredo PUBLIKE_CRON_SECRET: o mesmo valor de CRON_SECRET na Vercel (Production);
+#   - variável PUBLIKE_URL (opcional): o endereço do site, se não for https://publike.org.
+# Para rodar já (ou carregar de novo o mesmo mês): Actions › Empresas da Receita › Run workflow.
+name: Empresas da Receita
+
+on:
+  schedule:
+    - cron: "41 10 * * 3"
+  workflow_dispatch:
+    inputs:
+      refazer:
+        description: "Carregar de novo, mesmo que o site já tenha o último mês"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: empresas-da-receita
+  cancel-in-progress: false
+
+jobs:
+  empresas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      SEGREDO: ${{ secrets.PUBLIKE_CRON_SECRET }}
+      SITE: ${{ vars.PUBLIKE_URL || 'https://publike.org' }}
+      # os dados abertos do CNPJ (a pasta pública da Receita; o usuário é o código do compartilhamento, sem senha)
+      DAV: https://arquivos.receitafederal.gov.br/public.php/webdav
+      DAV_USUARIO: YggdBLfdninEJX9
+      CNEFE: https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/UF/52_GO.zip
+      REFAZER: ${{ inputs.refazer || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: O que o site já tem
+        id: site
+        run: |
+          if [ -z "$SEGREDO" ]; then
+            echo "::error title=Falta o segredo::Crie o segredo PUBLIKE_CRON_SECRET (o mesmo CRON_SECRET da Vercel)."
+            exit 1
+          fi
+          curl -sS --fail-with-body --max-time 60 -H "Authorization: Bearer $SEGREDO" "$SITE/api/empresas" -o site.json
+          node -e '
+            const s = require("./site.json");
+            require("fs").writeFileSync("pracas.json", JSON.stringify(s.pracas));
+            const pronta = (s.situacao && s.situacao.pronta) || "";
+            console.log("O site tem:", pronta || "nada ainda");
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, "pronta=" + pronta + "\n");
+          '
+
+      - name: O último mês publicado pela Receita
+        id: mes
+        run: |
+          curl -sS --fail --max-time 120 --retry 3 -u "$DAV_USUARIO:" -X PROPFIND -H "Depth: 1" "$DAV/" -o pastas.xml
+          mes=$(grep -oE '/webdav/[0-9]{4}-[0-9]{2}/' pastas.xml | grep -oE '[0-9]{4}-[0-9]{2}' | sort -u | tail -n1)
+          if [ -z "$mes" ]; then
+            echo "::error title=Receita::Não deu para listar as pastas dos dados abertos do CNPJ."
+            head -c 1000 pastas.xml
+            exit 1
+          fi
+          echo "Último mês da Receita: $mes"
+          echo "mes=$mes" >> "$GITHUB_OUTPUT"
+          if [ "$mes" = "${{ steps.site.outputs.pronta }}" ] && [ "$REFAZER" != "true" ]; then
+            echo "novo=nao" >> "$GITHUB_OUTPUT"
+            echo "Nada de novo: o site já tem $mes."
+          else
+            echo "novo=sim" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: O CNEFE de Goiás (cache)
+        if: steps.mes.outputs.novo == 'sim'
+        uses: actions/cache@v4
+        with:
+          path: cnefe
+          key: cnefe-go-2022-v1
+
+      - name: Baixar, filtrar e montar
+        if: steps.mes.outputs.novo == 'sim'
+        env:
+          MES: ${{ steps.mes.outputs.mes }}
+        run: |
+          set -euo pipefail
+          R=scripts/empresas/receita.mjs
+          mkdir -p receita cnefe
+
+          # baixa com retomada: o servidor da Receita às vezes para no meio
+          baixar() {
+            local url="$1" destino="$2" usuario="${3:-}" tentativa
+            for tentativa in 1 2 3 4 5 6 7 8; do
+              if curl -sS --fail -L -C - --connect-timeout 30 --speed-limit 2000 --speed-time 90 \
+                  ${usuario:+-u "$usuario:"} -o "$destino" "$url"; then
+                return 0
+              fi
+              echo "  $(basename "$destino"): parou, tentando de novo ($tentativa)"
+              sleep $((tentativa * 15))
+            done
+            echo "::error title=Download::Não deu para baixar $url"
+            return 1
+          }
+          receita() { baixar "$DAV/$MES/$1" "receita/$1" "$DAV_USUARIO"; }
+
+          [ -s cnefe/52_GO.zip ] || baixar "$CNEFE" cnefe/52_GO.zip || echo "::warning title=CNEFE::Sem o CNEFE: as empresas ficam sem ponto no mapa."
+          curl -sS --fail --max-time 120 -o ibge.json "https://servicodados.ibge.gov.br/api/v1/localidades/estados/52/municipios" || echo "[]" > ibge.json
+          receita Municipios.zip
+          receita Cnaes.zip
+
+          rm -f estab.jsonl empresas.jsonl meis.txt
+          for i in 0 1 2 3 4 5 6 7 8 9; do
+            receita "Estabelecimentos$i.zip"
+            node $R estabelecimentos estab.jsonl --pracas pracas.json --municipios receita/Municipios.zip --ibge ibge.json "receita/Estabelecimentos$i.zip"
+            rm -f "receita/Estabelecimentos$i.zip"
+          done
+          for i in 0 1 2 3 4 5 6 7 8 9; do
+            receita "Empresas$i.zip"
+            node $R empresas empresas.jsonl --estab estab.jsonl "receita/Empresas$i.zip"
+            rm -f "receita/Empresas$i.zip"
+          done
+          receita Simples.zip
+          node $R simples meis.txt --estab estab.jsonl receita/Simples.zip
+          rm -f receita/Simples.zip
+          node $R montar lotes --mes "$MES" --estab estab.jsonl --empresas empresas.jsonl --meis meis.txt \
+            --cnaes receita/Cnaes.zip $( [ -s cnefe/52_GO.zip ] && echo --cnefe cnefe/52_GO.zip )
+
+      - name: Mandar para o site
+        if: steps.mes.outputs.novo == 'sim'
+        run: |
+          set -uo pipefail
+          mandar() {
+            local arquivo="$1" tentativa resposta codigo
+            for tentativa in 1 2 3 4; do
+              resposta=$(curl -sS --max-time 120 -w '\n%{http_code}' -X POST -H "Authorization: Bearer $SEGREDO" \
+                -H "Content-Type: application/json" --data-binary @"$arquivo" "$SITE/api/empresas" || true)
+              codigo=$(printf '%s' "$resposta" | tail -n1)
+              [ "$codigo" = "200" ] && return 0
+              echo "  $(basename "$arquivo"): $codigo $(printf '%s' "$resposta" | sed '$d' | head -c 300)"
+              [ "$codigo" = "400" ] && break
+              sleep $((tentativa * 10))
+            done
+            echo "::error title=Empresas::O site não aceitou $(basename "$arquivo")."
+            exit 1
+          }
+          # os nomes dos ramos, as empresas, as contagens do MEI e, por último, o fim (quem não veio sai)
+          for f in lotes/cnaes-*.json lotes/empresas-*.json lotes/meis-*.json; do
+            [ -e "$f" ] || continue
+            mandar "$f"
+          done
+          echo "Lotes mandados: $(ls lotes/*.json | wc -l)"
+          mandar lotes/fim.json
+          cat lotes/fim.json

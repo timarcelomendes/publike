@@ -1876,6 +1876,13 @@ export type Database = {
         Returns: number;
       };
       servidor_salarios_situacao: { Args: { p_chave: string }; Returns: Json };
+      servidor_empresas_situacao: { Args: { p_chave: string }; Returns: Json };
+      servidor_empresas_lote: { Args: { p_chave: string; p_mes: string; p_linhas: Json }; Returns: number };
+      servidor_empresas_meis: { Args: { p_chave: string; p_mes: string; p_linhas: Json }; Returns: number };
+      servidor_ramos_nomes: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
+      servidor_ramos_salvar: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
+      servidor_empresas_fim: { Args: { p_chave: string; p_mes: string; p_resumo: Json }; Returns: Json };
+      admin_empresas_receita: { Args: Record<string, never>; Returns: Json };
       admin_salarios_salvar: { Args: { p_de: string; p_ate: string; p_linhas: Json }; Returns: number };
       admin_salarios_situacao: { Args: Record<string, never>; Returns: Json };
       admin_salarios_de: {
