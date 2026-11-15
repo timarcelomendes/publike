@@ -65,7 +65,7 @@ export async function palavrasDoGrupoComIA(
         .join("\n\n"),
       maxTokens: 1500,
       esquema: { nome: "palavras_do_grupo", schema: ESQUEMA },
-      tempoLimite: 25_000,
+      tempoLimite: 15_000,
     });
     if (parada) return { palavras: base, negativas: [], modelo, erro: `A IA parou (${parada}).` };
     const bruta = lerJson<{ acrescentar?: unknown; negativas?: unknown }>(texto);

@@ -60,6 +60,20 @@ const NOVOS_POR_VOLTA = 1;
 
 const chaveDe = (g: { tipo: string; chave: string }) => `${g.tipo}:${g.chave}`;
 
+const LIGACOES = new Set(["de", "da", "do", "das", "dos", "e", "em", "para", "a", "o"]);
+const palavrasDe = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/\p{Mn}/gu, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((p) => p.length > 2 && !LIGACOES.has(p));
+/** Os dois nomes dividem uma palavra de verdade ("vendedor" e "vendedor de loja" sim; "empregada doméstica" e "auxiliar de serviços gerais" não). */
+function temPalavraEmComum(a: string, b: string) {
+  const deB = new Set(palavrasDe(b).map((p) => p.slice(0, 6)));
+  return palavrasDe(a).some((p) => deB.has(p.slice(0, 6)));
+}
+
 /** As funções e cidades da praça com vaga no ar, como candidatas a grupo. */
 export function candidatosDosDados(d: Pick<Dados, "funcoes" | "cidades">): Candidato[] {
   const daPraca = new Set<string>(PRACA_PADRAO.cidades);
@@ -75,11 +89,14 @@ export function candidatosDosDados(d: Pick<Dados, "funcoes" | "cidades">): Candi
   }
   const lista: Candidato[] = [];
   for (const [cbo, s] of porCbo) {
-    const daLista = funcaoDaListaPeloCbo(cbo);
     const o = ocupacao(cbo);
     // fora da lista dos 70, o nome oficial da CBO nem sempre é como se busca ("Alimentador de linha de produção" para
     // "Auxiliar de produção de padaria"): vale a função do título da vaga
     const doTitulo = s.titulos[0] ? funcaoCurta(funcaoDoTitulo(s.titulos[0]), 40).toLowerCase() : null;
+    // a função da lista só vale se tiver o que ver com o título da vaga: a CBO de "Auxiliar de Serviços Gerais" cai em
+    // "empregada doméstica" (14/11/2026), e o anúncio falaria de outro trabalho
+    const listada = funcaoDaListaPeloCbo(cbo);
+    const daLista = listada && (!doTitulo || temPalavraEmComum(listada.nome, doTitulo)) ? listada : null;
     const nome = daLista?.nome ?? doTitulo ?? (o?.nome ? limparNomeDaCbo(o.nome)[0] : null);
     if (!nome) continue;
     lista.push({

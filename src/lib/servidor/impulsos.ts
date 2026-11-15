@@ -2374,7 +2374,7 @@ async function umaVoltaDoRobo(
   if (googleAdsLigado() && Date.now() - inicio < 38_000) await cuidarDaGeral(a);
   // os grupos por função e por cidade na campanha geral (migração 20270522120000): só com folga, porque a IA leva até
   // 25 s e a volta tem 60 s
-  if (googleAdsLigado() && Date.now() - inicio < 20_000) await cuidarDosGrupos(a, inicio + 28_000);
+  if (googleAdsLigado() && Date.now() - inicio < 30_000) await cuidarDosGrupos(a, inicio + 34_000);
   // os raios das vagas impulsionadas na campanha geral (migração 20270523120000): entrou ou saiu um pacote, e a medida do dia
   if (googleAdsLigado() && Date.now() - inicio < 40_000) await cuidarDosRaios(a, inicio + 48_000);
   return alertas.length
