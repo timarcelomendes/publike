@@ -168,3 +168,17 @@ export function nomeDaFuncaoComum(cbo: string) {
 export function codigoCbo(cbo: string) {
   return `${cbo.slice(0, 4)}-${cbo.slice(4)}`;
 }
+
+/**
+ * O título curto de uma função das regras, para virar o título da vaga com um toque: o nome oficial quando é curto
+ * ("Padeiro", "Garçom", "Operador de caixa"), senão a primeira expressão da lista ("Auxiliar nos serviços de
+ * alimentação" → "Auxiliar de cozinha"). null se não for uma das funções comuns.
+ */
+export function tituloDaFuncao(cbo: string) {
+  const regra = REGRAS.find(([c]) => c === cbo);
+  if (!regra) return null;
+  const [, nome, lista] = regra;
+  if (!/[,(\-]/.test(nome) && nome.split(" ").length <= 3) return nome;
+  const primeira = lista.split(",")[0].trim();
+  return primeira.charAt(0).toUpperCase() + primeira.slice(1);
+}

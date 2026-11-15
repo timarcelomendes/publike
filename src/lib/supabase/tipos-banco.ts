@@ -1883,6 +1883,41 @@ export type Database = {
       servidor_ramos_salvar: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
       servidor_empresas_fim: { Args: { p_chave: string; p_mes: string; p_resumo: Json }; Returns: Json };
       admin_empresas_receita: { Args: Record<string, never>; Returns: Json };
+      buscar_empresas_receita: {
+        Args: { p_texto: string; p_limite?: number };
+        Returns: {
+          cnpj: string;
+          nome: string;
+          razao_social: string | null;
+          cnae: string | null;
+          ramo: string | null;
+          agencia: boolean;
+          matriz: boolean;
+          mei: boolean;
+          logradouro: string | null;
+          numero: string | null;
+          complemento: string | null;
+          bairro: string | null;
+          cep: string | null;
+          cidade: string;
+          uf: string;
+          lat: number | null;
+          lng: number | null;
+          precisao: string | null;
+          data_abertura: string | null;
+        }[];
+      };
+      funcoes_do_ramo: {
+        Args: { p_cnae: string; p_regiao?: string; p_limite?: number };
+        Returns: {
+          cbo: string;
+          contratacoes: number;
+          p25: number | null;
+          p50: number | null;
+          p75: number | null;
+          regiao: string | null;
+        }[];
+      };
       admin_salarios_salvar: { Args: { p_de: string; p_ate: string; p_linhas: Json }; Returns: number };
       admin_salarios_situacao: { Args: Record<string, never>; Returns: Json };
       admin_salarios_de: {

@@ -16,7 +16,8 @@
 //    POST /api/empresas, nessa ordem, e o fim.json por último.
 //
 // Os arquivos da Receita são CSV com ';', tudo entre aspas, em Latin-1, sem cabeçalho. Sócios e CPF nunca entram.
-// O MEI fica de fora da base (o endereço quase sempre é a casa da pessoa): dele só vão as contagens por bairro e ramo.
+// O MEI entra marcado e sem rua, número nem complemento (o endereço quase sempre é a casa da pessoa): só bairro, CEP
+// e o ponto no meio do CEP. As contagens por bairro e ramo seguem para o conteúdo do mês.
 
 import { spawn } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
@@ -192,7 +193,8 @@ async function estabelecimentos(saida, opcoes, zips) {
       const nomeReceita = nomes.get(v[20]) ?? "";
       const praca = daPraca.get(normalizarNome(nomeReceita));
       const cnae = v[11];
-      const agencia = AGENCIAS.has(cnae);
+      // a agência de RH pelo ramo principal ou por um dos secundários
+      const agencia = AGENCIAS.has(cnae) || String(v[12] ?? "").split(",").some((x) => AGENCIAS.has(x.trim()));
       if (!praca && !agencia) continue;
       if (!praca) contas.agencias_fora++;
       const cidade = praca?.nome ?? bonitos.get(normalizarNome(nomeReceita)) ?? titulo(nomeReceita);
@@ -345,7 +347,7 @@ async function montar(pasta, opcoes) {
 
   // os CEPs que precisam de ponto (fora o MEI)
   const ceps = new Set();
-  for await (const e of linhasJson(opcoes.estab)) if (!meis.has(e.b) && /^\d{8}$/.test(e.cep)) ceps.add(e.cep);
+  for await (const e of linhasJson(opcoes.estab)) if (/^\d{8}$/.test(e.cep)) ceps.add(e.cep);
   const cnefe = await pontosDoCnefe(opcoes.cnefe, ceps);
 
   const desdeMei = new Date();
@@ -363,14 +365,14 @@ async function montar(pasta, opcoes) {
     lote = [];
   };
   for await (const e of linhasJson(opcoes.estab)) {
-    if (meis.has(e.b)) {
+    const mei = meis.has(e.b);
+    if (mei) {
       contas.meis++;
       const aberto = (data(e.a) ?? "").slice(0, 7);
       if (e.p && aberto >= corteMei) {
         const chave = `${e.ci}\t${titulo(e.ba)}\t${e.c}\t${aberto}-01`;
         porMei.set(chave, (porMei.get(chave) ?? 0) + 1);
       }
-      continue;
     }
     const d = dados.get(e.b);
     if (!d) contas.sem_dados++;
@@ -383,7 +385,8 @@ async function montar(pasta, opcoes) {
     const num = numeroDoEndereco(e.n);
     let ponto = null;
     let precisao = null;
-    if (num && cnefe.exatos.has(`${e.cep}|${num}`)) {
+    // o MEI: só o meio do CEP (o endereço quase sempre é a casa da pessoa)
+    if (!mei && num && cnefe.exatos.has(`${e.cep}|${num}`)) {
       ponto = cnefe.exatos.get(`${e.cep}|${num}`);
       precisao = "endereco";
       contas.ponto_exato++;
@@ -394,7 +397,7 @@ async function montar(pasta, opcoes) {
     } else contas.sem_ponto++;
     const porte = { "01": "micro", "03": "pequena", "05": "demais" }[d?.po ?? ""] ?? null;
     const capital = d?.cap ? Number(String(d.cap).replace(/\./g, "").replace(",", ".")) : null;
-    const agencia = AGENCIAS.has(e.c);
+    const agencia = AGENCIAS.has(e.c) || String(e.s ?? "").split(",").some((x) => AGENCIAS.has(x.trim()));
     if (agencia) contas.agencias++;
     if (e.p) contas.na_praca++;
     lote.push({
@@ -410,9 +413,9 @@ async function montar(pasta, opcoes) {
         .split(",")
         .map((x) => x.trim())
         .filter((x) => /^\d{7}$/.test(x)),
-      logradouro: [titulo(e.tl), titulo(e.l)].filter(Boolean).join(" ") || null,
-      numero: num ?? (e.n ? String(e.n).slice(0, 20) : null),
-      complemento: titulo(e.co) || null,
+      logradouro: mei ? null : [titulo(e.tl), titulo(e.l)].filter(Boolean).join(" ") || null,
+      numero: mei ? null : (num ?? (e.n ? String(e.n).slice(0, 20) : null)),
+      complemento: mei ? null : titulo(e.co) || null,
       bairro: titulo(e.ba) || null,
       cep: /^\d{8}$/.test(e.cep) ? e.cep : null,
       cidade: e.ci,
@@ -427,8 +430,9 @@ async function montar(pasta, opcoes) {
       email: e.e ? String(e.e).trim().toLowerCase() : null,
       na_praca: e.p,
       agencia,
+      mei,
     });
-    contas.empresas++;
+    if (!mei) contas.empresas++;
     if (lote.length >= LOTE_EMPRESAS) soltar();
   }
   soltar();

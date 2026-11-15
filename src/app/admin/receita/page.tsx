@@ -34,6 +34,8 @@ type Resumo = {
   por_cidade: { cidade: string; quantas: number }[];
   meis: number;
   meis_60_dias: number;
+  meis_na_base: number;
+  agencias_mei: number;
   ramos_funcoes: number;
   ramos_com_nome: number;
 };
@@ -68,7 +70,7 @@ async function Conteudo() {
         <h1 className="text-h2">Base da Receita</h1>
         <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
           As empresas abertas nas cidades das praças e as agências de RH de Goiás, dos dados abertos do CNPJ. O robô
-          carrega todo mês. MEI fica de fora: dele, só as contagens de abertura por bairro.
+          carrega todo mês. O MEI entra marcado, sem rua nem número, e só aparece para a equipe.
         </p>
       </div>
 
@@ -84,15 +86,23 @@ async function Conteudo() {
             </Aviso>
           )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Numero rotulo="Empresas ativas" valor={r.ativas} detalhe={`${formatarNumero(r.na_praca)} nas praças`} />
+            <Numero rotulo="Empresas ativas" valor={r.ativas} detalhe={`${formatarNumero(r.na_praca)} nas praças, fora o MEI`} />
             <Numero
               rotulo="No mapa"
               valor={r.com_ponto}
               detalhe={`${pct(r.com_ponto, r.ativas)} com ponto (número ou CEP)`}
             />
             <Numero rotulo="Abriram em 60 dias" valor={r.abertas_60_dias} detalhe="nas praças, fora o MEI" />
-            <Numero rotulo="Agências de RH" valor={r.agencias} detalhe="Goiás inteiro" />
-            <Numero rotulo="MEI abertos em 60 dias" valor={r.meis_60_dias} detalhe="só a contagem por bairro" />
+            <Numero
+              rotulo="Agências de RH"
+              valor={r.agencias}
+              detalhe={`Goiás inteiro; ${formatarNumero(r.agencias_mei ?? 0)} são MEI`}
+            />
+            <Numero
+              rotulo="MEI na base"
+              valor={r.meis_na_base ?? 0}
+              detalhe={`${formatarNumero(r.meis_60_dias)} abertos em 60 dias; sem rua nem número, só para a equipe`}
+            />
             <Numero
               rotulo="Ramo × função (Caged)"
               valor={r.ramos_funcoes}
