@@ -120,6 +120,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
 
   return (
     <div className="flex flex-col gap-6">
+      {respostas && (
+        <EmpresaRespondeu
+          linhas={respostas}
+          periodo={periodo}
+          nomePeriodo={nomePeriodo}
+          filtro={filtro}
+          conta={conta}
+          agora={agora}
+        />
+      )}
       <Secao
         titulo="Retorno aos candidatos"
         descricao="Quem publica vagas respondeu quem se candidatou? Respondeu: aceitou, dispensou, mudou de etapa ou mandou mensagem. Contato: mensagem no Publike ou o WhatsApp, telefone ou e-mail aberto pelo botão do Publike (o que a empresa fala fora do Publike não aparece). As que deixam mais gente sem resposta há mais de 3 dias vêm primeiro."
@@ -158,17 +168,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
           </>
         )}
       </Secao>
-
-      {respostas && (
-        <EmpresaRespondeu
-          linhas={respostas}
-          periodo={periodo}
-          nomePeriodo={nomePeriodo}
-          filtro={filtro}
-          conta={conta}
-          agora={agora}
-        />
-      )}
 
       {tres && <TresPerguntas t={tres} periodo={nomePeriodo} />}
 
