@@ -24,7 +24,7 @@ import { RaiosDaGeral, type LinhaDoRaio } from "@/components/admin/impulsos-raio
 import type { PacoteComPonto, RaioGuardado } from "@/lib/raios-da-geral";
 import { candidatosDosDados, planoDoDia } from "@/lib/servidor/grupos-da-geral";
 import { TiposDeVaga } from "@/components/admin/impulsos-tipos";
-import { Numero, Secao, Situacao } from "@/components/admin/ui";
+import { Filtros, Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import type {
@@ -99,7 +99,11 @@ export default function Impulsos({ searchParams }: PageProps<"/admin/impulsos">)
         const aba: Aba = ABAS.some((a) => a.valor === pedida) ? (pedida as Aba) : "agora";
         const conta = primeiro(sp.conta);
         const produto: Produto = primeiro(sp.produto) === "google" ? "google" : "pacote";
-        return <Conteudo aba={aba} conta={conta && UUID.test(conta) ? conta : null} produto={produto} />;
+        const pedido = primeiro(sp.periodo);
+        const periodo: ChavePeriodo = PERIODOS_DOS_NUMEROS.some((x) => x.valor === pedido) ? (pedido as ChavePeriodo) : "30";
+        return (
+          <Conteudo aba={aba} conta={conta && UUID.test(conta) ? conta : null} produto={produto} periodo={periodo} />
+        );
       })}
     </Suspense>
   );
@@ -137,7 +141,17 @@ function clientesCorrendo(d: Dados): Cliente[] {
   return [...m.values()].sort((a, b) => Number(b.problema) - Number(a.problema) || b.recente.localeCompare(a.recente));
 }
 
-async function Conteudo({ aba, conta, produto }: { aba: Aba; conta: string | null; produto: Produto }) {
+async function Conteudo({
+  aba,
+  conta,
+  produto,
+  periodo,
+}: {
+  aba: Aba;
+  conta: string | null;
+  produto: Produto;
+  periodo: ChavePeriodo;
+}) {
   // o admin do computador do dono ou, no site no ar, a equipe publike.org (Admin › Quem vê cada tela)
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/impulsos"))) notFound();
@@ -266,7 +280,8 @@ async function Conteudo({ aba, conta, produto }: { aba: Aba; conta: string | nul
             agora={agora}
             ligado={g.ligado}
             antigo={antigo}
-            geral={antigo ? null : await numerosDaGeral(c)}
+            geral={antigo ? null : await numerosDaGeral(c, datasDoPeriodo(periodo, agora))}
+            periodo={periodo}
           />
           {antigo && <AjustesDiarios ligado={d.config.motor_ligado} />}
           {antigo && <CaminhoDoAnuncio cliques={new Map(d.impulsos.map((i) => [i.id, i.totais.cliques]))} />}
@@ -318,8 +333,55 @@ type NumerosDaGeral = {
   pacotes_pagos: number;
 };
 
-async function numerosDaGeral(c: ReturnType<typeof criarClienteAdmin> | Awaited<ReturnType<typeof criarClienteServidor>>) {
-  const { data, error } = await c.rpc("admin_numeros_da_geral");
+/**
+ * Os períodos dos números (15/11/2026, Marcelo: "ultimos 7 dias, 14dias, ultimos 30 dias (corrente) e ultimo mes de 1 a
+ * 30"): os últimos N dias contam com hoje; o mês passado vai do dia 1 ao último dia dele. Em Brasília.
+ */
+const PERIODOS_DOS_NUMEROS = [
+  { valor: "7", nome: "Últimos 7 dias" },
+  { valor: "14", nome: "Últimos 14 dias" },
+  { valor: "30", nome: "Últimos 30 dias" },
+  { valor: "mes-passado", nome: "Mês passado" },
+] as const;
+type ChavePeriodo = (typeof PERIODOS_DOS_NUMEROS)[number]["valor"];
+
+const diaEmBrasilia = (ms: number) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(
+    new Date(ms),
+  );
+
+function datasDoPeriodo(p: ChavePeriodo, agora: number) {
+  const hoje = diaEmBrasilia(agora);
+  if (p === "mes-passado") {
+    const [a, m] = hoje.split("-").map(Number);
+    const ano = m === 1 ? a - 1 : a;
+    const mes = m === 1 ? 12 : m - 1;
+    const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+    const mm = String(mes).padStart(2, "0");
+    return { de: `${ano}-${mm}-01`, ate: `${ano}-${mm}-${String(ultimo).padStart(2, "0")}` };
+  }
+  const n = Number(p);
+  const [a, m, d] = hoje.split("-").map(Number);
+  const de = new Date(Date.UTC(a, m - 1, d - (n - 1))).toISOString().slice(0, 10);
+  return { de, ate: hoje };
+}
+
+/** "1/11 a 15/11" ou "outubro (1 a 31)". */
+function nomeDoPeriodo(p: ChavePeriodo, datas: { de: string; ate: string }) {
+  const [, md, dd] = datas.de.split("-");
+  const [, ma, da] = datas.ate.split("-");
+  if (p === "mes-passado") {
+    const nome = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" }).format(new Date(`${datas.de}T12:00:00Z`));
+    return `${nome} (1 a ${Number(da)})`;
+  }
+  return `${Number(dd)}/${Number(md)} a ${Number(da)}/${Number(ma)}`;
+}
+
+async function numerosDaGeral(
+  c: ReturnType<typeof criarClienteAdmin> | Awaited<ReturnType<typeof criarClienteServidor>>,
+  datas: { de: string; ate: string },
+) {
+  const { data, error } = await c.rpc("admin_numeros_da_geral", { p_de: datas.de, p_ate: datas.ate });
   return error ? null : (data as unknown as NumerosDaGeral);
 }
 
@@ -329,12 +391,14 @@ function Agora({
   ligado,
   antigo,
   geral,
+  periodo,
 }: {
   d: Dados;
   agora: number;
   ligado: boolean;
   antigo: boolean;
   geral: NumerosDaGeral | null;
+  periodo: ChavePeriodo;
 }) {
   const clientes = clientesCorrendo(d);
   const correndo = d.impulsos.filter((i) => ehCorrendo(i.situacao));
@@ -434,7 +498,7 @@ function Agora({
         />
       </div>
       ) : (
-        <NumerosDosPacotes d={d} geral={geral} clientes={clientes.length} agora={agora} />
+        <NumerosDosPacotes d={d} geral={geral} clientes={clientes.length} agora={agora} periodo={periodo} />
       )}
 
       <Secao
@@ -471,12 +535,16 @@ function NumerosDosPacotes({
   geral,
   clientes,
   agora,
+  periodo,
 }: {
   d: Dados;
   geral: NumerosDaGeral;
   clientes: number;
   agora: number;
+  periodo: ChavePeriodo;
 }) {
+  const datas = datasDoPeriodo(periodo, agora);
+  const quando = nomeDoPeriodo(periodo, datas);
   const noAr = d.impulsos.filter((i) => i.produto === "candidatos" && i.situacao === "no_ar");
   const alvo = noAr.reduce((t, i) => t + Number(i.alvo ?? 0), 0);
   const chegaram = noAr.reduce((t, i) => t + Math.min(Number(i.entregues ?? 0), Number(i.alvo ?? 0)), 0);
@@ -484,6 +552,14 @@ function NumerosDosPacotes({
   const cliques = Number(geral.geral?.cliques ?? 0);
   const candidaturas = Number(geral.candidaturas ?? 0);
   return (
+    <div className="flex flex-col gap-3">
+      <Filtros
+        rotulo="Período"
+        opcoes={PERIODOS_DOS_NUMEROS.map((x) => ({ valor: x.valor, nome: x.nome }))}
+        atual={periodo}
+        link={(v) => (v === "30" ? "/admin/impulsos" : `/admin/impulsos?periodo=${v}`)}
+        discreto
+      />
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <Numero
         rotulo="Pacotes no ar"
@@ -495,32 +571,33 @@ function NumerosDosPacotes({
         }
       />
       <Numero
-        rotulo="Campanha geral no mês"
+        rotulo="Campanha geral"
         valor={Math.round(custo * 100) / 100}
         moeda
         detalhe={
           !geral.tem_campanha
             ? "Escolha a campanha geral em Regras"
             : geral.geral
-              ? `no Google, ${plural(cliques, "clique", "cliques")}${geral.medido_em ? `, medido ${tempoRelativo(geral.medido_em, agora)}` : ""}`
+              ? `${quando}: ${plural(cliques, "clique", "cliques")}${cliques > 0 ? ` a ${reais(custo / cliques)}` : ""}${geral.medido_em ? `; medido ${tempoRelativo(geral.medido_em, agora)}` : ""}`
               : "Ainda sem a medida do Google: atualize"
         }
       />
       <Numero
-        rotulo="Candidatos no mês"
+        rotulo="Candidatos dos pacotes"
         valor={candidaturas}
         detalhe={
           candidaturas > 0 && custo > 0
-            ? `${reais(custo / candidaturas)} da campanha geral por candidato`
-            : "que os pacotes entregaram"
+            ? `${quando}: ${reais(custo / candidaturas)} da campanha geral por candidato`
+            : `${quando}`
         }
       />
       <Numero
-        rotulo="Vendido no mês"
+        rotulo="Vendido"
         valor={Math.round(Number(geral.pacotes_pagos ?? 0) * 100) / 100}
         moeda
-        detalhe="Pacotes pagos pelos clientes"
+        detalhe={`${quando}: pacotes pagos pelos clientes`}
       />
+    </div>
     </div>
   );
 }

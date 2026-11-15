@@ -2342,25 +2342,43 @@ async function medirAGeral(a: Acesso) {
     if (error.code !== "PGRST202") console.error("Publike: falha ao ler a medida da campanha geral:", error.message);
     return;
   }
-  const d = data as { fazer?: boolean; conta?: string; campanha_id?: string; mes?: string } | null;
+  const d = data as
+    | { fazer?: boolean; conta?: string; campanha_id?: string; mes?: string; desde?: string; ate?: string }
+    | null;
   if (!d?.fazer || !d.conta || !d.campanha_id) return;
+  const data8 = /^\d{4}-\d{2}-\d{2}$/;
   try {
-    const linhas = await consultar<{ metrics?: Record<string, string | number> }>(
-      `SELECT metrics.cost_micros, metrics.clicks, metrics.impressions FROM campaign ` +
-        `WHERE campaign.id = ${Number(d.campanha_id)} AND segments.date DURING THIS_MONTH`,
+    // dia a dia, do primeiro dia do mês passado até hoje (migração 20270601120000): a tela soma o período escolhido
+    const periodo =
+      d.desde && d.ate && data8.test(d.desde) && data8.test(d.ate)
+        ? `segments.date BETWEEN '${d.desde}' AND '${d.ate}'`
+        : "segments.date DURING THIS_MONTH";
+    const linhas = await consultar<{ segments?: { date?: string }; metrics?: Record<string, string | number> }>(
+      `SELECT segments.date, metrics.cost_micros, metrics.clicks, metrics.impressions FROM campaign ` +
+        `WHERE campaign.id = ${Number(d.campanha_id)} AND ${periodo}`,
       d.conta,
     );
-    const soma = linhas.reduce(
-      (t, l) => ({
-        custo: t.custo + Number(l.metrics?.costMicros ?? 0) / 1_000_000,
-        cliques: t.cliques + Number(l.metrics?.clicks ?? 0),
-        vistas: t.vistas + Number(l.metrics?.impressions ?? 0),
-      }),
-      { custo: 0, cliques: 0, vistas: 0 },
-    );
+    const porDia = new Map<string, { custo: number; cliques: number; vistas: number }>();
+    for (const l of linhas) {
+      const dia = l.segments?.date;
+      if (!dia) continue;
+      const s = porDia.get(dia) ?? { custo: 0, cliques: 0, vistas: 0 };
+      s.custo += Number(l.metrics?.costMicros ?? 0) / 1_000_000;
+      s.cliques += Number(l.metrics?.clicks ?? 0);
+      s.vistas += Number(l.metrics?.impressions ?? 0);
+      porDia.set(dia, s);
+    }
+    const dias = [...porDia].map(([dia, s]) => ({ dia, ...s, custo: Math.round(s.custo * 100) / 100 }));
+    // a soma do mês corrente (como antes)
+    const doMes = dias.filter((x) => d.mes && x.dia.startsWith(d.mes));
+    const soma = doMes.reduce((t, x) => ({ custo: t.custo + x.custo, cliques: t.cliques + x.cliques, vistas: t.vistas + x.vistas }), {
+      custo: 0,
+      cliques: 0,
+      vistas: 0,
+    });
     const { error: e2 } = await a.cliente.rpc("servidor_geral_medida", {
       p_chave: a.chave,
-      p_medida: { mes: d.mes, ...soma },
+      p_medida: { mes: d.mes, ...soma, dias },
     });
     if (e2) console.error("Publike: falha ao guardar a medida da campanha geral:", e2.message);
   } catch (e) {

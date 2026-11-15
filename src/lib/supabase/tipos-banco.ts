@@ -3744,7 +3744,7 @@ export type Database = {
       servidor_medir_geral: { Args: { p_chave: string }; Returns: Json };
       servidor_geral_medida: { Args: { p_chave: string; p_medida: Json }; Returns: undefined };
       admin_medir_geral_agora: { Args: Record<string, never>; Returns: boolean };
-      admin_numeros_da_geral: { Args: Record<string, never>; Returns: Json };
+      admin_numeros_da_geral: { Args: { p_de?: string | null; p_ate?: string | null }; Returns: Json };
       // os grupos da campanha geral por função e por cidade (migração 20270522120000)
       servidor_grupos_da_geral: { Args: { p_chave: string }; Returns: Json };
       servidor_grupo_da_geral: { Args: { p_chave: string; p_grupo: Json }; Returns: undefined };
