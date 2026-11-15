@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { obterLocal } from "@/lib/local";
 import { curriculoImpresso, MAX_LUGARES_DA_ROTA, RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
+import { pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
@@ -20,7 +21,7 @@ export async function montarRota(dados: {
   if (!usuario) return { ok: false, erro: "Entre para montar a rota." };
   const [perfil, curriculo, local] = await Promise.all([obterMeuPerfil(), obterMeuCurriculo(), obterLocal()]);
   if (!perfil || !curriculo) return { ok: false, erro: "Preencha o seu currículo antes de montar a rota." };
-  const ponto = local?.ponto ?? local?.centro ?? null;
+  const ponto = local?.ponto ?? local?.centro ?? (await pontoDaPessoa(perfil))?.ponto ?? null;
   if (!ponto) return { ok: false, erro: "Diga o CEP de casa para saber de onde a rota sai." };
   const cnpjs = [...new Set((dados?.cnpjs ?? []).filter((c) => /^[0-9A-Z]{12}[0-9]{2}$/.test(String(c))))];
   if (!cnpjs.length) return { ok: false, erro: "Marque pelo menos um lugar." };

@@ -1,22 +1,29 @@
 import { Store } from "lucide-react";
 import Link from "next/link";
 import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
-import { distanciaCurta, funcoesDoCurriculo } from "@/lib/rota-curriculo";
+import { distanciaCurta } from "@/lib/rota-curriculo";
+import { funcoesParaARota, pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { bairroDaReceita } from "@/lib/cnpj";
 
 /**
  * "Abriu perto de você" no alto do feed (claude/plano-base-de-empresas-da-receita.md, parte 1; migração 20270606120000):
- * para quem procura, com o CEP de casa e funções no currículo, até 3 comércios que abriram nos últimos 30 dias a até
+ * para quem procura, com funções no currículo e o CEP de casa (ou o bairro), até 3 comércios que abriram nos últimos 30 dias a até
  * 3 km, nos ramos que contratam essas funções. Nunca diz que há vaga: lugar novo costuma contratar.
  */
 export async function AbriuPertoNoFeed() {
   const [perfil, curriculo] = await Promise.all([obterMeuPerfil(), obterMeuCurriculo()]);
   if (!perfil || perfil.tipo !== "pessoa" || !curriculo) return null;
-  const funcoes = funcoesDoCurriculo(curriculo);
-  if (!funcoes.length) return null;
+  const [funcoes, onde] = await Promise.all([funcoesParaARota(curriculo), pontoDaPessoa(perfil)]);
+  if (!funcoes.length || !onde) return null;
   const banco = await criarClienteServidor();
-  const { data, error } = await banco.rpc("abriu_perto_de_mim", { p_cbos: funcoes.map((f) => f.cbo), p_dias: 30, p_limite: 3 });
+  const { data, error } = await banco.rpc("abriu_perto_do_ponto", {
+    p_lat: onde.ponto.lat,
+    p_lng: onde.ponto.lng,
+    p_cbos: funcoes.map((f) => f.cbo),
+    p_dias: 30,
+    p_limite: 3,
+  });
   if (error || !data?.length) return null;
   const titulo = funcoes.find((f) => f.cbo === data[0].cbo)?.titulo ?? funcoes[0].titulo;
   return (
@@ -34,7 +41,7 @@ export async function AbriuPertoNoFeed() {
             <strong className="font-semibold">{l.nome}</strong>
             {l.ramo && <span className="text-ink-muted">, {l.ramo.toLowerCase()}</span>}
             <span className="text-ink-muted">
-              , {[l.bairro && bairroDaReceita(l.bairro), `a ${distanciaCurta(l.distancia_m)} de casa`].filter(Boolean).join(", ")}
+              , {[l.bairro && bairroDaReceita(l.bairro), `a ${distanciaCurta(l.distancia_m)} ${onde.deCasa ? "de casa" : "do seu bairro"}`].filter(Boolean).join(", ")}
             </span>
           </li>
         ))}

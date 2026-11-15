@@ -11,7 +11,8 @@ import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero, primeiro, tempoRelativo } from "@/lib/formato";
 import { funcoesComuns } from "@/lib/funcao-cbo";
 import { obterLocal } from "@/lib/local";
-import { funcoesDoCurriculo, RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
+import { RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
+import { funcoesParaARota, pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -103,14 +104,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
     );
   }
 
-  const doCurriculo = funcoesDoCurriculo(curriculo);
+  const doCurriculo = await funcoesParaARota(curriculo);
   const comuns = funcoesComuns();
   const pedida = primeiro(sp.cbo);
   const escolhida =
     doCurriculo.find((f) => f.cbo === pedida) ?? comuns.find((f) => f.cbo === pedida) ?? doCurriculo[0] ?? null;
   const raioPedido = Number(primeiro(sp.raio));
   const raio = (RAIOS_DA_ROTA as readonly number[]).includes(raioPedido) ? raioPedido : 2;
-  const ponto = local?.ponto ?? local?.centro ?? null;
+  // o CEP de casa, o bairro escolhido neste aparelho ou, com conta, o meio do bairro do perfil
+  const ponto = local?.ponto ?? local?.centro ?? (usuario ? ((await pontoDaPessoa(perfil))?.ponto ?? null) : null);
   const atuais = { cbo: escolhida?.cbo, raio: String(raio) };
   // para onde vai o botão: sem conta, entrar (e voltar aqui); sem currículo, preencher
   const aqui = linkCom("/rota-do-curriculo", atuais, {});
