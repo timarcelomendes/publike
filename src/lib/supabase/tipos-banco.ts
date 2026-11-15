@@ -4137,6 +4137,43 @@ export type Database = {
       retorno_da_conta: { Args: Record<PropertyKey, never>; Returns: Json };
       whatsapp_da_conta: { Args: Record<PropertyKey, never>; Returns: Json };
       mudar_whatsapp: { Args: { p_aceito: boolean; p_origem: string }; Returns: undefined };
+      // o WhatsApp oficial (migração 20270619120000)
+      servidor_whatsapp_config: { Args: { p_chave: string }; Returns: Json };
+      servidor_whatsapp_salvar_modelos: { Args: { p_chave: string; p_modelos: Json }; Returns: undefined };
+      servidor_whatsapp_pegar: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
+      servidor_whatsapp_marcar: {
+        Args: {
+          p_chave: string;
+          p_id: number;
+          p_situacao: string;
+          p_modelo?: string | null;
+          p_wamid?: string | null;
+          p_motivo?: string | null;
+          p_tentar_em_minutos?: number | null;
+        };
+        Returns: undefined;
+      };
+      servidor_whatsapp_status: {
+        Args: { p_chave: string; p_wamid: string; p_status: string; p_erro?: string | null; p_cobrada?: boolean | null };
+        Returns: boolean;
+      };
+      servidor_whatsapp_recebida: {
+        Args: { p_chave: string; p_wamid: string; p_numero: string; p_texto?: string | null; p_payload?: string | null };
+        Returns: Json;
+      };
+      admin_whatsapp: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_salvar_whatsapp: {
+        Args: {
+          p_ativo: boolean | null;
+          p_para_todos: boolean | null;
+          p_numeros_teste: string[];
+          p_limite_dia: number | null;
+          p_por_conta_dia: number | null;
+          p_tipos_desligados: string[] | null;
+        };
+        Returns: undefined;
+      };
+      admin_whatsapp_salvar_modelos: { Args: { p_modelos: Json }; Returns: undefined };
       salvar_retorno: { Args: { p_ligado: boolean; p_texto: string | null }; Returns: undefined };
       servidor_retornos: { Args: { p_chave: string; p_agora?: string }; Returns: number };
       servidor_regras_pendentes: { Args: { p_chave: string; p_limite?: number }; Returns: Json };

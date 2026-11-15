@@ -6,9 +6,11 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
 // O aceite do WhatsApp (migração 20261231120000; claude/plano-retorno-e-whatsapp.md, parte 3a): os avisos pelo
-// WhatsApp oficial começam quando a conta da Meta for liberada; quem aceita agora já recebe quando começar.
+// WhatsApp oficial (migração 20270619120000) saem só para quem aceitou; antes de ligar para todos, a tela diz que
+// começam em breve.
 
-export type MeuWhatsapp = { aceito: boolean; numero: string | null; pode: boolean };
+/** `ligado`: os avisos já estão saindo para todos (Admin › WhatsApp); sem ele, a tela diz "começam em breve". */
+export type MeuWhatsapp = { aceito: boolean; numero: string | null; pode: boolean; ligado: boolean };
 
 /** O aceite da conta (null: sem a migração ou sem conta). */
 export async function meuWhatsapp(): Promise<MeuWhatsapp | null> {
@@ -21,6 +23,7 @@ export async function meuWhatsapp(): Promise<MeuWhatsapp | null> {
     aceito: o.aceito === true,
     numero: typeof o.numero === "string" ? o.numero : null,
     pode: o.pode !== false,
+    ligado: o.ligado === true,
   };
 }
 

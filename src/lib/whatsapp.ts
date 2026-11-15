@@ -2,8 +2,8 @@ import { montarRetorno } from "./retorno";
 import { dataDaEntrevista } from "./recrutamento";
 
 // O WhatsApp sem a integração (claude/plano-retorno-e-whatsapp.md, parte 2): o botão do quadro abre o WhatsApp
-// da empresa com a mensagem do momento (a entrevista, Contratado, o retorno de quem não seguiu). Os mesmos
-// textos viram os modelos da integração oficial (parte 3).
+// da empresa com a mensagem do momento (a entrevista, Contratado, o retorno de quem não seguiu). Os modelos do
+// WhatsApp oficial do Publike ficam em src/lib/servidor/whatsapp.ts.
 
 type EntrevistaDoMomento = { quando: string; formato: string; local: string | null; situacao: string };
 
@@ -29,78 +29,6 @@ export function fraseDaEntrevista(e: EntrevistaDoMomento) {
           : `presencial${e.local ? `, na ${e.local}` : ""}`;
   return `${dataDaEntrevista(e.quando)}, ${onde}`;
 }
-
-/**
- * Os modelos para cadastrar na Meta (categoria utilidade) quando a conta for liberada (parte 3b). {{1}}, {{2}}…
- * são as variáveis, na ordem de `variaveis`; o botão abre o Publike (a parte variável do link vai no fim).
- */
-export const MODELOS_WHATSAPP = [
-  {
-    nome: "candidatura_aceita",
-    para: "candidato",
-    quando: "match",
-    variaveis: ["nome", "empresa", "vaga"],
-    texto: "Oi, {{1}}! {{2}} aceitou a sua candidatura para {{3}}. Agora vocês podem conversar pelo Publike.",
-    botao: "Abrir a conversa",
-  },
-  {
-    nome: "entrevista_marcada",
-    para: "candidato",
-    quando: "entrevista marcada ou remarcada",
-    variaveis: ["nome", "vaga", "quando e onde"],
-    texto: "Oi, {{1}}! Sua entrevista para {{2}} ficou para {{3}}. Confirme ou peça para remarcar pelo Publike.",
-    botao: "Confirmar",
-  },
-  {
-    nome: "escolher_horario",
-    para: "candidato",
-    quando: "a empresa mandou horários para escolher",
-    variaveis: ["nome", "vaga"],
-    texto: "Oi, {{1}}! Chegaram horários para a sua entrevista para {{2}}. Escolha o melhor pelo Publike.",
-    botao: "Escolher o horário",
-  },
-  {
-    nome: "lembrete_entrevista",
-    para: "candidato",
-    quando: "véspera da entrevista, às 18h",
-    variaveis: ["nome", "vaga", "quando e onde"],
-    texto: "Oi, {{1}}! Amanhã tem a sua entrevista para {{2}}: {{3}}. Se não for dar, avise pelo Publike.",
-    botao: "Ver a entrevista",
-  },
-  {
-    nome: "andamento",
-    para: "candidato",
-    quando: "mudou de etapa",
-    variaveis: ["nome", "vaga", "etapa"],
-    texto: "Oi, {{1}}! A sua candidatura para {{2}} agora está em: {{3}}.",
-    botao: "Ver a candidatura",
-  },
-  {
-    nome: "retorno",
-    para: "candidato",
-    quando: "não seguiu (o texto da empresa vai no Publike)",
-    variaveis: ["nome", "vaga", "empresa"],
-    texto: "Oi, {{1}}. {{3}} deixou um retorno sobre a vaga de {{2}}. Veja no Publike, junto com vagas parecidas.",
-    botao: "Ver o retorno",
-  },
-  {
-    nome: "candidato_novo",
-    para: "empresa",
-    quando: "curtida nova",
-    variaveis: ["nome da empresa", "candidato", "vaga"],
-    texto: "Oi, {{1}}! {{2}} se candidatou à vaga de {{3}}. Aceite ou dispense pelo Publike.",
-    botao: "Responder",
-  },
-  {
-    nome: "lembrete_resposta",
-    para: "empresa",
-    quando: "curtida sem resposta há 24 h",
-    variaveis: ["nome da empresa", "quantos", "vaga"],
-    texto:
-      "Oi, {{1}}! {{2}} pessoas esperam a sua resposta na vaga de {{3}}. Responder rápido faz a vaga aparecer mais.",
-    botao: "Responder agora",
-  },
-] as const;
 
 export function mensagemDoMomento(d: {
   nome: string;

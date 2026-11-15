@@ -10,7 +10,8 @@ import { Selo } from "../ui/basicos";
 
 /**
  * "Quero receber pelo WhatsApp": o aceite que a Meta exige antes da primeira mensagem (migração 20261231120000).
- * Os avisos pelo WhatsApp começam em breve; quem marca agora recebe quando começar. Sem `inicial`, busca sozinho.
+ * Com o WhatsApp oficial ligado para todos (Admin › WhatsApp), os avisos já saem; antes, a tela diz que começam em
+ * breve e quem marca recebe quando começar. Sem `inicial`, busca sozinho.
  * Some quando a migração não rodou ou quando a pessoa não administra a conta.
  */
 export function AceiteWhatsapp({
@@ -52,14 +53,15 @@ export function AceiteWhatsapp({
 
   if (!estado || !estado.pode) return null;
   if (esconderSeAceito && aceitoAoAbrir) return null;
+  const explicacaoPadrao = estado.ligado
+    ? "Os avisos chegam pelo WhatsApp oficial do Publike. Para parar, desmarque aqui ou responda PARAR no WhatsApp."
+    : "Os avisos pelo WhatsApp começam em breve. Marque agora e você recebe quando começar.";
 
   return (
     <div className="flex flex-col gap-1.5">
       <label
         className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-label"
-        title={
-          compacto ? "Os avisos pelo WhatsApp começam em breve. Marque agora e você recebe quando começar." : undefined
-        }
+        title={compacto ? explicacaoPadrao : undefined}
       >
         <input
           type="checkbox"
@@ -81,11 +83,12 @@ export function AceiteWhatsapp({
         />
         <MessageCircle aria-hidden className="size-[18px] text-cerrado-text" />
         {rotulo}
+        {compacto && !estado.ligado && " (em breve)"}
         <Selo variante="novo">Novo</Selo>
       </label>
       {!compacto && (
         <p className="pl-7 text-body-sm text-ink-muted">
-          {explicacao ?? "Os avisos pelo WhatsApp começam em breve. Marque agora e você recebe quando começar."}
+          {explicacao ?? explicacaoPadrao}
           {estado.numero && ` No ${formatarTelefone(estado.numero)}.`} Dá para desmarcar quando quiser.
         </p>
       )}

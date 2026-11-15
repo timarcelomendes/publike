@@ -1,0 +1,112 @@
+"use server";
+
+import { refresh } from "next/cache";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import {
+  conferirModelos,
+  conferirNumero,
+  configMeta,
+  enviarTeste,
+  type SituacaoModelos,
+} from "@/lib/servidor/whatsapp";
+import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
+import type { Resultado } from "@/lib/tipos";
+import { TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
+
+// Admin › WhatsApp (migração 20270619120000; claude/plano-whatsapp-oficial.md): ligar, o modo de teste, os limites,
+// cadastrar e conferir os modelos na Meta, o número e a mensagem de teste. Só a equipe publike.org.
+
+async function banco(): Promise<ClienteBanco | null> {
+  const admin = await clienteAdminOuNulo();
+  return admin ?? ((await possoVerTela("/admin/whatsapp")) ? await criarClienteServidor() : null);
+}
+
+const TIPOS = TIPOS_WHATSAPP.map((t) => t.tipo);
+
+export async function salvarWhatsapp(dados: {
+  ativo: boolean;
+  paraTodos: boolean;
+  numerosTeste: string;
+  limiteDia: number;
+  porContaDia: number;
+  tiposLigados: string[];
+}): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const numeros = String(dados.numerosTeste ?? "")
+    .split(/[\s,;]+/)
+    .map((n) => n.replace(/\D/g, ""))
+    .filter(Boolean)
+    .map((n) => (n.length <= 11 ? `55${n}` : n));
+  const ruins = numeros.filter((n) => !/^55[1-9][0-9][0-9]{8,9}$/.test(n));
+  if (ruins.length) return { ok: false, erro: `Número de teste inválido: ${ruins[0]}. Use DDD e número, como 62 99999-0000.` };
+  const ligados = new Set((dados.tiposLigados ?? []).filter((t) => TIPOS.includes(t)));
+  const { error } = await c.rpc("admin_salvar_whatsapp", {
+    p_ativo: Boolean(dados.ativo),
+    p_para_todos: Boolean(dados.paraTodos),
+    p_numeros_teste: numeros,
+    p_limite_dia: Math.round(Number(dados.limiteDia) || 0),
+    p_por_conta_dia: Math.round(Number(dados.porContaDia) || 1),
+    p_tipos_desligados: TIPOS.filter((t) => !ligados.has(t)),
+  });
+  if (error) return { ok: false, erro: error.message || "Não deu para salvar agora." };
+  refresh();
+  return { ok: true, mensagem: "Salvo." };
+}
+
+/** Cadastra na Meta os modelos que faltam e confere a aprovação de todos. */
+export async function conferirModelosAgora(): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const cfg = configMeta();
+  if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
+  const { data } = await c.rpc("admin_whatsapp");
+  const antes = ((data as { config?: { modelos?: SituacaoModelos } } | null)?.config?.modelos ?? {}) as SituacaoModelos;
+  const r = await conferirModelos(
+    cfg,
+    antes,
+    async (m) => {
+      const { error } = await c.rpc("admin_whatsapp_salvar_modelos", { p_modelos: m });
+      if (error) throw new Error(error.message);
+    },
+    true,
+  ).catch((e: unknown) => ({ ok: false, erro: e instanceof Error ? e.message : String(e), modelos: antes }));
+  if (!r.ok) return { ok: false, erro: `A Meta não respondeu: ${r.erro}` };
+  refresh();
+  const aprovados = Object.values(r.modelos).filter((m) => m.status === "APPROVED").length;
+  return { ok: true, mensagem: `${aprovados} de ${Object.keys(r.modelos).length} modelos aprovados.` };
+}
+
+export type NumeroDaMeta = {
+  ok: boolean;
+  erro?: string;
+  display_phone_number?: string;
+  verified_name?: string;
+  quality_rating?: string;
+  messaging_limit_tier?: string;
+  name_status?: string;
+};
+
+/** O número do Publike na Meta: o nome, a qualidade e o limite por dia. */
+export async function conferirNumeroAgora(): Promise<NumeroDaMeta> {
+  if (!(await banco())) return { ok: false, erro: "Só a equipe do Publike." };
+  const cfg = configMeta();
+  if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
+  return conferirNumero(cfg);
+}
+
+/** A mensagem de teste da Meta (hello_world) para um dos números de teste. */
+export async function mandarTesteWhatsapp(numero: string): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const cfg = configMeta();
+  if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
+  let n = String(numero ?? "").replace(/\D/g, "");
+  if (n.length <= 11) n = `55${n}`;
+  const { data } = await c.rpc("admin_whatsapp");
+  const lista = ((data as { config?: { numeros_teste?: string[] } } | null)?.config?.numeros_teste ?? []) as string[];
+  if (!lista.includes(n)) return { ok: false, erro: "Ponha o número na lista de teste e salve antes." };
+  const r = await enviarTeste(cfg, n);
+  return r.ok ? { ok: true, mensagem: "Mandamos. Confira no WhatsApp desse número." } : { ok: false, erro: `A Meta recusou: ${r.erro}` };
+}

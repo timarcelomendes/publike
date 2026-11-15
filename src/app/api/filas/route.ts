@@ -40,6 +40,7 @@ import { mandarNumerosDaSemana } from "@/lib/servidor/numeros-da-semana";
 import { ajustarImpulsos } from "@/lib/servidor/impulso-ajuste";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura";
+import { enviarWhatsappPendentes } from "@/lib/servidor/whatsapp";
 
 // A garantia das filas: o cron-job.org chama a cada minuto (Admin › Chaves) e a tarefa agendada do GitHub
 // (.github/workflows/filas.yml) fica de reserva, os dois com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém usando o site
@@ -153,10 +154,18 @@ export async function GET(request: Request) {
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
   const emails = await enviarEmailsPendentes(20);
   const celular = await enviarPushPendentes(50);
+  // o WhatsApp oficial (migração 20270619120000): sem as variáveis da Meta ou desligado no Admin, nada
+  const whatsapp = await enviarWhatsappPendentes(30).catch((e) => ({
+    enviadas: 0,
+    falhas: 0,
+    puladas: 0,
+    motivo: `WhatsApp: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300),
+  }));
 
   const problemas = [
     emails.motivo,
     celular.motivo,
+    whatsapp.motivo,
     ia.motivo,
     avaliacoes.motivo,
     recados.motivo,
@@ -209,6 +218,7 @@ export async function GET(request: Request) {
       problemas,
       emails: { enviados: emails.enviados, falhas: emails.falhas },
       celular,
+      whatsapp: { enviadas: whatsapp.enviadas, falhas: whatsapp.falhas, puladas: whatsapp.puladas },
       contatos_liberados: parados.liberadas,
       remocoes_agendadas: agendadas.feitas,
       documentos: { lembrados: documentos.lembrados, apagados: documentosVencidos.apagados },

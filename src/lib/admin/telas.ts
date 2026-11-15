@@ -63,6 +63,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/comunicados", nome: "Comunicados" },
       { href: "/admin/novidades", nome: "Novidades" },
       { href: "/admin/noticias", nome: "Notícias" },
+      { href: "/admin/whatsapp", nome: "WhatsApp" },
     ],
   },
   {
@@ -109,6 +110,8 @@ export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" |
   { href: "/admin/retorno", nome: "Retorno", precisa: "equipe" },
   // a base de empresas da Receita (migração 20270602120000; só a equipe publike.org)
   { href: "/admin/receita", nome: "Base da Receita", precisa: "equipe" },
+  // o WhatsApp oficial (migração 20270619120000; só a equipe publike.org)
+  { href: "/admin/whatsapp", nome: "WhatsApp", precisa: "equipe" },
 ];
 
 /** Todas as telas da lista, com o nome (as do menu e as que só existem no site, como Números). */

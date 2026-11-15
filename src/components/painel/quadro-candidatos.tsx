@@ -337,7 +337,7 @@ export function QuadroCandidatos({
         )}
         <AceiteWhatsapp
           origem="quadro"
-          rotulo="Receber os candidatos novos no WhatsApp (em breve)"
+          rotulo="Receber os candidatos novos no WhatsApp"
           esconderSeAceito
           compacto
         />
