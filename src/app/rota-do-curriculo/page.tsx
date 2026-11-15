@@ -9,7 +9,8 @@ import { OndeMoraDaRota } from "@/components/rota/onde-mora-da-rota";
 import { Aviso, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero, primeiro, tempoRelativo } from "@/lib/formato";
-import { funcoesComuns } from "@/lib/funcao-cbo";
+import { ocupacao } from "@/lib/cbo";
+import { funcoesComuns, tituloDaFuncao } from "@/lib/funcao-cbo";
 import { obterLocal } from "@/lib/local";
 import { RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
 import { funcoesParaARota, pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
@@ -111,13 +112,29 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
   const doCurriculo = await funcoesParaARota(curriculo);
   const comuns = funcoesComuns();
   const pedida = primeiro(sp.cbo);
+  // qualquer função da CBO vale (a busca do "Ou outra"); o nome que a pessoa escolheu vem junto, se for um nome
+  const nomePedido = String(primeiro(sp.nome) ?? "").trim();
+  const daCbo = pedida && /^\d{6}$/.test(pedida) ? ocupacao(pedida) : null;
   const escolhida =
-    doCurriculo.find((f) => f.cbo === pedida) ?? comuns.find((f) => f.cbo === pedida) ?? doCurriculo[0] ?? null;
+    doCurriculo.find((f) => f.cbo === pedida) ??
+    comuns.find((f) => f.cbo === pedida) ??
+    (daCbo
+      ? {
+          cbo: daCbo.cbo,
+          titulo: /^[\p{L} ,.'()/-]{2,60}$/u.test(nomePedido) ? nomePedido : (tituloDaFuncao(daCbo.cbo) ?? daCbo.nome),
+        }
+      : null) ??
+    doCurriculo[0] ??
+    null;
   const raioPedido = Number(primeiro(sp.raio));
   const raio = (RAIOS_DA_ROTA as readonly number[]).includes(raioPedido) ? raioPedido : 2;
   // o CEP de casa, o bairro escolhido neste aparelho ou, com conta, o meio do bairro do perfil
   const ponto = local?.ponto ?? local?.centro ?? (usuario ? ((await pontoDaPessoa(perfil))?.ponto ?? null) : null);
-  const atuais = { cbo: escolhida?.cbo, raio: String(raio) };
+  const atuais = {
+    cbo: escolhida?.cbo,
+    raio: String(raio),
+    nome: escolhida && escolhida.cbo === pedida && nomePedido ? escolhida.titulo : undefined,
+  };
   // para onde vai o botão: sem conta, entrar (e voltar aqui); sem currículo, preencher
   const aqui = linkCom("/rota-do-curriculo", atuais, {});
   const falta = !usuario
@@ -144,18 +161,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
         <section className="flex flex-col gap-2">
           <h2 className="text-label text-ink">Sua função</h2>
           {doCurriculo.length > 0 && (
-            <Filtros
+            <>
+              <p className="text-body-sm text-ink-muted">Do seu currículo</p>
+              <Filtros
               rotulo="Função"
               opcoes={doCurriculo.map((f) => ({ valor: f.cbo, nome: f.titulo }))}
               atual={escolhida?.cbo ?? ""}
-              link={(v) => linkCom("/rota-do-curriculo", atuais, { cbo: v })}
-            />
+              link={(v) => linkCom("/rota-do-curriculo", atuais, { cbo: v, nome: null })}
+              />
+            </>
           )}
           <EscolherFuncao
-            funcoes={comuns}
-            atual={escolhida && !doCurriculo.some((f) => f.cbo === escolhida.cbo) ? escolhida.cbo : ""}
+            comuns={comuns}
+            atual={escolhida && !doCurriculo.some((f) => f.cbo === escolhida.cbo) ? escolhida.titulo : ""}
             raio={raio}
-            rotulo={doCurriculo.length ? "Ou outra:" : "Qual você procura?"}
+            rotulo={doCurriculo.length ? "Ou procure outra" : "Qual função você procura?"}
           />
         </section>
 
