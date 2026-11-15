@@ -1,6 +1,7 @@
 "use client";
 
 import { MapPin, Printer } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { deslocamentoProvavel } from "@/lib/deslocamento";
 import { montarRota } from "@/lib/acoes/rota-curriculo";
@@ -28,8 +29,11 @@ export function EscolherLugares({
   funcao,
   raio,
   casa,
+  falta = null,
 }: {
   casa: { lat: number; lng: number };
+  /** sem conta ou sem currículo: o botão leva para entrar (ou preencher) e voltar aqui */
+  falta?: { href: string; texto: string } | null;
   lugares: LugarDaRota[];
   cbo: string;
   funcao: string;
@@ -100,6 +104,12 @@ export function EscolherLugares({
             {erro}
           </p>
         )}
+        {falta ? (
+          <Link href={falta.href} className={classesBotao("primario")}>
+            <Printer aria-hidden />
+            {falta.texto}
+          </Link>
+        ) : (
         <button
           type="button"
           disabled={pendente || marcados.size === 0}
@@ -115,6 +125,7 @@ export function EscolherLugares({
           <Printer aria-hidden />
           {pendente ? "Montando…" : `Montar a rota e imprimir ${marcados.size} ${marcados.size === 1 ? "cópia" : "cópias"}`}
         </button>
+        )}
       </div>
     </div>
   );

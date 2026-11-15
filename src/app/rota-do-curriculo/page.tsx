@@ -1,4 +1,4 @@
-import { Route } from "lucide-react";
+import { MapPinned, Printer, QrCode, Route } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -7,19 +7,31 @@ import { EscolherLugares, type LugarDaRota } from "@/components/rota/escolher-lu
 import { OndeMoraDaRota } from "@/components/rota/onde-mora-da-rota";
 import { Aviso, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
-import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
+import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero, primeiro, tempoRelativo } from "@/lib/formato";
 import { funcoesComuns } from "@/lib/funcao-cbo";
 import { obterLocal } from "@/lib/local";
 import { funcoesDoCurriculo, RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
-import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
-export const metadata: Metadata = { title: "Rota do currículo", robots: { index: false } };
+export const metadata: Metadata = {
+  title: "Rota do currículo: onde deixar o seu currículo perto de casa",
+  description:
+    "Escolha a sua função e veja no mapa os comércios perto de casa que costumam contratar. Imprima uma cópia do currículo para cada lugar, com QR code, e saiba quando abrirem. Grátis.",
+  alternates: { canonical: "/rota-do-curriculo" },
+};
 
 // Rota do currículo (claude/plano-base-de-empresas-da-receita.md, parte 2; migração 20270605120000): escolher a
 // função e a distância, marcar os comércios dos ramos que mais contratam essa função e imprimir uma cópia para cada um.
+// Aberta também sem conta (migração 20270613120000): quem visita vê como funciona e os lugares no mapa; montar e
+// imprimir pedem a conta.
+
+const PASSOS = [
+  { icone: MapPinned, titulo: "Veja os lugares perto de casa", texto: "Os comércios que costumam contratar a sua função, no mapa, com o tempo a pé ou de ônibus." },
+  { icone: Printer, titulo: "Imprima uma cópia para cada um", texto: "Com “Para: Padaria X” no alto. A folha com os endereços na ordem sai junto." },
+  { icone: QrCode, titulo: "Saiba quando abrirem", texto: "Cada cópia tem um QR code. Quando o dono escaneia, você recebe o aviso." },
+];
 
 export default function RotaDoCurriculo({ searchParams }: PageProps<"/rota-do-curriculo">) {
   return (
@@ -29,6 +41,16 @@ export default function RotaDoCurriculo({ searchParams }: PageProps<"/rota-do-cu
         Vai entregar currículo de porta em porta? O Publike mostra os lugares perto de casa que costumam contratar a sua
         função e imprime uma cópia para cada um, com o nome do lugar e um QR code. Você fica sabendo quando abrirem.
       </p>
+      <ol className="mt-6 grid gap-3 sm:grid-cols-3">
+        {PASSOS.map(({ icone: Icone, titulo, texto }) => (
+          <li key={titulo} className="flex flex-col gap-1.5 rounded-lg border border-line bg-surface-200 p-4">
+            <Icone aria-hidden className="size-5 text-terra-text" />
+            <span className="text-label text-ink">{titulo}</span>
+            <span className="text-body-sm text-ink-muted">{texto}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-body-sm text-ink-muted">Grátis. Os lugares vêm dos dados abertos da Receita Federal e do que cada ramo contrata (Novo Caged).</p>
       <Suspense fallback={<Esqueleto className="mt-6 h-96 w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />
       </Suspense>
@@ -39,16 +61,16 @@ export default function RotaDoCurriculo({ searchParams }: PageProps<"/rota-do-cu
 type MinhaRota = { id: string; funcao: string; raio_km: number; criada_em: string; copias: number; entregues: number; abertas: number };
 
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-curriculo">["searchParams"] }) {
-  await exigirUsuario("/rota-do-curriculo");
   const sp = await searchParams;
+  const usuario = await obterUsuario().catch(() => null);
   const [perfil, curriculo, local, agora] = await Promise.all([
-    obterMeuPerfil(),
-    obterMeuCurriculo(),
+    usuario ? obterMeuPerfil() : Promise.resolve(null),
+    usuario ? obterMeuCurriculo() : Promise.resolve(null),
     obterLocal(),
     agoraDaRequisicao(),
   ]);
   const banco = await criarClienteServidor();
-  const rotas = ((await banco.rpc("minhas_rotas_curriculo")).data ?? []) as unknown as MinhaRota[];
+  const rotas = usuario ? (((await banco.rpc("minhas_rotas_curriculo")).data ?? []) as unknown as MinhaRota[]) : [];
 
   const minhas =
     rotas.length > 0 ? (
@@ -73,23 +95,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
       </section>
     ) : null;
 
-  if (!perfil || perfil.tipo !== "pessoa") {
+  if (usuario && perfil && perfil.tipo !== "pessoa") {
     return (
       <Aviso tipo="info" titulo="A rota é para quem procura trabalho" className="mt-6">
         Entre com a sua conta de pessoa para montar a rota do seu currículo.
       </Aviso>
-    );
-  }
-  if (!curriculo) {
-    return (
-      <div className="mt-6 flex flex-col items-start gap-3">
-        <Aviso tipo="info" titulo="Primeiro, o currículo">
-          A rota imprime o seu currículo do Publike. Preencha antes: leva poucos minutos.
-        </Aviso>
-        <Link href="/perfil/curriculo?next=%2Frota-do-curriculo" className={classesBotao("primario")}>
-          Preencher o currículo
-        </Link>
-      </div>
     );
   }
 
@@ -102,6 +112,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
   const raio = (RAIOS_DA_ROTA as readonly number[]).includes(raioPedido) ? raioPedido : 2;
   const ponto = local?.ponto ?? local?.centro ?? null;
   const atuais = { cbo: escolhida?.cbo, raio: String(raio) };
+  // para onde vai o botão: sem conta, entrar (e voltar aqui); sem currículo, preencher
+  const aqui = linkCom("/rota-do-curriculo", atuais, {});
+  const falta = !usuario
+    ? { href: `/entrar?next=${encodeURIComponent(aqui)}`, texto: "Entrar para montar e imprimir" }
+    : !curriculo
+      ? { href: `/perfil/curriculo?next=${encodeURIComponent(aqui)}`, texto: "Preencher o currículo para imprimir" }
+      : null;
 
   let lugares: LugarDaRota[] = [];
   if (escolhida && ponto) {
@@ -138,7 +155,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
         <form action="/rota-do-curriculo" className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="raio" value={raio} />
           <label htmlFor="outra-funcao" className="text-body-sm text-ink-muted">
-            {doCurriculo.length ? "Outra função:" : "Escolha a função:"}
+            {doCurriculo.length ? "Outra função:" : "Sua função:"}
           </label>
           <select
             id="outra-funcao"
@@ -171,11 +188,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
 
       {!escolhida ? (
         <Aviso tipo="info" titulo="Escolha a função">
-          O seu currículo não diz uma função que a gente conheça. Escolha acima a função que você procura.
+          {curriculo
+            ? "O seu currículo não diz uma função que a gente conheça. Escolha acima a função que você procura."
+            : "Escolha acima a função que você procura: padeiro, operador de caixa, auxiliar de cozinha…"}
         </Aviso>
       ) : !ponto ? (
         <Aviso tipo="info" titulo="Diga onde você mora">
-          A rota sai de casa. Use o “Onde você mora?” acima: com o CEP, as distâncias ficam certas.
+          A rota sai de casa. Use o “Onde você mora?” acima: com o CEP, as distâncias ficam certas. Ninguém mais vê.
         </Aviso>
       ) : lugares.length === 0 ? (
         <Vazio icone={Route} titulo={`Nenhum lugar para ${escolhida.titulo.toLowerCase()} a até ${raio} km`}>
@@ -198,6 +217,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
             funcao={escolhida.titulo}
             raio={raio}
             casa={ponto}
+            falta={falta}
           />
         </section>
       )}

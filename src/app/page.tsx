@@ -6,6 +6,7 @@ import { MarcarPaginaLarga } from "@/components/largura-da-pagina";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
 import { EmpresasContratando } from "@/components/home/empresas-contratando";
 import { FaixaArte } from "@/components/home/faixa-arte";
+import { FaixaRota } from "@/components/home/faixa-rota";
 import { ServicosDoBairro } from "@/components/home/servicos-do-bairro";
 import { HeroVitrine, NovasHoje } from "@/components/home/vitrine";
 import { ContarFunilDaVitrine } from "@/components/home/contar-funil";
@@ -137,6 +138,7 @@ async function SecoesDaVitrine({ searchParams }: { searchParams: Parametros }) {
       <Suspense fallback={null}>
         <NovosPerto jeito="vitrine" />
       </Suspense>
+      <FaixaRota />
       <FaixaArte logado={false} />
       <ServicosDoBairro />
     </>
