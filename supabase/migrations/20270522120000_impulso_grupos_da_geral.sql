@@ -228,6 +228,9 @@ revoke execute on function public.servidor_grupos_da_geral(text), public.servido
   from public, anon;
 grant execute on function public.servidor_grupos_da_geral(text), public.servidor_grupo_da_geral(text, jsonb),
   public.servidor_grupos_feita(text, text) to authenticated, service_role;
+-- o robô usa a chave pública (anon) com a chave do servidor: rodar este arquivo de novo não pode tirar isso (15/11/2026)
+grant execute on function public.servidor_grupos_da_geral(text), public.servidor_grupo_da_geral(text, jsonb),
+  public.servidor_grupos_feita(text, text) to anon;
 grant execute on function public.admin_grupos_da_geral(), public.admin_salvar_grupos(jsonb)
   to authenticated, service_role;
 

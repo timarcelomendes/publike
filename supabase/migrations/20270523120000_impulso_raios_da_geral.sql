@@ -240,6 +240,9 @@ revoke execute on function public.servidor_raios_da_geral(text), public.servidor
   from public, anon;
 grant execute on function public.servidor_raios_da_geral(text), public.servidor_raio_da_geral(text, jsonb),
   public.servidor_raios_feita(text, text, boolean) to authenticated, service_role;
+-- o robô usa a chave pública (anon) com a chave do servidor: rodar este arquivo de novo não pode tirar isso (15/11/2026)
+grant execute on function public.servidor_raios_da_geral(text), public.servidor_raio_da_geral(text, jsonb),
+  public.servidor_raios_feita(text, text, boolean) to anon;
 grant execute on function public.admin_raios_da_geral(), public.admin_salvar_raios(jsonb)
   to authenticated, service_role;
 
