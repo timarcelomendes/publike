@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { SairDosConvites } from "@/components/sair-dos-convites";
 import { Container } from "@/components/ui/basicos";
 
 export const metadata: Metadata = { title: "Não receber mais", robots: { index: false, follow: false } };
 
 // O "não quero receber" dos convites da base da Receita (migração 20270608120000).
-export default async function SairDosConvitesPagina({ params }: PageProps<"/convite/[token]/sair">) {
-  const { token } = await params;
+export default function SairDosConvitesPagina({ params }: PageProps<"/convite/[token]/sair">) {
   return (
     <Container className="max-w-xl py-10">
       <h1 className="text-h2">Não receber mais mensagens do Publike</h1>
@@ -15,8 +15,16 @@ export default async function SairDosConvitesPagina({ params }: PageProps<"/conv
         publicar vagas de graça no Publike. Se não quiserem receber mais, toque no botão: o CNPJ sai das nossas listas.
       </p>
       <div className="mt-6">
-        <SairDosConvites token={token} />
+        {/* o token vem do endereço: dentro do Suspense (a página não é gerada antes) */}
+        <Suspense fallback={null}>
+          <Botao params={params} />
+        </Suspense>
       </div>
     </Container>
   );
+}
+
+async function Botao({ params }: { params: PageProps<"/convite/[token]/sair">["params"] }) {
+  const { token } = await params;
+  return <SairDosConvites token={token} />;
 }
