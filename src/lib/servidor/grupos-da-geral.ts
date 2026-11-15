@@ -36,9 +36,12 @@ type GrupoGuardado = {
   nome: string;
   pagina: string;
   grupo_id: string | null;
+  /** o anúncio do grupo no Google (para acertar o link) */
+  anuncio_id?: string | null;
   situacao: "fora" | "ligado" | "pausado";
   palavras?: string[];
   erro?: string | null;
+  erro_em?: string | null;
 };
 
 type Dados = {
@@ -77,12 +80,19 @@ function temPalavraEmComum(a: string, b: string) {
 /** As funções e cidades da praça com vaga no ar, como candidatas a grupo. */
 export function candidatosDosDados(d: Pick<Dados, "funcoes" | "cidades">): Candidato[] {
   const daPraca = new Set<string>(PRACA_PADRAO.cidades);
-  const porCbo = new Map<string, { vagas: number; impulsionadas: number; titulos: string[] }>();
+  const porCbo = new Map<
+    string,
+    { vagas: number; impulsionadas: number; titulos: string[]; cidades: Map<string, { vagas: number; imp: number }> }
+  >();
   for (const f of d.funcoes ?? []) {
     if (!f.cidade || !daPraca.has(f.cidade)) continue;
-    const s = porCbo.get(f.cbo) ?? { vagas: 0, impulsionadas: 0, titulos: [] };
+    const s = porCbo.get(f.cbo) ?? { vagas: 0, impulsionadas: 0, titulos: [], cidades: new Map() };
     s.vagas += f.vagas;
     s.impulsionadas += f.impulsionadas;
+    const c = s.cidades.get(f.cidade) ?? { vagas: 0, imp: 0 };
+    c.vagas += f.vagas;
+    c.imp += f.impulsionadas;
+    s.cidades.set(f.cidade, c);
     // as da vaga impulsionada vêm primeiro
     s.titulos = f.impulsionadas > 0 ? [...(f.titulos ?? []), ...s.titulos] : [...s.titulos, ...(f.titulos ?? [])];
     porCbo.set(f.cbo, s);
@@ -99,13 +109,25 @@ export function candidatosDosDados(d: Pick<Dados, "funcoes" | "cidades">): Candi
     const daLista = listada && (!doTitulo || temPalavraEmComum(listada.nome, doTitulo)) ? listada : null;
     const nome = daLista?.nome ?? doTitulo ?? (o?.nome ? limparNomeDaCbo(o.nome)[0] : null);
     if (!nome) continue;
+    // a página da função na cidade da vaga impulsionada (15/11/2026: a vaga da Danny Panificadora, em Aparecida de
+    // Goiânia, não aparecia na página de Goiânia para onde o anúncio levava); no empate, a com mais vagas, e Goiânia
+    const cidade =
+      [...s.cidades]
+        .sort(
+          ([ca, a], [cb, b]) =>
+            b.imp - a.imp ||
+            b.vagas - a.vagas ||
+            Number(cb === PRACA_PADRAO.cidade) - Number(ca === PRACA_PADRAO.cidade) ||
+            ca.localeCompare(cb),
+        )
+        .at(0)?.[0] ?? PRACA_PADRAO.cidade;
     lista.push({
       tipo: "funcao",
       chave: cbo,
       nome,
       // só as funções da lista têm página; as outras vão para a busca do site pela função
       pagina: daLista
-        ? caminhoDaFuncao(PRACA_PADRAO.cidade, daLista.slug)
+        ? caminhoDaFuncao(cidade, daLista.slug)
         : `/?tipo=vaga&q=${encodeURIComponent(nome)}`,
       vagas: s.vagas,
       impulsionadas: s.impulsionadas,
@@ -250,6 +272,38 @@ async function criarGrupo(a: Acesso, c: Candidato, modelo: string | null, conta:
 }
 
 /**
+ * O link do anúncio de cada grupo igual à página de agora (a página da função segue a cidade da vaga impulsionada).
+ * Um toque no Google só quando mudou; depois de um erro, espera 1 hora.
+ */
+async function acertarLinks(a: Acesso, d: Dados, conta: string) {
+  const agora = candidatosDosDados(d);
+  const umaHora = Date.now() - 3600_000;
+  for (const g of d.grupos ?? []) {
+    if (g.situacao === "fora" || !g.anuncio_id) continue;
+    const c = agora.find((x) => chaveDe(x) === chaveDe(g));
+    if (!c || c.pagina === g.pagina) continue;
+    if (g.erro_em && Date.parse(g.erro_em) > umaHora && g.erro?.startsWith("O link")) continue;
+    try {
+      await mutar(
+        [
+          {
+            adOperation: {
+              updateMask: "final_urls",
+              update: { resourceName: recurso("ads", g.anuncio_id, conta), finalUrls: [`${urlDosEmails() || SITE_URL}${c.pagina}`] },
+            },
+          },
+        ],
+        conta,
+      );
+      await guardar(a, { tipo: g.tipo, chave: g.chave, pagina: c.pagina, erro: null });
+    } catch (e) {
+      if (!(e instanceof ErroGoogleAds)) throw e;
+      await guardar(a, { tipo: g.tipo, chave: g.chave, erro: `O link do anúncio não mudou: ${e.message}` });
+    }
+  }
+}
+
+/**
  * Uma volta: pausa o que saiu, religa o que voltou e cria um grupo novo. Quando acaba tudo, marca o dia como
  * feito; se faltou grupo para criar (o tempo da volta), a volta seguinte continua.
  */
@@ -260,8 +314,17 @@ export async function cuidarDosGrupos(a: Acesso, prazo: number) {
     return;
   }
   const d = (data ?? null) as Dados | null;
-  if (!d?.fazer || !d.conta || !d.campanha_id) return;
+  if (!d?.conta || !d.campanha_id) return;
   const conta = d.conta;
+  // a cada volta (não só uma vez por dia): o link que ficou errado se acerta na hora
+  if (d.ligados) {
+    try {
+      await acertarLinks(a, d, conta);
+    } catch (e) {
+      console.error("Publike: falha ao acertar o link dos grupos:", e instanceof Error ? e.message : e);
+    }
+  }
+  if (!d.fazer) return;
   const plano = planoDoDia(d);
   let erro: string | null = null;
   let faltou = false;
