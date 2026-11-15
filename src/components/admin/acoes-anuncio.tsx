@@ -1,9 +1,9 @@
 "use client";
 
-import { CalendarClock, CircleCheckBig, Pencil, Trash2, XCircle } from "lucide-react";
+import { CalendarClock, CircleCheckBig, Pencil, RotateCcw, Trash2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { excluirAnuncioDeVez } from "@/lib/acoes/admin";
-import { agendarRemocao, cancelarRemocao, moderarAnuncio } from "@/lib/acoes/moderacao";
+import { agendarRemocao, cancelarRemocao, moderarAnuncio, reabrirDenuncias } from "@/lib/acoes/moderacao";
 import { Botao, BotaoLink } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -234,6 +234,20 @@ export function AgendarRemocao({ anuncioId, agendada }: { anuncioId: string; age
         ))}
       </div>
       <p className="text-body-sm text-ink-muted">Quem publicou recebe o aviso agora, na conversa, com a hora.</p>
+      {mensagem}
+    </div>
+  );
+}
+
+/** No Histórico: desfaz o "Dispensar denúncias" (o anúncio volta para a fila). */
+export function ReabrirDenuncias({ anuncioId, quantas }: { anuncioId: string; quantas: number }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => reabrirDenuncias(anuncioId))}>
+        <RotateCcw aria-hidden />
+        {quantas === 1 ? "Reabrir a denúncia" : `Reabrir as ${quantas} denúncias`}
+      </Botao>
       {mensagem}
     </div>
   );

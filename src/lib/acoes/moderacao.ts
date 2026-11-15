@@ -183,3 +183,20 @@ export async function cancelarRemocao(anuncioId: string): Promise<Resultado> {
   refresh();
   return { ok: true, mensagem: "Remoção cancelada." };
 }
+
+/**
+ * Desfaz o "Dispensar denúncias" (migração 20270527120000): as denúncias dispensadas voltam a abertas e o anúncio volta
+ * para a fila.
+ */
+export async function reabrirDenuncias(anuncioId: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
+  const acesso = await acessoDaEquipe("/admin/denuncias");
+  if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso.", ir: "/entrar?next=/admin/denuncias" };
+  const { data, error } = await acesso.cliente.rpc("reabrir_denuncias", { p_anuncio: anuncioId });
+  if (error?.code === "PGRST202") return { ok: false, erro: "Rode antes a migração 20270527120000_historico_da_moderacao.sql." };
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  const n = Number(data ?? 0);
+  return { ok: true, mensagem: n === 1 ? "Denúncia reaberta: o anúncio voltou para a fila." : `${n} denúncias reabertas: o anúncio voltou para a fila.` };
+}

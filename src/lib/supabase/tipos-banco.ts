@@ -2678,6 +2678,9 @@ export type Database = {
         Returns: undefined;
       };
       admin_respostas_do_retorno: { Args: { p_dias?: number }; Returns: Json };
+      // o histórico da moderação (migração 20270527120000)
+      moderacao_historico: { Args: { p_dias?: number; p_limite?: number }; Returns: Json };
+      reabrir_denuncias: { Args: { p_anuncio: string }; Returns: number };
       conquistas_perto: {
         Args: { p_lat: number; p_lng: number; p_raio_km?: number; p_limite?: number };
         Returns: {

@@ -1,9 +1,9 @@
-import { Clock, MessageCircleQuestion, MessageSquareText, ShieldCheck, Sparkles, Star, Tag } from "lucide-react";
+import { Clock, History, MessageCircleQuestion, MessageSquareText, ShieldCheck, Sparkles, Star, Tag } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { AcoesModeracaoAnuncio, AgendarRemocao, type RemocaoAgendada } from "@/components/admin/acoes-anuncio";
+import { AcoesModeracaoAnuncio, AgendarRemocao, ReabrirDenuncias, type RemocaoAgendada } from "@/components/admin/acoes-anuncio";
 import { ConversaModeracao } from "@/components/conversa-moderacao";
 import { conversasDaModeracao, explicacoesPendentes } from "@/lib/servidor/conversa-moderacao";
 import { AcoesModeracaoAvaliacao } from "@/components/admin/acoes-avaliacao";
@@ -30,6 +30,8 @@ const ABAS = [
   { id: "recados", nome: "Recados", icone: MessageSquareText },
   { id: "comentarios", nome: "Comentários", icone: MessageCircleQuestion },
   { id: "esperando", nome: "Esperando a IA", icone: Clock },
+  // o que já foi decidido (migração 20270527120000)
+  { id: "historico", nome: "Histórico", icone: History },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
 
@@ -126,6 +128,7 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
     recados: recados.length,
     comentarios: comentarios.length,
     esperando: avaliacoesEsperando.length + recadosEsperando.length,
+    historico: 0,
   };
   // sem aba no endereço: a primeira com alguma coisa (o que espera a IA primeiro, porque está escondido)
   const aba: Aba =
@@ -367,6 +370,7 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
         </section>
       )}
 
+      {aba === "historico" && <Historico cliente={acesso.cliente} agora={agora} />}
       {aba === "comentarios" && (
         <section id="comentarios" className="flex scroll-mt-24 flex-col gap-4">
           <div>
@@ -628,5 +632,142 @@ function ListaDeRecados({ recados, admin, agora }: { recados: ItemRecado[]; admi
         );
       })}
     </ul>
+  );
+}
+
+// Histórico (migração 20270527120000): o que aconteceu com os anúncios na moderação nos últimos 30 dias.
+
+type EventoDoHistorico = {
+  em: string;
+  acao: string;
+  anuncio_id: string;
+  quem: string;
+  nota: string | null;
+  horas: number | null;
+  titulo: string;
+  status: string;
+  tipo: string;
+  autor: string | null;
+  denuncias: number;
+  dispensadas: number;
+  abertas: number;
+  motivos: string[];
+};
+
+function oQueAconteceu(e: EventoDoHistorico) {
+  switch (e.acao) {
+    case "remover_anuncio":
+      return "Removido";
+    case "liberar_anuncio":
+      return e.denuncias > 0 ? "Liberado, denúncias dispensadas" : "Liberado";
+    case "agendar_remocao":
+      return e.horas ? `Remoção agendada para ${e.horas >= 72 ? `${e.horas / 24} dias` : `${e.horas} h`} depois` : "Remoção agendada";
+    case "cancelar_remocao":
+      return "Remoção agendada cancelada";
+    case "remocao_nao_precisou":
+      return "Não precisou remover: os candidatos tiveram resposta";
+    case "editar_anuncio":
+      return "Texto corrigido";
+    case "perguntar_anunciante":
+      return "Pergunta a quem publicou";
+    case "encerrar_repetido":
+      return "Encerrado por ser repetido";
+    case "reabrir_denuncias":
+      return "Denúncias reabertas";
+    case "retido_ia":
+      return "Retido pela IA";
+    default:
+      return e.acao;
+  }
+}
+
+const DIA_DO_HISTORICO = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+const HORA_DO_HISTORICO = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+
+async function Historico({
+  cliente,
+  agora,
+}: {
+  cliente: NonNullable<Awaited<ReturnType<typeof acessoDaEquipe>>>["cliente"];
+  agora: number;
+}) {
+  const { data, error } = await cliente.rpc("moderacao_historico", { p_dias: 30, p_limite: 200 });
+  const eventos = (data ?? []) as unknown as EventoDoHistorico[];
+  // por dia, o mais novo primeiro
+  const dias = new Map<string, EventoDoHistorico[]>();
+  for (const e of eventos) {
+    const d = DIA_DO_HISTORICO.format(new Date(e.em));
+    dias.set(d, [...(dias.get(d) ?? []), e]);
+  }
+  // o "Reabrir" só no evento mais novo de cada anúncio
+  const ultimo = new Set<string>();
+  const vistos = new Set<string>();
+  for (const e of eventos) {
+    if (!vistos.has(e.anuncio_id)) ultimo.add(`${e.anuncio_id}:${e.em}`);
+    vistos.add(e.anuncio_id);
+  }
+  return (
+    <section className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-h3">Histórico</h2>
+        <p className="mt-1 max-w-3xl text-body-sm text-ink-muted">
+          O que aconteceu com os anúncios na moderação nos últimos 30 dias: removidos, liberados, denúncias dispensadas,
+          remoções agendadas, textos corrigidos, perguntas a quem publicou e o que a IA reteve. Dispensou sem querer? Use
+          Reabrir: o anúncio volta para a fila.
+        </p>
+      </div>
+      {error ? (
+        <p className="text-body-sm text-danger">
+          {error.code === "PGRST202"
+            ? "Falta a migração 20270527120000_historico_da_moderacao.sql neste banco."
+            : "Não deu para ler o histórico agora."}
+        </p>
+      ) : eventos.length === 0 ? (
+        <Vazio icone={History} titulo="Nada na moderação nos últimos 30 dias" />
+      ) : (
+        [...dias].map(([dia, lista]) => (
+          <div key={dia} className="flex flex-col gap-2">
+            <h3 className="text-label first-letter:uppercase">{dia}</h3>
+            <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+              {lista.map((e) => (
+                <li key={`${e.anuncio_id}:${e.acao}:${e.em}`} className="flex flex-col gap-1.5 p-4">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="text-body-sm tabular-nums text-ink-muted">{HORA_DO_HISTORICO.format(new Date(e.em))}</span>
+                    <span className="text-label">{oQueAconteceu(e)}</span>
+                    <span className="text-body-sm text-ink-muted">por {e.quem}</span>
+                    <SeloStatus status={e.status} />
+                  </div>
+                  <p className="text-body">
+                    <Link href={`/admin/anuncios/${e.anuncio_id}`} className="underline-offset-2 hover:underline">
+                      {e.titulo}
+                    </Link>
+                    {e.autor && <span className="text-body-sm text-ink-muted"> · {e.autor}</span>}
+                  </p>
+                  {e.nota && <p className="text-body-sm break-words text-ink-muted">“{e.nota}”</p>}
+                  {e.denuncias > 0 && (
+                    <p className="text-body-sm text-ink-muted">
+                      {e.denuncias === 1 ? "1 denúncia" : `${e.denuncias} denúncias`} (
+                      {e.motivos.map((m) => NOME_MOTIVO[m] ?? m).join(", ")})
+                      {e.abertas > 0 ? `, ${e.abertas} aberta${e.abertas > 1 ? "s" : ""}` : ""}
+                    </p>
+                  )}
+                  {e.dispensadas > 0 && e.abertas === 0 && e.acao === "liberar_anuncio" && ultimo.has(`${e.anuncio_id}:${e.em}`) && (
+                    <ReabrirDenuncias anuncioId={e.anuncio_id} quantas={e.dispensadas} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
+      {eventos.length >= 200 && (
+        <p className="text-body-sm text-ink-muted">Mostrando os 200 mais recentes ({tempoRelativo(eventos.at(-1)!.em, agora)}).</p>
+      )}
+    </section>
   );
 }
