@@ -1,34 +1,9 @@
 -- Lugares sem nome na rota (15/11/2026, Marcelo: "empresas sem nome e com apenas o CNAE"). O empresário individual
 -- (natureza 2135) sem nome fantasia não tem nome para mostrar: a razão social dele é o nome da pessoa, que nunca
 -- aparece, e o Publike punha o nome do ramo no lugar ("Atividades de estética…"). Quase sempre é uma pessoa
--- trabalhando em casa, como o MEI. Agora esses ficam marcados (sem_nome) e saem da rota do currículo, do "Abriu perto"
--- e da busca por nome; continuam nas listas da equipe. Pode rodar de novo.
-
-alter table privado.empresas_receita add column if not exists sem_nome boolean not null default false;
-
-create or replace function privado.marcar_sem_nome()
-returns trigger
-language plpgsql
-set search_path = ''
-as $$
-begin
-  new.sem_nome := coalesce(new.natureza, '') = '2135' and new.razao_social is null
-    and (new.nome = 'Empresa sem nome'
-         or exists (select 1 from privado.ramos_do_publike r where r.cnae = new.cnae and r.nome = new.nome));
-  return new;
-end
-$$;
-drop trigger if exists empresas_receita_sem_nome on privado.empresas_receita;
-create trigger empresas_receita_sem_nome
-  before insert or update of nome, razao_social, natureza, cnae on privado.empresas_receita
-  for each row execute function privado.marcar_sem_nome();
-
--- os que já estão na base
-update privado.empresas_receita e
-   set sem_nome = true
- where not e.sem_nome and e.natureza = '2135' and e.razao_social is null
-   and (e.nome = 'Empresa sem nome'
-        or exists (select 1 from privado.ramos_do_publike r where r.cnae = e.cnae and r.nome = e.nome));
+-- trabalhando em casa, como o MEI. Agora esses saem da rota do currículo, do "Abriu perto" e da busca por nome; continuam
+-- nas listas da equipe. A conta é feita na hora (sem coluna nova nem regravar a tabela: a primeira versão, com um
+-- UPDATE na base inteira, encheu o disco do banco). Pode rodar de novo.
 
 create or replace function public.lugares_da_rota(
   p_cbo text, p_lat double precision, p_lng double precision, p_raio_km numeric default 2, p_limite integer default 60
@@ -62,7 +37,9 @@ begin
       from privado.empresas_receita e
       join ramos using (cnae)
       left join privado.ramos_do_publike r on r.cnae = e.cnae
-     where e.situacao = 'ativa' and not e.mei and not e.sem_nome and e.local is not null
+     where e.situacao = 'ativa' and not e.mei
+       and not (coalesce(e.natureza, '') = '2135' and e.razao_social is null and (e.nome = 'Empresa sem nome' or exists (select 1 from privado.ramos_do_publike rr where rr.cnae = e.cnae and rr.nome = e.nome)))
+       and e.local is not null
        and extensions.st_dwithin(e.local, v_ponto, v_raio * 1000)
      order by extensions.st_distance(e.local, v_ponto), e.nome
      limit least(greatest(coalesce(p_limite, 60), 1), case when auth.uid() is null then 30 else 100 end);
@@ -101,7 +78,9 @@ begin
            v_cbos[array_position(v_cnaes, e.cnae)]
       from privado.empresas_receita e
       left join privado.ramos_do_publike r2 on r2.cnae = e.cnae
-     where e.situacao = 'ativa' and not e.mei and not e.sem_nome and e.local is not null
+     where e.situacao = 'ativa' and not e.mei
+       and not (coalesce(e.natureza, '') = '2135' and e.razao_social is null and (e.nome = 'Empresa sem nome' or exists (select 1 from privado.ramos_do_publike rr where rr.cnae = e.cnae and rr.nome = e.nome)))
+       and e.local is not null
        and e.data_abertura >= v_desde
        and e.cnae = any(v_cnaes)
        and extensions.st_dwithin(e.local, v_ponto, v_raio)
@@ -155,7 +134,9 @@ begin
          round(extensions.st_distance(e.local, v_ponto))::integer,
          row_number() over (order by extensions.st_distance(e.local, v_ponto), e.nome)
     from privado.empresas_receita e
-   where e.cnpj = any(p_cnpjs) and e.situacao = 'ativa' and not e.mei and not e.sem_nome and e.local is not null;
+   where e.cnpj = any(p_cnpjs) and e.situacao = 'ativa' and not e.mei
+     and not (coalesce(e.natureza, '') = '2135' and e.razao_social is null and (e.nome = 'Empresa sem nome' or exists (select 1 from privado.ramos_do_publike rr where rr.cnae = e.cnae and rr.nome = e.nome)))
+     and e.local is not null;
   get diagnostics v_n = row_count;
   if v_n = 0 then
     raise exception 'Nenhum desses lugares está na base.' using errcode = '22023';
@@ -211,7 +192,8 @@ begin
            e.precisao, e.data_abertura
       from privado.empresas_receita e
       left join privado.ramos_do_publike r on r.cnae = e.cnae
-     where e.situacao = 'ativa' and not e.mei and not e.sem_nome
+     where e.situacao = 'ativa' and not e.mei
+       and not (coalesce(e.natureza, '') = '2135' and e.razao_social is null and (e.nome = 'Empresa sem nome' or exists (select 1 from privado.ramos_do_publike rr where rr.cnae = e.cnae and rr.nome = e.nome)))
        -- o like e o <% (nome parecido, com erro de digitação) usam o índice de trigramas da busca
        and (e.busca like '%' || v_nome || '%' or v_nome operator(extensions.<%) e.busca)
      order by (e.busca like v_nome || '%') desc, (e.busca like '%' || v_nome || '%') desc,
