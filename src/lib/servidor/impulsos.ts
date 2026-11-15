@@ -2238,12 +2238,15 @@ async function cuidarDasCampanhas(a: Acesso, alertas: string[]) {
 export async function cuidarDosImpulsos(
   /** até quando a volta pode ir (a hora em ms): a rota das filas passa o fim dela; sem, 58 s a partir de agora */
   fim?: number,
+  /** só o produto de agora (a campanha geral, os grupos e os raios), no começo da rota das filas */
+  soAGeral = false,
 ): Promise<{
   feitos: number;
   motivo?: string;
 }> {
   const a = acessoFila();
   if (!a) return { feitos: 0 };
+  if (soAGeral && !googleAdsLigado()) return { feitos: 0 };
   const vez = randomUUID();
   const { data: peguei, error: e } = await a.cliente.rpc(
     "servidor_impulsos_pegar_vez",
@@ -2258,6 +2261,10 @@ export async function cuidarDosImpulsos(
   }
   if (!e && !peguei) return { feitos: 0 };
   try {
+    if (soAGeral) {
+      await cuidarDoProdutoDeAgora(a, fim ?? Date.now() + 58_000);
+      return { feitos: 0 };
+    }
     return await umaVoltaDoRobo(a, fim ?? Date.now() + 58_000);
   } finally {
     if (!e) {
@@ -2325,20 +2332,26 @@ async function cuidarDaGeral(a: Acesso) {
   if (e2) console.error("Publike: falha ao guardar o orçamento da campanha geral:", e2.message);
 }
 
+/**
+ * O produto de agora: o orçamento da campanha geral, os grupos e os raios (14/11/2026). Chamados no fim da volta, pela
+ * rota das filas (que já gastou boa parte dos 60 s), quase nunca tinham tempo: dos grupos ligados às 20h57, só o
+ * primeiro saiu em meia hora. `fim` é a hora em que a função acaba.
+ */
+async function cuidarDoProdutoDeAgora(a: Acesso, fim: number) {
+  if (fim - Date.now() > 12_000) await cuidarDaGeral(a);
+  // a IA leva até 15 s por grupo; criar só com folga
+  if (fim - Date.now() > 24_000) await cuidarDosGrupos(a, fim - 21_000);
+  if (fim - Date.now() > 8_000) await cuidarDosRaios(a, fim - 6_000);
+}
+
 /** Uma rodada do robô. Devolve quantos impulsos andaram e, quando um erro dura mais de 6 horas, o motivo. */
 async function umaVoltaDoRobo(
   a: Acesso,
   fim: number,
 ): Promise<{ feitos: number; motivo?: string }> {
-  // o produto de agora primeiro (14/11/2026): o orçamento da campanha geral, os grupos e os raios. Antes, eles vinham
-  // depois das campanhas por vaga e, chamados pela rota das filas (que já gastou parte dos 60 s), quase nunca tinham
-  // tempo: dos grupos ligados às 20h57, só o primeiro saiu em 25 minutos. `fim` é a hora em que a função acaba.
-  if (googleAdsLigado()) {
-    if (fim - Date.now() > 12_000) await cuidarDaGeral(a);
-    // a IA leva até 15 s por grupo; criar só com folga
-    if (fim - Date.now() > 24_000) await cuidarDosGrupos(a, fim - 21_000);
-    if (fim - Date.now() > 8_000) await cuidarDosRaios(a, fim - 6_000);
-  }
+  // o produto de agora primeiro (o orçamento da campanha geral, os grupos e os raios; a rota das filas também chama
+  // isso no começo dela, `soAGeral`)
+  if (googleAdsLigado()) await cuidarDoProdutoDeAgora(a, fim);
   // o impulso automático do Publike (migração 20270428120000): com o Google Ads ligado, o banco escolhe as vagas
   // paradas dentro do teto do mês e cria os impulsos; logo abaixo, eles entram na fila como os outros
   if (googleAdsLigado()) {

@@ -60,6 +60,10 @@ export async function GET(request: Request) {
   // contar como problema).
   const inicio = Date.now();
   const comTempo = async <T>(f: () => Promise<T>): Promise<Partial<T>> => (Date.now() - inicio > 40_000 ? {} : f());
+  // a campanha geral, os grupos e os raios do impulso, antes de tudo: no fim da rota, quase nunca sobrava tempo (14/11/2026)
+  await cuidarDosImpulsos(inicio + 57_000, true).catch((e) =>
+    console.error("Publike: falha na campanha geral do impulso:", e instanceof Error ? e.message : e),
+  );
   const ia = await comTempo(() => revisarAnunciosPendentes(20));
   // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
   const parados = await comTempo(() => liberarContatosParados());
