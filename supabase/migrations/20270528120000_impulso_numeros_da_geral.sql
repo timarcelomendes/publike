@@ -14,7 +14,8 @@ alter table privado.config_impulso
 create or replace function public.servidor_medir_geral(p_chave text)
 returns jsonb
 language plpgsql
-stable
+-- volatile: exigir_servidor marca o uso da chave (15/11/2026: "cannot execute UPDATE in a read-only transaction")
+volatile
 security definer
 set search_path = ''
 as $$
