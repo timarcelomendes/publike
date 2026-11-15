@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, LoaderCircle, Search, X } from "lucide-react";
+import { Building2, LoaderCircle, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { acharEmpresas, funcoesDoRamo, type EmpresaAchada, type FuncaoDoRamo } from "@/lib/acoes/empresas-receita";
 import { reaisDaFaixa } from "@/lib/salarios";
@@ -175,11 +175,6 @@ export function EmpresaDaReceita({
             ))}
           </div>
         </div>
-      )}
-      {escolhida && (
-        <button type="button" onClick={trocar} className="sr-only">
-          <X aria-hidden /> Tirar a empresa
-        </button>
       )}
     </section>
   );

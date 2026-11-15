@@ -25,6 +25,8 @@ import { BAIRROS } from "@/lib/bairros";
 import type { Candidatura } from "@/lib/candidatura";
 import { categoriaSugerida } from "@/lib/categoria-sugerida";
 import { temLugar, type ClienteParaVaga } from "@/lib/clientes";
+import type { EmpresaAchada, FuncaoDoRamo } from "@/lib/acoes/empresas-receita";
+import { EmpresaDaReceita } from "./anuncio/empresa-da-receita";
 import {
   BENEFICIOS,
   categoria as nomeCategoria,
@@ -624,6 +626,22 @@ export function FormAnuncio({
     setLugarDoCliente(c.nome);
   }
 
+  // a empresa achada na base da Receita (claude/plano-base-de-empresas-da-receita.md, parte 3): o endereço dela
+  function usarEmpresaDaReceita(e: EmpresaAchada) {
+    if ((CIDADES as readonly string[]).includes(e.cidade)) setCidade(e.cidade);
+    setLugar({ bairro: e.bairro ?? "", cep: e.cep, endereco: e.endereco, lat: e.lat, lng: e.lng });
+    setChaveLugar((k) => k + 1);
+    setLugarDoCliente(e.nome);
+  }
+
+  // uma função que o ramo contrata: o título e o cargo na carteira
+  function usarFuncaoDoRamo(f: FuncaoDoRamo) {
+    const campoTitulo = formulario.current?.elements.namedItem("titulo");
+    if (campoTitulo instanceof HTMLInputElement) campoTitulo.value = f.titulo;
+    setTituloAtual(f.titulo);
+    setFuncao({ cbo: f.cbo, nome: f.nome, origem: "empresa" });
+  }
+
   // marcar ou desmarcar "Empresa confidencial" monta o "Onde é" de outro jeito (sem ou com o mapa): o bairro
   // que já estava escrito vai junto, senão o campo novo voltava com o bairro de antes
   function mudarConfidencial(valor: boolean) {
@@ -803,6 +821,9 @@ export function FormAnuncio({
         </div>
       )}
       {editando && passos && <input type="hidden" name="tipo" value={tipo} />}
+      {vaga && !editando && !equipe && !agencia && !semConta && enderecoPublico === true && (
+        <EmpresaDaReceita cidade={cidade} aoEscolher={usarEmpresaDaReceita} aoEscolherFuncao={usarFuncaoDoRamo} />
+      )}
       <Campo
         rotulo="Título"
         nome="titulo"
