@@ -43,6 +43,9 @@ export type RotaDoCurriculo = {
   criada_em: string;
   curriculo: CurriculoImpresso;
   copias: CopiaDaRota[];
+  /** uma semana depois: "Alguém te chamou?" (migração 20270606120000) */
+  perguntar?: boolean;
+  chamou?: "sim" | "nao" | "ainda_nao" | null;
 };
 
 export const RAIOS_DA_ROTA = [1, 2, 5] as const;
@@ -81,7 +84,7 @@ export function curriculoImpresso(perfil: MeuPerfil, c: Curriculo, funcao: strin
 }
 
 /** As funções que o currículo diz (o título e os cargos), sem repetir, com o título curto. */
-export function funcoesDoCurriculo(c: Curriculo | null) {
+export function funcoesDoCurriculo(c: Pick<Curriculo, "experiencias"> & { titulo?: string | null } | null) {
   if (!c) return [];
   const vistas = new Map<string, string>();
   for (const texto of [c.titulo, ...(c.experiencias ?? []).map((e) => e.cargo)]) {

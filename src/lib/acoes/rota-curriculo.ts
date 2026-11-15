@@ -60,3 +60,13 @@ export async function mudarCopia(codigo: string, mudanca: { entregue?: boolean; 
   if (error || !data) return { ok: false, erro: "Não deu para salvar agora." };
   return { ok: true };
 }
+
+/** "Alguém te chamou?" (migração 20270606120000). */
+export async function responderRota(rota: string, resposta: "sim" | "nao" | "ainda_nao"): Promise<Resultado> {
+  if (!["sim", "nao", "ainda_nao"].includes(resposta)) return { ok: false, erro: "Resposta inválida." };
+  if (!(await obterUsuario())) return { ok: false, erro: "Entre de novo." };
+  const banco = await criarClienteServidor();
+  const { data, error } = await banco.rpc("responder_rota_curriculo", { p_rota: rota, p_resposta: resposta });
+  if (error || !data) return { ok: false, erro: "Não deu para salvar agora." };
+  return { ok: true };
+}

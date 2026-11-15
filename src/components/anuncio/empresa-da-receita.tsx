@@ -1,6 +1,7 @@
 "use client";
 
 import { Building2, LoaderCircle, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { acharEmpresas, funcoesDoRamo, type EmpresaAchada, type FuncaoDoRamo } from "@/lib/acoes/empresas-receita";
 import { reaisDaFaixa } from "@/lib/salarios";
@@ -22,7 +23,9 @@ export function EmpresaDaReceita({
   aoEscolherFuncao: (funcao: FuncaoDoRamo) => void;
 }) {
   const id = useId();
-  const [texto, setTexto] = useState("");
+  // veio do QR code da rota do currículo (/cv/<código>): o CNPJ daquele comércio já vem na busca
+  const pedida = useSearchParams().get("empresa");
+  const [texto, setTexto] = useState(() => (pedida && /^[0-9A-Z]{14}$/.test(pedida) ? pedida : ""));
   const [resultado, setResultado] = useState<{ texto: string; lista: EmpresaAchada[] } | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [escolhida, setEscolhida] = useState<EmpresaAchada | null>(null);

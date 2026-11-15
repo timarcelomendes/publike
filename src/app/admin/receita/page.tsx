@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { PrepararMaterias } from "@/components/admin/preparar-materias";
 import { Numero, Secao } from "@/components/admin/ui";
 import { Aviso, Vazio } from "@/components/ui/basicos";
 import { formatarDataHora, formatarNumero } from "@/lib/formato";
@@ -64,6 +65,13 @@ async function Conteudo() {
   }
   const r = data as unknown as Resumo;
   const ultima = r.cargas[0];
+  // a rota do currículo e o mês passado (migração 20270606120000; sem ela, a seção não aparece)
+  const [{ data: dRota }, { data: dMes }] = await Promise.all([
+    c.rpc("admin_numeros_da_rota"),
+    c.rpc("admin_numeros_do_mes_receita", { p_mes: null }),
+  ]);
+  const rota = dRota as unknown as Record<string, number> | null;
+  const mes = dMes as unknown as { mes: string; por_cidade: { cidade: string; empresas: number; meis: number }[] } | null;
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -121,6 +129,44 @@ async function Conteudo() {
               ))}
             </ul>
           </Secao>
+
+          {rota && (
+            <Secao
+              titulo="Rota do currículo"
+              descricao="Quem montou a rota, as cópias entregues, os QR codes abertos e os comércios que publicaram vaga depois de abrir."
+            >
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Numero rotulo="Rotas montadas" valor={rota.rotas} detalhe={`${formatarNumero(rota.rotas_7_dias)} nos últimos 7 dias, de ${formatarNumero(rota.pessoas)} pessoas`} />
+                <Numero rotulo="Cópias" valor={rota.copias} detalhe={`${formatarNumero(rota.entregues)} marcadas como entregues`} />
+                <Numero rotulo="QR codes abertos" valor={rota.abertas} detalhe={`${pct(rota.abertas, rota.copias)} das cópias`} />
+                <Numero rotulo="Publicaram vaga" valor={rota.publicaram} detalhe="depois de abrir o QR (pelo CNPJ da conta)" />
+                <Numero rotulo="Alguém te chamou?" valor={rota.chamaram} detalhe={`responderam "sim", de ${formatarNumero(rota.responderam)} respostas`} />
+              </div>
+            </Secao>
+          )}
+
+          {mes && (
+            <Secao
+              titulo={`As matérias de ${mesCurto(mes.mes)}`}
+              descricao="Os negócios que abriram no mês (fora o MEI) e o que mais contratou, pelo Caged. A IA escreve a partir dos números e as duas entram como rascunho em Admin › Notícias."
+            >
+              {mes.por_cidade.length ? (
+                <ul className="grid gap-x-6 gap-y-1 text-body-sm sm:grid-cols-2">
+                  {mes.por_cidade.slice(0, 8).map((x) => (
+                    <li key={x.cidade} className="flex justify-between gap-3 border-b border-line py-1">
+                      <span>{x.cidade}</span>
+                      <span className="tabular-nums text-ink-muted">
+                        {formatarNumero(x.empresas)} {x.empresas === 1 ? "empresa" : "empresas"}, {formatarNumero(x.meis)} MEI
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-body-sm text-ink-muted">Nenhuma abertura no mês na base ainda.</p>
+              )}
+              <PrepararMaterias mes={mes.mes} />
+            </Secao>
+          )}
 
           <Secao titulo="Cargas" descricao="Cada mês que o robô carregou.">
             <ul className="flex flex-col gap-2 text-body-sm">

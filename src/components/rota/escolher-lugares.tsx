@@ -1,10 +1,12 @@
 "use client";
 
 import { MapPin, Printer } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { deslocamentoProvavel } from "@/lib/deslocamento";
 import { montarRota } from "@/lib/acoes/rota-curriculo";
 import { distanciaCurta, MAX_LUGARES_DA_ROTA } from "@/lib/rota-curriculo";
 import { classesBotao } from "../ui/botao";
+import { MapaDaRota } from "./mapa-da-rota";
 
 export type LugarDaRota = {
   cnpj: string;
@@ -13,6 +15,8 @@ export type LugarDaRota = {
   endereco: string | null;
   bairro: string | null;
   cidade: string;
+  lat: number;
+  lng: number;
   distancia_m: number;
 };
 
@@ -22,7 +26,9 @@ export function EscolherLugares({
   cbo,
   funcao,
   raio,
+  casa,
 }: {
+  casa: { lat: number; lng: number };
   lugares: LugarDaRota[];
   cbo: string;
   funcao: string;
@@ -34,6 +40,10 @@ export function EscolherLugares({
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const cheio = marcados.size >= MAX_LUGARES_DA_ROTA;
+  const pontos = useMemo(
+    () => lugares.map((l) => ({ cnpj: l.cnpj, lat: l.lat, lng: l.lng, marcado: marcados.has(l.cnpj) })),
+    [lugares, marcados],
+  );
 
   function trocar(cnpj: string) {
     setMarcados((atual) => {
@@ -46,6 +56,7 @@ export function EscolherLugares({
 
   return (
     <div className="flex flex-col gap-4">
+      <MapaDaRota casa={casa} pontos={pontos} />
       <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
         {lugares.map((l) => {
           const marcado = marcados.has(l.cnpj);
@@ -64,7 +75,7 @@ export function EscolherLugares({
                     <span className="text-label text-ink">{l.nome}</span>
                     <span className="inline-flex items-center gap-1 text-body-sm tabular-nums text-ink-muted">
                       <MapPin aria-hidden className="size-3.5" />
-                      {distanciaCurta(l.distancia_m)}
+                      {distanciaCurta(l.distancia_m)}, {deslocamentoProvavel(l.distancia_m / 1000).texto}
                     </span>
                   </span>
                   {l.ramo && <span className="block text-body-sm text-ink-muted">{l.ramo}</span>}

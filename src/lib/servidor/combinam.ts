@@ -3,6 +3,7 @@ import { lerReputacao, reputacaoNoEmail } from "@/lib/reputacao";
 import { matchComAVaga, outraArea, type Aderencia, type CamposDaVaga, type Candidato } from "@/lib/aderencia";
 import { formatarLugar } from "@/lib/formato";
 import { pracaDaCidade } from "@/lib/pracas";
+import { distanciaCurta, funcoesDoCurriculo } from "@/lib/rota-curriculo";
 import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
 import { acessoFila } from "./filas";
 
@@ -295,14 +296,45 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
   const vagasComCbo = await comFuncaoDasVagas((vagas ?? []) as VagaParaCombinar[]);
   const listaDePessoas = eVagas ? [] : (pessoas ?? []);
   const cvsDasPessoas = await comFuncoes(listaDePessoas.map((p) => comoCurriculo(p.curriculo)));
-  for (const [i, p] of listaDePessoas.entries()) {
-    const boas = escolherVagas(
+  const escolhas = listaDePessoas.map((p, i) => ({
+    p,
+    cv: cvsDasPessoas[i],
+    boas: escolherVagas(
       { id: p.perfil_id, cidade: p.cidade, bairro: p.bairro, curriculo: cvsDasPessoas[i] },
       vagasComCbo,
       new Set(p.ja ?? []),
       agora,
-    );
+    ),
+  }));
+  // "Abriu perto de você" (claude/plano-base-de-empresas-da-receita.md, parte 1; migração 20270606120000): quem vai
+  // receber as vagas da semana e tem o CEP de casa ganha até 2 comércios novos a até 3 km, dos ramos que contratam as
+  // funções do currículo. Nunca diz que há vaga.
+  const abriu = new Map<string, { nome: string; ramo: string | null; bairro: string | null; distancia_m: number }[]>();
+  const comFuncao = escolhas
+    .filter((e) => e.boas.length)
+    .map((e) => ({ perfil_id: e.p.perfil_id, cbos: funcoesDoCurriculo(e.cv).map((f) => f.cbo) }))
+    .filter((e) => e.cbos.length);
+  if (comFuncao.length) {
+    const { data: lugares, error: eAbriu } = await cliente.rpc("servidor_abriu_perto", {
+      p_chave: chave,
+      p_pessoas: comFuncao,
+    });
+    if (!eAbriu && lugares && typeof lugares === "object")
+      for (const [id, l] of Object.entries(lugares as Record<string, unknown>)) abriu.set(id, l as never);
+  }
+  for (const { p, boas } of escolhas) {
     const n = quantas(boas.length, "vaga", "vagas");
+    const perto = abriu.get(p.perfil_id) ?? [];
+    const textoPerto = perto.length
+      ? "\n\nAbriu perto de você (lugar novo costuma contratar; leve seu currículo):\n" +
+        perto
+          .map(
+            (l) =>
+              `• ${l.nome}${l.ramo ? `, ${l.ramo.toLowerCase()}` : ""}${l.bairro ? `, ${l.bairro}` : ""}, a ${distanciaCurta(l.distancia_m)} de casa`,
+          )
+          .join("\n") +
+        "\nMonte a rota do currículo: publike.org/rota-do-curriculo"
+      : "";
     await registrar(
       p.perfil_id,
       "vagas_semana",
@@ -310,12 +342,13 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
       `${n} com você esta semana: ${nomesCurtos(boas.map((x) => x.v.titulo))}`,
       {
         quantas: n,
-        lista: boas
-          .map(
-            (x) =>
-              `• ${x.v.titulo}, ${x.v.autor_nome}, ${formatarLugar(x.v.bairro, x.v.cidade)}: ${x.m.nota}% de match`,
-          )
-          .join("\n"),
+        lista:
+          boas
+            .map(
+              (x) =>
+                `• ${x.v.titulo}, ${x.v.autor_nome}, ${formatarLugar(x.v.bairro, x.v.cidade)}: ${x.m.nota}% de match`,
+            )
+            .join("\n") + textoPerto,
         caminho: "/?tipo=vaga&ordem=combina",
       },
     );

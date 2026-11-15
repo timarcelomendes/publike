@@ -3,6 +3,7 @@
 import { Eye, Printer } from "lucide-react";
 import { useState, useTransition } from "react";
 import { mudarCopia } from "@/lib/acoes/rota-curriculo";
+import { deslocamentoProvavel } from "@/lib/deslocamento";
 import { distanciaCurta, type CopiaDaRota } from "@/lib/rota-curriculo";
 import { classesBotao } from "../ui/botao";
 
@@ -56,7 +57,9 @@ function ItemDaRota({ copia, ordem }: { copia: CopiaDaRota; ordem: number }) {
           <p className="text-label text-ink">{copia.nome}</p>
           <p className="text-body-sm text-ink-muted">
             {[copia.endereco, copia.bairro, copia.cidade].filter(Boolean).join(", ")}
-            {copia.distancia_m != null && <> ({distanciaCurta(copia.distancia_m)} de casa)</>}
+            {copia.distancia_m != null && (
+              <> ({distanciaCurta(copia.distancia_m)} de casa, {deslocamentoProvavel(copia.distancia_m / 1000).texto})</>
+            )}
           </p>
           {copia.aberturas > 0 && (
             <p className="mt-1 inline-flex items-center gap-1 text-body-sm font-semibold text-cerrado-text">

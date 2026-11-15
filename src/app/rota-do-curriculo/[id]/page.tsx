@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { AlguemTeChamou } from "@/components/rota/alguem-te-chamou";
 import { BotaoImprimir, ChecklistDaRota } from "@/components/rota/checklist-da-rota";
 import { FolhaCurriculo } from "@/components/rota/folha-curriculo";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { formatarNumero, primeiro } from "@/lib/formato";
+import { deslocamentoProvavel } from "@/lib/deslocamento";
 import { distanciaCurta, type RotaDoCurriculo } from "@/lib/rota-curriculo";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -67,6 +69,11 @@ async function Conteudo({
             para cada lugar. No celular, escolha “Salvar como PDF” e imprima numa copiadora.
           </Aviso>
         )}
+        {(rota.perguntar || rota.chamou) && (
+          <div className="mt-4">
+            <AlguemTeChamou rota={rota.id} resposta={rota.chamou ?? null} />
+          </div>
+        )}
         <div className="mt-4">
           <BotaoImprimir />
         </div>
@@ -91,7 +98,8 @@ async function Conteudo({
                 <strong>
                   {i + 1}. {c.nome}
                 </strong>{" "}
-                ({distanciaCurta(c.distancia_m)}): {[c.endereco, c.bairro, c.cidade].filter(Boolean).join(", ")}
+                ({distanciaCurta(c.distancia_m)}
+                {c.distancia_m != null && `, ${deslocamentoProvavel(c.distancia_m / 1000).texto}`}): {[c.endereco, c.bairro, c.cidade].filter(Boolean).join(", ")}
               </li>
             ))}
           </ol>

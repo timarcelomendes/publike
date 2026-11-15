@@ -842,3 +842,22 @@ export async function processarFilas() {
     console.error("Publike: falha ao processar as filas:", textoDoErro(e));
   }
 }
+
+/**
+ * Rota do currículo (migração 20270606120000): uma semana depois de entregar as cópias, "Alguém te chamou?" (no sino,
+ * no celular e por e-mail), das 8h às 20h, uma vez por rota. Sem a migração, nada.
+ */
+export async function perguntarRotas(limite = 100): Promise<{ perguntas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { perguntas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_perguntar_rotas", {
+    p_chave: acesso.chave,
+    p_limite: limite,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { perguntas: 0 };
+    console.error("Publike: falha ao perguntar das rotas do currículo:", error.message);
+    return { perguntas: 0, motivo: "Não foi possível perguntar das rotas do currículo." };
+  }
+  return { perguntas: Number(data ?? 0) };
+}

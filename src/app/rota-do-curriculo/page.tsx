@@ -197,6 +197,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
             cbo={escolhida.cbo}
             funcao={escolhida.titulo}
             raio={raio}
+            casa={ponto}
           />
         </section>
       )}

@@ -1885,6 +1885,25 @@ export type Database = {
       servidor_ramos_salvar: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
       servidor_empresas_fim: { Args: { p_chave: string; p_mes: string; p_resumo: Json }; Returns: Json };
       admin_empresas_receita: { Args: Record<string, never>; Returns: Json };
+      abriu_perto_de_mim: {
+        Args: { p_cbos: string[]; p_dias?: number; p_limite?: number };
+        Returns: {
+          cnpj: string;
+          nome: string;
+          ramo: string | null;
+          bairro: string | null;
+          cidade: string;
+          abertura: string;
+          distancia_m: number;
+          cbo: string;
+        }[];
+      };
+      servidor_abriu_perto: { Args: { p_chave: string; p_pessoas: Json }; Returns: Json };
+      servidor_perguntar_rotas: { Args: { p_chave: string; p_limite?: number }; Returns: number };
+      responder_rota_curriculo: { Args: { p_rota: string; p_resposta: string }; Returns: boolean };
+      admin_numeros_do_mes_receita: { Args: { p_mes?: string | null }; Returns: Json };
+      admin_numeros_da_rota: { Args: Record<string, never>; Returns: Json };
+      admin_rascunhos_receita: { Args: { p_itens: Json }; Returns: number };
       lugares_da_rota: {
         Args: { p_cbo: string; p_lat: number; p_lng: number; p_raio_km?: number; p_limite?: number };
         Returns: {

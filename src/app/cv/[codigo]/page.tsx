@@ -42,7 +42,7 @@ async function Conteudo({ params }: { params: PageProps<"/cv/[codigo]">["params"
       <div className="flex flex-col gap-3">
         <h1 className="text-h2">Este currículo não está mais disponível</h1>
         <p className="text-body text-ink-muted">A pessoa desligou a página desta cópia.</p>
-        <Publique />
+        <Publique cnpj={copia.cnpj} />
       </div>
     );
   }
@@ -68,12 +68,12 @@ async function Conteudo({ params }: { params: PageProps<"/cv/[codigo]">["params"
       <div className="overflow-hidden rounded-lg border border-line shadow-raised">
         <FolhaCurriculo cv={cv} para={copia.para ?? ""} />
       </div>
-      <Publique />
+      <Publique cnpj={copia.cnpj} />
     </div>
   );
 }
 
-function Publique() {
+function Publique({ cnpj }: { cnpj?: string }) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-5 sm:p-6">
       <h2 className="flex items-center gap-2 text-h3">
@@ -84,7 +84,7 @@ function Publique() {
         Publique a sua vaga grátis no Publike: os candidatos do bairro chegam no seu WhatsApp. Com o CNPJ ou o nome da
         empresa, o endereço já vem preenchido.
       </p>
-      <Link href="/publicar" className={`${classesBotao("primario")} self-start`}>
+      <Link href={cnpj ? `/publicar?empresa=${cnpj}` : "/publicar"} className={`${classesBotao("primario")} self-start`}>
         Publicar vaga grátis
       </Link>
     </section>
