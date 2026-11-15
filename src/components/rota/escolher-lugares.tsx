@@ -7,6 +7,7 @@ import { montarRota } from "@/lib/acoes/rota-curriculo";
 import { distanciaCurta, MAX_LUGARES_DA_ROTA } from "@/lib/rota-curriculo";
 import { classesBotao } from "../ui/botao";
 import { MapaDaRota } from "./mapa-da-rota";
+import { bairroDaReceita } from "@/lib/cnpj";
 
 export type LugarDaRota = {
   cnpj: string;
@@ -80,7 +81,7 @@ export function EscolherLugares({
                   </span>
                   {l.ramo && <span className="block text-body-sm text-ink-muted">{l.ramo}</span>}
                   <span className="block text-body-sm text-ink-muted">
-                    {[l.endereco, l.bairro, l.cidade].filter(Boolean).join(", ")}
+                    {[l.endereco, l.bairro && bairroDaReceita(l.bairro), l.cidade].filter(Boolean).join(", ")}
                   </span>
                 </span>
               </label>

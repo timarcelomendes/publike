@@ -14,6 +14,7 @@ import { distanciaCurta, type RotaDoCurriculo } from "@/lib/rota-curriculo";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
+import { bairroDaReceita } from "@/lib/cnpj";
 
 export const metadata: Metadata = { title: "Minha rota do currículo", robots: { index: false } };
 
@@ -99,7 +100,7 @@ async function Conteudo({
                   {i + 1}. {c.nome}
                 </strong>{" "}
                 ({distanciaCurta(c.distancia_m)}
-                {c.distancia_m != null && `, ${deslocamentoProvavel(c.distancia_m / 1000).texto}`}): {[c.endereco, c.bairro, c.cidade].filter(Boolean).join(", ")}
+                {c.distancia_m != null && `, ${deslocamentoProvavel(c.distancia_m / 1000).texto}`}): {[c.endereco, c.bairro && bairroDaReceita(c.bairro), c.cidade].filter(Boolean).join(", ")}
               </li>
             ))}
           </ol>

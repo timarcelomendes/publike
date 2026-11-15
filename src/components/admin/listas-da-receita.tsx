@@ -7,6 +7,7 @@ import type { criarClienteAdmin } from "@/lib/supabase/admin";
 import { Aviso, Selo, Vazio } from "../ui/basicos";
 import { ConvidarDaReceita } from "./convidar-da-receita";
 import { Filtros, linkCom, Paginacao } from "./ui";
+import { bairroDaReceita } from "@/lib/cnpj";
 
 // As listas da base da Receita em Admin › Convites (claude/plano-base-de-empresas-da-receita.md, partes 1 e 5;
 // migração 20270604120000): as empresas que abriram, as agências de RH de Goiás e o MEI prestador de serviço.
@@ -152,7 +153,7 @@ export async function ListaDaReceitaAdmin({
                   {[e.ramo, e.porte ? PORTE[e.porte] : null].filter(Boolean).join(", ")}
                 </p>
                 <p className="text-body-sm text-ink-muted">
-                  {[e.endereco, e.bairro, e.cidade].filter(Boolean).join(", ")}
+                  {[e.endereco, e.bairro && bairroDaReceita(e.bairro), e.cidade].filter(Boolean).join(", ")}
                   {e.abertura && <> (aberta em {dataBr(e.abertura)})</>}
                 </p>
                 <p className="text-body-sm text-ink">

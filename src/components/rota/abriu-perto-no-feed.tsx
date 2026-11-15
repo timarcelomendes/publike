@@ -3,6 +3,7 @@ import Link from "next/link";
 import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
 import { distanciaCurta, funcoesDoCurriculo } from "@/lib/rota-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { bairroDaReceita } from "@/lib/cnpj";
 
 /**
  * "Abriu perto de você" no alto do feed (claude/plano-base-de-empresas-da-receita.md, parte 1; migração 20270606120000):
@@ -33,7 +34,7 @@ export async function AbriuPertoNoFeed() {
             <strong className="font-semibold">{l.nome}</strong>
             {l.ramo && <span className="text-ink-muted">, {l.ramo.toLowerCase()}</span>}
             <span className="text-ink-muted">
-              , {[l.bairro, `a ${distanciaCurta(l.distancia_m)} de casa`].filter(Boolean).join(", ")}
+              , {[l.bairro && bairroDaReceita(l.bairro), `a ${distanciaCurta(l.distancia_m)} de casa`].filter(Boolean).join(", ")}
             </span>
           </li>
         ))}

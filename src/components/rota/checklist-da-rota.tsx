@@ -6,6 +6,7 @@ import { mudarCopia } from "@/lib/acoes/rota-curriculo";
 import { deslocamentoProvavel } from "@/lib/deslocamento";
 import { distanciaCurta, type CopiaDaRota } from "@/lib/rota-curriculo";
 import { classesBotao } from "../ui/botao";
+import { bairroDaReceita } from "@/lib/cnpj";
 
 /** O botão de imprimir (a página inteira: a folha da rota e as cópias). */
 export function BotaoImprimir({ texto = "Imprimir as cópias" }: { texto?: string }) {
@@ -56,7 +57,7 @@ function ItemDaRota({ copia, ordem }: { copia: CopiaDaRota; ordem: number }) {
         <div className="min-w-0 flex-1">
           <p className="text-label text-ink">{copia.nome}</p>
           <p className="text-body-sm text-ink-muted">
-            {[copia.endereco, copia.bairro, copia.cidade].filter(Boolean).join(", ")}
+            {[copia.endereco, copia.bairro && bairroDaReceita(copia.bairro), copia.cidade].filter(Boolean).join(", ")}
             {copia.distancia_m != null && (
               <> ({distanciaCurta(copia.distancia_m)} de casa, {deslocamentoProvavel(copia.distancia_m / 1000).texto})</>
             )}
