@@ -6,7 +6,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { PerguntarNosMatches } from "@/components/admin/matches-sem-contato";
 import { Filtros, linkCom, Secao } from "@/components/admin/ui";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
-import { formatarNumero, primeiro, rotuloConta, tempoRelativo } from "@/lib/formato";
+import { formatarNumero, plural, primeiro, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
@@ -111,6 +111,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
   // as três perguntas (migração 20270526120000; sem ela, a seção não aparece)
   const dias = periodo === "tudo" ? 365 : Number(periodo);
   const tres = (await c.rpc("admin_respostas_do_retorno", { p_dias: dias })).data as unknown as Tres | null;
+  // a lista de "A empresa te respondeu?" (migração 20270530120000; sem ela, a seção não aparece)
+  const respostas = (await c.rpc("admin_lista_te_respondeu", { p_dias: dias })).data as unknown as
+    | RespostaDoCandidato[]
+    | null;
+  const filtroPedido = primeiro(sp.resposta);
+  const filtro = FILTROS_RESPOSTA.some((f) => f.valor === filtroPedido) ? filtroPedido! : "todas";
 
   return (
     <div className="flex flex-col gap-6">
@@ -152,6 +158,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
           </>
         )}
       </Secao>
+
+      {respostas && (
+        <EmpresaRespondeu
+          linhas={respostas}
+          periodo={periodo}
+          nomePeriodo={nomePeriodo}
+          filtro={filtro}
+          conta={conta}
+          agora={agora}
+        />
+      )}
 
       {tres && <TresPerguntas t={tres} periodo={nomePeriodo} />}
 
@@ -576,6 +593,189 @@ function TresPerguntas({ t, periodo }: { t: Tres; periodo: string }) {
           detalhe={`${formatarNumero(k.chamaria_sim)} sim, ${formatarNumero(k.chamaria_nao)} não`}
         />
       </dl>
+    </Secao>
+  );
+}
+
+// "A empresa te respondeu?" (migração 20270530120000; 15/11/2026, Marcelo: "quero uma visao compreensível disso"):
+// a frase do período, a barra das respostas e as empresas (a que deixa mais gente esperando primeiro), cada uma com os
+// candidatos perguntados.
+
+type RespostaDoCandidato = {
+  anuncio_id: string;
+  perfil_id: string;
+  titulo: string;
+  empresa_id: string;
+  empresa: string | null;
+  pessoa: string;
+  perguntas: number;
+  perguntada_em: string;
+  resposta: "sim" | "ainda_nao" | "desisti" | null;
+  respondida_em: string | null;
+  empresa_avisada_em: string | null;
+};
+
+const FILTROS_RESPOSTA = [
+  { valor: "todas", nome: "Todas" },
+  { valor: "ainda_nao", nome: "Ainda esperam" },
+  { valor: "sim", nome: "Responderam" },
+  { valor: "desisti", nome: "Desistiram" },
+  { valor: "sem", nome: "Sem resposta" },
+];
+
+const RESPOSTAS = {
+  sim: { nome: "A empresa respondeu", curto: "Respondeu", cor: "bg-cerrado", selo: "match" as const },
+  ainda_nao: { nome: "Ainda esperam", curto: "Ainda espera", cor: "bg-terra", selo: "aviso" as const },
+  desisti: { nome: "Desistiram", curto: "Desistiu", cor: "bg-ink-muted", selo: "contorno" as const },
+  sem: { nome: "Não responderam a pergunta", curto: "Sem resposta", cor: "bg-surface-300", selo: "neutro" as const },
+};
+type ChaveResposta = keyof typeof RESPOSTAS;
+const chaveDa = (l: RespostaDoCandidato): ChaveResposta => l.resposta ?? "sem";
+const ORDEM_RESPOSTA: Record<ChaveResposta, number> = { ainda_nao: 0, sim: 1, desisti: 2, sem: 3 };
+
+function contar(linhas: RespostaDoCandidato[]) {
+  const c: Record<ChaveResposta, number> = { sim: 0, ainda_nao: 0, desisti: 0, sem: 0 };
+  for (const l of linhas) c[chaveDa(l)]++;
+  return c;
+}
+
+function EmpresaRespondeu({
+  linhas,
+  periodo,
+  nomePeriodo,
+  filtro,
+  conta,
+  agora,
+}: {
+  linhas: RespostaDoCandidato[];
+  periodo: string;
+  nomePeriodo: string;
+  filtro: string;
+  conta: string | null;
+  agora: number;
+}) {
+  const total = linhas.length;
+  const c = contar(linhas);
+  const responderam = c.sim + c.ainda_nao + c.desisti;
+  const visiveis = filtro === "todas" ? linhas : linhas.filter((l) => chaveDa(l) === filtro);
+  // por empresa: quem deixa mais gente esperando primeiro, depois quem tem mais perguntas
+  const porEmpresa = new Map<string, { nome: string; linhas: RespostaDoCandidato[] }>();
+  for (const l of visiveis) {
+    const e = porEmpresa.get(l.empresa_id) ?? { nome: l.empresa ?? "Empresa sem nome", linhas: [] };
+    e.linhas.push(l);
+    porEmpresa.set(l.empresa_id, e);
+  }
+  const empresas = [...porEmpresa.entries()]
+    // dentro da empresa: quem ainda espera primeiro
+    .map(([id, e]) => ({
+      id,
+      ...e,
+      linhas: [...e.linhas].sort((a, b) => ORDEM_RESPOSTA[chaveDa(a)] - ORDEM_RESPOSTA[chaveDa(b)]),
+      n: contar(e.linhas),
+    }))
+    .sort((a, b) => b.n.ainda_nao - a.n.ainda_nao || b.linhas.length - a.linhas.length || a.nome.localeCompare(b.nome));
+
+  return (
+    <Secao
+      id="empresa-respondeu"
+      titulo="A empresa respondeu o candidato?"
+      descricao="Dois dias depois do contato numa vaga, o Publike pergunta ao candidato se a empresa respondeu. Quem diz “Ainda não” faz a empresa receber o aviso de que a pessoa espera."
+    >
+      {total === 0 ? (
+        <Vazio icone={MessageCircleQuestion} titulo={`Ninguém foi perguntado nos últimos ${nomePeriodo}`} />
+      ) : (
+        <div className="flex flex-col gap-5">
+          <p className="max-w-3xl text-body">
+            Nos últimos {nomePeriodo}, {plural(total, "candidato foi perguntado", "candidatos foram perguntados")}.{" "}
+            {responderam === 0
+              ? "Ninguém respondeu a pergunta ainda."
+              : `${plural(responderam, "respondeu", "responderam")}: ${formatarNumero(c.sim)} ${c.sim === 1 ? "disse" : "disseram"} que a empresa respondeu, ${formatarNumero(c.ainda_nao)} ainda ${c.ainda_nao === 1 ? "espera" : "esperam"} e ${formatarNumero(c.desisti)} ${c.desisti === 1 ? "desistiu" : "desistiram"}.`}
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex h-3 w-full overflow-hidden rounded-pill bg-surface-300" aria-hidden>
+              {(["sim", "ainda_nao", "desisti", "sem"] as const).map((k) =>
+                c[k] > 0 ? <span key={k} className={RESPOSTAS[k].cor} style={{ width: `${(100 * c[k]) / total}%` }} /> : null,
+              )}
+            </div>
+            <ul className="flex flex-wrap gap-x-5 gap-y-1 text-body-sm">
+              {(["sim", "ainda_nao", "desisti", "sem"] as const).map((k) => (
+                <li key={k} className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className={`size-2.5 rounded-full ${RESPOSTAS[k].cor}`} />
+                  {RESPOSTAS[k].nome}: <span className="text-label tabular-nums">{formatarNumero(c[k])}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Filtros
+            rotulo="Mostrar"
+            opcoes={FILTROS_RESPOSTA.map((f) => ({
+              ...f,
+              numero: f.valor === "todas" ? total : c[f.valor as ChaveResposta],
+            }))}
+            atual={filtro}
+            link={(v) =>
+              linkCom(BASE, { periodo: periodo === "30" ? null : periodo, conta }, { resposta: v === "todas" ? null : v }) +
+              "#empresa-respondeu"
+            }
+          />
+
+          {empresas.length === 0 ? (
+            <p className="text-body-sm text-ink-muted">Nenhuma pergunta com essa resposta no período.</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+              {empresas.map((e) => (
+                <li key={e.id}>
+                  <details className="group" open={e.n.ainda_nao > 0 && empresas.length <= 5}>
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-x-4 gap-y-1 p-3 hover:bg-surface-300 [&::-webkit-details-marker]:hidden">
+                      <span className="min-w-0">
+                        <span className="text-label">{e.nome}</span>
+                        <span className="text-body-sm text-ink-muted">
+                          {" "}
+                          · {plural(e.linhas.length, "candidato perguntado", "candidatos perguntados")}
+                        </span>
+                      </span>
+                      <span className="flex flex-wrap gap-1.5">
+                        {(["ainda_nao", "sim", "desisti", "sem"] as const).map((k) =>
+                          e.n[k] > 0 ? (
+                            <Selo key={k} variante={RESPOSTAS[k].selo}>
+                              {e.n[k]} {RESPOSTAS[k].curto.toLowerCase()}
+                            </Selo>
+                          ) : null,
+                        )}
+                      </span>
+                    </summary>
+                    <ul className="flex flex-col gap-2 px-3 pb-3">
+                      {e.linhas.map((l) => (
+                        <li
+                          key={`${l.anuncio_id}:${l.perfil_id}`}
+                          className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-md bg-surface-200 px-3 py-2 text-body-sm"
+                        >
+                          <span className="min-w-0">
+                            <span className="font-semibold">{l.pessoa}</span>
+                            <span className="text-ink-muted"> · </span>
+                            <Link href={`/anuncio/${l.anuncio_id}`} className="underline-offset-2 hover:underline">
+                              {l.titulo}
+                            </Link>
+                            <span className="block text-caption text-ink-muted">
+                              Perguntado {tempoRelativo(l.perguntada_em, agora)}
+                              {l.perguntas > 1 ? " (2ª vez)" : ""}
+                              {l.respondida_em ? `, respondeu ${tempoRelativo(l.respondida_em, agora)}` : ""}
+                              {l.empresa_avisada_em ? `; a empresa foi avisada ${tempoRelativo(l.empresa_avisada_em, agora)}` : ""}
+                            </span>
+                          </span>
+                          <Selo variante={RESPOSTAS[chaveDa(l)].selo}>{RESPOSTAS[chaveDa(l)].curto}</Selo>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </Secao>
   );
 }
