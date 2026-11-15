@@ -120,3 +120,63 @@ export async function perguntarAoAnunciante(anuncioId: string, texto: string): P
   refresh();
   return { ok: true, mensagem: "Pergunta enviada para o sino e o e-mail de quem publicou." };
 }
+
+/** As horas que a moderação pode escolher para a remoção agendada (14/11/2026, Marcelo: "em 7h, 3h e 24h"). */
+const HORAS_DA_REMOCAO = [3, 7, 24];
+
+/**
+ * Agenda a saída do ar (migração 20270525120000). Quem publicou recebe o aviso na conversa da moderação (sino, celular
+ * e e-mail), com a hora; na hora marcada, o robô remove como o botão Remover.
+ */
+export async function agendarRemocao(
+  anuncioId: string,
+  horas: number,
+  nota: string,
+  soSemResposta: boolean,
+): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId) || !HORAS_DA_REMOCAO.includes(horas)) return { ok: false, erro: "Pedido inválido." };
+  const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
+  if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso.", ir: "/entrar?next=/admin/denuncias" };
+  const motivo = nota.trim().slice(0, 500) || null;
+  const { data, error } = await acesso.cliente.rpc("agendar_remocao", {
+    p_anuncio: anuncioId,
+    p_horas: horas,
+    p_nota: motivo,
+    p_so_sem_resposta: soSemResposta,
+  });
+  if (error?.code === "PGRST202") return { ok: false, erro: "Rode antes a migração 20270525120000_remocao_agendada.sql." };
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  const quando = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "numeric",
+    month: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(String((data as { remover_em?: string } | null)?.remover_em ?? Date.now())));
+  const aviso = soSemResposta
+    ? `Olá! Aqui é da equipe do Publike. Este anúncio sai do ar em ${quando} se os candidatos continuarem sem resposta. Para ele continuar no ar, responda cada pessoa em Painel › Candidatos (Chamar para entrevista ou Não seguir).`
+    : `Olá! Aqui é da equipe do Publike. Este anúncio sai do ar em ${quando}.${motivo ? ` Motivo: ${motivo}` : ""}`;
+  const { error: e2 } = await acesso.cliente.rpc("perguntar_ao_anunciante", { p_anuncio: anuncioId, p_texto: aviso });
+  if (e2) console.error("Publike: a remoção foi agendada, mas o aviso não saiu:", e2.message);
+  after(processarFilas);
+  refresh();
+  return {
+    ok: true,
+    mensagem: e2
+      ? `Agendada para ${quando}. O aviso para quem publicou não saiu; mande pela conversa.`
+      : `Agendada para ${quando}. Quem publicou recebeu o aviso.`,
+  };
+}
+
+/** Desfaz a remoção agendada. */
+export async function cancelarRemocao(anuncioId: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
+  const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
+  if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso.", ir: "/entrar?next=/admin/denuncias" };
+  const { error } = await acesso.cliente.rpc("cancelar_remocao", { p_anuncio: anuncioId });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return { ok: true, mensagem: "Remoção cancelada." };
+}

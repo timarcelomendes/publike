@@ -492,6 +492,22 @@ export async function enviarPushPendentes(limite = 20): Promise<ResultadoPush> {
  * Vaga com curtida parada há 48 horas, de uma conta que nunca entrou (a equipe publicou em nome dela): o
  * contato é liberado e quem curtiu recebe o "Deu match" (migração 20261116120000). Só pela tarefa das filas.
  */
+/**
+ * A remoção agendada pela moderação (migração 20270525120000): na hora marcada, o anúncio sai do ar como no botão
+ * Remover; com "só se não responder", fica no ar quando ninguém mais espera resposta.
+ */
+export async function removerAgendados(): Promise<{ feitas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { feitas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_remover_agendados", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { feitas: 0 };
+    console.error("Publike: falha nas remoções agendadas:", error.message);
+    return { feitas: 0, motivo: "Não foi possível fazer as remoções agendadas." };
+  }
+  return { feitas: Number((data as { feitas?: number } | null)?.feitas ?? 0) };
+}
+
 export async function liberarContatosParados(): Promise<{ liberadas: number; motivo?: string }> {
   const acesso = acessoFila();
   if (!acesso) return { liberadas: 0 };

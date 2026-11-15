@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { AcoesModeracaoAnuncio } from "@/components/admin/acoes-anuncio";
+import { AcoesModeracaoAnuncio, AgendarRemocao, type RemocaoAgendada } from "@/components/admin/acoes-anuncio";
 import { ConversaModeracao } from "@/components/conversa-moderacao";
 import { conversasDaModeracao, explicacoesPendentes } from "@/lib/servidor/conversa-moderacao";
 import { AcoesModeracaoAvaliacao } from "@/components/admin/acoes-avaliacao";
@@ -101,9 +101,15 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
     agoraDaRequisicao(),
   ]);
   // a conversa com quem publicou (migração 20270405120000): a dos anúncios da fila e os removidos que pedem resposta
-  const [conversas, pendentes] = await Promise.all([
+  const [conversas, pendentes, agendadas] = await Promise.all([
     conversasDaModeracao(acesso.cliente, fila.map((f) => f.anuncio_id)),
     explicacoesPendentes(acesso.cliente),
+    // a remoção agendada (migração 20270525120000; sem ela, nada aparece)
+    fila.length
+      ? acesso.cliente
+          .rpc("remocoes_agendadas", { p_anuncios: fila.map((f) => f.anuncio_id) })
+          .then(({ data }) => new Map(((data ?? []) as (RemocaoAgendada & { anuncio_id: string })[]).map((r) => [r.anuncio_id, r])))
+      : Promise.resolve(new Map<string, RemocaoAgendada & { anuncio_id: string }>()),
   ]);
   const conversasPendentes = await conversasDaModeracao(
     acesso.cliente,
@@ -285,6 +291,11 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
                       iaFalhou={item.ia_falhou}
                     />
                   </div>
+                  {item.status !== "removido" && (
+                    <div className="border-t border-line pt-3">
+                      <AgendarRemocao anuncioId={item.anuncio_id} agendada={agendadas.get(item.anuncio_id) ?? null} />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

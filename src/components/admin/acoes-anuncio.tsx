@@ -1,9 +1,9 @@
 "use client";
 
-import { CircleCheckBig, Pencil, Trash2, XCircle } from "lucide-react";
+import { CalendarClock, CircleCheckBig, Pencil, Trash2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { excluirAnuncioDeVez } from "@/lib/acoes/admin";
-import { moderarAnuncio } from "@/lib/acoes/moderacao";
+import { agendarRemocao, cancelarRemocao, moderarAnuncio } from "@/lib/acoes/moderacao";
 import { Botao, BotaoLink } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -151,5 +151,90 @@ export function ApagarAnuncioDeVez({ anuncioId }: { anuncioId: string }) {
         </div>
       </div>
     </details>
+  );
+}
+
+export type RemocaoAgendada = {
+  remover_em: string;
+  situacao: "agendada" | "feita" | "respondeu" | "cancelada";
+  so_sem_resposta: boolean;
+  esperando: number;
+  resolvida_em: string | null;
+};
+
+const horaCurta = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "short",
+    day: "numeric",
+    month: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+
+/**
+ * A remoção agendada (migração 20270525120000; 14/11/2026, Marcelo: "agendar remoçao, em 7h, 3h e 24h"): sai do ar na
+ * hora marcada, e quem publicou recebe o aviso agora. Com "só se não responder", fica no ar se ninguém mais esperar.
+ */
+export function AgendarRemocao({ anuncioId, agendada }: { anuncioId: string; agendada: RemocaoAgendada | null }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [soSemResposta, setSoSemResposta] = useState(true);
+  const [motivo, setMotivo] = useState("Os candidatos ficaram sem resposta.");
+  if (agendada?.situacao === "agendada") {
+    return (
+      <div className="flex flex-col gap-2 rounded-md bg-terra-soft p-3 text-body-sm">
+        <p>
+          <CalendarClock aria-hidden className="mr-1 inline size-4 align-[-3px]" />
+          Sai do ar {horaCurta(agendada.remover_em)}
+          {agendada.so_sem_resposta
+            ? `, se os candidatos continuarem sem resposta (${agendada.esperando === 1 ? "1 esperando" : `${agendada.esperando} esperando`} agora).`
+            : "."}
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => cancelarRemocao(anuncioId))}>
+            Cancelar a remoção
+          </Botao>
+          {mensagem}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {agendada && agendada.resolvida_em && agendada.situacao !== "cancelada" && (
+        <p className="text-body-sm text-ink-muted">
+          {agendada.situacao === "feita"
+            ? `Saiu do ar pela remoção agendada ${horaCurta(agendada.resolvida_em)}.`
+            : `A remoção agendada não aconteceu: os candidatos foram respondidos (${horaCurta(agendada.resolvida_em)}).`}
+        </p>
+      )}
+      <p className="text-label">Agendar a remoção</p>
+      <input
+        aria-label="Motivo para quem publicou"
+        value={motivo}
+        onChange={(e) => setMotivo(e.target.value)}
+        maxLength={500}
+        className={classesEntrada}
+      />
+      <label className="flex items-center gap-2 text-body-sm">
+        <input type="checkbox" checked={soSemResposta} onChange={(e) => setSoSemResposta(e.target.checked)} className="size-4" />
+        Só se os candidatos continuarem sem resposta
+      </label>
+      <div className="flex flex-wrap items-center gap-2">
+        {[3, 7, 24].map((h) => (
+          <Botao
+            key={h}
+            tamanho="sm"
+            disabled={pendente}
+            onClick={() => rodar(() => agendarRemocao(anuncioId, h, motivo, soSemResposta))}
+          >
+            <CalendarClock aria-hidden />
+            Em {h} h
+          </Botao>
+        ))}
+      </div>
+      <p className="text-body-sm text-ink-muted">Quem publicou recebe o aviso agora, na conversa, com a hora.</p>
+      {mensagem}
+    </div>
   );
 }

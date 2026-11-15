@@ -3725,6 +3725,13 @@ export type Database = {
       admin_grupos_da_geral: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_salvar_grupos: { Args: { p_config: Json }; Returns: Json };
       servidor_raios_da_geral: { Args: { p_chave: string }; Returns: Json };
+      agendar_remocao: {
+        Args: { p_anuncio: string; p_horas: number; p_nota: string | null; p_so_sem_resposta: boolean };
+        Returns: Json;
+      };
+      cancelar_remocao: { Args: { p_anuncio: string }; Returns: undefined };
+      remocoes_agendadas: { Args: { p_anuncios: string[] }; Returns: Json };
+      servidor_remover_agendados: { Args: { p_chave: string }; Returns: Json };
       servidor_raio_da_geral: { Args: { p_chave: string; p_raio: Json }; Returns: undefined };
       servidor_raios_feita: { Args: { p_chave: string; p_erro: string | null; p_medida: boolean }; Returns: undefined };
       admin_raios_da_geral: { Args: Record<PropertyKey, never>; Returns: Json };

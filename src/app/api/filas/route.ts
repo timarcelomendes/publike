@@ -19,6 +19,7 @@ import {
   lembrarCurriculos,
   perguntarConquistas,
   liberarContatosParados,
+  removerAgendados,
   revisarAnunciosPendentes,
   revisarAvaliacoesPendentes,
   revisarRecadosPendentes,
@@ -67,6 +68,8 @@ export async function GET(request: Request) {
   const ia = await comTempo(() => revisarAnunciosPendentes(20));
   // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
   const parados = await comTempo(() => liberarContatosParados());
+  // a remoção agendada pela moderação (o aviso para quem publicou sai junto com os e-mails abaixo)
+  const agendadas = await comTempo(() => removerAgendados());
   // as perguntas do match (as dos contatos liberados agora e as que não saíram logo depois da ação): antes das
   // tarefas demoradas, para não ficarem sem tempo
   const perguntas = await comTempo(() => perguntarNosMatches(50));
@@ -148,6 +151,7 @@ export async function GET(request: Request) {
     avaliacoes.motivo,
     recados.motivo,
     parados.motivo,
+    agendadas.motivo,
     lembretes.motivo,
     conquistas.motivo,
     curriculos.motivo,
@@ -193,6 +197,7 @@ export async function GET(request: Request) {
       emails: { enviados: emails.enviados, falhas: emails.falhas },
       celular,
       contatos_liberados: parados.liberadas,
+      remocoes_agendadas: agendadas.feitas,
       documentos: { lembrados: documentos.lembrados, apagados: documentosVencidos.apagados },
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       conquistas: conquistas.perguntas,
