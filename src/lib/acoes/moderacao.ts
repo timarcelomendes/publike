@@ -121,8 +121,11 @@ export async function perguntarAoAnunciante(anuncioId: string, texto: string): P
   return { ok: true, mensagem: "Pergunta enviada para o sino e o e-mail de quem publicou." };
 }
 
-/** As horas que a moderação pode escolher para a remoção agendada (14/11/2026, Marcelo: "em 7h, 3h e 24h"). */
-const HORAS_DA_REMOCAO = [3, 7, 24];
+/**
+ * As horas que a moderação pode escolher para a remoção agendada (14/11/2026, Marcelo: "em 7h, 3h e 24h"; 15/11:
+ * "Preciso das opções de 3 e 7 dias"). O banco aceita até 168 horas (7 dias).
+ */
+const HORAS_DA_REMOCAO = [3, 7, 24, 72, 168];
 
 /**
  * Agenda a saída do ar (migração 20270525120000). Quem publicou recebe o aviso na conversa da moderação (sino, celular

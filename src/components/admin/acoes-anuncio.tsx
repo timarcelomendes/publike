@@ -221,7 +221,7 @@ export function AgendarRemocao({ anuncioId, agendada }: { anuncioId: string; age
         Só se os candidatos continuarem sem resposta
       </label>
       <div className="flex flex-wrap items-center gap-2">
-        {[3, 7, 24].map((h) => (
+        {[3, 7, 24, 72, 168].map((h) => (
           <Botao
             key={h}
             tamanho="sm"
@@ -229,7 +229,7 @@ export function AgendarRemocao({ anuncioId, agendada }: { anuncioId: string; age
             onClick={() => rodar(() => agendarRemocao(anuncioId, h, motivo, soSemResposta))}
           >
             <CalendarClock aria-hidden />
-            Em {h} h
+            {h < 72 ? `Em ${h} h` : `Em ${h / 24} dias`}
           </Botao>
         ))}
       </div>
