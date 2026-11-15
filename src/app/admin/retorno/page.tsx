@@ -690,11 +690,13 @@ function EmpresaRespondeu({
       descricao="Dois dias depois do contato numa vaga, o Publike pergunta ao candidato se a empresa respondeu. Quem diz “Ainda não” faz a empresa receber o aviso de que a pessoa espera."
     >
       {total === 0 ? (
-        <Vazio icone={MessageCircleQuestion} titulo={`Ninguém foi perguntado nos últimos ${nomePeriodo}`} />
+        <Vazio icone={MessageCircleQuestion} titulo={`Nenhuma pergunta nos últimos ${nomePeriodo}`} />
       ) : (
         <div className="flex flex-col gap-5">
           <p className="max-w-3xl text-body">
-            Nos últimos {nomePeriodo}, {plural(total, "candidato foi perguntado", "candidatos foram perguntados")}.{" "}
+            Nos últimos {nomePeriodo}, o Publike perguntou sobre {plural(total, "candidatura", "candidaturas")}, de{" "}
+            {plural(new Set(linhas.map((l) => l.perfil_id)).size, "pessoa", "pessoas")} (quem se candidatou a mais de uma
+            vaga é perguntado por cada uma).{" "}
             {responderam === 0
               ? "Ninguém respondeu a pergunta ainda."
               : `${plural(responderam, "respondeu", "responderam")}: ${formatarNumero(c.sim)} ${c.sim === 1 ? "disse" : "disseram"} que a empresa respondeu, ${formatarNumero(c.ainda_nao)} ainda ${c.ainda_nao === 1 ? "espera" : "esperam"} e ${formatarNumero(c.desisti)} ${c.desisti === 1 ? "desistiu" : "desistiram"}.`}
@@ -741,7 +743,7 @@ function EmpresaRespondeu({
                         <span className="text-label">{e.nome}</span>
                         <span className="text-body-sm text-ink-muted">
                           {" "}
-                          · {plural(e.linhas.length, "candidato perguntado", "candidatos perguntados")}
+                          · {plural(e.linhas.length, "candidatura perguntada", "candidaturas perguntadas")}
                         </span>
                       </span>
                       <span className="flex flex-wrap gap-1.5">
