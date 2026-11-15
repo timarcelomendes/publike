@@ -7,7 +7,10 @@ import { PerguntarNosMatches } from "@/components/admin/matches-sem-contato";
 import { Filtros, linkCom, Secao } from "@/components/admin/ui";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { formatarNumero, plural, primeiro, rotuloConta, tempoRelativo } from "@/lib/formato";
-import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { notFound } from "next/navigation";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
@@ -82,7 +85,11 @@ function tempo(horas: number | null) {
 }
 
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/retorno">["searchParams"] }) {
-  const c = await exigirAdminLocal();
+  // o admin do computador do dono ou, no site no ar, a equipe publike.org (migração 20270531120000; Admin › Quem vê
+  // cada tela)
+  const admin = await ehAdminLocal();
+  if (!admin && !(await possoVerTela("/admin/retorno"))) notFound();
+  const c = admin ? criarClienteAdmin() : await criarClienteServidor();
   const sp = await searchParams;
   const pedido = primeiro(sp.periodo) ?? "30";
   const periodo = PERIODOS.some((p) => p.valor === pedido) ? pedido : "30";
@@ -90,31 +97,33 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
   const conta = contaPedida && UUID.test(contaPedida) ? contaPedida : null;
   const agora = await agoraDaRequisicao();
   const desde = periodo === "tudo" ? null : new Date(agora - Number(periodo) * DIA).toISOString();
+  const dias = periodo === "tudo" ? 365 : Number(periodo);
 
-  const { data, error } = await c.rpc("admin_retorno_empresas", { p_desde: desde });
+  const { data, error } = await c.rpc("equipe_retorno", { p_desde: desde, p_conta: conta, p_dias: dias });
   if (error) {
     return (
       <Aviso tipo="alerta" titulo="Rode a migração do retorno">
-        Falta a migração 20270127120000_retorno_das_empresas.sql neste banco.
+        Falta a migração 20270531120000_retorno_no_site.sql neste banco.
       </Aviso>
     );
   }
-  const { total, empresas } = data as unknown as { total: Total; empresas: Empresa[] };
+  const tudo = data as unknown as {
+    empresas: { total: Total; empresas: Empresa[] };
+    da_empresa: Candidatura[];
+    tres: Tres | null;
+    lista: RespostaDoCandidato[] | null;
+  };
+  const { total, empresas } = tudo.empresas;
   const escolhida = conta ? empresas.find((e) => e.conta_id === conta) : null;
-  const linhas = conta
-    ? (((await c.rpc("admin_retorno_da_empresa", { p_conta: conta, p_desde: desde })).data ??
-        []) as unknown as Candidatura[])
-    : [];
+  const linhas = conta ? (tudo.da_empresa ?? []) : [];
   const nomePeriodo = PERIODOS.find((p) => p.valor === periodo)!.nome.toLowerCase();
-  // os matches sem contato, para o botão das perguntas (migração 20270202120000; sem ela, a seção não aparece)
-  const semContato = (await c.rpc("admin_matches_sem_contato")).data as unknown as SemContato | null;
-  // as três perguntas (migração 20270526120000; sem ela, a seção não aparece)
-  const dias = periodo === "tudo" ? 365 : Number(periodo);
-  const tres = (await c.rpc("admin_respostas_do_retorno", { p_dias: dias })).data as unknown as Tres | null;
-  // a lista de "A empresa te respondeu?" (migração 20270530120000; sem ela, a seção não aparece)
-  const respostas = (await c.rpc("admin_lista_te_respondeu", { p_dias: dias })).data as unknown as
-    | RespostaDoCandidato[]
-    | null;
+  // os matches sem contato, para o botão das perguntas (migração 20270202120000): só no computador do dono
+  const semContato = admin
+    ? ((await c.rpc("admin_matches_sem_contato")).data as unknown as SemContato | null)
+    : null;
+  // as três perguntas e a lista de "A empresa te respondeu?" (migrações 20270526120000 e 20270530120000)
+  const tres = tudo.tres;
+  const respostas = tudo.lista;
   const filtroPedido = primeiro(sp.resposta);
   const filtro = FILTROS_RESPOSTA.some((f) => f.valor === filtroPedido) ? filtroPedido! : "todas";
 

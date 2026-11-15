@@ -2681,6 +2681,7 @@ export type Database = {
       };
       admin_respostas_do_retorno: { Args: { p_dias?: number }; Returns: Json };
       admin_lista_te_respondeu: { Args: { p_dias?: number }; Returns: Json };
+      equipe_retorno: { Args: { p_desde: string | null; p_conta: string | null; p_dias?: number }; Returns: Json };
       // o histórico da moderação (migração 20270527120000)
       moderacao_historico: { Args: { p_dias?: number; p_limite?: number }; Returns: Json };
       reabrir_denuncias: { Args: { p_anuncio: string }; Returns: number };
