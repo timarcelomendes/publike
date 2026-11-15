@@ -2,7 +2,7 @@
 
 import { Check, Send } from "lucide-react";
 import { useState, useTransition } from "react";
-import { convidarDaReceita, type EmpresaDaLista } from "@/lib/acoes/admin-convites";
+import { convidarDaReceita, tirarDasListasDaReceita, type EmpresaDaLista } from "@/lib/acoes/admin-convites";
 import { classesBotao } from "../ui/botao";
 
 /** "Pôr nos convites": a empresa da base da Receita entra na lista de Convidados, pronta para mandar. */
@@ -19,7 +19,7 @@ export function ConvidarDaReceita({
     return (
       <span role="status" className="inline-flex items-center gap-1 text-body-sm text-cerrado-text">
         <Check aria-hidden className="size-4" />
-        Na lista de convites
+        {resposta.texto === "fora" ? "Fora das listas" : "Na lista de convites"}
       </span>
     );
   }
@@ -38,6 +38,20 @@ export function ConvidarDaReceita({
       >
         <Send aria-hidden />
         {pendente ? "Pondo…" : "Pôr nos convites"}
+      </button>
+      <button
+        type="button"
+        disabled={pendente}
+        onClick={() =>
+          iniciar(async () => {
+            const r = await tirarDasListasDaReceita(empresa.cnpj);
+            setResposta(r.ok ? { ok: true, texto: "fora" } : { ok: false, texto: r.erro });
+          })
+        }
+        className="text-body-sm text-ink-muted underline underline-offset-2"
+        title="Pediu para não receber convites (Política de privacidade)"
+      >
+        Não convidar
       </button>
       {resposta && !resposta.ok && (
         <span role="alert" className="text-body-sm text-danger">

@@ -1030,3 +1030,53 @@ export async function bannerDeVagas(vagas: VagaDoDia[], arquivo: string | null =
     arquivo,
   );
 }
+
+/**
+ * O story da matéria do mês (claude/plano-base-de-empresas-da-receita.md, parte 6): "Abriram em <cidade> em <mês>",
+ * o total, os bairros e os ramos que mais abriram, e o convite para a Rota do currículo. Nunca diz que há vaga.
+ */
+export async function storyAbriramNoMes(
+  d: { cidade: string; mes: string; empresas: number; bairros: string[]; ramos: string[] },
+  arquivo: string | null = null,
+) {
+  const a = DO_PUBLIKE;
+  const lista = (titulo: string, itens: string[]) =>
+    itens.length ? (
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", fontSize: 34, color: COR.apagado }}>{titulo}</div>
+        {itens.slice(0, 4).map((t) => (
+          <div key={t} style={{ display: "flex", fontSize: 42, fontWeight: 700 }}>
+            {curto(t, 34)}
+          </div>
+        ))}
+      </div>
+    ) : null;
+  return imagem(
+    <div style={fundo("210px 72px 150px", a)}>
+      <Topo logo={await logoDa(a)} a={a} altura={70} direita={<Pilula texto={d.mes.toUpperCase()} fonte={32} cor="ipe" />} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 44 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 220, lineHeight: 0.9, color: COR.terra }}>
+            {d.empresas.toLocaleString("pt-BR")}
+          </div>
+          <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 76, lineHeight: 1, letterSpacing: -2 }}>
+            {`negócios abriram em ${d.cidade}`}
+          </div>
+        </div>
+        {lista("Os bairros com mais aberturas", d.bairros)}
+        {lista("Os ramos que mais abriram", d.ramos)}
+        <div style={{ display: "flex", fontSize: 40, fontWeight: 700 }}>
+          Lugar novo costuma contratar. Leve o seu currículo.
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, minHeight: 300 }}>
+        <div style={{ display: "flex", fontSize: 44, fontWeight: 700, color: destaque(a) }}>
+          Monte a Rota do currículo no Publike
+        </div>
+        <img src={paraBaixo(destaque(a))} alt="" width={64} height={64} />
+      </div>
+    </div>,
+    STORY,
+    arquivo,
+  );
+}

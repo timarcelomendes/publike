@@ -1885,6 +1885,10 @@ export type Database = {
       servidor_ramos_salvar: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
       servidor_empresas_fim: { Args: { p_chave: string; p_mes: string; p_resumo: Json }; Returns: Json };
       admin_empresas_receita: { Args: Record<string, never>; Returns: Json };
+      servidor_numeros_do_mes_receita: { Args: { p_chave: string; p_mes?: string | null }; Returns: Json };
+      servidor_rascunhos_receita: { Args: { p_chave: string; p_mes: string; p_itens: Json }; Returns: number };
+      sair_dos_convites: { Args: { p_token: string }; Returns: Json };
+      admin_receita_sem_convite: { Args: { p_cnpj: string }; Returns: boolean };
       abriu_perto_de_mim: {
         Args: { p_cbos: string[]; p_dias?: number; p_limite?: number };
         Returns: {

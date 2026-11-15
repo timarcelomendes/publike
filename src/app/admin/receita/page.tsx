@@ -6,6 +6,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { PrepararMaterias } from "@/components/admin/preparar-materias";
 import { Numero, Secao } from "@/components/admin/ui";
 import { Aviso, Vazio } from "@/components/ui/basicos";
+import { classesBotao } from "@/components/ui/botao";
 import { formatarDataHora, formatarNumero } from "@/lib/formato";
 import { mesCurto } from "@/lib/salarios";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
@@ -164,7 +165,14 @@ async function Conteudo() {
               ) : (
                 <p className="text-body-sm text-ink-muted">Nenhuma abertura no mês na base ainda.</p>
               )}
-              <PrepararMaterias mes={mes.mes} />
+              <div className="flex flex-wrap items-start gap-3">
+                <PrepararMaterias mes={mes.mes} />
+                {mes.por_cidade.length > 0 && (
+                  <a href="/admin/receita/story?baixar=1" className={classesBotao("secundario")}>
+                    Baixar o story
+                  </a>
+                )}
+              </div>
             </Secao>
           )}
 

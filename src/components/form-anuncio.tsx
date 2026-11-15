@@ -27,6 +27,7 @@ import { categoriaSugerida } from "@/lib/categoria-sugerida";
 import { temLugar, type ClienteParaVaga } from "@/lib/clientes";
 import type { EmpresaAchada, FuncaoDoRamo } from "@/lib/acoes/empresas-receita";
 import { EmpresaDaReceita } from "./anuncio/empresa-da-receita";
+import { categoriaDoRamo } from "@/lib/categoria-do-ramo";
 import {
   BENEFICIOS,
   categoria as nomeCategoria,
@@ -632,6 +633,9 @@ export function FormAnuncio({
     setLugar({ bairro: e.bairro ?? "", cep: e.cep, endereco: e.endereco, lat: e.lat, lng: e.lng });
     setChaveLugar((k) => k + 1);
     setLugarDoCliente(e.nome);
+    // a categoria pelo ramo da empresa, só quando ainda não foi escolhida
+    const doRamo = categoriaDoRamo(e.cnae);
+    if (doRamo && !categoriaAtual) setCategoriaAtual(doRamo);
   }
 
   // uma função que o ramo contrata: o título e o cargo na carteira

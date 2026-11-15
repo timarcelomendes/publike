@@ -597,3 +597,13 @@ export async function convidarDaReceita(
   refresh();
   return { ok: true, mensagem: `${nome} entrou na lista de convites.` };
 }
+
+/** Tira um CNPJ das listas da Receita (o pedido chegou por e-mail; migração 20270608120000). */
+export async function tirarDasListasDaReceita(cnpj: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { error } = await c.rpc("admin_receita_sem_convite", { p_cnpj: String(cnpj ?? "") });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para tirar agora.") };
+  refresh();
+  return { ok: true, mensagem: "Esse CNPJ não aparece mais nas listas." };
+}

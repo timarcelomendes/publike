@@ -4,6 +4,7 @@ import { ocupacao } from "@/lib/cbo";
 import { chamarIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
 import { slugDaNoticia } from "@/lib/noticias";
 import type { ClienteBanco } from "@/lib/supabase/admin";
+import { acessoFila } from "./filas";
 
 // As matérias do mês (claude/plano-base-de-empresas-da-receita.md, parte 6; migração 20270606120000): "Os negócios que
 // abriram em <cidade> em <mês>" (base da Receita) e "O que mais contratou em Goiânia e região" (Caged). A IA escreve a
@@ -48,15 +49,43 @@ function reais(v: number) {
   return `R$ ${(Math.round(v / 10) * 10).toLocaleString("pt-BR")}`;
 }
 
-/** Monta as duas matérias do mês (de `mes`, AAAA-MM-01; sem ele, o mês passado) e guarda como rascunho. */
-export async function prepararMateriasDoMes(
-  c: ClienteBanco,
-  mes?: string | null,
-): Promise<{ ok: true; novas: number } | { ok: false; erro: string }> {
-  if (!iaConfigurada()) return { ok: false, erro: "Falta a chave da IA no servidor." };
+type Resultado = { ok: true; novas: number } | { ok: false; erro: string };
+
+/** Pelo Admin (o botão): os números e os rascunhos pelas funções do admin. */
+export async function prepararMateriasDoMes(c: ClienteBanco, mes?: string | null): Promise<Resultado> {
   const { data, error } = await c.rpc("admin_numeros_do_mes_receita", { p_mes: mes ?? null });
   if (error || !data) return { ok: false, erro: "Não deu para ler os números do mês. As migrações da base da Receita já rodaram?" };
+  return escrever(data as unknown as NumerosDoMes, async (itens) => {
+    const { data: novas, error: e } = await c.rpc("admin_rascunhos_receita", { p_itens: itens as never });
+    if (e) throw new Error(e.message);
+    return Number(novas ?? 0);
+  });
+}
+
+/**
+ * Sozinho, depois de cada carga mensal (/api/empresas, no "fim"): uma vez por mês, com a chave do servidor
+ * (migração 20270608120000). null: já feitas ou sem IA.
+ */
+export async function materiasDepoisDaCarga(): Promise<Resultado | null> {
+  const acesso = acessoFila();
+  if (!acesso || !iaConfigurada()) return null;
+  const { cliente, chave } = acesso;
+  const { data, error } = await cliente.rpc("servidor_numeros_do_mes_receita", { p_chave: chave, p_mes: null });
+  if (error || !data) return null;
   const n = data as unknown as NumerosDoMes;
+  return escrever(n, async (itens) => {
+    const { data: novas, error: e } = await cliente.rpc("servidor_rascunhos_receita", {
+      p_chave: chave,
+      p_mes: n.mes,
+      p_itens: itens as never,
+    });
+    if (e) throw new Error(e.message);
+    return Number(novas ?? 0);
+  });
+}
+
+async function escrever(n: NumerosDoMes, guardar: (itens: unknown[]) => Promise<number>): Promise<Resultado> {
+  if (!iaConfigurada()) return { ok: false, erro: "Falta a chave da IA no servidor." };
   const [ano, m] = n.mes.split("-").map(Number);
   const nomeMes = `${MESES[m - 1]} de ${ano}`;
   const itens = [];
@@ -136,7 +165,9 @@ export async function prepararMateriasDoMes(
   }
 
   if (!itens.length) return { ok: false, erro: "Sem números do mês para escrever (a base ou o Caged ainda não carregou) ou a IA falhou." };
-  const { data: novas, error: e2 } = await c.rpc("admin_rascunhos_receita", { p_itens: itens });
-  if (e2) return { ok: false, erro: "Não deu para guardar os rascunhos." };
-  return { ok: true, novas: Number(novas ?? 0) };
+  try {
+    return { ok: true, novas: await guardar(itens) };
+  } catch {
+    return { ok: false, erro: "Não deu para guardar os rascunhos." };
+  }
 }

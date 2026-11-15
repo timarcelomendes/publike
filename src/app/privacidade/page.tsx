@@ -97,6 +97,32 @@ export default function Privacidade() {
         />
       </Secao>
 
+      <Secao id="rota-do-curriculo" titulo="Rota do currículo e o QR code">
+        <Lista
+          itens={[
+            "Na Rota do currículo, você escolhe os lugares e o Publike imprime uma cópia do seu currículo para cada um, com o nome do lugar e um QR code próprio.",
+            "Quem escaneia o QR code vê o currículo exatamente como foi impresso (o que você já entregou em papel), sem nada a mais. A página não aparece no Google.",
+            "O Publike conta quantas vezes cada cópia foi aberta e avisa você na primeira vez, com o nome do lugar. Não sabemos quem, dentro do lugar, abriu.",
+            "Você pode desligar a página de qualquer cópia na sua rota: quem escanear depois não vê mais o currículo.",
+          ]}
+        />
+      </Secao>
+
+      <Secao id="empresas-da-receita" titulo="Empresas da Receita Federal">
+        <Lista
+          itens={[
+            "O Publike usa os dados abertos do CNPJ que a Receita Federal publica todo mês: nome, ramo, data de abertura, endereço, telefone e e-mail de empresas ativas de Goiás. Não usamos o arquivo de sócios nem CPF.",
+            "Esses dados servem para: preencher o endereço quando a empresa publica uma vaga pelo CNPJ ou pelo nome; mostrar, para quem procura trabalho, os comércios perto de casa que costumam contratar a sua função; e para a equipe do Publike convidar empresas, agências de emprego e prestadores de serviço a usar o site, que é grátis.",
+            "Do MEI, que quase sempre é uma pessoa trabalhando em casa, não guardamos rua, número nem complemento. O MEI não aparece na busca, no mapa nem nas listas de quem procura trabalho: só a equipe vê, para o convite.",
+            "O telefone e o e-mail da Receita são vistos só pela equipe do Publike. Todo convite diz de onde veio o contato e traz o jeito de pedir para não receber mais.",
+            <>
+              Não quer que a sua empresa ou o seu MEI receba convites do Publike? Peça por <CanalDePedidos /> e
+              tiramos o seu CNPJ das listas.
+            </>,
+          ]}
+        />
+      </Secao>
+
       <Secao titulo="Para que usamos">
         <p>
           Para o Publike funcionar (mostrar anúncios, conectar quem deu match e avisar você) e para manter o site seguro
@@ -177,6 +203,7 @@ export default function Privacidade() {
             "Para manter o site seguro (limites contra abuso, moderação, denúncias e o registro do que a equipe fez): o legítimo interesse do Publike e de quem usa o site (art. 7º, IX) e a defesa em processo, se precisar (art. 7º, VI).",
             "O que é opcional (o CEP de casa, a localização do “Perto de mim” e o que você escreve em “O que você procura?”): seu consentimento, que você retira quando quiser apagando a informação (art. 7º, I).",
             "Os cookies do Google Ads: seu consentimento, no aviso de cookies; você desliga quando quiser na página Cookies (art. 7º, I).",
+            "Os dados abertos do CNPJ da Receita Federal (para preencher a empresa, a rota do currículo e os convites às empresas): dados que a própria Receita torna públicos, usados para a finalidade de aproximar quem contrata de quem procura trabalho, e o legítimo interesse do Publike (art. 7º, IX, e § 4º).",
           ]}
         />
       </Secao>

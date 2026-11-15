@@ -1,4 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
+import { after } from "next/server";
+import { materiasDepoisDaCarga } from "@/lib/servidor/materias-receita";
 import { acessoFila } from "@/lib/servidor/filas";
 import { pracasDosSalarios } from "@/lib/salarios";
 import type { Json } from "@/lib/supabase/tipos-banco";
@@ -82,5 +84,7 @@ export async function POST(request: Request) {
     if (!invalida) console.error(`Publike: falha na base de empresas (${String(acao)}):`, error.message);
     return Response.json({ ok: false, erro: error.message }, { status: invalida ? 400 : 500 });
   }
+  // a carga terminou: as matérias do mês viram rascunho em Admin › Notícias (uma vez por mês, depois da resposta)
+  if (acao === "fim") after(() => materiasDepoisDaCarga().catch((e) => console.error("Publike: matérias do mês:", e)));
   return Response.json({ ok: true, resultado: data });
 }

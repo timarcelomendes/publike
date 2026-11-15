@@ -331,8 +331,19 @@ const DESPEDIDAS = [
 
 const ENTRAR = "(entra com o e-mail, sem senha)";
 
+/** O fim do convite da base da Receita: de onde veio o contato e o link para não receber mais. */
+export function rodapeDaReceita(link: string, token: string) {
+  let raiz = "https://publike.org";
+  try {
+    raiz = new URL(link).origin;
+  } catch {
+    // link relativo: fica o endereço do site
+  }
+  return `Achamos o contato de vocês nos dados abertos do CNPJ da Receita Federal. Se não quiserem receber mais mensagens do Publike: ${raiz}/convite/${token}/sair`;
+}
+
 export function mensagemConvite(
-  c: Pick<Convite, "nome" | "tipo" | "vagas"> & { token?: string },
+  c: Pick<Convite, "nome" | "tipo" | "vagas"> & { token?: string; origem?: Convite["origem"] },
   assinatura: string,
   /** o convite sempre leva o link: a própria empresa publica (o admin publicar por ela é o último recurso) */
   link: string,
@@ -361,7 +372,10 @@ export function mensagemConvite(
   const ola = escolher(s, "ola", ["Olá", "Oi"]);
   const tudo = escolher(s, "tudo", ["Tudo bem?", "Tudo certo?", "Como vão?"]);
   const abre = `${ola}, ${escolher(s, "pessoal", ["pessoal", "equipe"])} da ${c.nome}! ${tudo} ${apresenta}`;
-  const fecha = escolher(s, "fecha", DESPEDIDAS);
+  const daReceita = c.origem === "receita";
+  // o contato veio dos dados abertos do CNPJ: o convite diz de onde e traz o "não quero receber"
+  const sair = daReceita && c.token ? rodapeDaReceita(link, c.token) : null;
+  const fecha = [escolher(s, "fecha", DESPEDIDAS), sair].filter(Boolean).join("\n\n");
   const pontos = (lista: string[][]) =>
     embaralhar(
       s,
@@ -420,7 +434,10 @@ export function mensagemConvite(
   }
   return [
     abre,
-    vagas
+    daReceita
+      ? // a empresa da base da Receita: nunca dizer que está contratando (claude/plano-base-de-empresas-da-receita.md)
+        `Vi que vocês abriram há pouco. Quando precisarem contratar${vagas ? ` (${vagas}, por exemplo)` : ""}, publiquem a vaga no Publike: é de graça e quem mora perto fica sabendo.`
+      : vagas
       ? escolher(s, "pede", [
           `Vi que vocês estão contratando ${vagas}. Vocês podem publicar ${essa} no Publike, de graça, e receber os candidatos direto, sem intermediário.`,
           `Vi o anúncio de ${vagas} de vocês. Que tal publicar ${essa} no Publike? É de graça, leva 2 minutos e mais gente da região fica sabendo.`,
@@ -451,7 +468,7 @@ export function mensagemConvite(
  * com nomes diferentes): cada vaga com o seu link, e cada link vale o aceite daquela empresa.
  */
 export function mensagemConviteAgrupada(
-  lista: Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho">[],
+  lista: (Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho"> & { origem?: Convite["origem"] })[],
   assinatura: string,
   site: string,
 ) {
@@ -475,6 +492,10 @@ export function mensagemConviteAgrupada(
       ? `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• É grátis: sem plano e sem taxa por candidato.`
       : `• É grátis para a empresa e para o candidato: sem plano e sem taxa.\n• A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus.`,
     escolher(s, "fecha", DESPEDIDAS),
+    ...lista
+      .filter((c) => c.origem === "receita")
+      .slice(0, 1)
+      .map((c) => rodapeDaReceita(linkDoConvite(site, c.token), c.token)),
   ].join("\n\n");
 }
 
@@ -483,7 +504,7 @@ export function mensagemConviteAgrupada(
  * HTML, com o link da vaga como botão "Conferir e publicar a vaga".
  */
 export function emailDoConvite(
-  c: Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho">,
+  c: Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho"> & { origem?: Convite["origem"] },
   assinatura: string,
   site: string,
 ) {
