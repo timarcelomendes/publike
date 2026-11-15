@@ -19,6 +19,7 @@ import {
   lembrarCurriculos,
   perguntarConquistas,
   perguntarSeRespondeu,
+  avisarVencimentos,
   liberarContatosParados,
   removerAgendados,
   revisarAnunciosPendentes,
@@ -78,6 +79,8 @@ export async function GET(request: Request) {
   const lembretes = await comTempo(() => lembrarRespostas());
   // 2 dias depois do contato numa vaga: "A empresa te respondeu?" (sai junto com os e-mails abaixo)
   const respondeu = await comTempo(() => perguntarSeRespondeu());
+  // a vaga que vai sair do ar (2 dias antes), saiu (no dia) e continua fora (7 dias depois): o lembrete de renovar
+  const vencimentos = await comTempo(() => avisarVencimentos());
   // 7 dias depois do match (ou de ir para Contratado): "Deu certo?" para a pessoa e "Começou? Chamaria de novo?" para
   // quem publicou (a conquista; sai junto com os e-mails abaixo)
   const conquistas = await comTempo(() => perguntarConquistas());
@@ -158,6 +161,7 @@ export async function GET(request: Request) {
     agendadas.motivo,
     lembretes.motivo,
     respondeu.motivo,
+    vencimentos.motivo,
     conquistas.motivo,
     curriculos.motivo,
     combinam.motivo,
@@ -206,6 +210,7 @@ export async function GET(request: Request) {
       documentos: { lembrados: documentos.lembrados, apagados: documentosVencidos.apagados },
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       te_respondeu: respondeu.perguntas,
+      vencimentos: vencimentos.avisos,
       conquistas: conquistas.perguntas,
       curriculos_lembrados: curriculos.lembradas,
       funcoes: funcoes.achadas,

@@ -40,6 +40,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "conquista_parabens") return "/?tipo=recado";
   // "A empresa te respondeu?" no alto do feed; o "ainda espera" na ficha do candidato no quadro da vaga
   if (n.tipo === "te_respondeu") return "/#te-respondeu";
+  // o vencimento da vaga: renovar em um toque ou "Já preenchi"
+  if ((n.tipo === "vaga_vence" || n.tipo === "vaga_venceu") && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/renovar`;
   if (n.tipo === "ainda_espera" && n.anuncio_id)
     return n.ator_id ? `/painel/anuncio/${n.anuncio_id}/quadro?candidato=${n.ator_id}` : `/painel/anuncio/${n.anuncio_id}/quadro`;
   // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga

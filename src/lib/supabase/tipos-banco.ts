@@ -2668,6 +2668,8 @@ export type Database = {
       // as três perguntas do retorno (migração 20270526120000)
       chamaria_de_novo: { Args: { p_anuncio: string; p_perfil: string; p_sim: boolean }; Returns: undefined };
       servidor_perguntar_se_respondeu: { Args: { p_chave: string; p_limite?: number }; Returns: number };
+      // o aviso do vencimento da vaga (migração 20270529120000)
+      servidor_avisar_vencimentos: { Args: { p_chave: string; p_limite?: number }; Returns: number };
       minhas_perguntas_de_resposta: {
         Args: Record<string, never>;
         Returns: { anuncio_id: string; titulo: string; empresa_nome: string; perguntas: number }[];

@@ -138,6 +138,9 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // "A empresa te respondeu?" e, no "Ainda não", o aviso para quem publicou (migração 20270526120000)
   te_respondeu: MessageCircleQuestion,
   ainda_espera: Hourglass,
+  // o vencimento da vaga (migração 20270529120000)
+  vaga_vence: CalendarClock,
+  vaga_venceu: CalendarClock,
 };
 
 type Notificacao = {

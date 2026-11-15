@@ -578,6 +578,25 @@ export async function perguntarConquistas(limite = 100): Promise<{ perguntas: nu
 }
 
 /**
+ * O vencimento da vaga (migração 20270529120000): para quem publicou, 2 dias antes, no dia e 7 dias depois (se não
+ * renovou), das 8h às 20h. Sem a migração, nada (e sem `motivo`).
+ */
+export async function avisarVencimentos(limite = 100): Promise<{ avisos: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisos: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_vencimentos", {
+    p_chave: acesso.chave,
+    p_limite: limite,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { avisos: 0 };
+    console.error("Publike: falha ao avisar o vencimento das vagas:", error.message);
+    return { avisos: 0, motivo: "Não foi possível avisar o vencimento das vagas." };
+  }
+  return { avisos: Number(data ?? 0) };
+}
+
+/**
  * "A empresa te respondeu?" (migração 20270526120000): 2 dias depois do contato numa vaga, a pergunta para a pessoa (no
  * sino, no celular e por e-mail); sem resposta ou "Ainda não", de novo em 3 dias, no máximo 2 vezes. Sem a migração,
  * nada (e sem `motivo`).

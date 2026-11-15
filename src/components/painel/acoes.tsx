@@ -524,7 +524,7 @@ type QuemPode = { contratados: number; candidatos: { id: string; nome: string }[
  * "Quem você contratou?" (migração 20270526120000): os nomes para tocar (mais de um vale) e "Ninguém daqui". Opcional:
  * sem tocar em nada, a vaga encerra do mesmo jeito.
  */
-function QuemVoceContratou({
+export function QuemVoceContratou({
   id,
   candidatos,
   marcados,

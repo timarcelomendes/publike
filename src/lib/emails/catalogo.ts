@@ -53,6 +53,9 @@ const QUEM: Record<string, QuemRecebe[]> = {
   // as três perguntas do retorno (migração 20270526120000)
   te_respondeu: ["procura"],
   ainda_espera: ["contrata"],
+  // o vencimento da vaga (migração 20270529120000)
+  vaga_vence: ["contrata"],
+  vaga_venceu: ["contrata"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],
