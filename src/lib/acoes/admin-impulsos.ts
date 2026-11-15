@@ -572,7 +572,12 @@ export async function atualizarImpulsos(): Promise<Resultado & { esperar?: boole
   }
   if (!Number(data)) {
     refresh();
-    return { ok: true, mensagem: "Nenhum impulso no ar para buscar no Google. A tela foi atualizada." };
+    // os pacotes de candidatos (o produto de agora) não têm campanha própria: as candidaturas contam na hora
+    return {
+      ok: true,
+      mensagem:
+        "Pronto, a tela foi atualizada. Os pacotes de candidatos contam as candidaturas na hora, sem esperar o Google (só os impulsos antigos, com campanha própria, buscam números lá).",
+    };
   }
   const volta = await cuidarDosImpulsos().catch(() => null);
   refresh();
