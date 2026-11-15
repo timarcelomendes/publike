@@ -4,9 +4,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Filtros, linkCom } from "@/components/admin/ui";
 import { EscolherLugares, type LugarDaRota } from "@/components/rota/escolher-lugares";
+import { EscolherFuncao } from "@/components/rota/escolher-funcao";
 import { OndeMoraDaRota } from "@/components/rota/onde-mora-da-rota";
 import { Aviso, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
-import { classesBotao } from "@/components/ui/botao";
 import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero, primeiro, tempoRelativo } from "@/lib/formato";
 import { funcoesComuns } from "@/lib/funcao-cbo";
@@ -19,7 +19,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 export const metadata: Metadata = {
   title: "Rota do currículo: onde deixar o seu currículo perto de casa",
   description:
-    "Escolha a sua função e veja no mapa os comércios perto de casa que costumam contratar. Imprima uma cópia do currículo para cada lugar, com QR code, e saiba quando abrirem. Grátis.",
+    "Escolha a sua função e veja no mapa os comércios perto de casa que costumam contratar. Imprima uma cópia do currículo para cada lugar, com QR code, e saiba quando alguém ler. Grátis.",
   alternates: { canonical: "/rota-do-curriculo" },
 };
 
@@ -29,9 +29,9 @@ export const metadata: Metadata = {
 // imprimir pedem a conta.
 
 const PASSOS = [
-  { icone: MapPinned, titulo: "Veja os lugares perto de casa", texto: "Os comércios que costumam contratar a sua função, no mapa, com o tempo a pé ou de ônibus." },
-  { icone: Printer, titulo: "Imprima uma cópia para cada um", texto: "Com “Para: Padaria X” no alto. A folha com os endereços na ordem sai junto." },
-  { icone: QrCode, titulo: "Saiba quando abrirem", texto: "Cada cópia tem um QR code. Quando o dono escaneia, você recebe o aviso." },
+  { icone: MapPinned, titulo: "Escolha onde entregar", texto: "Veja no mapa os lugares perto de casa que costumam contratar a sua função e toque nos que quer visitar." },
+  { icone: Printer, titulo: "Imprima uma cópia para cada lugar", texto: "Cada cópia sai com o nome do lugar no alto. Junto vem a lista dos endereços, do mais perto ao mais longe." },
+  { icone: QrCode, titulo: "Saiba quem leu", texto: "Cada cópia tem um QR code. Quando alguém do lugar escaneia, o Publike te avisa." },
 ];
 
 export default function RotaDoCurriculo({ searchParams }: PageProps<"/rota-do-curriculo">) {
@@ -39,19 +39,23 @@ export default function RotaDoCurriculo({ searchParams }: PageProps<"/rota-do-cu
     <Container className="max-w-3xl py-8">
       <h1 className="text-h2 sm:text-h1">Rota do currículo</h1>
       <p className="mt-2 max-w-2xl text-body text-ink-muted">
-        Vai entregar currículo de porta em porta? O Publike mostra os lugares perto de casa que costumam contratar a sua
-        função e imprime uma cópia para cada um, com o nome do lugar e um QR code. Você fica sabendo quando abrirem.
+        Vai entregar currículo de porta em porta? Veja os lugares perto de casa que costumam contratar a sua função,
+        escolha onde vai passar e imprima uma cópia para cada um. Grátis.
       </p>
       <ol className="mt-6 grid gap-3 sm:grid-cols-3">
-        {PASSOS.map(({ icone: Icone, titulo, texto }) => (
+        {PASSOS.map(({ icone: Icone, titulo, texto }, i) => (
           <li key={titulo} className="flex flex-col gap-1.5 rounded-lg border border-line bg-surface-200 p-4">
-            <Icone aria-hidden className="size-5 text-terra-text" />
+            <span className="flex items-center gap-2">
+              <span className="inline-flex size-6 items-center justify-center rounded-full bg-terra text-[13px] font-semibold text-white">
+                {i + 1}
+              </span>
+              <Icone aria-hidden className="size-5 text-terra-text" />
+            </span>
             <span className="text-label text-ink">{titulo}</span>
             <span className="text-body-sm text-ink-muted">{texto}</span>
           </li>
         ))}
       </ol>
-      <p className="mt-3 text-body-sm text-ink-muted">Grátis. Os lugares vêm dos dados abertos da Receita Federal e do que cada ramo contrata (Novo Caged).</p>
       <Suspense fallback={<Esqueleto className="mt-6 h-96 w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />
       </Suspense>
@@ -136,67 +140,53 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
 
   return (
     <div className="mt-6 flex flex-col gap-6">
-      <section className="flex flex-col gap-2">
-        <h2 className="text-label text-ink">De onde a rota sai</h2>
-        <OndeMoraDaRota local={local} />
-        {local && !local.ponto && (
-          <p className="text-body-sm text-ink-muted">Com o CEP de casa, as distâncias ficam certas. Sem ele, contamos do meio do bairro.</p>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-label text-ink">Para qual função</h2>
-        {doCurriculo.length > 0 && (
-          <Filtros
-            rotulo="Função"
-            opcoes={doCurriculo.map((f) => ({ valor: f.cbo, nome: f.titulo }))}
-            atual={escolhida?.cbo ?? ""}
-            link={(v) => linkCom("/rota-do-curriculo", atuais, { cbo: v })}
+      <div className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+        <section className="flex flex-col gap-2">
+          <h2 className="text-label text-ink">Sua função</h2>
+          {doCurriculo.length > 0 && (
+            <Filtros
+              rotulo="Função"
+              opcoes={doCurriculo.map((f) => ({ valor: f.cbo, nome: f.titulo }))}
+              atual={escolhida?.cbo ?? ""}
+              link={(v) => linkCom("/rota-do-curriculo", atuais, { cbo: v })}
+            />
+          )}
+          <EscolherFuncao
+            funcoes={comuns}
+            atual={escolhida && !doCurriculo.some((f) => f.cbo === escolhida.cbo) ? escolhida.cbo : ""}
+            raio={raio}
+            rotulo={doCurriculo.length ? "Ou outra:" : "Qual você procura?"}
           />
-        )}
-        <form action="/rota-do-curriculo" className="flex flex-wrap items-center gap-2">
-          <input type="hidden" name="raio" value={raio} />
-          <label htmlFor="outra-funcao" className="text-body-sm text-ink-muted">
-            {doCurriculo.length ? "Outra função:" : "Sua função:"}
-          </label>
-          <select
-            id="outra-funcao"
-            name="cbo"
-            defaultValue={escolhida && !doCurriculo.some((f) => f.cbo === escolhida.cbo) ? escolhida.cbo : ""}
-            className="min-h-10 rounded-sm border border-line-strong bg-surface-200 px-3 text-body-sm text-ink"
-          >
-            <option value="">Escolha…</option>
-            {comuns.map((f) => (
-              <option key={f.cbo} value={f.cbo}>
-                {f.titulo}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className={classesBotao("secundario", "sm")}>
-            Ver lugares
-          </button>
-        </form>
-      </section>
+        </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-label text-ink">Até que distância de casa</h2>
-        <Filtros
-          rotulo="Distância"
-          opcoes={RAIOS_DA_ROTA.map((r) => ({ valor: String(r), nome: `${r} km` }))}
-          atual={String(raio)}
-          link={(v) => linkCom("/rota-do-curriculo", atuais, { raio: v })}
-        />
-      </section>
+        <section className="flex flex-col gap-2">
+          <h2 className="text-label text-ink">Saindo de</h2>
+          <OndeMoraDaRota local={local} />
+          {local && !local.ponto && (
+            <p className="text-body-sm text-ink-muted">Sem o CEP, contamos a distância do meio do bairro. Com ele, fica exata. Ninguém mais vê.</p>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <h2 className="text-label text-ink">Até onde você vai</h2>
+          <Filtros
+            rotulo="Distância"
+            opcoes={RAIOS_DA_ROTA.map((r) => ({ valor: String(r), nome: r === 1 ? "1 km (a pé)" : `${r} km` }))}
+            atual={String(raio)}
+            link={(v) => linkCom("/rota-do-curriculo", atuais, { raio: v })}
+          />
+        </section>
+      </div>
 
       {!escolhida ? (
         <Aviso tipo="info" titulo="Escolha a função">
           {curriculo
-            ? "O seu currículo não diz uma função que a gente conheça. Escolha acima a função que você procura."
+            ? "Não achamos a função no seu currículo. Escolha acima a que você procura."
             : "Escolha acima a função que você procura: padeiro, operador de caixa, auxiliar de cozinha…"}
         </Aviso>
       ) : !ponto ? (
         <Aviso tipo="info" titulo="Diga onde você mora">
-          A rota sai de casa. Use o “Onde você mora?” acima: com o CEP, as distâncias ficam certas. Ninguém mais vê.
+          A rota sai de casa. Diga o CEP ou o bairro em “Saindo de”, acima. Ninguém mais vê.
         </Aviso>
       ) : lugares.length === 0 ? (
         <Vazio icone={Route} titulo={`Nenhum lugar para ${escolhida.titulo.toLowerCase()} a até ${raio} km`}>
@@ -206,11 +196,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
       ) : (
         <section className="flex flex-col gap-3">
           <h2 className="text-h3">
-            {escolhida.titulo}: {lugares.length} {lugares.length === 1 ? "lugar" : "lugares"} a até {raio} km
+            {lugares.length} {lugares.length === 1 ? "lugar" : "lugares"} para {escolhida.titulo.toLowerCase()} a até{" "}
+            {raio} km
           </h2>
-          <p className="text-body-sm text-ink-muted">
-            Lugares que costumam contratar a sua função, do mais perto para o mais longe. Não quer dizer que têm vaga
-            aberta agora: é para você deixar o currículo.
+          <p className="max-w-2xl text-body-sm text-ink-muted">
+            São lugares dos ramos que mais contratam a sua função, do mais perto ao mais longe. Não quer dizer que têm vaga
+            agora. Toque nos pontos do mapa ou em “Vou entregar aqui” para escolher onde passar, até 15.
           </p>
           <EscolherLugares
             key={`${escolhida.cbo}-${raio}`}

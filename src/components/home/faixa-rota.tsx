@@ -22,7 +22,7 @@ export function FaixaRota() {
           </h2>
           <p className="text-body text-ink-muted sm:text-body-lg">
             Escolha a sua função e veja no mapa os comércios perto de casa que costumam contratar. Imprima uma cópia para
-            cada um, com QR code, e saiba quando abrirem. Grátis.
+            cada um, com QR code, e saiba quando alguém ler. Grátis.
           </p>
         </div>
         <Link

@@ -24,8 +24,8 @@ export async function montarRota(dados: {
   const ponto = local?.ponto ?? local?.centro ?? (await pontoDaPessoa(perfil))?.ponto ?? null;
   if (!ponto) return { ok: false, erro: "Diga o CEP de casa para saber de onde a rota sai." };
   const cnpjs = [...new Set((dados?.cnpjs ?? []).filter((c) => /^[0-9A-Z]{12}[0-9]{2}$/.test(String(c))))];
-  if (!cnpjs.length) return { ok: false, erro: "Marque pelo menos um lugar." };
-  if (cnpjs.length > MAX_LUGARES_DA_ROTA) return { ok: false, erro: `Marque até ${MAX_LUGARES_DA_ROTA} lugares.` };
+  if (!cnpjs.length) return { ok: false, erro: "Escolha pelo menos um lugar." };
+  if (cnpjs.length > MAX_LUGARES_DA_ROTA) return { ok: false, erro: `Escolha até ${MAX_LUGARES_DA_ROTA} lugares.` };
   const raio = (RAIOS_DA_ROTA as readonly number[]).includes(Number(dados.raio)) ? Number(dados.raio) : 2;
   const funcao = String(dados.funcao ?? "").trim().slice(0, 90);
   const banco = await criarClienteServidor();

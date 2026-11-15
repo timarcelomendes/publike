@@ -63,7 +63,7 @@ export default function PaginaCurriculo({ searchParams }: PageProps<"/perfil/cur
           <span className="text-h3">Vai entregar currículo de porta em porta?</span>
           <span className="text-body-sm text-ink-muted sm:text-body">
             Veja no mapa os lugares perto de casa que contratam a sua função e imprima uma cópia para cada um, com QR
-            code. Você fica sabendo quando abrirem.
+            code. O Publike te avisa quando alguém do lugar ler.
           </span>
         </span>
         <span className="hidden shrink-0 items-center gap-1 rounded-md bg-ink px-4 py-2.5 text-label text-surface-100 sm:inline-flex">
