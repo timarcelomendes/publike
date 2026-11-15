@@ -1,4 +1,4 @@
-import { ArrowLeft, PartyPopper } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPinned, PartyPopper } from "lucide-react";
 import { JeitoDeTrabalhar } from "@/components/jeito-de-trabalhar";
 import { meuJeitoDeTrabalhar } from "@/lib/servidor/jeito-de-trabalhar";
 import type { Metadata } from "next";
@@ -51,13 +51,26 @@ export default function PaginaCurriculo({ searchParams }: PageProps<"/perfil/cur
         Meu perfil
       </Link>
       <h1 className="mt-1 text-h2 sm:text-h1">Meu currículo</h1>
-      <p className="mt-1 text-body-sm text-ink-muted">
-        Vai entregar currículo de porta em porta?{" "}
-        <Link href="/rota-do-curriculo" className="font-semibold text-ink underline underline-offset-2">
-          Monte a rota do currículo
-        </Link>
-        : os lugares perto de casa que contratam a sua função, com uma cópia para cada um.
-      </p>
+      {/* a rota do currículo em destaque (15/11/2026, Marcelo: a linha de texto "não está chamando a atenção") */}
+      <Link
+        href="/rota-do-curriculo"
+        className="group mt-4 flex items-center gap-4 rounded-lg border border-terra/30 bg-terra-soft p-4 text-ink transition-colors hover:border-terra sm:p-5"
+      >
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-terra text-surface-100">
+          <MapPinned aria-hidden className="size-6" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-h3">Vai entregar currículo de porta em porta?</span>
+          <span className="text-body-sm text-ink-muted sm:text-body">
+            Veja no mapa os lugares perto de casa que contratam a sua função e imprima uma cópia para cada um, com QR
+            code. Você fica sabendo quando abrirem.
+          </span>
+        </span>
+        <span className="hidden shrink-0 items-center gap-1 rounded-md bg-ink px-4 py-2.5 text-label text-surface-100 sm:inline-flex">
+          Montar a rota
+          <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </Link>
       <div className="mt-2">
         <Suspense fallback={<Esqueleto className="mt-4 h-[56rem] w-full rounded-lg" />}>
           <Conteudo searchParams={searchParams} />
