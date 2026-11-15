@@ -36,7 +36,7 @@ export type Convite = {
   token: string;
   /** a vaga lida da imagem do anúncio, que vem pronta no formulário de publicar */
   rascunho: RascunhoConvite | null;
-  origem: "arquivo" | "imagem" | null;
+  origem: "arquivo" | "imagem" | "receita" | null;
   /** quando a empresa publicou pela página do convite */
   aceite_em: string | null;
   anuncio_id: string | null;

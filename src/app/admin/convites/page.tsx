@@ -1,9 +1,10 @@
-import { FileUp, ImageIcon, List } from "lucide-react";
+import { Building2, FileUp, ImageIcon, List, Store, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ImportarConvites, ImportarPorImagens, ListaConvites } from "@/components/admin/convites";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { ListaDaReceitaAdmin } from "@/components/admin/listas-da-receita";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import type { Convite } from "@/lib/convites";
@@ -19,6 +20,10 @@ const ABAS = [
   { id: "lista", nome: "Convidados", icone: List },
   { id: "imagens", nome: "Importar pelas imagens", icone: ImageIcon },
   { id: "arquivo", nome: "Importar arquivo", icone: FileUp },
+  // a base da Receita (migração 20270604120000)
+  { id: "abriram", nome: "Abriram perto", icone: Store },
+  { id: "agencias", nome: "Agências de Goiás", icone: Building2 },
+  { id: "prestadores", nome: "Prestadores MEI", icone: Wrench },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
 
@@ -28,7 +33,13 @@ export default function Convites({ searchParams }: PageProps<"/admin/convites">)
       {searchParams.then((sp) => {
         const pedida = primeiro(sp.aba);
         const aba: Aba = ABAS.some((a) => a.id === pedida) ? (pedida as Aba) : "lista";
-        return <Conteudo aba={aba} />;
+        const texto = (k: string) => primeiro(sp[k]) ?? undefined;
+        return (
+          <Conteudo
+            aba={aba}
+            sp={{ cidade: texto("cidade"), dias: texto("dias"), oficio: texto("oficio"), pagina: texto("pagina") }}
+          />
+        );
       })}
     </Suspense>
   );
@@ -61,7 +72,7 @@ function SubAbas({ ativa, total }: { ativa: Aba; total: number | null }) {
   );
 }
 
-async function Conteudo({ aba }: { aba: Aba }) {
+async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | undefined> }) {
   const c = await exigirAdminLocal();
   const [{ data, error }, agora] = await Promise.all([
     c.from("convites").select("*").order("criado_em").order("nome").limit(1000),
@@ -95,6 +106,11 @@ async function Conteudo({ aba }: { aba: Aba }) {
           descricao="Viu vagas ou serviços anunciados nas redes? Salve as imagens dos anúncios e escolha aqui: a IA lê quem anunciou, o contato e a vaga (ou o serviço), e o convite já vai pronto."
         >
           <ImportarPorImagens />
+        </Secao>
+      )}
+      {(aba === "abriram" || aba === "agencias" || aba === "prestadores") && (
+        <Secao titulo={ABAS.find((a) => a.id === aba)!.nome}>
+          <ListaDaReceitaAdmin c={c} lista={aba} sp={sp} />
         </Secao>
       )}
       {aba === "arquivo" && (

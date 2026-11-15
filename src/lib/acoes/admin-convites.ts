@@ -25,7 +25,9 @@ import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio
 import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { processarFilas } from "@/lib/servidor/filas";
 import { salvarTriagem } from "@/lib/servidor/triagem";
-import { areasSemRepetir } from "@/lib/constantes";
+import { areasSemRepetir, oficio as dadosDoOficio } from "@/lib/constantes";
+import { tituloDaFuncao } from "@/lib/funcao-cbo";
+import { oficioDoRamo } from "@/lib/ramos-prestadores";
 import { PRACA_PADRAO } from "@/lib/pracas";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
 import { modeloPara } from "@/lib/ia/funcionalidades";
@@ -512,4 +514,86 @@ async function garantirConta(
   }
   if (!contaId) return { erro: "Não deu para achar nem criar a conta." };
   return { id: contaId, semEmail };
+}
+
+/** Uma empresa das listas da base da Receita (Admin › Convites › Abriram, Agências e Prestadores MEI). */
+export type EmpresaDaLista = {
+  cnpj: string;
+  nome: string;
+  cnae: string | null;
+  ramo: string | null;
+  bairro: string | null;
+  cidade: string;
+  abertura: string | null;
+  telefone: string | null;
+  email: string | null;
+};
+
+/**
+ * Põe a empresa da base da Receita na lista de convites (claude/plano-base-de-empresas-da-receita.md, partes 1 e 5):
+ * o celular vai como WhatsApp, o fixo como telefone; a empresa nova já leva a vaga típica do ramo (o que mais contrata
+ * em Goiás, pelo Caged) e o prestador, o ofício da vitrine. Nome repetido na lista ganha o bairro (ou o fim do CNPJ).
+ */
+export async function convidarDaReceita(
+  e: EmpresaDaLista,
+  tipo: "empresa" | "agencia" | "prestador",
+): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!e || !/^[0-9A-Z]{12}[0-9]{2}$/.test(String(e.cnpj ?? ""))) return { ok: false, erro: "CNPJ inválido." };
+  const { data: ja } = await c.from("convites").select("id").eq("cnpj_receita", e.cnpj).limit(1);
+  if (ja?.length) return { ok: true, mensagem: "Essa empresa já está na lista de convites." };
+
+  const digitos = limparTelefone(e.telefone ?? "") ?? "";
+  const celular = digitos.length === 11 && digitos[2] === "9";
+  let rascunho: NovoConvite["rascunho"] = null;
+  let vagas: string[] = [];
+  if (tipo === "prestador") {
+    const oficio = oficioDoRamo(e.cnae);
+    const nome = dadosDoOficio(oficio)?.nome;
+    if (oficio && nome) {
+      rascunho = rascunhoValido({ oficio, titulo: nome, descricao: "", cidade: e.cidade, bairro: e.bairro ?? "" });
+      vagas = [nome];
+    }
+  } else if (tipo === "empresa" && e.cnae) {
+    const { data: funcoes } = await c.rpc("funcoes_do_ramo", { p_cnae: e.cnae, p_regiao: "go", p_limite: 10 });
+    const titulo = (funcoes ?? []).map((f) => tituloDaFuncao(f.cbo)).find(Boolean);
+    if (titulo) {
+      rascunho = rascunhoValido({ titulo, descricao: "", cidade: e.cidade, bairro: e.bairro ?? "", quantidade: 1 });
+      vagas = [titulo];
+    }
+  }
+  const aberta = e.abertura ? e.abertura.split("-").reverse().join("/") : null;
+  const observacao = [
+    `Da base da Receita${e.ramo ? `: ${e.ramo}` : ""}`,
+    aberta ? `aberta em ${aberta}` : null,
+    [e.bairro, e.cidade].filter(Boolean).join(", "),
+    `CNPJ ${e.cnpj}`,
+  ]
+    .filter(Boolean)
+    .join("; ")
+    .slice(0, 500);
+
+  const { data: atuais } = await c.from("convites").select("nome");
+  const usados = new Set((atuais ?? []).map((a) => a.nome.trim().toLowerCase()));
+  const base = String(e.nome ?? "").trim().slice(0, 100) || "Empresa";
+  let nome = base;
+  if (usados.has(nome.toLowerCase())) nome = e.bairro ? `${base} (${e.bairro})`.slice(0, 120) : base;
+  if (usados.has(nome.toLowerCase())) nome = `${base} (${e.cnpj.slice(-6)})`.slice(0, 120);
+
+  const { error } = await c.from("convites").insert({
+    nome,
+    tipo,
+    vagas,
+    whatsapp: celular ? [digitos] : [],
+    telefones: !celular && digitos ? [digitos] : [],
+    email: emailValido(e.email) ? String(e.email).trim().slice(0, 200) : null,
+    observacao,
+    rascunho: rascunho as never,
+    origem: "receita",
+    cnpj_receita: e.cnpj,
+  });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para pôr na lista agora.") };
+  refresh();
+  return { ok: true, mensagem: `${nome} entrou na lista de convites.` };
 }

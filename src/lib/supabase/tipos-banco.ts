@@ -968,6 +968,7 @@ export type Database = {
           origem: string | null;
           aceite_em: string | null;
           anuncio_id: string | null;
+          cnpj_receita: string | null;
         };
         Insert: {
           nome: string;
@@ -979,6 +980,7 @@ export type Database = {
           observacao?: string | null;
           rascunho?: Json | null;
           origem?: string | null;
+          cnpj_receita?: string | null;
         };
         Update: {
           status?: string;
@@ -1883,6 +1885,17 @@ export type Database = {
       servidor_ramos_salvar: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
       servidor_empresas_fim: { Args: { p_chave: string; p_mes: string; p_resumo: Json }; Returns: Json };
       admin_empresas_receita: { Args: Record<string, never>; Returns: Json };
+      admin_lista_receita: {
+        Args: {
+          p_lista: string;
+          p_cidade?: string | null;
+          p_cnaes?: string[] | null;
+          p_dias?: number | null;
+          p_limite?: number;
+          p_pagina?: number;
+        };
+        Returns: Json;
+      };
       buscar_empresas_receita: {
         Args: { p_texto: string; p_limite?: number };
         Returns: {
