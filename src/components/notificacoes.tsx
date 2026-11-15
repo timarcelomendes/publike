@@ -40,8 +40,7 @@ import {
   UserSearch,
   UsersRound,
   UserX,
-  Video,
-} from "lucide-react";
+  Video, QrCode } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { destinoDoAviso } from "@/lib/destino-aviso";
@@ -141,6 +140,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // o vencimento da vaga (migração 20270529120000)
   vaga_vence: CalendarClock,
   vaga_venceu: CalendarClock,
+  // a rota do currículo: abriram uma cópia (migração 20270605120000)
+  copia_aberta: QrCode,
 };
 
 type Notificacao = {

@@ -1885,6 +1885,40 @@ export type Database = {
       servidor_ramos_salvar: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
       servidor_empresas_fim: { Args: { p_chave: string; p_mes: string; p_resumo: Json }; Returns: Json };
       admin_empresas_receita: { Args: Record<string, never>; Returns: Json };
+      lugares_da_rota: {
+        Args: { p_cbo: string; p_lat: number; p_lng: number; p_raio_km?: number; p_limite?: number };
+        Returns: {
+          cnpj: string;
+          nome: string;
+          ramo: string | null;
+          cnae: string | null;
+          endereco: string | null;
+          bairro: string | null;
+          cidade: string;
+          lat: number;
+          lng: number;
+          distancia_m: number;
+        }[];
+      };
+      criar_rota_curriculo: {
+        Args: {
+          p_cbo: string;
+          p_funcao: string;
+          p_lat: number;
+          p_lng: number;
+          p_raio_km: number;
+          p_cnpjs: string[];
+          p_curriculo: Json;
+        };
+        Returns: Json;
+      };
+      minha_rota_curriculo: { Args: { p_rota: string }; Returns: Json };
+      minhas_rotas_curriculo: { Args: Record<string, never>; Returns: Json };
+      mudar_copia_curriculo: {
+        Args: { p_codigo: string; p_entregue?: boolean | null; p_desligada?: boolean | null };
+        Returns: boolean;
+      };
+      abrir_copia_curriculo: { Args: { p_codigo: string; p_contar?: boolean }; Returns: Json };
       admin_lista_receita: {
         Args: {
           p_lista: string;

@@ -40,6 +40,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "conquista_parabens") return "/?tipo=recado";
   // "A empresa te respondeu?" no alto do feed; o "ainda espera" na ficha do candidato no quadro da vaga
   if (n.tipo === "te_respondeu") return "/#te-respondeu";
+  // a rota do currículo: abriram uma cópia (migração 20270605120000)
+  if (n.tipo === "copia_aberta") return n.link ?? "/rota-do-curriculo";
   // o vencimento da vaga: renovar em um toque ou "Já preenchi"
   if ((n.tipo === "vaga_vence" || n.tipo === "vaga_venceu") && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/renovar`;
   if (n.tipo === "ainda_espera" && n.anuncio_id)

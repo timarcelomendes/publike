@@ -51,6 +51,13 @@ export default function PaginaCurriculo({ searchParams }: PageProps<"/perfil/cur
         Meu perfil
       </Link>
       <h1 className="mt-1 text-h2 sm:text-h1">Meu currículo</h1>
+      <p className="mt-1 text-body-sm text-ink-muted">
+        Vai entregar currículo de porta em porta?{" "}
+        <Link href="/rota-do-curriculo" className="font-semibold text-ink underline underline-offset-2">
+          Monte a rota do currículo
+        </Link>
+        : os lugares perto de casa que contratam a sua função, com uma cópia para cada um.
+      </p>
       <div className="mt-2">
         <Suspense fallback={<Esqueleto className="mt-4 h-[56rem] w-full rounded-lg" />}>
           <Conteudo searchParams={searchParams} />

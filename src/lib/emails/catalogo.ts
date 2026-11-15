@@ -56,6 +56,8 @@ const QUEM: Record<string, QuemRecebe[]> = {
   // o vencimento da vaga (migração 20270529120000)
   vaga_vence: ["contrata"],
   vaga_venceu: ["contrata"],
+  // a rota do currículo (migração 20270605120000)
+  copia_aberta: ["procura"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],

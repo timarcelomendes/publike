@@ -182,3 +182,10 @@ export function tituloDaFuncao(cbo: string) {
   const primeira = lista.split(",")[0].trim();
   return primeira.charAt(0).toUpperCase() + primeira.slice(1);
 }
+
+/** As funções comuns com o título curto, para escolher quando o currículo não diz a função (a rota do currículo). */
+export function funcoesComuns() {
+  return REGRAS.map(([cbo]) => ({ cbo, titulo: tituloDaFuncao(cbo)! }))
+    .filter((f) => f.titulo)
+    .sort((a, b) => a.titulo.localeCompare(b.titulo, "pt-BR"));
+}
