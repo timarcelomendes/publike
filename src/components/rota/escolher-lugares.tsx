@@ -8,6 +8,7 @@ import { montarRota } from "@/lib/acoes/rota-curriculo";
 import { distanciaCurta, MAX_LUGARES_DA_ROTA } from "@/lib/rota-curriculo";
 import { classesBotao } from "../ui/botao";
 import { MapaDaRota } from "./mapa-da-rota";
+import { QueroTrabalharAqui } from "./quero-trabalhar-aqui";
 import { bairroDaReceita } from "@/lib/cnpj";
 
 export type LugarDaRota = {
@@ -89,6 +90,9 @@ export function EscolherLugares({
                   </span>
                 </span>
               </label>
+              <div className="px-4 pb-4 pl-12">
+                <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcao} />
+              </div>
             </li>
           );
         })}

@@ -6,6 +6,7 @@ import { mudarCopia } from "@/lib/acoes/rota-curriculo";
 import { deslocamentoProvavel } from "@/lib/deslocamento";
 import { distanciaCurta, type CopiaDaRota } from "@/lib/rota-curriculo";
 import { classesBotao } from "../ui/botao";
+import { QueroTrabalharAqui } from "./quero-trabalhar-aqui";
 import { bairroDaReceita } from "@/lib/cnpj";
 
 /** O botão de imprimir (a página inteira: a folha da rota e as cópias). */
@@ -69,6 +70,9 @@ function ItemDaRota({ copia, ordem }: { copia: CopiaDaRota; ordem: number }) {
             </p>
           )}
         </div>
+      </div>
+      <div className="pl-10">
+        <QueroTrabalharAqui cnpj={copia.cnpj} nome={copia.nome} />
       </div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pl-10">
         <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-body-sm text-ink">

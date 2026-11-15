@@ -143,6 +143,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // a rota do currículo: abriram uma cópia (migração 20270605120000)
   copia_aberta: QrCode,
   rota_pergunta: QrCode,
+  interesse_local: Store,
 };
 
 type Notificacao = {

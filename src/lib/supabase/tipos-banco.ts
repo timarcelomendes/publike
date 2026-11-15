@@ -1885,6 +1885,8 @@ export type Database = {
       servidor_ramos_salvar: { Args: { p_chave: string; p_linhas: Json }; Returns: number };
       servidor_empresas_fim: { Args: { p_chave: string; p_mes: string; p_resumo: Json }; Returns: Json };
       admin_empresas_receita: { Args: Record<string, never>; Returns: Json };
+      contato_do_lugar: { Args: { p_cnpj: string }; Returns: Json };
+      demonstrar_interesse: { Args: { p_cnpj: string }; Returns: Json };
       abriu_perto_do_ponto: {
         Args: { p_lat: number; p_lng: number; p_cbos: string[]; p_dias?: number; p_limite?: number };
         Returns: {

@@ -42,6 +42,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "te_respondeu") return "/#te-respondeu";
   // a rota do currículo: abriram uma cópia (migração 20270605120000)
   if (n.tipo === "copia_aberta" || n.tipo === "rota_pergunta") return n.link ?? "/rota-do-curriculo";
+  // "Quero trabalhar aqui": o currículo de quem demonstrou interesse (migração 20270615120000)
+  if (n.tipo === "interesse_local") return n.ator_id ? `/talentos/${n.ator_id}` : (n.link ?? "/talentos");
   // o vencimento da vaga: renovar em um toque ou "Já preenchi"
   if ((n.tipo === "vaga_vence" || n.tipo === "vaga_venceu") && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/renovar`;
   if (n.tipo === "ainda_espera" && n.anuncio_id)

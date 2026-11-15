@@ -112,9 +112,9 @@ export default function Privacidade() {
         <Lista
           itens={[
             "O Publike usa os dados abertos do CNPJ que a Receita Federal publica todo mês: nome, ramo, data de abertura, endereço, telefone e e-mail de empresas ativas de Goiás. Não usamos o arquivo de sócios nem CPF.",
-            "Esses dados servem para: preencher o endereço quando a empresa publica uma vaga pelo CNPJ ou pelo nome; mostrar, para quem procura trabalho, os comércios perto de casa que costumam contratar a sua função; e para a equipe do Publike convidar empresas, agências de emprego e prestadores de serviço a usar o site, que é grátis.",
+            "Esses dados servem para: preencher o endereço quando a empresa publica uma vaga pelo CNPJ ou pelo nome; mostrar, para quem procura trabalho, os comércios perto de casa que costumam contratar a sua função (e, no “Quero trabalhar aqui”, avisar a empresa que está no Publike ou mostrar o telefone e o caminho até ela); e para a equipe do Publike convidar empresas, agências de emprego e prestadores de serviço a usar o site, que é grátis.",
             "Do MEI, que quase sempre é uma pessoa trabalhando em casa, não guardamos rua, número nem complemento. O MEI não aparece na busca, no mapa nem nas listas de quem procura trabalho: só a equipe vê, para o convite.",
-            "O telefone e o e-mail da Receita são vistos só pela equipe do Publike. Todo convite diz de onde veio o contato e traz o jeito de pedir para não receber mais.",
+            "O e-mail da Receita é visto só pela equipe do Publike. O telefone de empresa (nunca de MEI) aparece para quem procura trabalho só quando a pessoa toca em “Quero trabalhar aqui” e a empresa ainda não está no Publike, para ela ligar ou chamar no WhatsApp. Todo convite da equipe diz de onde veio o contato e traz o jeito de pedir para não receber mais.",
             <>
               Não quer que a sua empresa ou o seu MEI receba convites do Publike? Peça por <CanalDePedidos /> e
               tiramos o seu CNPJ das listas.

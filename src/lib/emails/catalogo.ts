@@ -59,6 +59,7 @@ const QUEM: Record<string, QuemRecebe[]> = {
   // a rota do currículo (migração 20270605120000)
   copia_aberta: ["procura"],
   rota_pergunta: ["procura"],
+  interesse_local: ["contrata"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],

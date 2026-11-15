@@ -4,6 +4,7 @@ import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
 import { distanciaCurta } from "@/lib/rota-curriculo";
 import { funcoesParaARota, pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { QueroTrabalharAqui } from "./quero-trabalhar-aqui";
 import { bairroDaReceita } from "@/lib/cnpj";
 
 /**
@@ -35,14 +36,17 @@ export async function AbriuPertoNoFeed() {
         <Store aria-hidden className="size-4 text-terra-text" />
         Abriu perto de você
       </p>
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-2">
         {data.map((l) => (
-          <li key={l.cnpj}>
+          <li key={l.cnpj} className="flex flex-col gap-1.5 border-t border-line pt-2 first:border-t-0 first:pt-0">
+            <span>
             <strong className="font-semibold">{l.nome}</strong>
             {l.ramo && <span className="text-ink-muted">, {l.ramo.toLowerCase()}</span>}
             <span className="text-ink-muted">
               , {[l.bairro && bairroDaReceita(l.bairro), `a ${distanciaCurta(l.distancia_m)} ${onde.deCasa ? "de casa" : "do seu bairro"}`].filter(Boolean).join(", ")}
             </span>
+            </span>
+            <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcoes.find((f) => f.cbo === l.cbo)?.titulo} />
           </li>
         ))}
       </ul>
