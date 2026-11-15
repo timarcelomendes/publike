@@ -128,7 +128,8 @@ export async function GET(request: Request) {
   const links = await comTempo(() => conferirLinksDeCandidatura(5));
   // o impulso da vaga no Google Ads: criar, olhar a aprovação, medir, tirar quando a vaga fecha e encerrar (o aviso
   // de "no ar" e o relatório saem junto com os e-mails abaixo)
-  const impulsos = await comTempo(() => cuidarDosImpulsos());
+  // o robô sabe quanto falta dos 60 s da rota (o orçamento da campanha geral, os grupos e os raios vêm primeiro)
+  const impulsos = await comTempo(() => cuidarDosImpulsos(inicio + 57_000));
   // o ajuste diário do impulso (beta): de manhã, uma vez por dia cada campanha, só no começo da volta (a IA leva
   // segundos)
   const ajustes = await comTempo(() => ajustarImpulsos(inicio));

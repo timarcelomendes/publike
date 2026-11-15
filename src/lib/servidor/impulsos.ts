@@ -2235,7 +2235,10 @@ async function cuidarDasCampanhas(a: Acesso, alertas: string[]) {
  * site (o after() depois de pagar ou de aprovar) chamam o robô, e duas voltas juntas podiam criar a mesma campanha duas
  * vezes no Google. A volta que não pega a vez pula, e o trabalho fica para a próxima. Sem a migração, roda como antes.
  */
-export async function cuidarDosImpulsos(): Promise<{
+export async function cuidarDosImpulsos(
+  /** até quando a volta pode ir (a hora em ms): a rota das filas passa o fim dela; sem, 58 s a partir de agora */
+  fim?: number,
+): Promise<{
   feitos: number;
   motivo?: string;
 }> {
@@ -2255,7 +2258,7 @@ export async function cuidarDosImpulsos(): Promise<{
   }
   if (!e && !peguei) return { feitos: 0 };
   try {
-    return await umaVoltaDoRobo(a);
+    return await umaVoltaDoRobo(a, fim ?? Date.now() + 58_000);
   } finally {
     if (!e) {
       const { error: s } = await a.cliente.rpc("servidor_impulsos_soltar_vez", {
@@ -2325,7 +2328,17 @@ async function cuidarDaGeral(a: Acesso) {
 /** Uma rodada do robô. Devolve quantos impulsos andaram e, quando um erro dura mais de 6 horas, o motivo. */
 async function umaVoltaDoRobo(
   a: Acesso,
+  fim: number,
 ): Promise<{ feitos: number; motivo?: string }> {
+  // o produto de agora primeiro (14/11/2026): o orçamento da campanha geral, os grupos e os raios. Antes, eles vinham
+  // depois das campanhas por vaga e, chamados pela rota das filas (que já gastou parte dos 60 s), quase nunca tinham
+  // tempo: dos grupos ligados às 20h57, só o primeiro saiu em 25 minutos. `fim` é a hora em que a função acaba.
+  if (googleAdsLigado()) {
+    if (fim - Date.now() > 12_000) await cuidarDaGeral(a);
+    // a IA leva até 15 s por grupo; criar só com folga
+    if (fim - Date.now() > 24_000) await cuidarDosGrupos(a, fim - 21_000);
+    if (fim - Date.now() > 8_000) await cuidarDosRaios(a, fim - 6_000);
+  }
   // o impulso automático do Publike (migração 20270428120000): com o Google Ads ligado, o banco escolhe as vagas
   // paradas dentro do teto do mês e cria os impulsos; logo abaixo, eles entram na fila como os outros
   if (googleAdsLigado()) {
@@ -2352,7 +2365,7 @@ async function umaVoltaDoRobo(
   }
   const tarefas = (data ?? []) as unknown as Tarefa[];
   for (const t of tarefas) {
-    if (Date.now() - inicio > 25_000) break;
+    if (Date.now() - inicio > 25_000 || fim - Date.now() < 15_000) break;
     try {
       if (await fazer(a, t)) feitos++;
     } catch (e) {
@@ -2368,15 +2381,8 @@ async function umaVoltaDoRobo(
     }
   }
   // depois das vagas (a que entrou no ar ou acabou nesta volta já conta): a campanha geral fora das funções delas
-  if (googleAdsLigado() && Date.now() - inicio < 35_000)
+  if (googleAdsLigado() && Date.now() - inicio < 35_000 && fim - Date.now() > 10_000)
     await semDisputaComAGeral(a);
-  // o pacote de candidatos (migração 20270519120000): a campanha geral ganha a verba dos pacotes no ar
-  if (googleAdsLigado() && Date.now() - inicio < 38_000) await cuidarDaGeral(a);
-  // os grupos por função e por cidade na campanha geral (migração 20270522120000): só com folga, porque a IA leva até
-  // 25 s e a volta tem 60 s
-  if (googleAdsLigado() && Date.now() - inicio < 30_000) await cuidarDosGrupos(a, inicio + 34_000);
-  // os raios das vagas impulsionadas na campanha geral (migração 20270523120000): entrou ou saiu um pacote, e a medida do dia
-  if (googleAdsLigado() && Date.now() - inicio < 40_000) await cuidarDosRaios(a, inicio + 48_000);
   return alertas.length
     ? {
         feitos,
