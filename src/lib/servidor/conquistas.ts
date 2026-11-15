@@ -1,6 +1,6 @@
 import "server-only";
 import { MODO_DEMO } from "@/lib/config";
-import type { Conquista, ConquistaParaConfirmar, ConquistaPendente } from "@/lib/conquistas";
+import type { Conquista, ConquistaParaConfirmar, ConquistaPendente, PerguntaDeResposta } from "@/lib/conquistas";
 import { raioDaBusca, type Filtros } from "@/lib/filtros";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
@@ -55,6 +55,21 @@ export async function conquistasParaConfirmar(anuncioId?: string): Promise<Conqu
     });
     if (error) {
       semMigracao(error, "as conquistas para confirmar");
+      return [];
+    }
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** "A empresa te respondeu?" (migração 20270526120000): as perguntas abertas da pessoa. Sem a migração, nada. */
+export async function perguntasDeResposta(): Promise<PerguntaDeResposta[]> {
+  if (MODO_DEMO) return [];
+  try {
+    const { data, error } = await (await criarClienteServidor()).rpc("minhas_perguntas_de_resposta");
+    if (error) {
+      semMigracao(error, "as perguntas de resposta");
       return [];
     }
     return data ?? [];

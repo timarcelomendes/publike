@@ -7,7 +7,7 @@ import { mostrarConquista, responderConquista } from "@/lib/acoes/conquistas";
 import type { ConquistaPendente } from "@/lib/conquistas";
 import { nomeCurtoDaConquista } from "./nomes";
 
-// No alto do feed, para quem deu match numa vaga há 5 dias ou mais: "Deu certo?" e, depois do "Comecei!", "Mostrar
+// No alto do feed, para quem deu match numa vaga há 7 dias ou mais: "Deu certo?" e, depois do "Comecei!", "Mostrar
 // no Publike?". Uma pergunta por vez (a mais recente); as outras vêm depois.
 
 const BOTAO =

@@ -50,6 +50,9 @@ const QUEM: Record<string, QuemRecebe[]> = {
   conquista_pergunta: ["procura"],
   conquista_confirmar: ["contrata"],
   conquista_parabens: ["procura"],
+  // as três perguntas do retorno (migração 20270526120000)
+  te_respondeu: ["procura"],
+  ainda_espera: ["contrata"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],

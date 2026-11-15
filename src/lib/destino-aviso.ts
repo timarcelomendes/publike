@@ -38,6 +38,10 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "conquista_pergunta") return "/#conquista";
   if (n.tipo === "conquista_confirmar" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}#conquistas`;
   if (n.tipo === "conquista_parabens") return "/?tipo=recado";
+  // "A empresa te respondeu?" no alto do feed; o "ainda espera" na ficha do candidato no quadro da vaga
+  if (n.tipo === "te_respondeu") return "/#te-respondeu";
+  if (n.tipo === "ainda_espera" && n.anuncio_id)
+    return n.ator_id ? `/painel/anuncio/${n.anuncio_id}/quadro?candidato=${n.ator_id}` : `/painel/anuncio/${n.anuncio_id}/quadro`;
   // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga
   if (n.tipo === "teste_pedido") return "/testes";
   if (n.tipo === "teste_feito" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/testes`;

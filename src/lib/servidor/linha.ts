@@ -1,6 +1,6 @@
 import "server-only";
-import type { Conquista, ConquistaPendente } from "@/lib/conquistas";
-import { conquistasDaLinha, conquistasPendentes } from "@/lib/servidor/conquistas";
+import type { Conquista, ConquistaPendente, PerguntaDeResposta } from "@/lib/conquistas";
+import { conquistasDaLinha, conquistasPendentes, perguntasDeResposta } from "@/lib/servidor/conquistas";
 import { SEM_COMENTARIOS, type RespostaNoFeed, type ResumoComentarios } from "@/lib/comentarios";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -225,6 +225,8 @@ export type DadosDaLinha = {
   autorTipo: string | null;
   /** as perguntas da conquista da pessoa ("Deu certo?", "Mostrar no Publike?"), no alto do feed */
   conquistasPendentes: ConquistaPendente[];
+  /** "A empresa te respondeu?" (migração 20270526120000), no alto do feed */
+  perguntasDeResposta: PerguntaDeResposta[];
   /** o nome da pessoa (o "Mostrar no Publike?" mostra como a conquista aparece) */
   meuNome: string | null;
   /** de onde conta a distância ("da sua casa", "do meio de Setor Bueno"), para a linha do raio */
@@ -308,7 +310,8 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     aba !== "recado" && !filtros.tempo && filtros.raio < maiorRaio
       ? buscarAnuncios({ ...filtros, raio: maiorRaio, ordem: "perto" }, agora, local, usuarioId).catch(() => [])
       : Promise.resolve([] as AnuncioResumo[]);
-  const [encontrados, quem, matchesDaConta, recados, perfil, conquistas, conquistasPendentesDaConta] = await Promise.all([
+  const [encontrados, quem, matchesDaConta, recados, perfil, conquistas, conquistasPendentesDaConta, respostasDaConta] =
+    await Promise.all([
     aba === "recado"
       ? Promise.resolve([])
       : relevantes
@@ -320,6 +323,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     usuario ? obterMeuPerfil().catch(() => null) : Promise.resolve(null),
     usuario && (aba === "tudo" || aba === "recado") ? conquistasDaLinha(filtros) : Promise.resolve([] as Conquista[]),
     usuario ? conquistasPendentes() : Promise.resolve([] as ConquistaPendente[]),
+    usuario ? perguntasDeResposta() : Promise.resolve([] as PerguntaDeResposta[]),
   ]);
   const marca = marcaDaVisita(prefs.vistaEm, prefs.marcaEm, agora);
   const visitaNova = prefs.vistaEm !== null && agora - new Date(prefs.vistaEm).getTime() > SESSAO_DA_HOME;
@@ -539,6 +543,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     novas,
     autorTipo: perfil?.tipo ?? null,
     conquistasPendentes: conquistasPendentesDaConta,
+    perguntasDeResposta: respostasDaConta,
     meuNome: perfil?.nome ?? null,
     origemDoRaio: textoDaOrigem(filtros, local, visita.praca.cidade),
     deOnde: dadosDoDeOnde(filtros, local, visita.praca.cidade),

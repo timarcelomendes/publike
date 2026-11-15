@@ -2660,9 +2660,24 @@ export type Database = {
           nome: string;
           foto: string | null;
           respondida_em: string;
+          /** confirmar (a pessoa disse que começou), comecou (a empresa pôs em Contratado há 7 dias), chamaria */
+          pergunta: string;
         }[];
       };
       confirmar_conquista: { Args: { p_anuncio: string; p_perfil: string; p_sim: boolean }; Returns: undefined };
+      // as três perguntas do retorno (migração 20270526120000)
+      chamaria_de_novo: { Args: { p_anuncio: string; p_perfil: string; p_sim: boolean }; Returns: undefined };
+      servidor_perguntar_se_respondeu: { Args: { p_chave: string; p_limite?: number }; Returns: number };
+      minhas_perguntas_de_resposta: {
+        Args: Record<string, never>;
+        Returns: { anuncio_id: string; titulo: string; empresa_nome: string; perguntas: number }[];
+      };
+      responder_se_respondeu: { Args: { p_anuncio: string; p_resposta: string }; Returns: undefined };
+      registrar_quem_contratou: {
+        Args: { p_anuncio: string; p_perfis: string[] | null; p_ninguem: boolean; p_quando: string };
+        Returns: undefined;
+      };
+      admin_respostas_do_retorno: { Args: { p_dias?: number }; Returns: Json };
       conquistas_perto: {
         Args: { p_lat: number; p_lng: number; p_raio_km?: number; p_limite?: number };
         Returns: {

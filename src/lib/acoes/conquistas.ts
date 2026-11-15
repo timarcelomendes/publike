@@ -74,7 +74,46 @@ export async function confirmarConquista(anuncioId: string, perfilId: string, si
     ok: true,
     mensagem: sim
       ? "Confirmado: a pessoa foi para Contratado no quadro da vaga."
-      : "Combinado: a conquista sai do Publike.",
+      : "Combinado, obrigado por contar.",
+  };
+}
+
+/** "Chamaria de novo?": depois de a empresa confirmar que a pessoa começou (migração 20270526120000). */
+export async function chamariaDeNovo(anuncioId: string, perfilId: string, sim: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId) || !UUID.test(perfilId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await (await criarClienteServidor()).rpc("chamaria_de_novo", {
+    p_anuncio: anuncioId,
+    p_perfil: perfilId,
+    p_sim: sim,
+  });
+  if (error) return { ok: false, erro: erroDo(error) };
+  refresh();
+  return { ok: true, mensagem: "Obrigado por contar. Isso vira a reputação de quem trabalha." };
+}
+
+const RESPOSTAS_DO_RETORNO = ["sim", "ainda_nao", "desisti"] as const;
+
+/** "A empresa te respondeu?": Sim, Ainda não (a empresa recebe o aviso) ou Desisti (migração 20270526120000). */
+export async function responderSeRespondeu(anuncioId: string, resposta: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId) || !(RESPOSTAS_DO_RETORNO as readonly string[]).includes(resposta))
+    return { ok: false, erro: "Pedido inválido." };
+  if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/" };
+  const { error } = await (await criarClienteServidor()).rpc("responder_se_respondeu", {
+    p_anuncio: anuncioId,
+    p_resposta: resposta,
+  });
+  if (error) return { ok: false, erro: error.code === "PGRST202" ? "Ainda não dá para responder. Tente mais tarde." : mensagemDeErro(error) };
+  refresh();
+  return {
+    ok: true,
+    mensagem:
+      resposta === "sim"
+        ? "Que bom! Obrigado por contar."
+        : resposta === "ainda_nao"
+          ? "A gente avisou a empresa que você ainda espera. Enquanto isso, veja vagas parecidas."
+          : "Combinado. Tem mais vagas perto de você esperando.",
   };
 }
 

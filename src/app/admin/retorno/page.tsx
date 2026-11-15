@@ -108,6 +108,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
   const nomePeriodo = PERIODOS.find((p) => p.valor === periodo)!.nome.toLowerCase();
   // os matches sem contato, para o botão das perguntas (migração 20270202120000; sem ela, a seção não aparece)
   const semContato = (await c.rpc("admin_matches_sem_contato")).data as unknown as SemContato | null;
+  // as três perguntas (migração 20270526120000; sem ela, a seção não aparece)
+  const dias = periodo === "tudo" ? 365 : Number(periodo);
+  const tres = (await c.rpc("admin_respostas_do_retorno", { p_dias: dias })).data as unknown as Tres | null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -149,6 +152,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
           </>
         )}
       </Secao>
+
+      {tres && <TresPerguntas t={tres} periodo={nomePeriodo} />}
 
       {semContato && <MatchesSemContato s={semContato} agora={agora} />}
 
@@ -521,5 +526,56 @@ function TabelaCandidaturas({ linhas, agora }: { linhas: Candidatura[]; agora: n
         </tbody>
       </table>
     </div>
+  );
+}
+
+type Tres = {
+  te_respondeu: { perguntadas: number; sim: number; ainda_nao: number; desisti: number; sem_resposta: number };
+  quem_contratou: { respostas: number; daqui: number; pessoas: number; ninguem: number };
+  comecou: {
+    pessoa_comecei: number;
+    pessoa_nao_deu: number;
+    empresa_confirmou: number;
+    empresa_negou: number;
+    chamaria_sim: number;
+    chamaria_nao: number;
+  };
+};
+
+/** O que as três perguntas contam sobre o que aconteceu fora do Publike (no WhatsApp). */
+function TresPerguntas({ t, periodo }: { t: Tres; periodo: string }) {
+  const r = t.te_respondeu;
+  const respondidas = r.sim + r.ainda_nao + r.desisti;
+  const q = t.quem_contratou;
+  const k = t.comecou;
+  return (
+    <Secao
+      titulo="O que os candidatos e as empresas contaram"
+      descricao={`As três perguntas dos últimos ${periodo}: “A empresa te respondeu?” (2 dias depois do contato), “Quem você contratou?” (ao encerrar a vaga ou marcar como preenchida) e, 7 dias depois, “Começou a trabalhar?” e “Chamaria de novo?”.`}
+    >
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Numero
+          rotulo="A empresa respondeu"
+          valor={pct(r.sim, respondidas)}
+          detalhe={`${formatarNumero(r.sim)} sim, ${formatarNumero(r.ainda_nao)} ainda não, ${formatarNumero(r.desisti)} desistiram (${formatarNumero(r.perguntadas)} perguntados)`}
+          alerta={r.ainda_nao > r.sim}
+        />
+        <Numero
+          rotulo="Contrataram pelo Publike"
+          valor={formatarNumero(q.daqui)}
+          detalhe={`${formatarNumero(q.pessoas)} pessoas; ${formatarNumero(q.ninguem)} disseram ninguém daqui`}
+        />
+        <Numero
+          rotulo="Começaram a trabalhar"
+          valor={formatarNumero(Math.max(k.pessoa_comecei, k.empresa_confirmou))}
+          detalhe={`${formatarNumero(k.pessoa_comecei)} pela pessoa, ${formatarNumero(k.empresa_confirmou)} pela empresa`}
+        />
+        <Numero
+          rotulo="Chamariam de novo"
+          valor={pct(k.chamaria_sim, k.chamaria_sim + k.chamaria_nao)}
+          detalhe={`${formatarNumero(k.chamaria_sim)} sim, ${formatarNumero(k.chamaria_nao)} não`}
+        />
+      </dl>
+    </Secao>
   );
 }

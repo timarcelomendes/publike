@@ -36,6 +36,7 @@ import { distanciaKm } from "@/lib/descobrir";
 import { vagasDoQuadro } from "@/lib/impulso";
 import { anunciosNoAr, vagasImpulsionadas, type AnuncioNoAr, type VagaImpulsionada } from "@/lib/servidor/paginas-busca";
 import { PerguntaDaConquista } from "../../conquistas/pergunta-da-conquista";
+import { PerguntaDeRespostaNoFeed } from "../../conquistas/pergunta-de-resposta";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
@@ -228,9 +229,13 @@ export async function LinhaDoTempo({
   ];
   const conexoes = logado && autores.length ? await estadosDeConexao(autores) : new Map<string, EstadoConexao>();
   // "Deu certo?" e "Mostrar no Publike?": a pergunta da conquista, uma por vez, no alto (não no "só olhar")
+  // sem ela, "A empresa te respondeu?" (migração 20270526120000): uma pergunta por vez
   const pendente = !soOlhar ? d.conquistasPendentes[0] : undefined;
+  const respondeu = !soOlhar && !pendente ? d.perguntasDeResposta?.[0] : undefined;
   const pergunta = pendente ? (
     <PerguntaDaConquista key={`${pendente.anuncio_id}:${pendente.resposta ?? ""}`} pendente={pendente} meuNome={d.meuNome ?? ""} />
+  ) : respondeu ? (
+    <PerguntaDeRespostaNoFeed key={`r:${respondeu.anuncio_id}:${respondeu.perguntas}`} pergunta={respondeu} />
   ) : null;
   if (!d.itens.length) {
     const maior = RAIOS[RAIOS.length - 1];

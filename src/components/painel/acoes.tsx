@@ -20,7 +20,7 @@ import {
 import { useState, useTransition, type ReactNode } from "react";
 import { excluirAnuncio, marcarVagaPreenchida, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
-import { quemPodeTerSidoContratado } from "@/lib/acoes/processo";
+import { quemPodeTerSidoContratado, registrarQuemContratou } from "@/lib/acoes/processo";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { MOTIVOS_DO_TIPO, MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import { CaminhoDoAceite } from "../caminho-curtida";
@@ -67,6 +67,12 @@ export function AcoesAnuncio({
   // por que encerrou (opcional): ajuda a saber quantas vagas o Publike preencheu
   const [motivo, setMotivo] = useState<MotivoEncerramento | null>(null);
   const [detalhe, setDetalhe] = useState("");
+  // "Quem você contratou?" (migração 20270526120000): quem deu match e ainda não está em Contratados, ou "Ninguém daqui"
+  const [quem, setQuem] = useState<QuemPode | null>(null);
+  const [marcados, setMarcados] = useState<string[]>([]);
+  const [ninguem, setNinguem] = useState(false);
+  const [, iniciarCarga] = useTransition();
+  const perguntarQuem = tipo === "vaga" && quem && quem.contratados === 0 && quem.candidatos.length > 0;
   const comModeracao = status === "em_analise" || status === "removido";
   const nome = (texto: string) => (compacto ? { "aria-label": texto, title: texto } : {});
   const rotulo = (texto: string) => (compacto ? <span className="hidden @[54rem]/acoes:inline">{texto}</span> : texto);
@@ -106,6 +112,24 @@ export function AcoesAnuncio({
                   : "Encerrar a vaga? Ela sai do ar e para de receber candidatos."}{" "}
                 Para voltar ao ar, use Renovar.
               </p>
+              {perguntarQuem && (
+                <QuemVoceContratou
+                  id={id}
+                  candidatos={quem.candidatos}
+                  marcados={marcados}
+                  ninguem={ninguem}
+                  onMarcar={(l) => {
+                    setMarcados(l);
+                    setNinguem(false);
+                    if (l.length && !motivo) setMotivo("contratei_publike");
+                  }}
+                  onNinguem={() => {
+                    setMarcados([]);
+                    setNinguem(true);
+                    if (motivo === "contratei_publike") setMotivo(null);
+                  }}
+                />
+              )}
               <fieldset className="flex flex-col gap-1.5">
                 <legend className="mb-1 text-label">
                   Por que está encerrando? <span className="font-normal text-ink-muted">(opcional)</span>
@@ -145,7 +169,27 @@ export function AcoesAnuncio({
                   disabled={pendente}
                   onClick={() =>
                     rodar(
-                      () => mudarStatusAnuncio(id, "encerrado", motivo ? { motivo, detalhe } : null),
+                      async () => {
+                        if (marcados.length) {
+                          const r = await moverCandidatos(id, marcados, "contratado");
+                          if (!r.ok) return r;
+                          if (r.falhas.length)
+                            return {
+                              ok: false as const,
+                              erro: `${r.falhas.map((f) => `${f.perfil}: ${f.erro}`).join(" ")} Desmarque ou resolva na ficha.`,
+                            };
+                        }
+                        const r = await mudarStatusAnuncio(id, "encerrado", motivo ? { motivo, detalhe } : null);
+                        // "Contratei por outro lugar" sem ninguém tocado também é "Ninguém daqui"
+                        if (r.ok && perguntarQuem)
+                          await registrarQuemContratou(
+                            id,
+                            marcados,
+                            ninguem || (!marcados.length && motivo === "contratei_fora"),
+                            "encerrar",
+                          ).catch(() => undefined);
+                        return r;
+                      },
                       () => setConfirmarEncerrar(false),
                     )
                   }
@@ -159,6 +203,8 @@ export function AcoesAnuncio({
                     setConfirmarEncerrar(false);
                     setMotivo(null);
                     setDetalhe("");
+                    setMarcados([]);
+                    setNinguem(false);
                   }}
                 >
                   Cancelar
@@ -170,7 +216,11 @@ export function AcoesAnuncio({
               tamanho="sm"
               variante="fantasma"
               disabled={pendente}
-              onClick={() => setConfirmarEncerrar(true)}
+              onClick={() => {
+                setConfirmarEncerrar(true);
+                if (tipo === "vaga")
+                  iniciarCarga(async () => setQuem(await quemPodeTerSidoContratado(id).catch(() => null)));
+              }}
               {...nome("Encerrar")}
               {...item}
             >
@@ -238,8 +288,9 @@ export function BotaoVagaPreenchida({ id, preenchida, menu = false }: { id: stri
   const item = menu ? { className: "w-full justify-start" } : {};
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
-  const [quem, setQuem] = useState<{ contratados: number; candidatos: { id: string; nome: string }[] } | null>(null);
+  const [quem, setQuem] = useState<QuemPode | null>(null);
   const [marcados, setMarcados] = useState<string[]>([]);
+  const [ninguem, setNinguem] = useState(false);
   const [carregando, iniciarCarga] = useTransition();
   if (preenchida) {
     return (
@@ -262,24 +313,20 @@ export function BotaoVagaPreenchida({ id, preenchida, menu = false }: { id: stri
   return confirmar ? (
     <span className="flex flex-col gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
       {perguntar && (
-        <span className="flex flex-col gap-1">
-          <span className="text-label">Quem foi contratado? (opcional)</span>
-          <span className="flex flex-wrap gap-x-4">
-            {quem.candidatos.map((c) => (
-              <label key={c.id} className="inline-flex min-h-10 cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={marcados.includes(c.id)}
-                  onChange={(e) =>
-                    setMarcados((l) => (e.target.checked ? [...l, c.id] : l.filter((x) => x !== c.id)))
-                  }
-                  className="size-5 accent-[var(--pk-ink)]"
-                />
-                {c.nome}
-              </label>
-            ))}
-          </span>
-        </span>
+        <QuemVoceContratou
+          id={id}
+          candidatos={quem.candidatos}
+          marcados={marcados}
+          ninguem={ninguem}
+          onMarcar={(l) => {
+            setMarcados(l);
+            setNinguem(false);
+          }}
+          onNinguem={() => {
+            setMarcados([]);
+            setNinguem(true);
+          }}
+        />
       )}
       <span>
         Quem curtiu e ainda espera recebe o aviso de que a vaga foi preenchida. A vaga continua no site, com a marcação.
@@ -301,7 +348,10 @@ export function BotaoVagaPreenchida({ id, preenchida, menu = false }: { id: stri
                       erro: `${r.falhas.map((f) => `${f.perfil}: ${f.erro}`).join(" ")} Desmarque ou resolva na ficha.`,
                     };
                 }
-                return marcarVagaPreenchida(id, true);
+                const r = await marcarVagaPreenchida(id, true);
+                if (r.ok && perguntar)
+                  await registrarQuemContratou(id, marcados, ninguem, "preenchida").catch(() => undefined);
+                return r;
               },
               (r) => r.ok && setConfirmar(false),
             )
@@ -465,5 +515,60 @@ export function AcoesInteressado({
       )}
       {mensagem}
     </div>
+  );
+}
+
+type QuemPode = { contratados: number; candidatos: { id: string; nome: string }[] };
+
+/**
+ * "Quem você contratou?" (migração 20270526120000): os nomes para tocar (mais de um vale) e "Ninguém daqui". Opcional:
+ * sem tocar em nada, a vaga encerra do mesmo jeito.
+ */
+function QuemVoceContratou({
+  id,
+  candidatos,
+  marcados,
+  ninguem,
+  onMarcar,
+  onNinguem,
+}: {
+  id: string;
+  candidatos: { id: string; nome: string }[];
+  marcados: string[];
+  ninguem: boolean;
+  onMarcar: (l: string[]) => void;
+  onNinguem: () => void;
+}) {
+  const chip =
+    "inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line-strong bg-surface-200 px-3 py-1.5 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus";
+  return (
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="mb-1 text-label">
+        Quem você contratou? <span className="font-normal text-ink-muted">(opcional)</span>
+      </legend>
+      <div className="flex flex-wrap gap-1.5">
+        {candidatos.map((c) => (
+          <label key={c.id} className={chip}>
+            <input
+              type="checkbox"
+              name={`contratado-${id}`}
+              checked={marcados.includes(c.id)}
+              onChange={(e) => onMarcar(e.target.checked ? [...marcados, c.id] : marcados.filter((x) => x !== c.id))}
+              className="sr-only"
+            />
+            {c.nome}
+          </label>
+        ))}
+        <label className={chip}>
+          <input type="checkbox" checked={ninguem} onChange={() => (ninguem ? onMarcar([]) : onNinguem())} className="sr-only" />
+          Ninguém daqui
+        </label>
+      </div>
+      {marcados.length > 0 && (
+        <span className="text-body-sm text-ink-muted">
+          {marcados.length === 1 ? "A pessoa vai" : "As pessoas vão"} para Contratado no quadro da vaga.
+        </span>
+      )}
+    </fieldset>
   );
 }

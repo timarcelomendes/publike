@@ -190,3 +190,26 @@ export async function quemPodeTerSidoContratado(
     candidatos: (perfis ?? []).map((p) => ({ id: p.id, nome: p.nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
   };
 }
+
+/**
+ * "Quem você contratou?" ao encerrar a vaga ou marcar como preenchida (migração 20270526120000): as pessoas tocadas ou
+ * "Ninguém daqui". Quem foi tocado vai para Contratado pelo `moverCandidatos` de sempre; aqui só fica a resposta.
+ * Sem a migração, não guarda e não atrapalha.
+ */
+export async function registrarQuemContratou(
+  anuncioId: string,
+  perfis: string[],
+  ninguem: boolean,
+  quando: "encerrar" | "preenchida",
+): Promise<void> {
+  if (MODO_DEMO || !UUID.test(anuncioId) || !["encerrar", "preenchida"].includes(quando)) return;
+  const lista = perfis.filter((p) => UUID.test(p)).slice(0, 50);
+  if (!ninguem && !lista.length) return;
+  const { error } = await (await criarClienteServidor()).rpc("registrar_quem_contratou", {
+    p_anuncio: anuncioId,
+    p_perfis: lista,
+    p_ninguem: ninguem,
+    p_quando: quando,
+  });
+  if (error && error.code !== "PGRST202") console.error("Publike: não guardou quem foi contratado:", error.message);
+}

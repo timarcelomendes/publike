@@ -18,6 +18,7 @@ import {
   lembrarRespostas,
   lembrarCurriculos,
   perguntarConquistas,
+  perguntarSeRespondeu,
   liberarContatosParados,
   removerAgendados,
   revisarAnunciosPendentes,
@@ -75,7 +76,10 @@ export async function GET(request: Request) {
   const perguntas = await comTempo(() => perguntarNosMatches(50));
   // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
   const lembretes = await comTempo(() => lembrarRespostas());
-  // 5 dias depois do match numa vaga: "Deu certo?" (a conquista; sai junto com os e-mails abaixo)
+  // 2 dias depois do contato numa vaga: "A empresa te respondeu?" (sai junto com os e-mails abaixo)
+  const respondeu = await comTempo(() => perguntarSeRespondeu());
+  // 7 dias depois do match (ou de ir para Contratado): "Deu certo?" para a pessoa e "Começou? Chamaria de novo?" para
+  // quem publicou (a conquista; sai junto com os e-mails abaixo)
   const conquistas = await comTempo(() => perguntarConquistas());
   // quem procura e está sem currículo: o lembrete 2 h depois da conta criada e 3 dias depois (das 8h às 20h)
   const curriculos = await comTempo(() => lembrarCurriculos());
@@ -153,6 +157,7 @@ export async function GET(request: Request) {
     parados.motivo,
     agendadas.motivo,
     lembretes.motivo,
+    respondeu.motivo,
     conquistas.motivo,
     curriculos.motivo,
     combinam.motivo,
@@ -200,6 +205,7 @@ export async function GET(request: Request) {
       remocoes_agendadas: agendadas.feitas,
       documentos: { lembrados: documentos.lembrados, apagados: documentosVencidos.apagados },
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
+      te_respondeu: respondeu.perguntas,
       conquistas: conquistas.perguntas,
       curriculos_lembrados: curriculos.lembradas,
       funcoes: funcoes.achadas,

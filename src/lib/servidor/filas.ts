@@ -557,7 +557,8 @@ export async function lembrarCurriculos(): Promise<{ lembradas: number; motivo?:
 }
 
 /**
- * As conquistas (migração 20270322120000): 5 dias depois do match numa vaga, a pergunta "Deu certo?" para a pessoa
+ * As conquistas (migração 20270322120000; 7 dias desde a 20270526120000): 7 dias depois do match numa vaga (ou de ir
+ * para Contratado), a pergunta "Deu certo?" para a pessoa; e, para quem publicou, "Começou? Chamaria de novo?"
  * (no sino, no celular e por e-mail); sem resposta ou "Ainda não", de novo em 7 dias, no máximo 3 vezes. Sem a
  * migração, nada (e sem `motivo`).
  */
@@ -572,6 +573,26 @@ export async function perguntarConquistas(limite = 100): Promise<{ perguntas: nu
     if (error.code === "PGRST202") return { perguntas: 0 };
     console.error("Publike: falha ao perguntar das conquistas:", error.message);
     return { perguntas: 0, motivo: "Não foi possível perguntar das conquistas." };
+  }
+  return { perguntas: Number(data ?? 0) };
+}
+
+/**
+ * "A empresa te respondeu?" (migração 20270526120000): 2 dias depois do contato numa vaga, a pergunta para a pessoa (no
+ * sino, no celular e por e-mail); sem resposta ou "Ainda não", de novo em 3 dias, no máximo 2 vezes. Sem a migração,
+ * nada (e sem `motivo`).
+ */
+export async function perguntarSeRespondeu(limite = 100): Promise<{ perguntas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { perguntas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_perguntar_se_respondeu", {
+    p_chave: acesso.chave,
+    p_limite: limite,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { perguntas: 0 };
+    console.error("Publike: falha ao perguntar se a empresa respondeu:", error.message);
+    return { perguntas: 0, motivo: "Não foi possível perguntar se a empresa respondeu." };
   }
   return { perguntas: Number(data ?? 0) };
 }

@@ -40,4 +40,17 @@ export type ConquistaParaConfirmar = {
   nome: string;
   foto: string | null;
   respondida_em: string;
+  /**
+   * confirmar: a pessoa disse que começou; comecou: a empresa pôs em Contratado há 7 dias e o Publike pergunta;
+   * chamaria: depois do sim, "Chamaria de novo?" (migração 20270526120000)
+   */
+  pergunta?: "confirmar" | "comecou" | "chamaria" | string;
+};
+
+/** "A empresa te respondeu?" (migração 20270526120000): 2 dias depois do contato numa vaga. */
+export type PerguntaDeResposta = {
+  anuncio_id: string;
+  titulo: string;
+  empresa_nome: string;
+  perguntas: number;
 };

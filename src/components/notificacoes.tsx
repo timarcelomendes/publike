@@ -135,6 +135,9 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   conquista_pergunta: PartyPopper,
   conquista_confirmar: PartyPopper,
   conquista_parabens: PartyPopper,
+  // "A empresa te respondeu?" e, no "Ainda não", o aviso para quem publicou (migração 20270526120000)
+  te_respondeu: MessageCircleQuestion,
+  ainda_espera: Hourglass,
 };
 
 type Notificacao = {
