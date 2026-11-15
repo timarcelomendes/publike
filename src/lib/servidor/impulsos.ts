@@ -2333,12 +2333,50 @@ async function cuidarDaGeral(a: Acesso) {
 }
 
 /**
+ * Os números da campanha geral no mês (migração 20270528120000): o gasto, os cliques e as vistas, a cada 2 horas (ou
+ * na hora, pelo "Atualizar" do Admin). É o que os pacotes de candidatos custam no Google.
+ */
+async function medirAGeral(a: Acesso) {
+  const { data, error } = await a.cliente.rpc("servidor_medir_geral", { p_chave: a.chave });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler a medida da campanha geral:", error.message);
+    return;
+  }
+  const d = data as { fazer?: boolean; conta?: string; campanha_id?: string; mes?: string } | null;
+  if (!d?.fazer || !d.conta || !d.campanha_id) return;
+  try {
+    const linhas = await consultar<{ metrics?: Record<string, string | number> }>(
+      `SELECT metrics.cost_micros, metrics.clicks, metrics.impressions FROM campaign ` +
+        `WHERE campaign.id = ${Number(d.campanha_id)} AND segments.date DURING THIS_MONTH`,
+      d.conta,
+    );
+    const soma = linhas.reduce(
+      (t, l) => ({
+        custo: t.custo + Number(l.metrics?.costMicros ?? 0) / 1_000_000,
+        cliques: t.cliques + Number(l.metrics?.clicks ?? 0),
+        vistas: t.vistas + Number(l.metrics?.impressions ?? 0),
+      }),
+      { custo: 0, cliques: 0, vistas: 0 },
+    );
+    const { error: e2 } = await a.cliente.rpc("servidor_geral_medida", {
+      p_chave: a.chave,
+      p_medida: { mes: d.mes, ...soma },
+    });
+    if (e2) console.error("Publike: falha ao guardar a medida da campanha geral:", e2.message);
+  } catch (e) {
+    console.error("Publike: falha ao medir a campanha geral:", e instanceof Error ? e.message : e);
+  }
+}
+
+/**
  * O produto de agora: o orçamento da campanha geral, os grupos e os raios (14/11/2026). Chamados no fim da volta, pela
  * rota das filas (que já gastou boa parte dos 60 s), quase nunca tinham tempo: dos grupos ligados às 20h57, só o
  * primeiro saiu em meia hora. `fim` é a hora em que a função acaba.
  */
 async function cuidarDoProdutoDeAgora(a: Acesso, fim: number) {
   if (fim - Date.now() > 12_000) await cuidarDaGeral(a);
+  // uma consulta só: antes dos grupos, para o "Atualizar" do Admin não esperar a IA
+  if (fim - Date.now() > 10_000) await medirAGeral(a);
   // a IA leva até 15 s por grupo; criar só com folga
   if (fim - Date.now() > 24_000) await cuidarDosGrupos(a, fim - 21_000);
   if (fim - Date.now() > 8_000) await cuidarDosRaios(a, fim - 6_000);

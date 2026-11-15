@@ -3736,6 +3736,11 @@ export type Database = {
       };
       servidor_geral_do_dia: { Args: { p_chave: string }; Returns: Json };
       servidor_geral_feita: { Args: { p_chave: string; p_valor: number; p_erro: string | null }; Returns: undefined };
+      // os números da campanha geral no mês (migração 20270528120000)
+      servidor_medir_geral: { Args: { p_chave: string }; Returns: Json };
+      servidor_geral_medida: { Args: { p_chave: string; p_medida: Json }; Returns: undefined };
+      admin_medir_geral_agora: { Args: Record<string, never>; Returns: boolean };
+      admin_numeros_da_geral: { Args: Record<string, never>; Returns: Json };
       // os grupos da campanha geral por função e por cidade (migração 20270522120000)
       servidor_grupos_da_geral: { Args: { p_chave: string }; Returns: Json };
       servidor_grupo_da_geral: { Args: { p_chave: string; p_grupo: Json }; Returns: undefined };

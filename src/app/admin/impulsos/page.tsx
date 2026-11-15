@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/impulsos";
 import { CorrendoAgora, type Cliente } from "@/components/admin/impulsos-correndo";
 import { VisaoGlobal } from "@/components/admin/impulsos-global";
+import { VisaoGlobalDosPacotes } from "@/components/admin/impulsos-global-pacotes";
 import { ListaDeAjustes, type AjusteDoAdmin } from "@/components/admin/impulsos-ajustes";
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
 import { ehCorrendo, quemPediu } from "@/components/admin/impulsos-nomes";
@@ -260,7 +261,13 @@ async function Conteudo({ aba, conta, produto }: { aba: Aba; conta: string | nul
 
       {aba === "agora" && (
         <>
-          <Agora d={d} agora={agora} ligado={g.ligado} />
+          <Agora
+            d={d}
+            agora={agora}
+            ligado={g.ligado}
+            antigo={antigo}
+            geral={antigo ? null : await numerosDaGeral(c)}
+          />
           {antigo && <AjustesDiarios ligado={d.config.motor_ligado} />}
           {antigo && <CaminhoDoAnuncio cliques={new Map(d.impulsos.map((i) => [i.id, i.totais.cliques]))} />}
         </>
@@ -268,9 +275,17 @@ async function Conteudo({ aba, conta, produto }: { aba: Aba; conta: string | nul
       {aba === "global" && (
         <Secao
           titulo="Visão global"
-          descricao="Cada cliente com impulso correndo: quanto gastou da verba, quantas vagas estão no ar e o que trouxe. Toque no nome da coluna para ordenar."
+          descricao={
+            antigo
+              ? "Cada cliente com impulso correndo: quanto gastou da verba, quantas vagas estão no ar e o que trouxe. Toque no nome da coluna para ordenar."
+              : "Cada cliente com pacote correndo: quantos candidatos já chegaram dos contratados, quantos pacotes estão no ar, as visitas das vagas e as curtidas. Toque no nome da coluna para ordenar."
+          }
         >
-          <VisaoGlobal clientes={clientesCorrendo(d)} />
+          {antigo ? (
+            <VisaoGlobal clientes={clientesCorrendo(d)} />
+          ) : (
+            <VisaoGlobalDosPacotes clientes={clientesCorrendo(d)} />
+          )}
         </Secao>
       )}
       {aba === "novo" && (
@@ -293,7 +308,34 @@ async function Conteudo({ aba, conta, produto }: { aba: Aba; conta: string | nul
   );
 }
 
-function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean }) {
+/** Os números da campanha geral no mês e o que os pacotes entregaram (migração 20270528120000; sem ela, null). */
+type NumerosDaGeral = {
+  tem_campanha: boolean;
+  geral: { custo: number; cliques: number; vistas: number } | null;
+  medido_em: string | null;
+  candidaturas: number;
+  pacotes_no_mes: number;
+  pacotes_pagos: number;
+};
+
+async function numerosDaGeral(c: ReturnType<typeof criarClienteAdmin> | Awaited<ReturnType<typeof criarClienteServidor>>) {
+  const { data, error } = await c.rpc("admin_numeros_da_geral");
+  return error ? null : (data as unknown as NumerosDaGeral);
+}
+
+function Agora({
+  d,
+  agora,
+  ligado,
+  antigo,
+  geral,
+}: {
+  d: Dados;
+  agora: number;
+  ligado: boolean;
+  antigo: boolean;
+  geral: NumerosDaGeral | null;
+}) {
   const clientes = clientesCorrendo(d);
   const correndo = d.impulsos.filter((i) => ehCorrendo(i.situacao));
   // o que precisa do admin: o que travou (o robô tenta de novo sozinho, mas é bom olhar) e o que o Google recusou
@@ -352,10 +394,13 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
 
       <div className="-mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <p className="max-w-xl pt-1.5 text-body-sm text-ink-muted">
-          Os números vêm do Google a cada 2 horas. Para ver os de agora, atualize.
+          {antigo
+            ? "Os números vêm do Google a cada 2 horas. Para ver os de agora, atualize."
+            : "Os candidatos dos pacotes contam na hora. O gasto da campanha geral vem do Google a cada 2 horas; para ver o de agora, atualize."}
         </p>
         {ligado && <AtualizarImpulsos />}
       </div>
+      {antigo || !geral ? (
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Numero
           rotulo="Correndo agora"
@@ -388,10 +433,13 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
           detalhe="Impulsos pagos pelos clientes"
         />
       </div>
+      ) : (
+        <NumerosDosPacotes d={d} geral={geral} clientes={clientes.length} agora={agora} />
+      )}
 
       <Secao
         titulo="Correndo agora"
-        descricao="Por cliente: no ar, em revisão ou nascendo no Google."
+        descricao={antigo ? "Por cliente: no ar, em revisão ou nascendo no Google." : "Por cliente: os pacotes de candidatos no destaque."}
         acoes={
           ligado ? (
             <BotaoLink href="/admin/impulsos?aba=novo" tamanho="sm" variante="primario">
@@ -410,6 +458,70 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
         )}
       </Secao>
     </>
+  );
+}
+
+/**
+ * Os números do produto de agora (15/11/2026, Marcelo: "Quero que fique tudo aderente"): os pacotes no ar com os
+ * candidatos que já chegaram, o gasto da campanha geral no mês (do Google), as candidaturas que os pacotes entregaram
+ * no mês com o custo de cada uma e o que os clientes pagaram.
+ */
+function NumerosDosPacotes({
+  d,
+  geral,
+  clientes,
+  agora,
+}: {
+  d: Dados;
+  geral: NumerosDaGeral;
+  clientes: number;
+  agora: number;
+}) {
+  const noAr = d.impulsos.filter((i) => i.produto === "candidatos" && i.situacao === "no_ar");
+  const alvo = noAr.reduce((t, i) => t + Number(i.alvo ?? 0), 0);
+  const chegaram = noAr.reduce((t, i) => t + Math.min(Number(i.entregues ?? 0), Number(i.alvo ?? 0)), 0);
+  const custo = Number(geral.geral?.custo ?? 0);
+  const cliques = Number(geral.geral?.cliques ?? 0);
+  const candidaturas = Number(geral.candidaturas ?? 0);
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <Numero
+        rotulo="Pacotes no ar"
+        valor={noAr.length}
+        detalhe={
+          noAr.length
+            ? `${formatarNumero(chegaram)} de ${formatarNumero(alvo)} candidatos, de ${plural(clientes, "cliente", "clientes")}`
+            : "Nenhum pacote no ar"
+        }
+      />
+      <Numero
+        rotulo="Campanha geral no mês"
+        valor={Math.round(custo * 100) / 100}
+        moeda
+        detalhe={
+          !geral.tem_campanha
+            ? "Escolha a campanha geral em Regras"
+            : geral.geral
+              ? `no Google, ${plural(cliques, "clique", "cliques")}${geral.medido_em ? `, medido ${tempoRelativo(geral.medido_em, agora)}` : ""}`
+              : "Ainda sem a medida do Google: atualize"
+        }
+      />
+      <Numero
+        rotulo="Candidatos no mês"
+        valor={candidaturas}
+        detalhe={
+          candidaturas > 0 && custo > 0
+            ? `${reais(custo / candidaturas)} da campanha geral por candidato`
+            : "que os pacotes entregaram"
+        }
+      />
+      <Numero
+        rotulo="Vendido no mês"
+        valor={Math.round(Number(geral.pacotes_pagos ?? 0) * 100) / 100}
+        moeda
+        detalhe="Pacotes pagos pelos clientes"
+      />
+    </div>
   );
 }
 

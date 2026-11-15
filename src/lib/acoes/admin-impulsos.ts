@@ -564,24 +564,30 @@ export async function atualizarImpulsos(): Promise<Resultado & { esperar?: boole
   const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   if (!situacaoGoogleAds().ligado) return { ok: false, erro: "Ligue o Google Ads antes (veja o alto da página)." };
-  const { data, error } = await c.rpc("admin_medir_impulsos_agora");
-  if (error) {
-    if (error.code === "PGRST202")
-      return { ok: false, erro: "Rode a migração 20270514120000_impulso_atualizar_agora.sql primeiro." };
-    return { ok: false, erro: mensagemDeErro(error) };
-  }
-  if (!Number(data)) {
+  const [antigos, geral] = await Promise.all([c.rpc("admin_medir_impulsos_agora"), c.rpc("admin_medir_geral_agora")]);
+  if (antigos.error && antigos.error.code !== "PGRST202") return { ok: false, erro: mensagemDeErro(antigos.error) };
+  // a campanha geral dos pacotes de candidatos (migração 20270528120000)
+  const temGeral = !geral.error && geral.data === true;
+  const temAntigos = !antigos.error && Number(antigos.data) > 0;
+  if (!temGeral && !temAntigos) {
     refresh();
-    // os pacotes de candidatos (o produto de agora) não têm campanha própria: as candidaturas contam na hora
     return {
       ok: true,
-      mensagem:
-        "Pronto, a tela foi atualizada. Os pacotes de candidatos contam as candidaturas na hora, sem esperar o Google (só os impulsos antigos, com campanha própria, buscam números lá).",
+      mensagem: "Pronto, a tela foi atualizada. Os pacotes de candidatos contam as candidaturas na hora.",
     };
   }
-  const volta = await cuidarDosImpulsos().catch(() => null);
+  const antes = Date.now();
+  const volta = temAntigos
+    ? await cuidarDosImpulsos().catch(() => null)
+    : await cuidarDosImpulsos(undefined, true).catch(() => null);
+  let medida = !temGeral;
+  if (temGeral) {
+    const { data } = await c.rpc("admin_numeros_da_geral");
+    const em = (data as { medido_em?: string | null } | null)?.medido_em;
+    medida = Boolean(em && Date.parse(em) >= antes - 5_000);
+  }
   refresh();
-  return volta?.feitos
+  return medida && (!temAntigos || volta?.feitos)
     ? { ok: true, mensagem: "Pronto: os números são os do Google agora." }
     : {
         ok: true,
