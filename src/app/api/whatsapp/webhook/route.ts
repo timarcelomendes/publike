@@ -15,7 +15,17 @@ export async function GET(request: Request) {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
-  return new Response("Não autorizado.", { status: 403 });
+  // Para quem configura (16/11/2026): abrir o endereço no navegador diz o que falta, sem mostrar o token.
+  const configurado = (process.env.WHATSAPP_WEBHOOK_TOKEN || "").trim().length >= 12;
+  const texto = !configurado
+    ? "O site ainda não tem o WHATSAPP_WEBHOOK_TOKEN (12 letras ou mais). Crie na Vercel em Production e faça um Redeploy."
+    : u.searchParams.has("hub.verify_token")
+      ? "O token não bate com o WHATSAPP_WEBHOOK_TOKEN da Vercel."
+      : "Webhook do WhatsApp no ar. O WHATSAPP_WEBHOOK_TOKEN está configurado; use o mesmo valor em Verificar token, na Meta.";
+  return new Response(texto, {
+    status: configurado && !u.searchParams.has("hub.verify_token") ? 200 : 403,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 export async function POST(request: Request) {
