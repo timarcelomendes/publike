@@ -125,10 +125,12 @@ export const MODELOS: Modelo[] = [
     ],
   },
   {
-    nome: "publike_deu_certo",
+    nome: "publike_deu_certo_v2",
     para: "Candidato",
     quando: "7 dias depois: começou a trabalhar?",
-    corpo: "Oi, {{nome}}! E a vaga de {{vaga}} em {{empresa}}: deu certo? Você começou a trabalhar?",
+    // 16/11/2026: a 1ª versão a Meta pôs em marketing; esta fala só da candidatura (utilidade)
+    corpo:
+      "Oi, {{nome}}! Sobre a sua candidatura para a vaga de {{vaga}} em {{empresa}}: você já começou a trabalhar? Toque numa opção para atualizar a situação da candidatura no Publike.",
     exemplo: { nome: "Ana", vaga: "Atendente de padaria", empresa: "Padaria Pão de Ouro" },
     botoes: [
       { tipo: "resposta", texto: "Comecei!", valor: "comecei" },
@@ -162,20 +164,20 @@ export const MODELOS: Modelo[] = [
     botoes: [{ tipo: "link", texto: "Ver o pedido", exemplo: "painel/caixa" }],
   },
   {
-    nome: "publike_esperando_resposta",
+    nome: "publike_esperando_resposta_v2",
     para: "Quem contrata",
     quando: "Candidatura sem resposta há 1 e 3 dias",
     corpo:
-      "Oi, {{nome}}! Na vaga de {{vaga}}, {{quantos}} esperando a sua resposta há mais de um dia. Responda pelo Publike: mesmo um não ajuda quem procura trabalho.",
+      "Oi, {{nome}}! Na vaga de {{vaga}}, {{quantos}} esperando a sua resposta há mais de um dia. Abra a vaga no Publike para responder cada candidatura.",
     exemplo: { nome: "Padaria Pão de Ouro", vaga: "Atendente de padaria", quantos: "3 pessoas estão" },
     botoes: [{ tipo: "link", texto: "Responder", exemplo: "painel/caixa" }],
   },
   {
-    nome: "publike_ainda_espera",
+    nome: "publike_ainda_espera_v2",
     para: "Quem contrata",
     quando: "O candidato disse que ainda não teve resposta",
     corpo:
-      "Oi, {{nome}}! {{candidato}} ainda espera o seu retorno sobre a vaga de {{vaga}}. Uma resposta rápida, mesmo que seja não, ajuda quem procura trabalho.",
+      "Oi, {{nome}}! {{candidato}} informou que ainda aguarda o retorno sobre a candidatura para a vaga de {{vaga}}. Abra a candidatura no Publike para responder.",
     exemplo: { nome: "Padaria Pão de Ouro", candidato: "Ana S.", vaga: "Atendente de padaria" },
     botoes: [{ tipo: "link", texto: "Responder", exemplo: "painel/anuncio/123/quadro" }],
   },
@@ -191,12 +193,12 @@ export const MODELOS: Modelo[] = [
     ],
   },
   {
-    nome: "publike_interesse",
+    nome: "publike_interesse_v2",
     para: "Quem contrata",
     quando: "\"Quero trabalhar aqui\" na Rota do currículo",
     // 16/11/2026: a versão curta voltou "100: Invalid parameter" (variável demais para o tamanho do texto)
     corpo:
-      "Oi, {{nome}}! {{candidato}} mora perto da sua empresa e marcou no Publike que quer trabalhar com vocês. O currículo completo está no Publike, e você responde por lá mesmo.",
+      "Oi, {{nome}}! {{candidato}} enviou o currículo para a sua empresa pelo Publike, na Rota do currículo. Abra o Publike para ver o currículo e responder.",
     exemplo: { nome: "Padaria Pão de Ouro", candidato: "Ana S." },
     botoes: [{ tipo: "link", texto: "Ver o currículo", exemplo: "talentos/123" }],
   },
@@ -596,7 +598,7 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
       };
     case "conquista_pergunta":
       return {
-        modelo: "publike_deu_certo",
+        modelo: "publike_deu_certo_v2",
         params: { nome, vaga, empresa },
         respostas: ["comecei", "ainda_nao", "nao_deu"].map((r) => `c:${item.id}:${r}`),
       };
@@ -610,12 +612,12 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
       const n = Number(d.esperando ?? 0);
       if (n < 1) return { pular: "ninguém esperando mais" };
       return {
-        modelo: "publike_esperando_resposta",
+        modelo: "publike_esperando_resposta_v2",
         params: { nome, vaga, quantos: n === 1 ? "1 pessoa está" : `${n} pessoas estão` },
       };
     }
     case "ainda_espera":
-      return { modelo: "publike_ainda_espera", params: { nome, candidato: d.ator ?? "Uma pessoa", vaga } };
+      return { modelo: "publike_ainda_espera_v2", params: { nome, candidato: d.ator ?? "Uma pessoa", vaga } };
     case "conquista_confirmar":
       return {
         modelo: "publike_confirma_inicio",
@@ -623,7 +625,7 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
         respostas: ["sim", "nao"].map((r) => `e:${item.id}:${r}`),
       };
     case "interesse_local":
-      return { modelo: "publike_interesse", params: { nome, candidato: d.ator ?? "Uma pessoa" } };
+      return { modelo: "publike_interesse_v2", params: { nome, candidato: d.ator ?? "Uma pessoa" } };
     case "mensagem":
       return { modelo: "publike_mensagem", params: { nome, quem: d.ator ?? "Uma pessoa" } };
     default:
