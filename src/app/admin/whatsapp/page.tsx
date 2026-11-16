@@ -89,6 +89,9 @@ async function Conteudo() {
   const r = error || !data ? null : (data as unknown as Resumo);
   const s = situacaoWhatsapp();
   const ligacaoPronta = s.token && s.numero && s.conta && s.segredo && s.webhook;
+  // Admin aberto no computador (16/11/2026: "aqui ele olha local?"): as linhas conferem o .env.local, não a Vercel
+  const local = !process.env.VERCEL;
+  const enderecoWebhook = local ? "https://publike.org/api/whatsapp/webhook" : s.enderecoWebhook;
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,6 +108,16 @@ async function Conteudo() {
         titulo="Ligação com a Meta"
         descricao="As chaves ficam na Vercel (Settings › Environment Variables), nunca aqui. Depois de pôr ou trocar, faça um novo deploy."
       >
+        {local && (
+          <Aviso tipo="alerta" titulo="Este é o Admin do seu computador">
+            As linhas abaixo conferem o .env.local deste computador, não a Vercel. Para ver as chaves do site no ar e
+            mandar o teste de verdade, abra{" "}
+            <a href="https://publike.org/admin/whatsapp" className="underline underline-offset-2">
+              publike.org/admin/whatsapp
+            </a>
+            .
+          </Aviso>
+        )}
         <div className="flex flex-col gap-1.5">
           <Situacao ok={s.token}>WHATSAPP_TOKEN: o token permanente do usuário do sistema</Situacao>
           <Situacao ok={s.numero}>WHATSAPP_PHONE_ID: o ID do número do Publike na API</Situacao>
@@ -114,7 +127,7 @@ async function Conteudo() {
         </div>
         <p className="text-body-sm text-ink-muted">
           No app da Meta, em WhatsApp › Configuração, o webhook é{" "}
-          <code className="rounded-sm bg-surface-300 px-1.5 py-0.5 break-all text-ink">{s.enderecoWebhook}</code>, com o mesmo
+          <code className="rounded-sm bg-surface-300 px-1.5 py-0.5 break-all text-ink">{enderecoWebhook}</code>, com o mesmo
           token do WHATSAPP_WEBHOOK_TOKEN e o campo “messages” marcado.
         </p>
         {s.token && s.numero && <ConferirNumero />}
