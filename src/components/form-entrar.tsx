@@ -19,6 +19,21 @@ import { VerificacaoRobo } from "./verificacao-robo";
 type ErroAuth = { code?: string; message?: string; status?: number } | null;
 
 /** Mensagens do Supabase Auth em português. */
+/** Pede ao navegador para guardar o e-mail e a senha (Credential Management; onde não existe, nada acontece). */
+async function guardarSenhaNoNavegador(email: string, senha: string) {
+  try {
+    const C = (window as unknown as { PasswordCredential?: new (d: { id: string; password: string; name?: string }) => Credential })
+      .PasswordCredential;
+    if (!C || !navigator.credentials?.store) return;
+    await Promise.race([
+      navigator.credentials.store(new C({ id: email, password: senha, name: email })),
+      new Promise((r) => setTimeout(r, 3000)),
+    ]);
+  } catch {
+    // o navegador recusou ou não sabe: segue sem guardar
+  }
+}
+
 function traduzir(erro: ErroAuth) {
   const codigo = erro?.code ?? "";
   const msg = (erro?.message ?? "").toLowerCase();
@@ -156,10 +171,22 @@ export function FormEntrar({
     return `${window.location.origin}/auth/callback?${params}`;
   }
 
+  /** Carregamento inteiro por /auth/continuar (o mesmo caminho do login pelo Google e pelo link do e-mail). */
+  function irPorContinuar() {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(`/auth/continuar?${new URLSearchParams({ next: proximo })}`);
+  }
+
   function continuar() {
     // O servidor confere se o perfil está completo e leva ao destino. Se a ação não chegar ao
     // servidor (site publicado de novo com a página aberta), /auth/continuar faz o mesmo caminho.
     setCarregando(true);
+    // 16/11/2026 ("ficou entrando e não funcionou"): se a ida pela ação demorar, vai pelo carregamento inteiro
+    const aqui = window.location.pathname + window.location.search;
+    window.setTimeout(() => {
+      // já saiu desta página: a ação levou ao destino
+      if (window.location.pathname + window.location.search === aqui) irPorContinuar();
+    }, 8000);
     startTransition(async () => {
       try {
         await irDepoisDoLogin(proximo);
@@ -167,8 +194,7 @@ export function FormEntrar({
         if (ehNavegacao(e)) throw e;
         console.error("Publike: não deu para seguir depois de entrar:", e);
         // carregamento inteiro de propósito: a página aberta pode ser de uma versão velha do site
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`/auth/continuar?${new URLSearchParams({ next: proximo })}`);
+        irPorContinuar();
       }
     });
   }
@@ -341,7 +367,11 @@ export function FormEntrar({
       setErro(error.message === "rede" ? "Sem conexão agora. Confira sua internet e tente de novo." : traduzir(error));
       return;
     }
-    continuar();
+    // "quero que salve" (16/11/2026): pede ao navegador para guardar a senha (Chrome e Edge; os outros ignoram)
+    await guardarSenhaNoNavegador(email.trim(), senha);
+    // carregamento inteiro: entra sem travar em "Entrando…" e o navegador entende que o login deu certo
+    setCarregando(true);
+    irPorContinuar();
   }
 
   async function pedirEntrarComSenha(e: FormEvent) {
