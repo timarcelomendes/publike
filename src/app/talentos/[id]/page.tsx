@@ -86,7 +86,7 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
     usuario && !souEu
       ? await Promise.all([lugaresDosTalentos([resumo.perfil_id]), minhasVagasNoMapa(), meuLugarAproximado()])
       : [null, [], null];
-  const distancia = lugares ? distanciaDoTalento(lugares.get(resumo.perfil_id), vagasNoMapa, meuLugar) : null;
+  const distancia = lugares ? distanciaDoTalento(lugares.get(resumo.perfil_id), vagasNoMapa, meuLugar, resumo.bairro) : null;
   // o contato já à vista: no pedido liberado pelo plano ou na conexão aceita
   const conexao =
     cv && estado && (estado.contato || estado.status === "aceita") ? await conexaoCom(resumo.perfil_id) : null;

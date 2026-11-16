@@ -27,6 +27,9 @@ export type MapaDosTalentos = {
   vagas: VagaNoMapa[];
 };
 
+/** O talento sem bairro no perfil: no lugar da distância. */
+export const SEM_BAIRRO = "sem bairro no perfil para medir a distância";
+
 const MINUSCULAS = new Set(["de", "da", "do", "das", "dos", "e"]);
 
 /**
@@ -91,15 +94,17 @@ export function distanciaAproximada(de: Ponto | null | undefined, ate: Ponto | n
 /**
  * A distância de um talento no texto do cartão (16/11/2026, "a distância aproximada do talento x empresa / vaga"): até
  * a vaga mais perto (quem tem vaga no ar), senão até o lugar de quem vê (a localização do aparelho, o CEP de casa ou
- * o centro do bairro do perfil). Sem o bairro do talento no mapa, diz isso; sem lugar nenhum de quem vê, null.
+ * o centro do bairro do perfil). Sem bairro no perfil, diz isso; com um bairro que o mapa não achou, ou sem lugar
+ * nenhum de quem vê, null.
  */
 export function distanciaDoTalento(
   lugar: Ponto | null | undefined,
   vagas: VagaNoMapa[],
   daqui: Ponto | null,
+  bairro: string | null | undefined,
 ): string | null {
   if (!vagas.length && !daqui) return null;
-  if (!lugar) return "sem bairro no perfil para medir a distância";
+  if (!lugar) return bairro?.trim() ? null : SEM_BAIRRO;
   if (vagas.length) {
     const perto = vagas.reduce((a, b) =>
       (a.lat - lugar.lat) ** 2 + (a.lng - lugar.lng) ** 2 <= (b.lat - lugar.lat) ** 2 + (b.lng - lugar.lng) ** 2 ? a : b,

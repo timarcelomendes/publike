@@ -370,8 +370,8 @@ async function Lista({
   ]);
   // a distância no cartão: até a vaga mais perto (quem tem vaga no ar) ou até o lugar de quem vê
   const daqui: Ponto | null = local && (local.ponto || local.centro) ? pontoDoLocal(local) : meuLugar;
-  const distanciaDe = (id: string) =>
-    busca ? distanciaDoTalento(busca.lugares.get(id), busca.mapa.vagas, daqui) : null;
+  const distanciaDe = (t: { perfil_id: string; bairro: string | null }) =>
+    busca ? distanciaDoTalento(busca.lugares.get(t.perfil_id), busca.mapa.vagas, daqui, t.bairro) : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -444,7 +444,7 @@ async function Lista({
                   t={t}
                   procurando={procurando.has(t.perfil_id)}
                   agora={agora}
-                  distancia={distanciaDe(t.perfil_id)}
+                  distancia={distanciaDe(t)}
                   acao={
                     (estados || noAr.length > 0) && (
                       <div className="flex flex-wrap items-start gap-2">

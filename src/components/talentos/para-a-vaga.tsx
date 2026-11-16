@@ -23,7 +23,7 @@ import { Aviso, Avatar, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
 import { classesChip } from "../painel/fluxo";
 import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-contexto";
-import { distanciaAproximada, montarMapa } from "@/lib/mapa-dos-talentos";
+import { distanciaAproximada, montarMapa, SEM_BAIRRO, type Ponto } from "@/lib/mapa-dos-talentos";
 import { lugaresDosTalentos, minhasVagasNoMapa } from "@/lib/servidor/mapa-dos-talentos";
 import { MapaDosTalentos } from "./mapa-dos-talentos";
 
@@ -37,6 +37,14 @@ import { MapaDosTalentos } from "./mapa-dos-talentos";
 function oQueContou(a: Aderencia) {
   if (!a.primeiroEmprego || !a.funcao) return null;
   return a.criterios.find((k) => k.funcao)?.detalhe.replace(/ \(sem trabalho na função\)$/, "") ?? null;
+}
+
+/** "≈ 3 km da vaga"; sem bairro no perfil, isso; com um bairro que o mapa não achou (ou a vaga sem lugar), nada. */
+function distanciaDaVaga(lugar: Ponto | undefined, vaga: Ponto | null, bairro: string | null) {
+  if (!vaga) return null;
+  if (!lugar) return bairro?.trim() ? null : SEM_BAIRRO;
+  const d = distanciaAproximada(lugar, vaga);
+  return d && `${d} da vaga`;
 }
 
 export type NivelDaSugestao = "leve" | "rigida";
@@ -255,13 +263,7 @@ export async function ParaAVaga({
             t={t}
             a={a}
             vagaId={vaga.id}
-            distancia={
-              !lugares || !ondeFica
-                ? null
-                : lugares.get(t.perfil_id)
-                  ? (d => d && `${d} da vaga`)(distanciaAproximada(lugares.get(t.perfil_id), ondeFica))
-                  : "sem bairro no perfil para medir a distância"
-            }
+            distancia={lugares ? distanciaDaVaga(lugares.get(t.perfil_id), ondeFica, t.bairro) : null}
             jeito={jeitos.get(t.perfil_id)}
             hoje={hoje}
             agora={agora}
