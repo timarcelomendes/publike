@@ -14,6 +14,7 @@ import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { pedirDeNovoEm } from "@/lib/conexoes";
+import { dataCurta } from "@/lib/recursos-pagos";
 import { caminhoConversa } from "@/lib/conversas";
 import { formatarDataCurta } from "@/lib/formato";
 import { conexaoCom } from "@/lib/servidor/conexoes";
@@ -172,7 +173,12 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conexoes/[outro
         </Aviso>
       )}
       {esperandoTalento && acesso?.disponivel && !acesso.liberado && (doTalento === "sim" || doTalento === "aviso") && (
-        <OfertaContatoNoConvite primeiroNome={primeiroNome} testou={acesso.testou} esperando />
+        <OfertaContatoNoConvite
+          primeiroNome={primeiroNome}
+          testou={acesso.testou}
+          esperando
+          aPartirDe={doTalento === "aviso" && acesso.valeEm ? dataCurta(acesso.valeEm) : undefined}
+        />
       )}
 
       {c.status === "recusada" && (

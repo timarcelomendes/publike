@@ -208,6 +208,7 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
               primeiroNome={primeiroNome}
               testou={acesso.testou}
               esperando={estado?.status === "pendente"}
+              aPartirDe={doTalento === "aviso" && acesso.valeEm ? dataCurta(acesso.valeEm) : undefined}
             />
           )}
         </section>

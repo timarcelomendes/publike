@@ -35,12 +35,15 @@ export function OfertaContatoNoConvite({
   primeiroNome,
   testou,
   esperando = false,
+  aPartirDe,
 }: {
   primeiroNome: string;
   /** a conta já usou os 15 dias grátis */
   testou: boolean;
   /** o pedido já foi e está esperando a resposta */
   esperando?: boolean;
+  /** o talento já estava no Publike e não escolheu: o contato vem no pedido a partir desta data ("23 de novembro") */
+  aPartirDe?: string;
 }) {
   return (
     <div className="flex flex-col gap-2 rounded-md border border-line-strong bg-surface-100 p-3 sm:p-4">
@@ -52,6 +55,7 @@ export function OfertaContatoNoConvite({
       </p>
       <p className="text-body-sm text-ink-muted">
         No plano, o WhatsApp e o e-mail aparecem assim que você pede a conexão, e a conversa no Publike já abre.
+        {aPartirDe && ` Para ${primeiroNome}, vale a partir de ${aPartirDe}, a não ser que libere antes.`}
       </p>
       {testou && (
         <p className="text-body-sm">Os seus 15 dias grátis já acabaram. O contato no convite continua em todos os planos.</p>
