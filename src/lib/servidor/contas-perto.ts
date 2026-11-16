@@ -109,9 +109,20 @@ export async function contasPerto({
   if (quem === "pessoas") consulta = consulta.eq("tipo", "pessoa");
   if (quem === "empresas") consulta = consulta.neq("tipo", "pessoa");
   if (usuario) consulta = consulta.neq("id", usuario.id).neq("id", usuario.pessoaId);
-  const [{ data }, meios] = await Promise.all([
+  // o total do período contado no banco (16/11/2026: a lista vem limitada a 80, e o "80 contas novas" ficava parado)
+  const desde = dias ? new Date(agora - dias * 24 * 3600 * 1000).toISOString() : null;
+  let contagem = supabase
+    .from("perfis")
+    .select("id", { count: "exact", head: true })
+    .or(`suspenso_ate.is.null,suspenso_ate.lt.${new Date(agora).toISOString()}`);
+  if (desde) contagem = contagem.gte("criado_em", desde);
+  if (quem === "pessoas") contagem = contagem.eq("tipo", "pessoa");
+  if (quem === "empresas") contagem = contagem.neq("tipo", "pessoa");
+  if (usuario) contagem = contagem.neq("id", usuario.id).neq("id", usuario.pessoaId);
+  const [{ data }, meios, { count }] = await Promise.all([
     consulta,
     meiosDosBairros().catch(() => new Map<string, { lat: number; lng: number }>()),
+    dias ? contagem : Promise.resolve({ count: null }),
   ]);
   const ativos = (data ?? []).filter((p) => !p.suspenso_ate || new Date(p.suspenso_ate).getTime() < agora);
   const contas: ContaPerto[] = ativos
@@ -128,5 +139,5 @@ export async function contasPerto({
       verificado: p.verificado,
       criado_em: p.criado_em,
     }));
-  return { contas, total: ativos.length, agora, usuario };
+  return { contas, total: Math.max(count ?? 0, ativos.length), agora, usuario };
 }
