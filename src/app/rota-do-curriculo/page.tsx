@@ -34,6 +34,8 @@ export const metadata: Metadata = {
 
 /** Sem função no currículo nem escolhida: o mapa abre com uma função comum, que a pessoa troca. */
 const FUNCAO_PADRAO = "521110";
+/** Nenhum lugar para a função: as funções que mais aparecem no comércio, para tentar. */
+const PARA_TENTAR = ["521110", "521140", "421125", "513505", "521125", "513405"];
 
 const PASSOS = [
   { icone: MapPinned, titulo: "Escolha onde entregar", texto: "Veja no mapa os lugares perto de você que costumam contratar a sua função e toque nos que quer visitar." },
@@ -285,8 +287,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
         cartoesDasVagas={cartoesDasVagas}
         vazio={
           <Vazio icone={Route} titulo={`Nenhum lugar para ${funcao} a até ${raio} km`}>
-            {raio < 5 ? "Tente uma distância maior. " : ""}A lista vem dos comércios abertos na Receita e do que cada ramo
-            costuma contratar; ela cresce a cada mês.
+            {raio < 5 ? "Tente uma distância maior ou outra função. " : "Tente outra função. "}A lista vem dos comércios
+            abertos na Receita e do que cada ramo costuma contratar; ela cresce a cada mês.
+            <span className="mt-3 flex flex-wrap justify-center gap-2">
+              {PARA_TENTAR.filter((c) => c !== escolhida.cbo).map((c) => (
+                <Link
+                  key={c}
+                  href={linkCom("/rota-do-curriculo", atuais, { cbo: c, nome: null })}
+                  scroll={false}
+                  className="inline-flex min-h-9 items-center rounded-pill border border-line-strong bg-surface-100 px-3.5 text-label text-ink hover:bg-surface-300"
+                >
+                  {tituloDaFuncao(c) ?? c}
+                </Link>
+              ))}
+            </span>
           </Vazio>
         }
         falta={falta}
