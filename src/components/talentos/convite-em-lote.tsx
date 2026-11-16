@@ -5,6 +5,7 @@ import { createContext, useContext, useId, useState, useTransition, type ReactNo
 import { chamarAcao } from "@/lib/acao-segura";
 import { convidarVarios } from "@/lib/acoes/talentos";
 import { MAX_CONVITES_DE_UMA_VEZ, MAX_RECADO, textoDosConvites } from "@/lib/convites-em-lote";
+import { Convidado } from "../painel/convidado";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 
@@ -16,6 +17,10 @@ type Lote = {
   marcados: Set<string>;
   enviados: Set<string>;
   alternar: (id: string, marcar?: boolean) => void;
+  /** com uma vaga só: a vaga dos convites (o "Convidado" pode ser desfeito) */
+  vagaUnica: string | null;
+  /** depois do Desconvidar: a pessoa volta a poder ser marcada */
+  desfeito: (id: string) => void;
 };
 
 const Contexto = createContext<Lote | null>(null);
@@ -69,7 +74,20 @@ export function ConviteEmLote({
   if (!vagas.length) return <>{children}</>;
   const n = marcados.size;
   return (
-    <Contexto.Provider value={{ marcados, enviados, alternar }}>
+    <Contexto.Provider
+      value={{
+        marcados,
+        enviados,
+        alternar,
+        vagaUnica: vagas.length === 1 ? vagas[0].id : null,
+        desfeito: (id) =>
+          setEnviados((atual) => {
+            const novo = new Set(atual);
+            novo.delete(id);
+            return novo;
+          }),
+      }}
+    >
       {children}
       {(n > 0 || aviso) && (
         <div
@@ -164,6 +182,17 @@ export function ConviteEmLote({
 export function MarcarConvite({ perfilId, nome, convidado = false }: { perfilId: string; nome: string; convidado?: boolean }) {
   const lote = useContext(Contexto);
   if (!lote) return null;
+  if (lote.enviados.has(perfilId) && lote.vagaUnica) {
+    return (
+      <Convidado
+        anuncioId={lote.vagaUnica}
+        perfilId={perfilId}
+        nome={nome}
+        compacto
+        aoDesfazer={() => lote.desfeito(perfilId)}
+      />
+    );
+  }
   if (convidado || lote.enviados.has(perfilId)) {
     return (
       <span className="inline-flex min-h-10 items-center gap-1.5 text-body-sm text-cerrado-text">

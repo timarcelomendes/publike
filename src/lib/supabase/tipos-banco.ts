@@ -3420,6 +3420,11 @@ export type Database = {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
       };
+      /** desfazer o convite enquanto a pessoa não curtiu (migração 20270629120000) */
+      desconvidar: {
+        Args: { p_anuncio: string; p_perfil: string };
+        Returns: undefined;
+      };
       /** o jeito de trabalhar (migração 20270309120000) */
       /** o arquivo de vagas para outros sites (migração 20270310120000) */
       vagas_para_o_feed: { Args: { p_limite?: number }; Returns: Json };
@@ -4137,6 +4142,8 @@ export type Database = {
         Args: { p_chave: string; p_conta: string; p_telefone: string; p_endereco: Json };
         Returns: undefined;
       };
+      /** as migrações registradas e a impressão de produção, para /api/banco (migração 20270629110000) */
+      servidor_saude_do_banco: { Args: { p_chave: string }; Returns: Json };
       admin_salvar_plano: { Args: { p_id: string; p_valor: number | null; p_ligado: boolean }; Returns: undefined };
       admin_config_pagamentos: {
         Args: { p_aberto: boolean; p_servico: string; p_e_codigo: boolean; p_descricao: string };

@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, Inbox, Send } from "lucide-react";
+import { Inbox, Send } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { convidarParaVaga } from "@/lib/acoes/talentos";
+import { Convidado } from "../painel/convidado";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -77,10 +78,20 @@ export function ConvidarTalento({
           </Link>
         </p>
       ) : convidadas.has(vaga.id) ? (
-        <p role="status" className="inline-flex items-center gap-1.5 text-label text-cerrado-text">
-          <Check aria-hidden className="size-[18px] shrink-0" />
-          Convite enviado para “{vaga.titulo}”
-        </p>
+        <Convidado
+          key={vaga.id}
+          anuncioId={vaga.id}
+          perfilId={perfilId}
+          nome={nome}
+          texto={`Convite enviado para “${vaga.titulo}”`}
+          aoDesfazer={() =>
+            setConvidadas((atual) => {
+              const novo = new Set(atual);
+              novo.delete(vaga.id);
+              return novo;
+            })
+          }
+        />
       ) : (
         <Botao
           variante="primario"

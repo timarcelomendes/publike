@@ -131,6 +131,22 @@ export async function convidarParaVaga(anuncioId: string, perfilId: string): Pro
 }
 
 /**
+ * Desfaz o convite para uma vaga minha enquanto a pessoa ainda não curtiu (migração 20270629120000): some o convite
+ * e o aviso do sino dela. O convite desfeito conta no limite de convites para a mesma pessoa.
+ */
+export async function desconvidar(anuncioId: string, perfilId: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId) || !UUID.test(perfilId)) return { ok: false, erro: "Pedido inválido." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/talentos" };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("desconvidar", { p_anuncio: anuncioId, p_perfil: perfilId });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para desfazer o convite agora.") };
+  refresh();
+  return { ok: true, mensagem: "Convite desfeito." };
+}
+
+/**
  * Convida várias pessoas de uma vez para uma vaga minha (migração 20270305120000), com um recado opcional. Quem
  * não pôde receber volta com o motivo; o banco confere tudo de novo.
  */

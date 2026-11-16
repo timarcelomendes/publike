@@ -1,0 +1,44 @@
+# Produção igual às migrações (migração 20270629110000): chama /api/banco, que compara as migrações registradas e a
+# impressão do banco de produção (funções, colunas, índices, gatilhos e políticas) com a de um banco novo com todas as
+# migrações (src/lib/gerado/banco-esperado.json, conferido pelo CI). Se faltar migração ou algo estiver diferente,
+# esta tarefa falha e o GitHub manda um e-mail com a lista.
+#
+# Usa o mesmo segredo da tarefa das filas (PUBLIKE_CRON_SECRET) e a variável PUBLIKE_URL (opcional).
+name: Banco em produção
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: banco-em-producao
+  cancel-in-progress: true
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Produção igual às migrações
+        env:
+          SEGREDO: ${{ secrets.PUBLIKE_CRON_SECRET }}
+          SITE: ${{ vars.PUBLIKE_URL || 'https://publike.org' }}
+        run: |
+          if [ -z "$SEGREDO" ]; then
+            echo "::error title=Falta o segredo::Crie o segredo PUBLIKE_CRON_SECRET (o mesmo CRON_SECRET da Vercel)."
+            exit 1
+          fi
+          resposta=$(curl -sS --max-time 60 -w '\n%{http_code}' -H "Authorization: Bearer $SEGREDO" "$SITE/api/banco" || true)
+          codigo=$(printf '%s' "$resposta" | tail -n1)
+          corpo=$(printf '%s' "$resposta" | sed '$d')
+          echo "$corpo" | python3 -m json.tool 2>/dev/null || echo "$corpo"
+          resumo=$(printf '%s' "$corpo" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("resumo") or d.get("erro") or "")' 2>/dev/null || true)
+          case "$codigo" in
+            200) echo "$resumo" ;;
+            401) echo "::error title=Segredo recusado::O site recusou o segredo: confira se PUBLIKE_CRON_SECRET é igual ao CRON_SECRET da Vercel."; exit 1 ;;
+            404) echo "::error title=Site sem /api/banco::O site publicado ainda não tem /api/banco (o deploy saiu?)."; exit 1 ;;
+            *) echo "::error title=Produção diferente das migrações::${resumo:-$corpo}"; exit 1 ;;
+          esac

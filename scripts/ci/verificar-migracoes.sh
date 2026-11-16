@@ -43,4 +43,22 @@ if [ -n "$ruins" ]; then
   echo "::error title=Função do servidor STABLE::$ruins chama privado.exigir_servidor (que grava) e está STABLE ou IMMUTABLE: pelo PostgREST, ela sempre dá erro. Tire o stable."
   exit 1
 fi
+# cada migração se registra (select privado.migracao_aplicada('<nome>'); no fim): é assim que /api/banco sabe qual
+# não rodou em produção (migração 20270629110000)
+sem_registro=$(ls supabase/migrations/*.sql | xargs -n1 basename | sed 's/\.sql$//' | sort \
+  | comm -23 - <(psql -X -At -v ON_ERROR_STOP=1 -c "select nome from privado.migracoes_aplicadas order by nome" | sort))
+if [ -n "$sem_registro" ]; then
+  for m in $sem_registro; do
+    echo "::error file=supabase/migrations/$m.sql,title=Migração sem registro::Termine a migração com: select privado.migracao_aplicada('$m');"
+  done
+  exit 1
+fi
+# a impressão esperada do banco (o que /api/banco compara com produção) em dia com as migrações
+psql -X -At -v ON_ERROR_STOP=1 -c "select privado.impressao_do_banco()::text" \
+  | node scripts/banco/gravar-impressao.mjs > "${RUNNER_TEMP:-/tmp}/banco-esperado.json"
+if ! diff -u src/lib/gerado/banco-esperado.json "${RUNNER_TEMP:-/tmp}/banco-esperado.json" > "${RUNNER_TEMP:-/tmp}/banco-esperado.diff"; then
+  head -40 "${RUNNER_TEMP:-/tmp}/banco-esperado.diff"
+  echo "::error file=src/lib/gerado/banco-esperado.json,title=Impressão do banco desatualizada::Rode bash scripts/banco/impressao.sh num banco novo com todas as migrações e faça o commit do arquivo."
+  exit 1
+fi
 echo "migrações conferidas: $(ls supabase/migrations/*.sql | wc -l)"

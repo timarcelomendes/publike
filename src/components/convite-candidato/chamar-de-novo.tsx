@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, MessageCircle, Send } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { convidarParaVaga } from "@/lib/acoes/talentos";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import type { CandidatoDeAntes } from "@/lib/servidor/convites-candidato";
 import { ConviteEmLote, MarcarConvite, MarcarTodos } from "../talentos/convite-em-lote";
+import { Convidado } from "../painel/convidado";
 import { Avatar } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 
@@ -98,10 +99,13 @@ function Linha({
           </a>
         )}
         {convidado ? (
-          <span className="inline-flex items-center gap-1.5 text-body-sm text-cerrado-text">
-            <Check aria-hidden className="size-4" />
-            Convidado
-          </span>
+          <Convidado
+            anuncioId={anuncioId}
+            perfilId={c.perfil_id}
+            nome={c.nome}
+            compacto
+            aoDesfazer={() => setConvidado(false)}
+          />
         ) : (
           <>
             <MarcarConvite perfilId={c.perfil_id} nome={c.nome} />
