@@ -53,10 +53,14 @@ export async function ChamadaQuemContrata({ className = "" }: { className?: stri
   if (perfil && perfil.tipo !== "pessoa") return null;
   const origem = await origemDaRota(perfil);
   const sua = funcaoPeloTitulo(curriculo?.titulo)?.cbo;
+  // conta três e mostra duas (16/11/2026, Marcelo: "deixa 2 + outra opção, na mesma linha"): se uma não tiver lugar
+  // perto, a de reserva entra no lugar dela
   const cbos = [...new Set([sua, ...FUNCOES_DA_CHAMADA].filter((c): c is string => Boolean(c)))].slice(0, 3);
   const contagens = (
     await contarSemQuebrar(Math.round(origem.ponto.lat * 100) / 100, Math.round(origem.ponto.lng * 100) / 100, cbos)
-  ).filter((c) => c.total > 0);
+  )
+    .filter((c) => c.total > 0)
+    .slice(0, 2);
   if (!contagens.length) return null;
   const de = {
     casa: "de casa",
@@ -81,7 +85,8 @@ export async function ChamadaQuemContrata({ className = "" }: { className?: stri
           </p>
         </div>
       </div>
-      <ul className="sem-barra -mx-3 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:flex-wrap sm:px-0">
+      {/* as duas funções e "Outra função" numa linha só (no celular estreito, ela corre para o lado) */}
+      <ul className="sem-barra -mx-3 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:px-0">
         {contagens.map((c) => {
           const titulo = tituloDaFuncao(c.cbo) ?? c.cbo;
           return (
