@@ -50,12 +50,12 @@ export async function AbriuPertoNoFeed() {
           </li>
         ))}
       </ul>
-      <p className="text-ink-muted">Lugar novo costuma contratar. Leve o seu currículo.</p>
+      <p className="text-ink-muted">Lugar novo costuma contratar. Diga que quer trabalhar lá.</p>
       <Link
-        href={`/rota-do-curriculo?cbo=${data[0].cbo}`}
+        href={`/quem-contrata-perto?cbo=${data[0].cbo}`}
         className="self-start text-label text-ink underline underline-offset-4 hover:no-underline"
       >
-        Montar a rota do currículo de {titulo.toLowerCase()}
+        Ver quem contrata {titulo.toLowerCase()} perto de você
       </Link>
     </section>
   );

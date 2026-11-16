@@ -40,8 +40,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "conquista_parabens") return "/?tipo=recado";
   // "A empresa te respondeu?" no alto do feed; o "ainda espera" na ficha do candidato no quadro da vaga
   if (n.tipo === "te_respondeu") return "/#te-respondeu";
-  // a rota do currículo: abriram uma cópia (migração 20270605120000)
-  if (n.tipo === "copia_aberta" || n.tipo === "rota_pergunta") return n.link ?? "/rota-do-curriculo";
+  // Quem contrata perto (antes, a Rota do currículo): abriram uma cópia (migração 20270605120000)
+  if (n.tipo === "copia_aberta" || n.tipo === "rota_pergunta") return n.link ?? "/quem-contrata-perto";
   // "Quero trabalhar aqui": o currículo de quem demonstrou interesse (migração 20270615120000)
   if (n.tipo === "interesse_local") return n.ator_id ? `/talentos/${n.ator_id}` : (n.link ?? "/talentos");
   // o vencimento da vaga: renovar em um toque ou "Já preenchi"

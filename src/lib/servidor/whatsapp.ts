@@ -194,12 +194,12 @@ export const MODELOS: Modelo[] = [
     ],
   },
   {
-    nome: "publike_interesse_v2",
+    nome: "publike_interesse_v3",
     para: "Quem contrata",
-    quando: "\"Quero trabalhar aqui\" na Rota do currículo",
+    quando: "\"Quero trabalhar aqui\" em Quem contrata perto",
     // 16/11/2026: a versão curta voltou "100: Invalid parameter" (variável demais para o tamanho do texto)
     corpo:
-      "Oi, {{nome}}! {{candidato}} enviou o currículo para a sua empresa pelo Publike, na Rota do currículo. Abra o Publike para ver o currículo e responder.",
+      "Oi, {{nome}}! {{candidato}}, que mora perto, enviou o currículo para a sua empresa pelo Publike. Abra o Publike para ver o currículo e responder.",
     exemplo: { nome: "Padaria Pão de Ouro", candidato: "Ana S." },
     botoes: [{ tipo: "link", texto: "Ver o currículo", exemplo: "talentos/123" }],
   },
@@ -626,7 +626,7 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
         respostas: ["sim", "nao"].map((r) => `e:${item.id}:${r}`),
       };
     case "interesse_local":
-      return { modelo: "publike_interesse_v2", params: { nome, candidato: d.ator ?? "Uma pessoa" } };
+      return { modelo: "publike_interesse_v3", params: { nome, candidato: d.ator ?? "Uma pessoa" } };
     case "mensagem":
       return { modelo: "publike_mensagem", params: { nome, quem: d.ator ?? "Uma pessoa" } };
     default:

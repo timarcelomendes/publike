@@ -133,7 +133,7 @@ async function Conteudo() {
 
           {rota && (
             <Secao
-              titulo="Rota do currículo"
+              titulo="Quem contrata perto"
               descricao="Quem montou a rota, as cópias entregues, os QR codes abertos e os comércios que publicaram vaga depois de abrir."
             >
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

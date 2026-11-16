@@ -7,8 +7,9 @@ import { origemDaRota } from "@/lib/servidor/funcoes-da-rota";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
-// Rota do currículo (claude/plano-base-de-empresas-da-receita.md, parte 2; migração 20270605120000): montar a rota
-// (guarda o currículo como vai no papel e cria uma cópia com QR code para cada lugar) e o checklist.
+// Quem contrata perto, antes Rota do currículo (claude/plano-base-de-empresas-da-receita.md, parte 2; migração
+// 20270605120000): montar a rota (guarda o currículo como vai no papel e cria uma cópia com QR code para cada lugar) e
+// o checklist.
 
 export async function montarRota(dados: {
   cbo: string;
@@ -17,12 +18,12 @@ export async function montarRota(dados: {
   cnpjs: string[];
 }): Promise<Resultado> {
   const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre para montar a rota." };
+  if (!usuario) return { ok: false, erro: "Entre para imprimir as cópias." };
   const [perfil, curriculo] = await Promise.all([obterMeuPerfil(), obterMeuCurriculo()]);
-  if (!perfil || !curriculo) return { ok: false, erro: "Preencha o seu currículo antes de montar a rota." };
+  if (!perfil || !curriculo) return { ok: false, erro: "Preencha o seu currículo antes de imprimir." };
   // a mesma origem da página (a folha da rota sai na ordem que a pessoa viu); o centro da cidade não vale para montar
   const origem = await origemDaRota(perfil);
-  if (origem.tipo === "cidade") return { ok: false, erro: "Diga de onde você sai (CEP, bairro ou a sua localização) para montar a rota." };
+  if (origem.tipo === "cidade") return { ok: false, erro: "Diga de onde você sai (CEP, bairro ou a sua localização) para imprimir as cópias na ordem do caminho." };
   const ponto = origem.ponto;
   const cnpjs = [...new Set((dados?.cnpjs ?? []).filter((c) => /^[0-9A-Z]{12}[0-9]{2}$/.test(String(c))))];
   if (!cnpjs.length) return { ok: false, erro: "Escolha pelo menos um lugar." };
@@ -42,11 +43,11 @@ export async function montarRota(dados: {
   if (error) {
     if (error.code === "54000" || error.code === "22023") return { ok: false, erro: error.message };
     console.error("Publike: falha ao montar a rota do currículo:", error.message);
-    return { ok: false, erro: "Não deu para montar a rota agora. Tente de novo." };
+    return { ok: false, erro: "Não deu para preparar as cópias agora. Tente de novo." };
   }
   const rota = (data as { rota?: string } | null)?.rota;
-  if (!rota) return { ok: false, erro: "Não deu para montar a rota agora." };
-  redirect(`/rota-do-curriculo/${rota}?imprimir=1`);
+  if (!rota) return { ok: false, erro: "Não deu para preparar as cópias agora." };
+  redirect(`/quem-contrata-perto/${rota}?imprimir=1`);
 }
 
 /** "Entreguei" e "Desligar a página" de uma cópia. */

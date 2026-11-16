@@ -16,12 +16,12 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 import { bairroDaReceita } from "@/lib/cnpj";
 
-export const metadata: Metadata = { title: "Minha rota do currículo", robots: { index: false } };
+export const metadata: Metadata = { title: "Minhas cópias do currículo", robots: { index: false } };
 
 // Uma rota do currículo (migração 20270605120000): na tela, o checklist ("Entreguei", quem abriu, desligar a página
 // do QR); na impressão, a folha da rota (os endereços na ordem) e uma cópia do currículo por lugar, cada uma numa folha.
 
-export default function PaginaDaRota({ params, searchParams }: PageProps<"/rota-do-curriculo/[id]">) {
+export default function PaginaDaRota({ params, searchParams }: PageProps<"/quem-contrata-perto/[id]">) {
   return (
     <Suspense
       fallback={
@@ -39,11 +39,11 @@ async function Conteudo({
   params,
   searchParams,
 }: {
-  params: PageProps<"/rota-do-curriculo/[id]">["params"];
-  searchParams: PageProps<"/rota-do-curriculo/[id]">["searchParams"];
+  params: PageProps<"/quem-contrata-perto/[id]">["params"];
+  searchParams: PageProps<"/quem-contrata-perto/[id]">["searchParams"];
 }) {
   const { id } = await params;
-  await exigirUsuario(`/rota-do-curriculo/${id}`);
+  await exigirUsuario(`/quem-contrata-perto/${id}`);
   if (!UUID.test(id)) notFound();
   const sp = await searchParams;
   const banco = await criarClienteServidor();
@@ -56,18 +56,18 @@ async function Conteudo({
   return (
     <div data-imprimir>
       <Container className="max-w-3xl py-8 print:hidden">
-        <Link href="/rota-do-curriculo" className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink">
+        <Link href="/quem-contrata-perto" className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink">
           <ArrowLeft aria-hidden className="size-4" />
-          Rota do currículo
+          Quem contrata perto
         </Link>
         <h1 className="mt-1 text-h2">
           {rota.funcao}: {rota.copias.length} {rota.copias.length === 1 ? "lugar" : "lugares"} a até{" "}
           {formatarNumero(rota.raio_km)} km
         </h1>
         {acabou && (
-          <Aviso tipo="sucesso" titulo="Rota pronta" className="mt-4">
-            Imprima as cópias: sai primeiro a folha da rota, com os endereços na ordem, e depois uma cópia do currículo
-            para cada lugar. No celular, escolha “Salvar como PDF” e imprima numa copiadora.
+          <Aviso tipo="sucesso" titulo="Cópias prontas" className="mt-4">
+            Imprima as cópias: sai primeiro a lista dos endereços, na ordem, e depois uma cópia do currículo para cada
+            lugar. No celular, escolha “Salvar como PDF” e imprima numa copiadora.
           </Aviso>
         )}
         {(rota.perguntar || rota.chamou) && (
@@ -91,7 +91,7 @@ async function Conteudo({
       <div className="hidden print:block">
         <section className="break-after-page text-[#1f1a14]">
           <h2 className="text-[22px] font-semibold">
-            Rota do currículo: {rota.funcao}, até {formatarNumero(rota.raio_km)} km de casa
+            Onde entregar: {rota.funcao}, até {formatarNumero(rota.raio_km)} km de casa
           </h2>
           <ol className="mt-4 flex flex-col gap-2 text-[14px]">
             {rota.copias.map((c, i) => (

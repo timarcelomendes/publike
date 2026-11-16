@@ -80,6 +80,9 @@ const nextConfig: NextConfig = {
       { source: "/perfil/avisos", destination: "/perfil/preferencias", permanent: true },
       // o recado da linha do tempo virou post (09/11/2026): os links já mandados no WhatsApp continuam abrindo
       { source: "/recado/:id", destination: "/post/:id", permanent: true },
+      // a Rota do currículo virou "Quem contrata perto" (16/11/2026): os links dos avisos, dos e-mails e das cópias
+      { source: "/rota-do-curriculo", destination: "/quem-contrata-perto", permanent: true },
+      { source: "/rota-do-curriculo/:id", destination: "/quem-contrata-perto/:id", permanent: true },
     ];
   },
   async headers() {

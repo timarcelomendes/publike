@@ -117,7 +117,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/regras`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/conteudos`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE_URL}/curriculo-simples`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE_URL}/rota-do-curriculo`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/quem-contrata-perto`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE_URL}/seguro-desemprego`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/calculadora-rescisao`, changeFrequency: "monthly", priority: 0.7 },
     ...CASOS_RESCISAO.map((c) => ({

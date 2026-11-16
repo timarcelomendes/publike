@@ -104,7 +104,7 @@ async function escrever(n: NumerosDoMes, guardar: (itens: unknown[]) => Promise<
       const r = await chamarIA({
         funcionalidade: "admin",
         modelo: "",
-        sistema: `${REGRAS}\nA matéria é "Os negócios que abriram em ${n.por_cidade[0].cidade} e região em ${nomeMes}", a partir dos dados abertos do CNPJ da Receita Federal. Comece pela cidade com mais aberturas; diga o total, os bairros e os ramos que mais abriram; cite até 10 destaques pelo nome (só os da lista, que são empresas, nunca pessoas); e termine convidando quem procura trabalho a levar o currículo, com a Rota do currículo do Publike (publike.org/rota-do-curriculo), que mostra os lugares perto de casa.`,
+        sistema: `${REGRAS}\nA matéria é "Os negócios que abriram em ${n.por_cidade[0].cidade} e região em ${nomeMes}", a partir dos dados abertos do CNPJ da Receita Federal. Comece pela cidade com mais aberturas; diga o total, os bairros e os ramos que mais abriram; cite até 10 destaques pelo nome (só os da lista, que são empresas, nunca pessoas); e termine convidando quem procura trabalho a levar o currículo, com o Quem contrata perto do Publike (publike.org/quem-contrata-perto), que mostra no mapa os lugares perto de casa.`,
         mensagem: JSON.stringify(numeros),
         maxTokens: 2000,
         esquema: { nome: "materia", schema: ESQUEMA },

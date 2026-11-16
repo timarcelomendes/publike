@@ -1071,7 +1071,7 @@ export async function storyAbriramNoMes(
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, minHeight: 300 }}>
         <div style={{ display: "flex", fontSize: 44, fontWeight: 700, color: destaque(a) }}>
-          Monte a Rota do currículo no Publike
+          Veja quem contrata perto no Publike
         </div>
         <img src={paraBaixo(destaque(a))} alt="" width={64} height={64} />
       </div>

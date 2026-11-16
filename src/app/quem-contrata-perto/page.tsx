@@ -1,4 +1,4 @@
-import { MapPinned, Printer, QrCode, Route } from "lucide-react";
+import { MapPinned, Printer, Route, Send } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -20,13 +20,14 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = {
-  title: "Rota do currículo: onde deixar o seu currículo perto de casa",
+  title: "Quem contrata perto de você: os lugares que contratam a sua função, no mapa",
   description:
-    "Veja no mapa os comércios perto de você que costumam contratar a sua função e as vagas abertas no Publike. Imprima uma cópia do currículo para cada lugar, com QR code, e saiba quando alguém ler. Grátis.",
-  alternates: { canonical: "/rota-do-curriculo" },
+    "Veja no mapa os comércios perto de você que costumam contratar a sua função e as vagas abertas no Publike. Diga que quer trabalhar lá em um toque ou leve o currículo impresso, com QR code. Grátis.",
+  alternates: { canonical: "/quem-contrata-perto" },
 };
 
-// Rota do currículo (claude/plano-base-de-empresas-da-receita.md, parte 2; migração 20270605120000): escolher a
+// Quem contrata perto, antes "Rota do currículo" (claude/plano-base-de-empresas-da-receita.md, parte 2; migração
+// 20270605120000; o nome mudou em 16/11/2026, e /rota-do-curriculo leva para cá, next.config.ts): escolher a
 // função e a distância, marcar os comércios dos ramos que mais contratam essa função e imprimir uma cópia para cada um.
 // Aberta também sem conta (migração 20270613120000). Desde 16/11/2026 (migração 20270622120000; Marcelo: "quero essa
 // funcionalidade mais estratégica e que as pessoas vejam o mapa de cara"): o mapa abre na hora, mesmo sem saber onde a
@@ -37,21 +38,21 @@ const FUNCAO_PADRAO = "521110";
 /** Nenhum lugar para a função: as funções que mais aparecem no comércio, para tentar. */
 const PARA_TENTAR = ["521110", "521140", "421125", "513505", "521125", "513405"];
 
+// imprimir é a opção de quem vai passar lá (16/11/2026, Marcelo: "pode ser uma opção secundária")
 const PASSOS = [
-  { icone: MapPinned, titulo: "Escolha onde entregar", texto: "Veja no mapa os lugares perto de você que costumam contratar a sua função e toque nos que quer visitar." },
-  { icone: Printer, titulo: "Imprima uma cópia para cada lugar", texto: "Cada cópia sai com o nome do lugar no alto. Junto vem a lista dos endereços, do mais perto ao mais longe." },
-  { icone: QrCode, titulo: "Saiba quem leu", texto: "Cada cópia tem um QR code. Quando alguém do lugar escaneia, o Publike te avisa." },
+  { icone: MapPinned, titulo: "Veja quem contrata perto", texto: "No mapa, os lugares perto de você que costumam contratar a sua função e as vagas abertas no Publike." },
+  { icone: Send, titulo: "Diga que quer trabalhar lá", texto: "Um toque em “Quero trabalhar aqui”: o lugar que está no Publike recebe o seu currículo; os outros mostram o WhatsApp e o telefone." },
+  { icone: Printer, titulo: "Vai passar lá? Leve impresso", texto: "Marque os lugares e imprima uma cópia do currículo para cada um, com QR code. O Publike avisa quando alguém ler." },
 ];
 
 const MES_ANO = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric", timeZone: "UTC" });
 
-export default function RotaDoCurriculo({ searchParams }: PageProps<"/rota-do-curriculo">) {
+export default function QuemContrataPerto({ searchParams }: PageProps<"/quem-contrata-perto">) {
   return (
     <Container className="py-6 sm:py-8">
-      <h1 className="text-h2 sm:text-h1">Rota do currículo</h1>
+      <h1 className="text-h2 sm:text-h1">Quem contrata perto de você</h1>
       <p className="mt-1 max-w-2xl text-body text-ink-muted">
-        Os lugares perto de você que contratam a sua função e as vagas abertas no Publike, no mapa. Escolha onde passar e
-        imprima uma cópia do currículo para cada lugar. Grátis.
+        No mapa, os lugares perto de você que costumam contratar a sua função e as vagas abertas no Publike. Grátis.
       </p>
       <Suspense fallback={<EsqueletoDaRota />}>
         <Conteudo searchParams={searchParams} />
@@ -91,7 +92,7 @@ function EsqueletoDaRota() {
 
 type MinhaRota = { id: string; funcao: string; raio_km: number; criada_em: string; copias: number; entregues: number; abertas: number };
 
-async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-curriculo">["searchParams"] }) {
+async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contrata-perto">["searchParams"] }) {
   const sp = await searchParams;
   const usuario = await obterUsuario().catch(() => null);
   const [perfil, curriculo, local, agora] = await Promise.all([
@@ -133,11 +134,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
     nome: !padrao && escolhida.cbo === pedida && nomePedido ? escolhida.titulo : undefined,
   };
   // para onde vai o botão: sem conta, entrar (e voltar aqui); sem currículo, preencher
-  const aqui = linkCom("/rota-do-curriculo", atuais, {});
+  const aqui = linkCom("/quem-contrata-perto", atuais, {});
   const falta = daEmpresa
     ? null
     : !usuario
-    ? { href: `/entrar?next=${encodeURIComponent(aqui)}`, texto: "Entrar para montar e imprimir" }
+    ? { href: `/entrar?next=${encodeURIComponent(aqui)}`, texto: "Entrar para imprimir" }
     : !curriculo
       ? { href: `/perfil/curriculo?next=${encodeURIComponent(aqui)}`, texto: "Preencher o currículo para imprimir" }
       : null;
@@ -198,7 +199,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
             </Link>
           )}
         </div>
-        <p className="text-body-sm text-ink-muted">Antes de imprimir: estas estão contratando agora. Curta para a empresa ver o seu currículo.</p>
+        <p className="text-body-sm text-ink-muted">Estas estão contratando agora: curta para a empresa ver o seu currículo.</p>
         <ul className="grid gap-3">
           {vagas.perto.slice(0, 6).map((v) => (
             <li key={v.id} id={`vaga-${v.id}`} className="scroll-mt-24 rounded-lg transition-shadow">
@@ -226,7 +227,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
               rotulo="Função do currículo"
               opcoes={doCurriculo.map((f) => ({ valor: f.cbo, nome: f.titulo }))}
               atual={padrao ? "" : escolhida.cbo}
-              link={(v) => linkCom("/rota-do-curriculo", atuais, { cbo: v, nome: null })}
+              link={(v) => linkCom("/quem-contrata-perto", atuais, { cbo: v, nome: null })}
             />
           </div>
         )}
@@ -242,7 +243,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
             rotulo="Até onde você vai"
             opcoes={RAIOS_DA_ROTA.map((r) => ({ valor: String(r), nome: r === 1 ? "1 km (a pé)" : `até ${r} km` }))}
             atual={String(raio)}
-            link={(v) => linkCom("/rota-do-curriculo", atuais, { raio: v })}
+            link={(v) => linkCom("/quem-contrata-perto", atuais, { raio: v })}
           />
         </div>
       </div>
@@ -293,7 +294,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
               {PARA_TENTAR.filter((c) => c !== escolhida.cbo).map((c) => (
                 <Link
                   key={c}
-                  href={linkCom("/rota-do-curriculo", atuais, { cbo: c, nome: null })}
+                  href={linkCom("/quem-contrata-perto", atuais, { cbo: c, nome: null })}
                   scroll={false}
                   className="inline-flex min-h-9 items-center rounded-pill border border-line-strong bg-surface-100 px-3.5 text-label text-ink hover:bg-surface-300"
                 >
@@ -305,16 +306,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
         }
         falta={falta}
         topo={topo}
-        soVer={daEmpresa ? "A rota é para quem procura trabalho: com uma conta de pessoa, dá para montar e imprimir." : null}
+        soVer={daEmpresa ? "Esta página é para quem procura trabalho: com uma conta de pessoa, dá para dizer que quer trabalhar em cada lugar e levar o currículo impresso." : null}
       />
 
       {rotas.length > 0 && (
         <section className="mt-6 flex flex-col gap-3">
-          <h2 className="text-h3">Minhas rotas</h2>
+          <h2 className="text-h3">Suas cópias impressas</h2>
           <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
             {rotas.map((r) => (
               <li key={r.id}>
-                <Link href={`/rota-do-curriculo/${r.id}`} className="flex flex-wrap justify-between gap-2 p-4 hover:bg-surface-300">
+                <Link href={`/quem-contrata-perto/${r.id}`} className="flex flex-wrap justify-between gap-2 p-4 hover:bg-surface-300">
                   <span className="text-label text-ink">
                     {r.funcao}, até {formatarNumero(r.raio_km)} km
                   </span>

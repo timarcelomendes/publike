@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, House, MapPin, Printer, Sparkles, Store } from "lucide-react";
+import { House, MapPin, Printer, Sparkles, Store } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo, useState, useTransition, type ReactNode } from "react";
 import { deslocamentoProvavel } from "@/lib/deslocamento";
@@ -32,7 +32,7 @@ const SELO = "inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[12px
 
 /**
  * O mapa (no alto da página), as vagas do Publike da mesma função e os lugares. Nenhum lugar começa escolhido: a pessoa
- * toca no ponto do mapa ou em "Vou entregar aqui" (até 15) e imprime uma cópia do currículo para cada um.
+ * toca em "Quero trabalhar aqui" e, se for passar lá, marca "Levar impresso" (até 15) e imprime uma cópia para cada um.
  */
 export function EscolherLugares({
   lugares,
@@ -107,6 +107,15 @@ export function EscolherLugares({
     window.setTimeout(() => el.classList.remove("ring-2", "ring-cerrado"), 1600);
   }, []);
 
+  // tocar num lugar no mapa leva à linha dele (o "Quero trabalhar aqui" e o "Levar impresso")
+  const irParaLugar = useCallback((cnpj: string) => {
+    const el = document.getElementById(`lugar-${cnpj}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("bg-terra/10");
+    window.setTimeout(() => el.classList.remove("bg-terra/10"), 1600);
+  }, []);
+
   function dizerOrigem() {
     document.getElementById("saindo-de")?.scrollIntoView({ behavior: "smooth", block: "center" });
     window.dispatchEvent(new Event(ABRIR_ONDE_MORA_DA_ROTA));
@@ -122,7 +131,7 @@ export function EscolherLugares({
           rotuloCasa={rotuloCasa}
           pontos={pontos}
           vagas={vagas}
-          aoTocar={trocar}
+          aoTocar={irParaLugar}
           aoTocarVaga={irParaVaga}
           className="lg:h-[calc(100vh-7rem)] lg:max-h-[46rem]"
         />
@@ -135,75 +144,86 @@ export function EscolherLugares({
           vazio
         ) : (
           <>
+            {soVer ? (
+              <p className="text-body-sm text-ink-muted">{soVer}</p>
+            ) : (
+              <p className="text-body-sm text-ink-muted">
+                Toque em “Quero trabalhar aqui”: o lugar que está no Publike recebe o seu currículo; os outros mostram o
+                WhatsApp e o telefone. Vai passar lá? Marque “Levar impresso” e imprima uma cópia para cada lugar, com QR
+                code.
+              </p>
+            )}
             <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface-200">
               {lugares.map((l) => {
                 const escolhido = escolhidos.has(l.cnpj);
                 return (
                   <li
                     key={l.cnpj}
-                    className={`flex flex-col gap-3 p-4 transition-colors ${escolhido ? "bg-terra/5 shadow-[inset_3px_0_0_var(--color-terra)]" : ""}`}
+                    id={`lugar-${l.cnpj}`}
+                    className={`flex scroll-mt-24 flex-col gap-3 p-4 transition-colors ${escolhido ? "bg-terra/5 shadow-[inset_3px_0_0_var(--color-terra)]" : ""}`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-label text-ink">{l.nome}</p>
-                        {(l.novo || l.no_publike) && (
-                          <p className="mt-1 flex flex-wrap gap-1.5">
-                            {l.novo && (
-                              <span className={`${SELO} bg-ipe text-on-ipe`} title={l.novo}>
-                                <Sparkles aria-hidden className="size-3" />
-                                Lugar novo
-                              </span>
-                            )}
-                            {l.no_publike && (
-                              <span className={`${SELO} bg-terra/10 text-terra-text`} title="A empresa tem conta no Publike">
-                                <Store aria-hidden className="size-3" />
-                                No Publike
-                              </span>
-                            )}
-                          </p>
-                        )}
-                        {l.ramo && <p className="mt-1 text-body-sm text-ink-muted">{l.ramo}</p>}
-                        <p className="text-body-sm text-ink-muted">
-                          {[l.endereco, l.bairro && bairroDaReceita(l.bairro), l.cidade].filter(Boolean).join(", ")}
+                    <div className="min-w-0">
+                      <p className="text-label text-ink">{l.nome}</p>
+                      {(l.novo || l.no_publike) && (
+                        <p className="mt-1 flex flex-wrap gap-1.5">
+                          {l.novo && (
+                            <span className={`${SELO} bg-ipe text-on-ipe`} title={l.novo}>
+                              <Sparkles aria-hidden className="size-3" />
+                              Lugar novo
+                            </span>
+                          )}
+                          {l.no_publike && (
+                            <span className={`${SELO} bg-terra/10 text-terra-text`} title="A empresa tem conta no Publike">
+                              <Store aria-hidden className="size-3" />
+                              No Publike
+                            </span>
+                          )}
                         </p>
-                        {l.novo && <p className="text-body-sm text-ink-muted">{l.novo}: lugar novo costuma contratar.</p>}
-                        <p className="mt-1 inline-flex items-center gap-1 text-body-sm tabular-nums text-ink">
-                          <MapPin aria-hidden className="size-3.5 text-ink-muted" />
-                          {distanciaCurta(l.distancia_m)} {semOrigem ? "do centro" : "de você"},{" "}
-                          {deslocamentoProvavel(l.distancia_m / 1000).texto}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        aria-pressed={escolhido}
-                        disabled={!escolhido && cheio}
-                        onClick={() => trocar(l.cnpj)}
-                        className={
-                          escolhido
-                            ? "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-pill border border-terra bg-terra px-3.5 text-label text-white"
-                            : "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-100 px-3.5 text-label text-ink hover:bg-surface-300 disabled:opacity-50"
-                        }
-                      >
-                        {escolhido && <Check aria-hidden className="size-4" />}
-                        {escolhido ? "Vou entregar" : "Vou entregar aqui"}
-                      </button>
+                      )}
+                      {l.ramo && <p className="mt-1 text-body-sm text-ink-muted">{l.ramo}</p>}
+                      <p className="text-body-sm text-ink-muted">
+                        {[l.endereco, l.bairro && bairroDaReceita(l.bairro), l.cidade].filter(Boolean).join(", ")}
+                      </p>
+                      {l.novo && <p className="text-body-sm text-ink-muted">{l.novo}: lugar novo costuma contratar.</p>}
+                      <p className="mt-1 inline-flex items-center gap-1 text-body-sm tabular-nums text-ink">
+                        <MapPin aria-hidden className="size-3.5 text-ink-muted" />
+                        {distanciaCurta(l.distancia_m)} {semOrigem ? "do centro" : "de você"},{" "}
+                        {deslocamentoProvavel(l.distancia_m / 1000).texto}
+                      </p>
                     </div>
-                    {!soVer && <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcao} />}
+                    {!soVer && (
+                      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+                        <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcao} />
+                        {/* imprimir é a opção de quem vai passar lá (16/11/2026: "pode ser uma opção secundária") */}
+                        <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 text-body-sm text-ink-muted has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                          <input
+                            type="checkbox"
+                            checked={escolhido}
+                            disabled={!escolhido && cheio}
+                            onChange={() => trocar(l.cnpj)}
+                            className="size-4 accent-terra"
+                          />
+                          <Printer aria-hidden className="size-4" />
+                          Levar impresso
+                        </label>
+                      </div>
+                    )}
                   </li>
                 );
               })}
             </ul>
 
+            {!soVer && (n > 0 || aviso || erro) && (
             <div className="sticky bottom-20 z-10 flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-100 p-4 shadow-raised sm:bottom-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-0.5">
                 <p className="text-label text-ink" aria-live="polite">
                   {n === 0
-                    ? "Nenhum lugar escolhido"
-                    : `${n} ${n === 1 ? "lugar escolhido" : "lugares escolhidos"} de até ${MAX_LUGARES_DA_ROTA}`}
+                    ? "Nenhum lugar para levar impresso"
+                    : `${n} ${n === 1 ? "lugar para levar impresso" : "lugares para levar impresso"} (até ${MAX_LUGARES_DA_ROTA})`}
                 </p>
                 <p className="text-body-sm text-ink-muted">
                   {n === 0
-                    ? "Toque nos pontos do mapa ou em “Vou entregar aqui”."
+                    ? "Marque “Levar impresso” nos lugares onde vai passar."
                     : "Sai uma cópia do currículo para cada lugar, com o nome dele e um QR code."}
                   {n > 0 && (
                     <>
@@ -227,9 +247,7 @@ export function EscolherLugares({
                   </p>
                 )}
               </div>
-              {soVer ? (
-              <p className="max-w-sm text-body-sm text-ink-muted">{soVer}</p>
-            ) : falta ? (
+              {falta ? (
                 <Link href={falta.href} className={`${classesBotao("primario")} shrink-0`}>
                   <Printer aria-hidden />
                   {falta.texto}
@@ -257,6 +275,7 @@ export function EscolherLugares({
                 </button>
               )}
             </div>
+            )}
           </>
         )}
       </div>

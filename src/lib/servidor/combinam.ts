@@ -333,7 +333,7 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
               `• ${l.nome}${l.ramo ? `, ${l.ramo.toLowerCase()}` : ""}${l.bairro ? `, ${l.bairro}` : ""}, a ${distanciaCurta(l.distancia_m)} de casa`,
           )
           .join("\n") +
-        "\nMonte a rota do currículo: publike.org/rota-do-curriculo"
+        "\nVeja quem contrata perto de você: publike.org/quem-contrata-perto"
       : "";
     await registrar(
       p.perfil_id,

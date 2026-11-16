@@ -22,12 +22,18 @@ export function EscolherFuncao({
   atual = "",
   raio,
   rotulo,
+  destino = "/quem-contrata-perto",
+  rotuloVisivel = true,
 }: {
   comuns: { cbo: string; titulo: string }[];
   /** a função escolhida por esta busca (fica escrita no campo) */
   atual?: string;
   raio: number;
   rotulo: string;
+  /** para onde vai depois de escolher (a página do mapa) */
+  destino?: string;
+  /** sem o rótulo à vista (a chamada da home): fica só para o leitor de tela */
+  rotuloVisivel?: boolean;
 }) {
   const router = useRouter();
   const id = useId();
@@ -73,12 +79,12 @@ export function EscolherFuncao({
     setAberto(false);
     setTexto(o.titulo);
     const p = new URLSearchParams({ cbo: o.cbo, raio: String(raio), nome: o.titulo });
-    router.push(`/rota-do-curriculo?${p}`, { scroll: false });
+    router.push(`${destino}?${p}`, { scroll: false });
   }
 
   return (
     <div ref={caixa} className="relative flex max-w-md flex-col gap-1.5">
-      <label htmlFor={`${id}-busca`} className="text-body-sm text-ink-muted">
+      <label htmlFor={`${id}-busca`} className={rotuloVisivel ? "text-body-sm text-ink-muted" : "sr-only"}>
         {rotulo}
       </label>
       <div className="relative">

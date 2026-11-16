@@ -253,7 +253,7 @@ export function MapaDaRota({
           ref={caixa}
           className="h-full w-full"
           role="region"
-          aria-label="Mapa da rota: o ponto de partida, as vagas no ar e os lugares. Toque num lugar para escolher onde entregar."
+          aria-label="Mapa de quem contrata perto: o ponto de partida, as vagas no ar e os lugares. Toque num lugar para ver os detalhes dele na lista."
         />
       </div>
       <p className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-sm bg-surface-100/90 px-2 py-1 text-[12px] text-ink">
@@ -267,7 +267,7 @@ export function MapaDaRota({
           </span>
         )}
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block size-2.5 rounded-full bg-terra" /> Vai entregar
+          <span className="inline-block size-2.5 rounded-full bg-terra" /> Levar impresso
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: CINZA }} /> Lugares

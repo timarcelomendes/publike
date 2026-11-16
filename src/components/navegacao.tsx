@@ -78,8 +78,8 @@ export function Rodape() {
           <Link href="/curriculo-simples" className={link}>
             Currículo simples grátis
           </Link>
-          <Link href="/rota-do-curriculo" className={link}>
-            Rota do currículo
+          <Link href="/quem-contrata-perto" className={link}>
+            Quem contrata perto
           </Link>
           <Link href="/seguro-desemprego" className={link}>
             Seguro-desemprego: tenho direito?

@@ -1944,6 +1944,11 @@ export type Database = {
           total: number;
         }[];
       };
+      /** migração 20270624120000: quantos lugares a até X km costumam contratar cada função (até 4), para a home */
+      quantos_contratam: {
+        Args: { p_lat: number; p_lng: number; p_raio_km?: number; p_cbos?: string[] };
+        Returns: { cbo: string; total: number }[];
+      };
       criar_rota_curriculo: {
         Args: {
           p_cbo: string;

@@ -6,7 +6,7 @@ import { MarcarPaginaLarga } from "@/components/largura-da-pagina";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
 import { EmpresasContratando } from "@/components/home/empresas-contratando";
 import { FaixaArte } from "@/components/home/faixa-arte";
-import { FaixaRota } from "@/components/home/faixa-rota";
+import { ChamadaQuemContrata } from "@/components/home/quem-contrata-perto";
 import { ServicosDoBairro } from "@/components/home/servicos-do-bairro";
 import { HeroVitrine, NovasHoje } from "@/components/home/vitrine";
 import { ContarFunilDaVitrine } from "@/components/home/contar-funil";
@@ -138,7 +138,6 @@ async function SecoesDaVitrine({ searchParams }: { searchParams: Parametros }) {
       <Suspense fallback={null}>
         <NovosPerto jeito="vitrine" />
       </Suspense>
-      <FaixaRota />
       <FaixaArte logado={false} />
       <ServicosDoBairro />
     </>
@@ -209,6 +208,12 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
           <Suspense fallback={<Esqueleto className="mb-6 h-40 rounded-lg" />}>
             <TopoDaConta searchParams={searchParams} soOlhar={soOlhar} />
           </Suspense>
+          {/* Quem contrata perto no começo da linha (só para quem procura trabalho; a chamada some para empresa) */}
+          {!soOlhar && (
+            <Suspense fallback={null}>
+              <ChamadaQuemContrata className="mb-4" />
+            </Suspense>
+          )}
           <Suspense fallback={<EsqueletoCards quantos={3} />}>
             <CentroDaLinha searchParams={searchParams} contratando={contratando} meio={meio} soOlhar={soOlhar} />
           </Suspense>

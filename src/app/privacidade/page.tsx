@@ -97,13 +97,13 @@ export default function Privacidade() {
         />
       </Secao>
 
-      <Secao id="rota-do-curriculo" titulo="Rota do currículo e o QR code">
+      <Secao id="quem-contrata-perto" titulo="Quem contrata perto e o QR code">
         <Lista
           itens={[
-            "Na Rota do currículo, você escolhe os lugares e o Publike imprime uma cópia do seu currículo para cada um, com o nome do lugar e um QR code próprio.",
+            "Em Quem contrata perto, se você quiser levar o currículo impresso, escolhe os lugares e o Publike imprime uma cópia do seu currículo para cada um, com o nome do lugar e um QR code próprio.",
             "Quem escaneia o QR code vê o currículo exatamente como foi impresso (o que você já entregou em papel), sem nada a mais. A página não aparece no Google.",
             "O Publike conta quantas vezes cada cópia foi aberta e avisa você na primeira vez, com o nome do lugar. Não sabemos quem, dentro do lugar, abriu.",
-            "Você pode desligar a página de qualquer cópia na sua rota: quem escanear depois não vê mais o currículo.",
+            "Você pode desligar a página de qualquer cópia: quem escanear depois não vê mais o currículo.",
           ]}
         />
       </Secao>
@@ -203,7 +203,7 @@ export default function Privacidade() {
             "Para manter o site seguro (limites contra abuso, moderação, denúncias e o registro do que a equipe fez): o legítimo interesse do Publike e de quem usa o site (art. 7º, IX) e a defesa em processo, se precisar (art. 7º, VI).",
             "O que é opcional (o CEP de casa, a localização do “Perto de mim” e o que você escreve em “O que você procura?”): seu consentimento, que você retira quando quiser apagando a informação (art. 7º, I).",
             "Os cookies do Google Ads: seu consentimento, no aviso de cookies; você desliga quando quiser na página Cookies (art. 7º, I).",
-            "Os dados abertos do CNPJ da Receita Federal (para preencher a empresa, a rota do currículo e os convites às empresas): dados que a própria Receita torna públicos, usados para a finalidade de aproximar quem contrata de quem procura trabalho, e o legítimo interesse do Publike (art. 7º, IX, e § 4º).",
+            "Os dados abertos do CNPJ da Receita Federal (para preencher a empresa, o Quem contrata perto e os convites às empresas): dados que a própria Receita torna públicos, usados para a finalidade de aproximar quem contrata de quem procura trabalho, e o legítimo interesse do Publike (art. 7º, IX, e § 4º).",
           ]}
         />
       </Secao>
