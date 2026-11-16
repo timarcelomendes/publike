@@ -159,12 +159,15 @@ export function MapaDosTalentos({ dados }: { dados: Dados }) {
         </p>
       </div>
       <div className="relative h-[min(52vh,26rem)] min-h-72 overflow-hidden rounded-lg border border-line bg-surface-300">
-        <div
-          ref={caixa}
-          className="absolute inset-0"
-          role="region"
-          aria-label="Mapa dos talentos por bairro. Toque num bairro para ver quem mora lá na lista embaixo do mapa."
-        />
+        {/* o MapLibre põe position: relative na caixa dele: ela fica dentro de uma caixa absoluta, com h-full */}
+        <div className="absolute inset-0">
+          <div
+            ref={caixa}
+            className="h-full w-full"
+            role="region"
+            aria-label="Mapa dos talentos por bairro. Toque num bairro para ver quem mora lá na lista embaixo do mapa."
+          />
+        </div>
         <p className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-sm bg-surface-100/90 px-2 py-1 text-[12px] text-ink">
           {/* as cores fixas do mapa (o mapa não muda no tema escuro) */}
           <span className="inline-flex items-center gap-1">
