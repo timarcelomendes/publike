@@ -1,6 +1,7 @@
 import "server-only";
 import { MODO_DEMO } from "@/lib/config";
 import {
+  nomeDoBairro,
   NOMES_POR_BAIRRO,
   type BairroNoMapa,
   type MapaDosTalentos,
@@ -68,7 +69,7 @@ export async function mapaDaBusca(f: {
     bairros.push({
       chave: `${ponto.lat}|${ponto.lng}`,
       cidade: l.cidade ?? "",
-      bairro: l.bairro ?? "",
+      bairro: nomeDoBairro(l.bairro ?? ""),
       ...ponto,
       pessoas: Number(l.pessoas) || 0,
       talentos: todos.slice(0, NOMES_POR_BAIRRO),

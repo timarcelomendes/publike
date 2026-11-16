@@ -27,6 +27,20 @@ export type MapaDosTalentos = {
   vagas: VagaNoMapa[];
 };
 
+const MINUSCULAS = new Set(["de", "da", "do", "das", "dos", "e"]);
+
+/**
+ * O nome do bairro como o mapa mostra: quem escreveu tudo em minúsculas ("jardim goias") ganha as maiúsculas ("Jardim
+ * Goias"); o resto fica como a pessoa escreveu.
+ */
+export function nomeDoBairro(nome: string) {
+  if (nome !== nome.toLowerCase()) return nome;
+  return nome
+    .split(" ")
+    .map((p, i) => (i > 0 && MINUSCULAS.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+    .join(" ");
+}
+
 /** Quantos nomes cada bairro mostra no painel (o resto vira "e mais N"). */
 export const NOMES_POR_BAIRRO = 12;
 
@@ -49,7 +63,7 @@ export function montarMapa(
     const b = porBairro.get(chave) ?? {
       chave,
       cidade: p.lugar.cidade,
-      bairro: p.lugar.bairro ?? "",
+      bairro: nomeDoBairro(p.lugar.bairro ?? ""),
       lat: p.lugar.lat,
       lng: p.lugar.lng,
       pessoas: 0,
