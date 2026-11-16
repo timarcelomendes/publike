@@ -371,16 +371,55 @@ export async function enviarTeste(cfg: ConfigMeta, numero: string) {
   return r.ok ? { ok: true as const } : { ok: false as const, erro: r.texto };
 }
 
-/** O número do Publike na Meta: o nome aprovado, a qualidade e o limite por dia. */
+type DadosDoNumero = {
+  display_phone_number?: string;
+  verified_name?: string;
+  quality_rating?: string;
+  messaging_limit_tier?: string;
+  name_status?: string;
+  code_verification_status?: string;
+  platform_type?: string;
+};
+
+/**
+ * O número do Publike na Meta: o nome aprovado, a qualidade, o limite por dia e se já está registrado na API de
+ * nuvem (platform_type CLOUD_API). Se a Meta não conhecer algum campo, pergunta só o básico.
+ */
 export async function conferirNumero(cfg: ConfigMeta) {
-  const r = await graph<{
-    display_phone_number?: string;
-    verified_name?: string;
-    quality_rating?: string;
-    messaging_limit_tier?: string;
-    name_status?: string;
-  }>(cfg, `${cfg.phoneId}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier,name_status`);
+  const basico = "display_phone_number,verified_name,quality_rating,messaging_limit_tier,name_status";
+  let r = await graph<DadosDoNumero>(cfg, `${cfg.phoneId}?fields=${basico},code_verification_status,platform_type`);
+  if (!r.ok && r.erro?.code === 100) r = await graph<DadosDoNumero>(cfg, `${cfg.phoneId}?fields=${basico}`);
   return r.ok ? { ok: true as const, ...r.dados } : { ok: false as const, erro: r.texto };
+}
+
+/** Registra o número na API de nuvem (obrigatório; não dá pelo painel da Meta). O PIN vira a confirmação em duas etapas. */
+export async function registrarNumero(cfg: ConfigMeta, pin: string) {
+  const r = await graph<{ success?: boolean }>(cfg, `${cfg.phoneId}/register`, {
+    metodo: "POST",
+    corpo: { messaging_product: "whatsapp", pin },
+  });
+  if (!r.ok) return { ok: false as const, erro: r.texto };
+  return r.dados.success === false ? { ok: false as const, erro: "a Meta não confirmou" } : { ok: true as const };
+}
+
+/** Os apps que recebem o webhook da conta do WhatsApp (a Meta só manda os avisos ao app inscrito nela). */
+export async function appsDoWebhook(cfg: ConfigMeta) {
+  if (!cfg.wabaId) return { ok: false as const, erro: "Falta o WHATSAPP_WABA_ID na Vercel." };
+  const r = await graph<{ data?: { whatsapp_business_api_data?: { id?: string; name?: string } }[] }>(
+    cfg,
+    `${cfg.wabaId}/subscribed_apps`,
+  );
+  if (!r.ok) return { ok: false as const, erro: r.texto };
+  const apps = (r.dados.data ?? []).map((a) => a.whatsapp_business_api_data?.name || a.whatsapp_business_api_data?.id || "app");
+  return { ok: true as const, apps };
+}
+
+/** Inscreve o app do Publike no webhook da conta do WhatsApp. */
+export async function ligarWebhookDaConta(cfg: ConfigMeta) {
+  if (!cfg.wabaId) return { ok: false as const, erro: "Falta o WHATSAPP_WABA_ID na Vercel." };
+  const r = await graph<{ success?: boolean }>(cfg, `${cfg.wabaId}/subscribed_apps`, { metodo: "POST", corpo: {} });
+  if (!r.ok) return { ok: false as const, erro: r.texto };
+  return r.dados.success === false ? { ok: false as const, erro: "a Meta não confirmou" } : { ok: true as const };
 }
 
 export type SituacaoModelo = { status: string; categoria?: string; motivo?: string; tentado_em?: string };

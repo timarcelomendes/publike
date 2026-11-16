@@ -84,18 +84,10 @@ async function Conteudo() {
   if (!admin && !(await possoVerTela("/admin/whatsapp"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
   const { data, error } = await c.rpc("admin_whatsapp");
-  if (error || !data) {
-    return (
-      <Aviso tipo="alerta" titulo="Rode a migração do WhatsApp">
-        Falta a migração 20270619120000_whatsapp_oficial.sql neste banco.
-      </Aviso>
-    );
-  }
-  const r = data as unknown as Resumo;
+  // sem a migração, a ligação com a Meta (que não usa o banco) já funciona
+  const r = error || !data ? null : (data as unknown as Resumo);
   const s = situacaoWhatsapp();
   const ligacaoPronta = s.token && s.numero && s.conta && s.segredo && s.webhook;
-  const w = r.semana;
-  const nomeDoTipo = (t: string) => TIPOS_WHATSAPP.find((x) => x.tipo === t)?.nome ?? t;
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,6 +122,23 @@ async function Conteudo() {
         )}
       </Secao>
 
+      {r ? (
+        <Partes r={r} s={s} />
+      ) : (
+        <Aviso tipo="alerta" titulo="Rode a migração do WhatsApp">
+          Falta a migração 20270619120000_whatsapp_oficial.sql neste banco. A ligação com a Meta (acima) já funciona; o
+          envio, os modelos e os números aparecem depois dela.
+        </Aviso>
+      )}
+    </div>
+  );
+}
+
+function Partes({ r, s }: { r: Resumo; s: ReturnType<typeof situacaoWhatsapp> }) {
+  const w = r.semana;
+  const nomeDoTipo = (t: string) => TIPOS_WHATSAPP.find((x) => x.tipo === t)?.nome ?? t;
+  return (
+    <>
       <Secao
         titulo="Envio"
         descricao={
@@ -256,6 +265,6 @@ async function Conteudo() {
           <MandarTeste />
         </Secao>
       )}
-    </div>
+    </>
   );
 }

@@ -5,7 +5,9 @@ import { useState, useTransition } from "react";
 import {
   conferirModelosAgora,
   conferirNumeroAgora,
+  ligarWebhookAgora,
   mandarTesteWhatsapp,
+  registrarNumeroAgora,
   salvarWhatsapp,
   type NumeroDaMeta,
 } from "@/lib/acoes/whatsapp-admin";
@@ -228,36 +230,121 @@ const LIMITE: Record<string, string> = {
 export function ConferirNumero() {
   const [pendente, iniciar] = useTransition();
   const [numero, setNumero] = useState<NumeroDaMeta | null>(null);
+  const conferir = () => iniciar(async () => setNumero(await conferirNumeroAgora()));
+  const registrado = numero?.platform_type === "CLOUD_API";
+  const webhook = numero?.webhook;
+  const webhookLigado = Boolean(webhook && "apps" in webhook && webhook.apps.length);
   return (
-    <div className="flex flex-col items-start gap-2">
-      <button
-        type="button"
-        disabled={pendente}
-        className={classesBotao("secundario")}
-        onClick={() => iniciar(async () => setNumero(await conferirNumeroAgora()))}
-      >
+    <div className="flex flex-col items-start gap-3">
+      <button type="button" disabled={pendente} className={classesBotao("secundario")} onClick={conferir}>
         <Smartphone aria-hidden />
         {pendente ? "Conferindo…" : "Conferir o número na Meta"}
       </button>
       {numero &&
         (numero.ok ? (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body-sm">
-            <dt className="text-ink-muted">Número</dt>
-            <dd className="text-ink">{numero.display_phone_number ?? "—"}</dd>
-            <dt className="text-ink-muted">Nome que aparece</dt>
-            <dd className="text-ink">
-              {numero.verified_name ?? "—"}
-              {numero.name_status && numero.name_status !== "APPROVED" && ` (nome ${numero.name_status.toLowerCase()})`}
-            </dd>
-            <dt className="text-ink-muted">Qualidade</dt>
-            <dd className="text-ink">{QUALIDADE[numero.quality_rating ?? ""] ?? numero.quality_rating ?? "—"}</dd>
-            <dt className="text-ink-muted">Limite</dt>
-            <dd className="text-ink">{LIMITE[numero.messaging_limit_tier ?? ""] ?? numero.messaging_limit_tier ?? "—"}</dd>
-          </dl>
+          <>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body-sm">
+              <dt className="text-ink-muted">Número</dt>
+              <dd className="text-ink">{numero.display_phone_number ?? "—"}</dd>
+              <dt className="text-ink-muted">Nome que aparece</dt>
+              <dd className="text-ink">
+                {numero.verified_name ?? "—"}
+                {numero.name_status && numero.name_status !== "APPROVED" && ` (nome ${numero.name_status.toLowerCase()})`}
+              </dd>
+              <dt className="text-ink-muted">Na API de nuvem</dt>
+              <dd className={registrado || !numero.platform_type ? "text-ink" : "text-danger"}>
+                {!numero.platform_type ? "—" : registrado ? "Registrado" : "Falta registrar (abaixo)"}
+              </dd>
+              <dt className="text-ink-muted">Webhook da conta</dt>
+              <dd className={webhookLigado ? "text-ink" : "text-danger"}>
+                {!webhook
+                  ? "—"
+                  : "erro" in webhook
+                    ? webhook.erro
+                    : webhookLigado
+                      ? `Ligado (${webhook.apps.join(", ")})`
+                      : "Desligado (ligue abaixo)"}
+              </dd>
+              <dt className="text-ink-muted">Qualidade</dt>
+              <dd className="text-ink">{QUALIDADE[numero.quality_rating ?? ""] ?? numero.quality_rating ?? "—"}</dd>
+              <dt className="text-ink-muted">Limite</dt>
+              <dd className="text-ink">{LIMITE[numero.messaging_limit_tier ?? ""] ?? numero.messaging_limit_tier ?? "—"}</dd>
+            </dl>
+            {webhook && "apps" in webhook && !webhookLigado && <LigarWebhook depois={conferir} />}
+            {numero.platform_type && !registrado && <RegistrarNumero depois={conferir} />}
+          </>
         ) : (
           <Resposta r={{ ok: false, texto: numero.erro ?? "A Meta não respondeu." }} />
         ))}
     </div>
+  );
+}
+
+function LigarWebhook({ depois }: { depois: () => void }) {
+  const [pendente, iniciar] = useTransition();
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <button
+        type="button"
+        disabled={pendente}
+        className={classesBotao("primario")}
+        onClick={() =>
+          iniciar(async () => {
+            const r = await ligarWebhookAgora();
+            setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+            if (r.ok) depois();
+          })
+        }
+      >
+        {pendente ? "Ligando…" : "Ligar o webhook nesta conta"}
+      </button>
+      <Resposta r={resposta} />
+    </div>
+  );
+}
+
+function RegistrarNumero({ depois }: { depois: () => void }) {
+  const [pin, setPin] = useState("");
+  const [pendente, iniciar] = useTransition();
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  return (
+    <form
+      className="flex max-w-md flex-col items-start gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setResposta(null);
+        iniciar(async () => {
+          const r = await registrarNumeroAgora(pin);
+          setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Registrado." } : { ok: false, texto: r.erro });
+          if (r.ok) {
+            setPin("");
+            depois();
+          }
+        });
+      }}
+    >
+      <label className="flex w-full flex-col gap-1.5">
+        <span className="text-label text-ink">Registrar o número na API (PIN de 6 números)</span>
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={6}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+          className={`${classesEntrada} w-40`}
+        />
+        <span className="text-body-sm text-ink-muted">
+          Invente um PIN e guarde: ele vira a confirmação em duas etapas do número (se o número já tem uma, use a mesma).
+          A Meta aceita 10 tentativas a cada 3 dias. O Publike não guarda o PIN.
+        </span>
+      </label>
+      <button type="submit" disabled={pendente || pin.length !== 6} className={classesBotao("primario")}>
+        {pendente ? "Registrando…" : "Registrar o número"}
+      </button>
+      <Resposta r={resposta} />
+    </form>
   );
 }
 

@@ -3,10 +3,13 @@
 import { refresh } from "next/cache";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import {
+  appsDoWebhook,
   conferirModelos,
   conferirNumero,
   configMeta,
   enviarTeste,
+  ligarWebhookDaConta,
+  registrarNumero,
   type SituacaoModelos,
 } from "@/lib/servidor/whatsapp";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
@@ -86,14 +89,40 @@ export type NumeroDaMeta = {
   quality_rating?: string;
   messaging_limit_tier?: string;
   name_status?: string;
+  code_verification_status?: string;
+  platform_type?: string;
+  /** os apps inscritos no webhook da conta, ou por que não deu para conferir */
+  webhook?: { apps: string[] } | { erro: string };
 };
 
-/** O número do Publike na Meta: o nome, a qualidade e o limite por dia. */
+/** O número do Publike na Meta: o nome, a qualidade, o limite por dia, o registro na API e o webhook da conta. */
 export async function conferirNumeroAgora(): Promise<NumeroDaMeta> {
   if (!(await banco())) return { ok: false, erro: "Só a equipe do Publike." };
   const cfg = configMeta();
   if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
-  return conferirNumero(cfg);
+  const [numero, webhook] = await Promise.all([conferirNumero(cfg), appsDoWebhook(cfg)]);
+  return { ...numero, webhook: webhook.ok ? { apps: webhook.apps } : { erro: webhook.erro } };
+}
+
+/** Registra o número na API de nuvem com o PIN de 6 números (a Meta aceita 10 tentativas a cada 3 dias). */
+export async function registrarNumeroAgora(pin: string): Promise<Resultado> {
+  if (!(await banco())) return { ok: false, erro: "Só a equipe do Publike." };
+  const cfg = configMeta();
+  if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
+  const p = String(pin ?? "").trim();
+  if (!/^\d{6}$/.test(p)) return { ok: false, erro: "O PIN tem 6 números." };
+  const r = await registrarNumero(cfg, p);
+  if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
+  return { ok: true, mensagem: "Número registrado na API. Guarde o PIN: é a confirmação em duas etapas do número." };
+}
+
+/** Inscreve o app no webhook da conta do WhatsApp (sem isso, a entrega, a leitura e os botões não chegam). */
+export async function ligarWebhookAgora(): Promise<Resultado> {
+  if (!(await banco())) return { ok: false, erro: "Só a equipe do Publike." };
+  const cfg = configMeta();
+  if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
+  const r = await ligarWebhookDaConta(cfg);
+  return r.ok ? { ok: true, mensagem: "Webhook ligado nesta conta." } : { ok: false, erro: `A Meta recusou: ${r.erro}` };
 }
 
 /** A mensagem de teste da Meta (hello_world) para um dos números de teste. */
