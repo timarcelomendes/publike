@@ -120,7 +120,6 @@ async function Conteudo() {
         descricao="As chaves que assinam as notificações (Web Push). Sem elas, o sino não mostra o “Ativar notificações”."
       >
         <SituacaoDoPush />
-        <GeradorDeChavesVapid ligadas={Boolean(chavesVapid())} />
       </Secao>
     </div>
   );
@@ -185,6 +184,9 @@ async function SituacaoDoPush() {
           />
         </div>
       )}
+      {/* ligadas na Vercel ou aqui: gerar de novo pede confirmação (16/11/2026: o botão gerava sem perguntar quando
+          as chaves estavam só na Vercel) */}
+      <GeradorDeChavesVapid ligadas={Boolean(local) || Boolean(site?.ligadas)} />
       {numeros?.ultimo_erro && numeros.ultimo_erro_em && (
         <p className="text-body-sm text-ink-muted">
           Último erro ({tempoRelativo(numeros.ultimo_erro_em, agora)}): {numeros.ultimo_erro}

@@ -280,6 +280,12 @@ export function GeradorDeChavesVapid({ ligadas }: { ligadas: boolean }) {
         <Aviso tipo="alerta" titulo="Chaves geradas. Copie agora: elas não ficam guardadas em lugar nenhum.">
           <LinhaDeCopiar nome="PUBLIKE_VAPID_PUBLICA" valor={chaves.publica} />
           <LinhaDeCopiar nome="PUBLIKE_VAPID_PRIVADA (secreta)" valor={chaves.privada} />
+          <div className="mt-2">
+            <Botao tamanho="sm" variante="fantasma" onClick={() => setChaves(null)}>
+              Descartar estas chaves
+            </Botao>
+            <span className="ml-2 text-body-sm text-ink-muted">Sem pôr na Vercel, nada muda.</span>
+          </div>
           <ol className="mt-3 flex list-decimal flex-col gap-1 pl-5">
             <li>
               Na Vercel (Settings › Environment Variables), crie PUBLIKE_VAPID_PUBLICA e PUBLIKE_VAPID_PRIVADA em
