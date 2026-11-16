@@ -73,6 +73,7 @@ import { MesEAno } from "./curriculo/mes-e-ano";
 import { PreencherComOPdf } from "./curriculo/preencher-com-o-pdf";
 import { irParaOCampo, SeuCartao, type PessoaDoCartao, type QuemVe } from "./curriculo/seu-cartao";
 import { MelhorarCurriculoComIA } from "./melhorar-curriculo-ia";
+import { CampoBairro } from "./local/campo-bairro";
 import { VisibilidadeCurriculo } from "./visibilidade-curriculo";
 import { AvisoAoSair } from "./ui/aviso-ao-sair";
 import { Aviso, Selo } from "./ui/basicos";
@@ -1317,6 +1318,13 @@ export function FormCurriculo({
                 {erros.habilidades && <MensagemErro>{erros.habilidades}</MensagemErro>}
               </div>
             </Secao>
+
+            {/* o bairro onde mora (obrigatório desde 16/11/2026): vai para o perfil; só com conta (o perfil tem a cidade) */}
+            {pessoa && (
+              <Secao id="onde-mora" titulo="Onde você mora">
+                <CampoBairro cidade={pessoa.cidade} inicial={pessoa.bairro ?? ""} erro={erros.bairro} />
+              </Secao>
+            )}
 
             <Secao
               id="experiencias"

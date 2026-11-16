@@ -174,7 +174,7 @@ export type Local = {
   cidade: Cidade;
   bairro: string;
   regiao: Regiao | null;
-  fonte: "casa" | "busca" | "perfil";
+  fonte: "casa" | "busca" | "perfil" | "aparelho";
   cep?: string | null;
   ponto?: { lat: number; lng: number } | null;
   /** sem CEP: o meio do bairro, achado no mapa quando a pessoa escolheu o bairro */

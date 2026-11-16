@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LocalizacaoDaPagina } from "@/components/local/localizacao-da-pagina";
 import { Eye } from "lucide-react";
 import { Suspense, type ReactNode } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
@@ -208,6 +209,14 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
           <Suspense fallback={<Esqueleto className="mb-6 h-40 rounded-lg" />}>
             <TopoDaConta searchParams={searchParams} soOlhar={soOlhar} />
           </Suspense>
+          {/* o convite da localização e, para a pessoa sem bairro, "É onde você mora?" (somem sozinhos) */}
+          {!soOlhar && (
+            <Suspense fallback={null}>
+              <div className="mb-4 empty:hidden">
+                <LocalizacaoDaPagina />
+              </div>
+            </Suspense>
+          )}
           {/* Quem contrata perto no começo da linha (só para quem procura trabalho; a chamada some para empresa) */}
           {!soOlhar && (
             <Suspense fallback={null}>

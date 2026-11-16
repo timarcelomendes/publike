@@ -314,7 +314,8 @@
   "20270628120000_producao_alinhada",
   "20270629110000_registro_e_impressao_do_banco",
   "20270629120000_desconvidar",
-  "20270630120000_mapa_dos_talentos"
+  "20270630120000_mapa_dos_talentos",
+  "20270701120000_aviso_do_bairro"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",

@@ -2,6 +2,8 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { obterMeuPerfil, obterMinhaCasa } from "./dados";
+import { COOKIE_PERTO, lerPerto } from "./perto-guardado";
+import { PRACA_PADRAO, pracaDoPonto } from "./pracas";
 import { arredondarCasa, criarLocal, type Local } from "./regioes";
 
 /** Cookie com a cidade, o bairro e (se a pessoa deu) o CEP e o ponto arredondado de casa. */
@@ -37,7 +39,8 @@ export function valorCookieLocal(local: Local) {
 /**
  * Onde a pessoa mora, para pôr primeiro os anúncios de perto de casa:
  * o CEP de casa guardado na conta, o que ela escolheu neste navegador ou,
- * se não escolheu, o bairro do perfil.
+ * se não escolheu, o bairro do perfil. Com a localização do aparelho liberada (o cookie de 24 horas do "Perto de
+ * mim"), as distâncias contam de onde ela está (16/11/2026), com o bairro do perfil no nome.
  */
 export const obterLocal = cache(async (): Promise<Local | null> => {
   const casa = await obterMinhaCasa();
@@ -45,8 +48,15 @@ export const obterLocal = cache(async (): Promise<Local | null> => {
     const local = criarLocal(casa.cidade, casa.bairro, "casa", { cep: casa.cep, ponto: { lat: casa.lat, lng: casa.lng } });
     if (local) return local;
   }
-  const escolhido = lerCookieLocal((await cookies()).get(COOKIE_LOCAL)?.value);
+  const pote = await cookies();
+  const escolhido = lerCookieLocal(pote.get(COOKIE_LOCAL)?.value);
   if (escolhido) return escolhido;
   const perfil = await obterMeuPerfil();
+  const aqui = lerPerto(pote.get(COOKIE_PERTO)?.value);
+  if (aqui) {
+    const cidade = (pracaDoPonto(aqui) ?? PRACA_PADRAO).cidade;
+    const local = criarLocal(cidade, perfil?.cidade === cidade ? (perfil.bairro ?? "") : "", "aparelho", { centro: aqui });
+    if (local) return local;
+  }
   return perfil ? criarLocal(perfil.cidade, perfil.bairro ?? "", "perfil") : null;
 });

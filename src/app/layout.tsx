@@ -1,3 +1,4 @@
+import { AtualizarLocalizacao } from "@/components/local/atualizar-localizacao";
 import type { Metadata, Viewport } from "next";
 import { ProvedorDoApelido } from "@/components/apelido-da-ia";
 import { apelidoDaIA } from "@/lib/servidor/apelido-ia";
@@ -144,6 +145,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <GoogleAds />
           </Suspense>
           <AvisoAtualizacao />
+          {/* a localização já liberada: renova a posição a cada visita, sem perguntar (components/local) */}
+          <AtualizarLocalizacao />
           {/* o "salvo" de uma ação que levou para outra página (lib/aviso-depois.ts); lê o endereço da página */}
           <Suspense fallback={null}>
             <AvisoDepois />

@@ -100,6 +100,12 @@ function texto(min: number, max: number, nome: string, textoLivre = false) {
     .refine((t) => !procurarContato(t, textoLivre), { error: SEM_CONTATO });
 }
 
+/** O bairro onde a pessoa mora (currículo e "É onde você mora?"): obrigatório, de 2 a 80 letras, sem contato. */
+export function lerBairro(valor: unknown): { ok: true; bairro: string } | { ok: false; erro: string } {
+  const r = texto(2, 80, "o bairro onde você mora").safeParse(typeof valor === "string" ? valor.replace(/\s+/g, " ") : "");
+  return r.success ? { ok: true, bairro: r.data } : { ok: false, erro: r.error.issues[0]?.message ?? "Escreva o bairro." };
+}
+
 function opcional(max: number) {
   return z
     .string()

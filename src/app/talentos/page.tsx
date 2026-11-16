@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, FileUser, Megaphone, Search, Sparkles, UserSearch } from "lucide-react";
+import { LocalizacaoDaPagina } from "@/components/local/localizacao-da-pagina";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -138,6 +139,11 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
       </Suspense>
       <Suspense fallback={null}>
         <ChamadaTalento />
+      </Suspense>
+      <Suspense fallback={null}>
+        <div className="mt-3 empty:hidden">
+          <LocalizacaoDaPagina />
+        </div>
       </Suspense>
       <div className="mt-5">
         <Suspense fallback={<EsqueletoTalentos />}>

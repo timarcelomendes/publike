@@ -16,7 +16,7 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { lerArquivoDoCurriculo, type LeituraDoArquivo } from "@/lib/servidor/ler-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
-import { lerCurriculo } from "@/lib/validacao";
+import { lerBairro, lerCurriculo } from "@/lib/validacao";
 import { arquivoEhPdf, NAO_EH_PDF } from "@/lib/pdf-de-verdade";
 
 /**
@@ -44,6 +44,13 @@ async function salvar(formData: FormData, vigia: Vigia): Promise<EstadoForm> {
   }
 
   const leitura = lerCurriculo(formData);
+  // o bairro onde mora (obrigatório desde 16/11/2026; vai para o perfil). Só quando o formulário tem o campo: a página
+  // aberta antes desta versão salva como antes.
+  const bairro = formData.has("bairro") ? lerBairro(formData.get("bairro")) : null;
+  if (bairro && !bairro.ok) {
+    const erros = { ...(leitura.ok ? {} : leitura.erros), bairro: bairro.erro };
+    return { ok: false, erro: `Confira os campos marcados: ${Object.values(erros)[0]}`, erros };
+  }
   if (!leitura.ok) {
     // o primeiro problema já no aviso (alguns campos não têm lugar para a mensagem embaixo deles)
     const primeiro = Object.values(leitura.erros)[0];
@@ -109,6 +116,11 @@ async function salvar(formData: FormData, vigia: Vigia): Promise<EstadoForm> {
     if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/perfil/curriculo");
     vigia.banco(error);
     return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar seu currículo agora.") };
+  }
+  // o bairro no perfil (o cartão do currículo e o mapa dos talentos mostram este)
+  if (bairro?.ok && bairro.bairro !== (perfil?.bairro ?? "")) {
+    const { error: erroBairro } = await supabase.from("perfis").update({ bairro: bairro.bairro }).eq("id", usuario.id);
+    if (erroBairro) console.error(`Publike: o currículo salvou, mas o bairro não: ${erroBairro.message}`);
   }
   // os PDFs antigos: o currículo já salvou, a sobra no Storage não muda nada para a pessoa
   try {
