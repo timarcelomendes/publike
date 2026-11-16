@@ -5,10 +5,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "@/components/explorar/abas";
-import { CartaoDaConta } from "@/components/home/cartao-da-conta";
-import { MolduraDaHome } from "@/components/home/moldura";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
+import { MenuPainelEsqueleto } from "@/components/painel/menu-painel";
 import { CartaoTalento } from "@/components/talentos/cartao-talento";
 import { ConviteEmLote, MarcarConvite, MarcarTodos } from "@/components/talentos/convite-em-lote";
 import { MapaDosTalentos } from "@/components/talentos/mapa-dos-talentos";
@@ -98,7 +97,7 @@ export default function Talentos({ searchParams }: PageProps<"/talentos">) {
   return (
     <Suspense
       fallback={
-        <Container className="py-6 sm:py-8">
+        <Container className="py-6 sm:py-8 lg:max-w-[96rem]">
           <EsqueletoTalentos />
         </Container>
       }
@@ -109,51 +108,49 @@ export default function Talentos({ searchParams }: PageProps<"/talentos">) {
 }
 
 /**
- * Quem entrou vê a aba dentro da moldura da home (a conta e o menu à esquerda), como as abas Tudo,
- * Vagas e Serviços; quem visita, a página aberta, com o título grande.
+ * Quem entrou vê Talentos como as telas do painel (16/11/2026: "fica com espaço na lateral e no meio"): a mesma largura
+ * (até 96rem; o topo acompanha pelo endereço, em largura-da-pagina.tsx), o mesmo menu da conta à esquerda e a página ao
+ * lado. Quem visita, a página aberta, com o título grande.
  */
 async function Pagina({ searchParams }: { searchParams: Parametros }) {
   const usuario = MODO_DEMO ? null : await obterUsuario();
   if (!usuario) return <TalentosAberta searchParams={searchParams} />;
   return (
-    <MolduraDaHome
-      larga
-      esquerda={
-        <>
-          <Suspense fallback={<Esqueleto className="h-56 rounded-lg" />}>
-            <CartaoDaConta />
+    <Container className="py-6 sm:py-8 lg:max-w-[96rem]">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="hidden lg:sticky lg:top-20 lg:z-20 lg:block">
+          <Suspense fallback={<MenuPainelEsqueleto />}>
+            <MenuDaConta />
           </Suspense>
-          <Suspense fallback={<Esqueleto className="h-64 rounded-lg" />}>
-            <MenuDaConta semAConta />
-          </Suspense>
-        </>
-      }
-    >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h1 className="text-h3 sm:text-h2">Talentos perto de você</h1>
-        <Selo variante="novo">Grátis</Selo>
-      </div>
-      <Abas semAjuda />
-      <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
-        <Busca searchParams={searchParams} />
-      </Suspense>
-      <Suspense fallback={null}>
-        <DicaEBuscasSalvas searchParams={searchParams} />
-      </Suspense>
-      <Suspense fallback={null}>
-        <ChamadaTalento />
-      </Suspense>
-      <Suspense fallback={null}>
-        <div className="mt-3 empty:hidden">
-          <LocalizacaoDaPagina />
         </div>
-      </Suspense>
-      <div className="mt-5">
-        <Suspense fallback={<EsqueletoTalentos />}>
-          <Lista searchParams={searchParams} explicar estreita />
-        </Suspense>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="text-h3 sm:text-h2">Talentos perto de você</h1>
+            <Selo variante="novo">Grátis</Selo>
+          </div>
+          <Abas semAjuda />
+          <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
+            <Busca searchParams={searchParams} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <DicaEBuscasSalvas searchParams={searchParams} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <ChamadaTalento />
+          </Suspense>
+          <Suspense fallback={null}>
+            <div className="mt-3 empty:hidden">
+              <LocalizacaoDaPagina />
+            </div>
+          </Suspense>
+          <div className="mt-5">
+            <Suspense fallback={<EsqueletoTalentos />}>
+              <Lista searchParams={searchParams} explicar estreita />
+            </Suspense>
+          </div>
+        </div>
       </div>
-    </MolduraDaHome>
+    </Container>
   );
 }
 
@@ -178,7 +175,7 @@ function TalentosAberta({ searchParams }: { searchParams: Parametros }) {
   return (
     <>
       <section className="border-b border-line pb-4 sm:pb-5">
-        <Container className="pt-4 sm:pt-6 lg:pt-8">
+        <Container className="pt-4 sm:pt-6 lg:max-w-[96rem] lg:pt-8">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h1 className="text-h3 sm:text-h1">Talentos perto de você.</h1>
             <Selo variante="novo">Grátis</Selo>
@@ -200,7 +197,7 @@ function TalentosAberta({ searchParams }: { searchParams: Parametros }) {
           </Suspense>
         </Container>
       </section>
-      <Container className="py-6 sm:py-8">
+      <Container className="py-6 sm:py-8 lg:max-w-[96rem]">
         <Suspense fallback={<EsqueletoTalentos />}>
           <Lista searchParams={searchParams} />
         </Suspense>

@@ -10,13 +10,14 @@ import { useLayoutEffect } from "react";
 // - data-pagina-larga: pela página larga que está na tela (o Início de quem entrou na conta), com MarcarPaginaLarga.
 
 /** marca o html antes de pintar a primeira vez (no <head>), para o topo não pular */
-export const SCRIPT_LARGURA = `(function(){var c=location.pathname;if(c==="/painel"||c.indexOf("/painel/")===0)document.documentElement.setAttribute("data-largura","painel")})()`;
+// Talentos (/talentos) tem a largura do painel desde 16/11/2026: é uma tela de trabalho de quem contrata
+export const SCRIPT_LARGURA = `(function(){var c=location.pathname;if(c==="/painel"||c.indexOf("/painel/")===0||c==="/talentos")document.documentElement.setAttribute("data-largura","painel")})()`;
 
 export function LarguraDaPagina() {
   const caminho = usePathname();
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-hidratado", "");
-    if (caminho === "/painel" || caminho.startsWith("/painel/")) {
+    if (caminho === "/painel" || caminho.startsWith("/painel/") || caminho === "/talentos") {
       document.documentElement.setAttribute("data-largura", "painel");
     } else document.documentElement.removeAttribute("data-largura");
   }, [caminho]);
