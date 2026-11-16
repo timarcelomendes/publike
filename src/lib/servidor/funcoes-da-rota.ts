@@ -9,7 +9,8 @@ import { COOKIE_PERTO, lerPerto } from "@/lib/perto-guardado";
 import { PRACA_PADRAO, pracaDoPonto } from "@/lib/pracas";
 import { centroDaCidade } from "@/lib/regioes";
 import type { Curriculo, MeuPerfil } from "@/lib/tipos";
-import { centroDoBairro } from "./cep";
+import { MODO_DEMO } from "@/lib/config";
+import { centroDoBairro, enderecoDoPonto } from "./cep";
 import { cidadeDaVisita } from "./cidade";
 import { comFuncoesDoCurriculo } from "./funcoes-pelo-contexto";
 import { anunciosNoAr, type AnuncioNoAr } from "./paginas-busca";
@@ -75,6 +76,18 @@ export async function origemDaRota(perfil: MeuPerfil | null): Promise<OrigemDaRo
   }
   const { cidade } = await cidadeDaVisita();
   return { ponto: centroDaCidade(cidade), tipo: "cidade", nome: `Centro de ${cidade}`, cidade };
+}
+
+/**
+ * O bairro de onde a pessoa está, pelo OpenStreetMap (o mesmo do "Usar minha localização" ao publicar), para o botão
+ * "Saindo de" mostrar o lugar e não só "Onde você está" (16/11/2026, Marcelo: "faltou minha localização"). O ponto
+ * vem arredondado (~100 m) e a resposta fica guardada por um dia; sem bairro no mapa, a rua; sem nada, null.
+ */
+export async function nomeDoLugarAqui(ponto: { lat: number; lng: number }): Promise<string | null> {
+  if (MODO_DEMO) return null;
+  const r = await enderecoDoPonto(ponto.lat, ponto.lng).catch(() => null);
+  if (!r?.ok) return null;
+  return r.endereco.bairro ?? r.endereco.rua ?? null;
 }
 
 export type VagaDaRota = AnuncioNoAr & { distancia_km: number };

@@ -15,7 +15,7 @@ import { funcoesComuns, tituloDaFuncao } from "@/lib/funcao-cbo";
 import { caminhoDaFuncao, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
 import { obterLocal } from "@/lib/local";
 import { RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
-import { funcoesParaARota, origemDaRota, vagasDaFuncaoPerto } from "@/lib/servidor/funcoes-da-rota";
+import { funcoesParaARota, nomeDoLugarAqui, origemDaRota, vagasDaFuncaoPerto } from "@/lib/servidor/funcoes-da-rota";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -88,6 +88,11 @@ function EsqueletoDaRota() {
       <Esqueleto className="mt-2 h-[min(62vh,34rem)] min-h-80 w-full rounded-lg" />
     </div>
   );
+}
+
+/** O bairro de onde a pessoa está, no botão "Saindo de" (sem achar, fica "Onde você está"). */
+async function NomeDoLugarAqui({ ponto }: { ponto: { lat: number; lng: number } }) {
+  return (await nomeDoLugarAqui(ponto)) ?? "Onde você está";
 }
 
 type MinhaRota = { id: string; funcao: string; raio_km: number; criada_em: string; copias: number; entregues: number; abertas: number };
@@ -238,7 +243,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contr
           rotulo={doCurriculo.length ? "Ou procure outra função" : "Sua função"}
         />
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
-          <OndeMoraDaRota local={local} origem={{ tipo: origem.tipo, nome: origem.nome, cidade: origem.cidade }} />
+          <OndeMoraDaRota
+            local={local}
+            origem={{ tipo: origem.tipo, nome: origem.nome, cidade: origem.cidade }}
+            nomeAqui={
+              // o bairro de onde a pessoa está chega depois, sem segurar o mapa
+              origem.tipo === "aqui" ? (
+                <Suspense fallback="Onde você está">
+                  <NomeDoLugarAqui ponto={origem.ponto} />
+                </Suspense>
+              ) : undefined
+            }
+          />
           <Filtros
             rotulo="Até onde você vai"
             opcoes={RAIOS_DA_ROTA.map((r) => ({ valor: String(r), nome: r === 1 ? "1 km (a pé)" : `até ${r} km` }))}

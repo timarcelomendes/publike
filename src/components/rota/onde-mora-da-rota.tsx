@@ -2,7 +2,7 @@
 
 import { ChevronDown, House, LocateFixed, Navigation } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useId, useState, useTransition } from "react";
 import { esquecerPerto, guardarPerto } from "@/lib/perto-guardado";
 import { noPublike, ONDE_FUNCIONA } from "@/lib/pracas";
 import type { Local } from "@/lib/regioes";
@@ -19,9 +19,12 @@ export const ABRIR_ONDE_MORA_DA_ROTA = "rota:onde-mora";
 export function OndeMoraDaRota({
   local,
   origem,
+  nomeAqui,
 }: {
   local: Local | null;
   origem: { tipo: "casa" | "aqui" | "bairro" | "cidade"; nome: string; cidade: string };
+  /** com a localização do aparelho: o bairro de onde a pessoa está (vem do servidor, depois do resto da página) */
+  nomeAqui?: ReactNode;
 }) {
   const [aberto, setAberto] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -57,7 +60,7 @@ export function OndeMoraDaRota({
   }
 
   const rotulo =
-    origem.tipo === "cidade" ? "Onde você mora?" : origem.tipo === "aqui" ? "Onde você está" : origem.nome;
+    origem.tipo === "cidade" ? "Onde você mora?" : origem.tipo === "aqui" ? (nomeAqui ?? "Onde você está") : origem.nome;
 
   return (
     <div id="saindo-de" className="flex min-w-0 flex-col gap-2">
