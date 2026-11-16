@@ -255,7 +255,13 @@ export async function ParaAVaga({
             t={t}
             a={a}
             vagaId={vaga.id}
-            distancia={distanciaAproximada(lugares?.get(t.perfil_id), ondeFica)}
+            distancia={
+              !lugares || !ondeFica
+                ? null
+                : lugares.get(t.perfil_id)
+                  ? (d => d && `${d} da vaga`)(distanciaAproximada(lugares.get(t.perfil_id), ondeFica))
+                  : "sem bairro no perfil para medir a distância"
+            }
             jeito={jeitos.get(t.perfil_id)}
             hoje={hoje}
             agora={agora}
@@ -314,7 +320,7 @@ export function TalentoDaVaga({
   t: TalentoDaLista;
   a: Aderencia;
   vagaId: string;
-  /** "≈ 3 km" (do centro do bairro da pessoa até a vaga); null sem o lugar dos dois */
+  /** "≈ 3 km da vaga" (do centro do bairro da pessoa até a vaga), "sem bairro no perfil…"; null sem o lugar da vaga */
   distancia: string | null;
   jeito: Parameters<typeof CurriculoResumo>[0]["curriculo"]["jeito"];
   hoje: string;
@@ -347,7 +353,7 @@ export function TalentoDaVaga({
             <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-terra-text" />
             <span>
               {formatarLugar(t.bairro, t.cidade)}
-              {distancia && <span className="text-ink-muted"> · {distancia} da vaga</span>}
+              {distancia && <span className="text-ink-muted"> · {distancia}</span>}
             </span>
           </li>
           <li className="flex items-start gap-2">

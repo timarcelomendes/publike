@@ -19,6 +19,8 @@ import { dataCurta } from "@/lib/recursos-pagos";
 import { conexaoCom, estadosDeConexao } from "@/lib/servidor/conexoes";
 import { acessoAoContatoNoConvite, contatoNoConviteDe } from "@/lib/servidor/contato-no-convite";
 import { talentoCompleto, talentoResumo, vagasParaConvidar } from "@/lib/servidor/talentos";
+import { distanciaDoTalento } from "@/lib/mapa-dos-talentos";
+import { lugaresDosTalentos, meuLugarAproximado, minhasVagasNoMapa } from "@/lib/servidor/mapa-dos-talentos";
 import { tituloDoTalento } from "@/lib/talentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { TemVoltarProprio } from "@/components/voltar";
@@ -78,6 +80,13 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
     cv ? contatoNoConviteDe(resumo.perfil_id) : Promise.resolve(null),
   ]);
   const estado = estados?.get(resumo.perfil_id) ?? null;
+  // quem contrata vê a distância aproximada até a vaga mais perto (ou até o próprio lugar); o banco só responde a quem
+  // contrata (16/11/2026, "a distância aproximada do talento x empresa / vaga")
+  const [lugares, vagasNoMapa, meuLugar] =
+    usuario && !souEu
+      ? await Promise.all([lugaresDosTalentos([resumo.perfil_id]), minhasVagasNoMapa(), meuLugarAproximado()])
+      : [null, [], null];
+  const distancia = lugares ? distanciaDoTalento(lugares.get(resumo.perfil_id), vagasNoMapa, meuLugar) : null;
   // o contato já à vista: no pedido liberado pelo plano ou na conexão aceita
   const conexao =
     cv && estado && (estado.contato || estado.status === "aceita") ? await conexaoCom(resumo.perfil_id) : null;
@@ -115,6 +124,7 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
               <MapPin aria-hidden className="size-4 shrink-0" />
               {formatarLugar(resumo.bairro, resumo.cidade)}
             </span>
+            {distancia && <span>{distancia}</span>}
           </p>
           <p className="text-body-sm text-ink-muted">
             Currículo atualizado {tempoRelativo(resumo.atualizado_em, agora)}

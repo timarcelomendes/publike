@@ -4162,6 +4162,8 @@ export type Database = {
         Returns: { id: string; titulo: string; lat: number; lng: number }[];
       };
       /** o lugar aproximado (centro do bairro) de uma lista de talentos (migração 20270702120000) */
+      /** o lugar aproximado da própria conta: o CEP de casa ou o centro do bairro do perfil (migração 20270703120000) */
+      meu_lugar_aproximado: { Args: Record<string, never>; Returns: { lat: number; lng: number }[] };
       bairros_dos_talentos: {
         Args: { p_ids: string[] };
         Returns: { perfil_id: string; cidade: string; bairro: string | null; lat: number; lng: number }[];

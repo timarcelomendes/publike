@@ -98,3 +98,15 @@ export async function lugaresDosTalentos(
     (data ?? []).map((l) => [l.perfil_id, { lat: Number(l.lat), lng: Number(l.lng), cidade: l.cidade, bairro: l.bairro }]),
   );
 }
+
+/** O lugar aproximado da conta que vê (o CEP de casa ou o centro do bairro do perfil); null sem nenhum. */
+export async function meuLugarAproximado(): Promise<Ponto | null> {
+  if (MODO_DEMO) return null;
+  const { data, error } = await (await criarClienteServidor()).rpc("meu_lugar_aproximado");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler o lugar da conta: ${error.message}`);
+    return null;
+  }
+  const l = data?.[0];
+  return l ? { lat: Number(l.lat), lng: Number(l.lng) } : null;
+}

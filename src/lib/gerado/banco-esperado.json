@@ -316,7 +316,8 @@
   "20270629120000_desconvidar",
   "20270630120000_mapa_dos_talentos",
   "20270701120000_aviso_do_bairro",
-  "20270702120000_mapa_para_quem_contrata"
+  "20270702120000_mapa_para_quem_contrata",
+  "20270703120000_meu_lugar_aproximado"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3035,6 +3036,7 @@
   "f|public.meu_contato_no_convite()": "e97751110e",
   "f|public.meu_contato_no_convite_talento()": "bcc3bf7f48",
   "f|public.meu_endereco_de_cobranca()": "d7ad9fb9cc",
+  "f|public.meu_lugar_aproximado()": "abb093bc65",
   "f|public.meu_mutirao(p_entrevista uuid)": "d809530bc7",
   "f|public.meu_plano_agencia()": "42eb08b9f1",
   "f|public.meu_responsavel()": "e4f0cab76d",

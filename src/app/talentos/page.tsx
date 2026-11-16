@@ -24,8 +24,8 @@ import { obterLocal } from "@/lib/local";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { buscarTalentos, convitesDasMinhasVagas, procurandoAgora } from "@/lib/servidor/talentos";
-import { mapaDaBusca } from "@/lib/servidor/mapa-dos-talentos";
-import { distanciaAproximada, type Ponto } from "@/lib/mapa-dos-talentos";
+import { mapaDaBusca, meuLugarAproximado } from "@/lib/servidor/mapa-dos-talentos";
+import { distanciaDoTalento, type Ponto } from "@/lib/mapa-dos-talentos";
 import { modosMarcados } from "@/lib/servidor/modo";
 import { pontoDoLocal } from "@/lib/regioes";
 import { minhasBuscasDeTalentos } from "@/lib/servidor/buscas-talentos";
@@ -354,7 +354,7 @@ async function Lista({
   const paginas = Math.min(Math.ceil(total / TALENTOS_POR_PAGINA), MAX_PAGINAS_TALENTOS);
   const filtrado = Boolean(f.q || f.cidade);
   // empresa: o botão Conectar em cada cartão, já com o estado (pedido enviado, conectados…)
-  const [estados, convites, busca] = await Promise.all([
+  const [estados, convites, busca, meuLugar] = await Promise.all([
     empresa ? estadosDeConexao(lista.map((t) => t.perfil_id)) : null,
     // os convites que já mandei: "Convidado" (com o Desconvidar) no lugar do "Marcar para convidar"
     noAr.length
@@ -365,23 +365,13 @@ async function Lista({
       : null,
     // quem contrata: o mapa da busca (todas as páginas) e o lugar de cada pessoa (a distância no cartão)
     contrata ? mapaDaBusca({ texto: f.q, cidade: f.cidade }) : null,
+    // sem a localização do aparelho, a distância conta do CEP de casa ou do centro do bairro do perfil
+    contrata && !(local?.ponto || local?.centro) ? meuLugarAproximado() : null,
   ]);
-  // a distância no cartão: até a vaga mais perto (quem tem vaga no ar) ou até onde quem vê está (com o ponto certo)
-  const vagasComLugar = busca?.mapa.vagas ?? [];
-  const daqui: Ponto | null = local && (local.ponto || local.centro) ? pontoDoLocal(local) : null;
-  const distanciaDe = (id: string) => {
-    const lugar = busca?.lugares.get(id);
-    if (!lugar) return null;
-    if (vagasComLugar.length) {
-      const maisPerto = vagasComLugar.reduce((a, b) =>
-        (a.lat - lugar.lat) ** 2 + (a.lng - lugar.lng) ** 2 <= (b.lat - lugar.lat) ** 2 + (b.lng - lugar.lng) ** 2 ? a : b,
-      );
-      const d = distanciaAproximada(lugar, maisPerto);
-      return d && `${d} ${vagasComLugar.length === 1 ? "da sua vaga" : "da vaga mais perto"}`;
-    }
-    const d = distanciaAproximada(lugar, daqui);
-    return d && `${d} de você`;
-  };
+  // a distância no cartão: até a vaga mais perto (quem tem vaga no ar) ou até o lugar de quem vê
+  const daqui: Ponto | null = local && (local.ponto || local.centro) ? pontoDoLocal(local) : meuLugar;
+  const distanciaDe = (id: string) =>
+    busca ? distanciaDoTalento(busca.lugares.get(id), busca.mapa.vagas, daqui) : null;
 
   return (
     <div className="flex flex-col gap-5">

@@ -87,3 +87,26 @@ export function distanciaAproximada(de: Ponto | null | undefined, ate: Ponto | n
   if (km < 1) return `≈ ${Math.round((km * 1000) / 100) * 100} m`;
   return `≈ ${km < 10 ? km.toFixed(0) : Math.round(km)} km`;
 }
+
+/**
+ * A distância de um talento no texto do cartão (16/11/2026, "a distância aproximada do talento x empresa / vaga"): até
+ * a vaga mais perto (quem tem vaga no ar), senão até o lugar de quem vê (a localização do aparelho, o CEP de casa ou
+ * o centro do bairro do perfil). Sem o bairro do talento no mapa, diz isso; sem lugar nenhum de quem vê, null.
+ */
+export function distanciaDoTalento(
+  lugar: Ponto | null | undefined,
+  vagas: VagaNoMapa[],
+  daqui: Ponto | null,
+): string | null {
+  if (!vagas.length && !daqui) return null;
+  if (!lugar) return "sem bairro no perfil para medir a distância";
+  if (vagas.length) {
+    const perto = vagas.reduce((a, b) =>
+      (a.lat - lugar.lat) ** 2 + (a.lng - lugar.lng) ** 2 <= (b.lat - lugar.lat) ** 2 + (b.lng - lugar.lng) ** 2 ? a : b,
+    );
+    const d = distanciaAproximada(lugar, perto);
+    return d && `${d} ${vagas.length === 1 ? "da sua vaga" : `da vaga “${perto.titulo}”`}`;
+  }
+  const d = distanciaAproximada(lugar, daqui);
+  return d && `${d} de você`;
+}
