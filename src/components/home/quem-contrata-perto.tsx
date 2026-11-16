@@ -62,12 +62,15 @@ export async function ChamadaQuemContrata({ className = "" }: { className?: stri
     .filter((c) => c.total > 0)
     .slice(0, 2);
   if (!contagens.length) return null;
+  // de onde conta, com o nome do lugar quando tem (16/11/2026: "essa informação pode ficar melhor ainda")
   const de = {
-    casa: "de casa",
-    aqui: "de você",
-    bairro: "do seu bairro",
+    casa: "da sua casa",
+    aqui: "de onde você está",
+    bairro: `do seu bairro (${origem.nome})`,
     cidade: `do centro de ${origem.cidade}`,
   }[origem.tipo];
+  const primeira = contagens[0];
+  const mapa = `/quem-contrata-perto?${new URLSearchParams({ cbo: primeira.cbo, nome: tituloDaFuncao(primeira.cbo) ?? primeira.cbo })}`;
 
   return (
     <section
@@ -81,7 +84,11 @@ export async function ChamadaQuemContrata({ className = "" }: { className?: stri
             Quem contrata perto de você?
           </h2>
           <p className="text-body-sm text-ink-muted">
-            Lugares a até {RAIO_KM} km {de} que costumam contratar. Toque e veja no mapa.
+            Lugares a até {RAIO_KM} km {de} que costumam contratar cada função. Escolha uma e monte a rota para entregar
+            o seu currículo.{" "}
+            <Link href={mapa} className="text-label text-ink underline underline-offset-2 hover:text-terra-text">
+              Ver no mapa
+            </Link>
           </p>
         </div>
       </div>
@@ -96,7 +103,10 @@ export async function ChamadaQuemContrata({ className = "" }: { className?: stri
                 className="inline-flex min-h-10 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-3.5 text-label text-ink transition-colors hover:border-ink"
               >
                 {titulo}
-                <span className="tabular-nums text-terra-text">{formatarNumero(c.total)}</span>
+                <span className="font-normal text-ink-muted">
+                  <span className="tabular-nums text-label text-terra-text">{formatarNumero(c.total)}</span>{" "}
+                  {c.total === 1 ? "lugar" : "lugares"}
+                </span>
               </Link>
             </li>
           );
