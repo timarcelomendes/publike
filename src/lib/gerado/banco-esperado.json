@@ -315,7 +315,8 @@
   "20270629110000_registro_e_impressao_do_banco",
   "20270629120000_desconvidar",
   "20270630120000_mapa_dos_talentos",
-  "20270701120000_aviso_do_bairro"
+  "20270701120000_aviso_do_bairro",
+  "20270702120000_mapa_para_quem_contrata"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2537,6 +2538,7 @@
   "f|privado.pontos_do_anuncio(p_anuncio uuid)": "1464d53d01",
   "f|privado.porta_do_caminho(p_caminho text)": "ef86c31210",
   "f|privado.proposta_em_json(p public.propostas)": "b7115ee88e",
+  "f|privado.quem_contrata(p_conta uuid)": "2f13017f85",
   "f|privado.quem_respondeu_a_curtida()": "67755fafac",
   "f|privado.raio_da_vaga(p_titulo text, p_cidade text)": "cf7ad94811",
   "f|privado.raios_da_geral_dados()": "c1960971ff",
@@ -2849,6 +2851,7 @@
   "f|public.avaliar(p_anuncio uuid, p_nota integer, p_comentario text)": "f0f802f553",
   "f|public.avaliar_candidato(p_anuncio uuid, p_perfil uuid, p_notas jsonb, p_recomendacao text, p_comentario text)": "738b3fd66d",
   "f|public.avaliar_pelo_link(p_token text, p_id uuid, p_quem text, p_notas jsonb, p_recomendacao text, p_comentario text)": "95590ab0c1",
+  "f|public.bairros_dos_talentos(p_ids uuid[])": "4a14911851",
   "f|public.bloquear_pessoa(p_outro uuid, p_bloquear boolean)": "75f24e8c4f",
   "f|public.buscar_anuncios(p_lat double precision, p_lng double precision, p_raio_km double precision, p_tipo text, p_categoria text, p_regime text, p_texto text, p_ordem text, p_limite integer, p_cidade text, p_bairro text, p_bairros_regiao text[], p_regiao text, p_por_distancia boolean)": "309b27255f",
   "f|public.buscar_empresas_receita(p_texto text, p_limite integer)": "cfcd430c6f",
@@ -3011,7 +3014,7 @@
   "f|public.logo_emails()": "72b9666267",
   "f|public.lugares_da_rota(p_cbo text, p_lat double precision, p_lng double precision, p_raio_km numeric, p_limite integer)": "a3fc33036b",
   "f|public.mapa_de_talentos_liberado()": "7b5d24f054",
-  "f|public.mapa_dos_talentos(p_texto text, p_cidade text)": "bebc407c99",
+  "f|public.mapa_dos_talentos(p_texto text, p_cidade text)": "70c044f5d9",
   "f|public.marca_dos_finalistas(p_token text)": "26b7f2d4a8",
   "f|public.marcar_aparelho(p_navegador text, p_app boolean)": "8846642e56",
   "f|public.marcar_banner_visto(p_banner uuid, p_clicou boolean)": "9d5d457b00",

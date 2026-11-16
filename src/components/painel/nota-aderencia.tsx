@@ -31,6 +31,52 @@ export function NotaAderencia({ a, longo = false }: { a: Aderencia; longo?: bool
 }
 
 /**
+ * A nota de aderência num medidor (o anel que enche até a nota, com o número no meio), para a lista em que a nota é o
+ * que decide (o "Para a sua vaga" de Talentos): verde a partir de 80%, amarelo a partir de 50%, cinza abaixo. As
+ * mesmas regras do selo (NotaAderencia): "Eliminado" e, sem nada para comparar, nada.
+ */
+export function MedidorAderencia({ a, tamanho = 64 }: { a: Aderencia; tamanho?: number }) {
+  if (a.eliminado) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-pill border border-danger px-2 py-0.5 text-caption text-danger uppercase">
+        Eliminado
+      </span>
+    );
+  }
+  if (a.nota === null) return null;
+  const cor = a.nota >= 80 ? "text-cerrado" : a.nota >= 50 ? "text-ipe" : "text-ink-muted";
+  const raio = 15.5;
+  const volta = 2 * Math.PI * raio;
+  const titulo = `Nota de aderência: atende ${a.atendidos} de ${itens(a.conferidos)} da vaga que deu para conferir${maisEmParte(a.emParte)}.${motivoDoTeto(a) ? ` ${motivoDoTeto(a)}` : ""}`;
+  return (
+    <span title={titulo} className="flex shrink-0 flex-col items-center gap-0.5">
+      <span className="relative inline-flex items-center justify-center" style={{ width: tamanho, height: tamanho }}>
+        <svg viewBox="0 0 36 36" aria-hidden className="absolute inset-0 -rotate-90">
+          <circle cx="18" cy="18" r={raio} fill="none" stroke="currentColor" strokeWidth="3.5" className="text-surface-300" />
+          <circle
+            cx="18"
+            cy="18"
+            r={raio}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeDasharray={`${(volta * Math.max(a.nota, 2)) / 100} ${volta}`}
+            className={cor}
+          />
+        </svg>
+        <span className="font-display text-[17px] leading-none font-bold text-ink tabular-nums">
+          {a.nota}
+          <span className="text-[11px]">%</span>
+        </span>
+      </span>
+      <span className="text-[12px] leading-4 text-ink-muted">combina</span>
+      <span className="sr-only">{titulo}</span>
+    </span>
+  );
+}
+
+/**
  * O item que bate em parte: o círculo preenchido no tanto que a pessoa atende (0,6: pouco mais da
  * metade). Do tamanho e do traço dos ícones ao lado.
  */

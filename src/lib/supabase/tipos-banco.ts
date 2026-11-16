@@ -4161,6 +4161,11 @@ export type Database = {
         Args: Record<string, never>;
         Returns: { id: string; titulo: string; lat: number; lng: number }[];
       };
+      /** o lugar aproximado (centro do bairro) de uma lista de talentos (migração 20270702120000) */
+      bairros_dos_talentos: {
+        Args: { p_ids: string[] };
+        Returns: { perfil_id: string; cidade: string; bairro: string | null; lat: number; lng: number }[];
+      };
       admin_salvar_plano: { Args: { p_id: string; p_valor: number | null; p_ligado: boolean }; Returns: undefined };
       admin_config_pagamentos: {
         Args: { p_aberto: boolean; p_servico: string; p_e_codigo: boolean; p_descricao: string };

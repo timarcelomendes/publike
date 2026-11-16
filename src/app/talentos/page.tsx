@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FileUser, Megaphone, Search, Sparkles, UserSearch } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileUser, Megaphone, Search, Sparkles, UserSearch, Users } from "lucide-react";
 import { LocalizacaoDaPagina } from "@/components/local/localizacao-da-pagina";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -8,7 +8,6 @@ import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } f
 import { CartaoDaConta } from "@/components/home/cartao-da-conta";
 import { MolduraDaHome } from "@/components/home/moldura";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
-import { classesChip } from "@/components/painel/fluxo";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { CartaoTalento } from "@/components/talentos/cartao-talento";
 import { ConviteEmLote, MarcarConvite, MarcarTodos } from "@/components/talentos/convite-em-lote";
@@ -25,7 +24,10 @@ import { obterLocal } from "@/lib/local";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { buscarTalentos, convitesDasMinhasVagas, procurandoAgora } from "@/lib/servidor/talentos";
-import { mapaDosTalentos } from "@/lib/servidor/mapa-dos-talentos";
+import { mapaDaBusca } from "@/lib/servidor/mapa-dos-talentos";
+import { distanciaAproximada, type Ponto } from "@/lib/mapa-dos-talentos";
+import { modosMarcados } from "@/lib/servidor/modo";
+import { pontoDoLocal } from "@/lib/regioes";
 import { minhasBuscasDeTalentos } from "@/lib/servidor/buscas-talentos";
 import { BuscasSalvas } from "@/components/talentos/buscas-salvas";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
@@ -147,7 +149,7 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
       </Suspense>
       <div className="mt-5">
         <Suspense fallback={<EsqueletoTalentos />}>
-          <Lista searchParams={searchParams} explicar />
+          <Lista searchParams={searchParams} explicar estreita />
         </Suspense>
       </div>
     </MolduraDaHome>
@@ -289,7 +291,16 @@ async function DicaEBuscasSalvas({ searchParams }: { searchParams: Parametros })
  * todos, o que é a aba (quem visita já tem o texto no alto da página; no "Para a sua vaga", o título dele
  * explica).
  */
-async function Lista({ searchParams, explicar = false }: { searchParams: Parametros; explicar?: boolean }) {
+async function Lista({
+  searchParams,
+  explicar = false,
+  estreita = false,
+}: {
+  searchParams: Parametros;
+  explicar?: boolean;
+  /** na moldura de quem entrou (com o menu ao lado): duas colunas de cartões, e não três */
+  estreita?: boolean;
+}) {
   const f = lerBusca(await searchParams);
   const [local, perfil, intencao, noAr, agora] = await Promise.all([
     obterLocal().catch(() => null),
@@ -299,6 +310,10 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
     agoraDaRequisicao(),
   ]);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
+  // quem contrata (16/11/2026): a conta de empresa, comércio ou agência e também a pessoa que tem vaga no ar ou marcou
+  // "Contratar" (a doméstica, o pedreiro, o negócio no CPF): o mapa e o convite valem para todas
+  const contrata =
+    empresa || noAr.length > 0 || Boolean(perfil && (await modosMarcados().catch(() => null))?.includes("contratar"));
 
   // com vaga no ar e sem busca, abre no "Para a sua vaga" (a vaga do endereço ou a mais nova)
   if (noAr.length && !f.todos && (f.vaga || (!f.q && !f.cidade))) {
@@ -306,11 +321,6 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
     return (
       <div className="flex flex-col gap-5">
         <QuaisTalentos vagas={noAr} vaga={vaga.id} />
-        {empresa && (
-          <Suspense fallback={<Esqueleto className="h-80 w-full rounded-lg" />}>
-            <MapaDaBusca texto="" cidade={null} />
-          </Suspense>
-        )}
         <ParaAVaga
           vaga={vaga}
           pagina={f.pagina}
@@ -344,30 +354,49 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
   const paginas = Math.min(Math.ceil(total / TALENTOS_POR_PAGINA), MAX_PAGINAS_TALENTOS);
   const filtrado = Boolean(f.q || f.cidade);
   // empresa: o botão Conectar em cada cartão, já com o estado (pedido enviado, conectados…)
-  const [estados, convites] = await Promise.all([
+  const [estados, convites, busca] = await Promise.all([
     empresa ? estadosDeConexao(lista.map((t) => t.perfil_id)) : null,
     // os convites que já mandei: "Convidado" (com o Desconvidar) no lugar do "Marcar para convidar"
-    empresa
+    noAr.length
       ? convitesDasMinhasVagas(
           lista.map((t) => t.perfil_id),
           noAr.map((v) => ({ id: v.id, titulo: v.titulo })),
         )
       : null,
+    // quem contrata: o mapa da busca (todas as páginas) e o lugar de cada pessoa (a distância no cartão)
+    contrata ? mapaDaBusca({ texto: f.q, cidade: f.cidade }) : null,
   ]);
+  // a distância no cartão: até a vaga mais perto (quem tem vaga no ar) ou até onde quem vê está (com o ponto certo)
+  const vagasComLugar = busca?.mapa.vagas ?? [];
+  const daqui: Ponto | null = local && (local.ponto || local.centro) ? pontoDoLocal(local) : null;
+  const distanciaDe = (id: string) => {
+    const lugar = busca?.lugares.get(id);
+    if (!lugar) return null;
+    if (vagasComLugar.length) {
+      const maisPerto = vagasComLugar.reduce((a, b) =>
+        (a.lat - lugar.lat) ** 2 + (a.lng - lugar.lng) ** 2 <= (b.lat - lugar.lat) ** 2 + (b.lng - lugar.lng) ** 2 ? a : b,
+      );
+      const d = distanciaAproximada(lugar, maisPerto);
+      return d && `${d} ${vagasComLugar.length === 1 ? "da sua vaga" : "da vaga mais perto"}`;
+    }
+    const d = distanciaAproximada(lugar, daqui);
+    return d && `${d} de você`;
+  };
 
   return (
     <div className="flex flex-col gap-5">
-      {explicar && (
+      {explicar && !contrata && (
         <p className="text-body-sm text-ink-muted">
           Gente procurando trabalho que escolheu aparecer aqui. Empresas, comércios e agências abrem o currículo
           completo, pedem conexão (mesmo sem vaga aberta) e convidam para uma vaga.
         </p>
       )}
       {noAr.length > 0 && <QuaisTalentos vagas={noAr} vaga={null} />}
-      {empresa && (
-        <Suspense fallback={<Esqueleto className="h-80 w-full rounded-lg" />}>
-          <MapaDaBusca texto={f.q} cidade={f.cidade} />
-        </Suspense>
+      {busca && busca.mapa.bairros.length > 0 && (
+        <MapaDosTalentos
+          dados={busca.mapa}
+          titulo={f.q ? `Onde estão os talentos com “${f.q}”` : "Onde estão os talentos"}
+        />
       )}
       {lista.length === 0 ? (
         f.pagina > 1 ? (
@@ -412,30 +441,34 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
                 : "Quem atualizou o currículo há menos tempo vem primeiro."}
             </p>
           </div>
-          <ConviteEmLote vagas={empresa ? noAr.map((v) => ({ id: v.id, titulo: v.titulo })) : []}>
+          <ConviteEmLote vagas={noAr.map((v) => ({ id: v.id, titulo: v.titulo }))}>
           <MarcarTodos
             perfis={lista
               .filter((t) => (convites?.get(t.perfil_id)?.length ?? 0) < noAr.length)
               .map((t) => t.perfil_id)}
           />
-          <ul aria-label="Talentos" className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul aria-label="Talentos" className={`mt-3 grid gap-4 sm:grid-cols-2 ${estreita ? "" : "lg:grid-cols-3"}`}>
             {lista.map((t) => (
               <li key={t.perfil_id}>
                 <CartaoTalento
                   t={t}
                   procurando={procurando.has(t.perfil_id)}
+                  agora={agora}
+                  distancia={distanciaDe(t.perfil_id)}
                   acao={
-                    estados && (
-                      <div className="flex flex-col gap-2">
-                        <BotaoConectar
-                          outroId={t.perfil_id}
-                          outroNome={t.nome}
-                          estado={estados.get(t.perfil_id) ?? null}
-                          logado
-                          voltar={hrefBusca(f)}
-                          para="talento"
-                          jeito="cartao"
-                        />
+                    (estados || noAr.length > 0) && (
+                      <div className="flex flex-wrap items-start gap-2">
+                        {estados && (
+                          <BotaoConectar
+                            outroId={t.perfil_id}
+                            outroNome={t.nome}
+                            estado={estados.get(t.perfil_id) ?? null}
+                            logado
+                            voltar={hrefBusca(f)}
+                            para="talento"
+                            jeito="cartao"
+                          />
+                        )}
                         <MarcarConvite
                           perfilId={t.perfil_id}
                           nome={t.nome}
@@ -512,39 +545,39 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
 }
 
 /**
- * Para quem contrata: o mapa dos talentos da busca (migração 20270630120000), pelo bairro de cada um, com as vagas no
- * ar. Sem a migração, ou sem ninguém com bairro, nada.
- */
-async function MapaDaBusca({ texto, cidade }: { texto: string; cidade: string | null }) {
-  const dados = await mapaDosTalentos({ texto, cidade });
-  if (!dados || !dados.bairros.length) return null;
-  return <MapaDosTalentos dados={dados} />;
-}
-
-/**
  * Quem tem vaga no ar: "Para a sua vaga" (quem mais combina com ela, com o Convidar) ou "Todos os talentos".
  * No "Para a sua vaga", com mais de uma vaga no ar, a escolha da vaga embaixo. `vaga`: a escolhida (no
  * "Todos os talentos", null).
  */
+const classesSegmento = (ativo: boolean) =>
+  `inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-pill px-4 text-label whitespace-nowrap transition-colors sm:flex-none ${
+    ativo ? "bg-ink text-surface-100" : "text-ink-muted hover:text-ink"
+  }`;
+
 function QuaisTalentos({ vagas, vaga }: { vagas: MeuAnuncio[]; vaga: string | null }) {
   return (
     <div className="flex flex-col gap-3">
-      <nav aria-label="Quais talentos" className="flex flex-wrap gap-2">
+      {/* as duas listas num controle só (16/11/2026, "dá um tapa no visual"): a escolhida em tinta */}
+      <nav
+        aria-label="Quais talentos"
+        className="flex w-full rounded-pill border border-line-strong bg-surface-200 p-1 shadow-card sm:w-auto sm:self-start"
+      >
         <Link
           href={vaga ? `/talentos?vaga=${vaga}` : "/talentos"}
           scroll={false}
           aria-current={vaga ? "page" : undefined}
-          className={classesChip(Boolean(vaga))}
+          className={classesSegmento(Boolean(vaga))}
         >
-          <Sparkles aria-hidden className="size-4" />
+          <Sparkles aria-hidden className="size-4 shrink-0" />
           {vagas.length === 1 ? "Para a sua vaga" : "Para as suas vagas"}
         </Link>
         <Link
           href="/talentos?ver=todos"
           scroll={false}
           aria-current={vaga ? undefined : "page"}
-          className={classesChip(!vaga)}
+          className={classesSegmento(!vaga)}
         >
+          <Users aria-hidden className="size-4 shrink-0" />
           Todos os talentos
         </Link>
       </nav>
