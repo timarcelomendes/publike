@@ -21,6 +21,7 @@ type Lote = {
   vagaUnica: string | null;
   /** depois do Desconvidar: a pessoa volta a poder ser marcada */
   desfeito: (id: string) => void;
+  quantasVagas: number;
 };
 
 const Contexto = createContext<Lote | null>(null);
@@ -80,6 +81,7 @@ export function ConviteEmLote({
         enviados,
         alternar,
         vagaUnica: vagas.length === 1 ? vagas[0].id : null,
+        quantasVagas: vagas.length,
         desfeito: (id) =>
           setEnviados((atual) => {
             const novo = new Set(atual);
@@ -178,10 +180,44 @@ export function ConviteEmLote({
   );
 }
 
-/** A caixa de marcar de uma pessoa. Já convidada para a vaga: "Convidado". Fora do ConviteEmLote, nada. */
-export function MarcarConvite({ perfilId, nome, convidado = false }: { perfilId: string; nome: string; convidado?: boolean }) {
+/**
+ * A caixa de marcar de uma pessoa. Já convidada para a vaga: "Convidado", com o Desconvidar. `convites`: as minhas
+ * vagas para as quais ela já foi convidada (em "Todos os talentos"); com vaga sem convite, a caixa continua.
+ * Fora do ConviteEmLote, nada.
+ */
+export function MarcarConvite({
+  perfilId,
+  nome,
+  convidado = false,
+  convites = [],
+}: {
+  perfilId: string;
+  nome: string;
+  convidado?: boolean;
+  convites?: { id: string; titulo: string }[];
+}) {
   const lote = useContext(Contexto);
+  const [desfeitos, setDesfeitos] = useState<Set<string>>(() => new Set());
   if (!lote) return null;
+  const ativos = convites.filter((c) => !desfeitos.has(c.id));
+  if (ativos.length && !lote.enviados.has(perfilId)) {
+    return (
+      <div className="flex flex-col items-start">
+        {ativos.map((c) => (
+          <Convidado
+            key={c.id}
+            anuncioId={c.id}
+            perfilId={perfilId}
+            nome={nome}
+            compacto
+            texto={lote.quantasVagas > 1 ? `Convidado para “${c.titulo}”` : "Convidado"}
+            aoDesfazer={() => setDesfeitos((atual) => new Set(atual).add(c.id))}
+          />
+        ))}
+        {ativos.length < lote.quantasVagas && <CaixaDeMarcar lote={lote} perfilId={perfilId} nome={nome} />}
+      </div>
+    );
+  }
   if (lote.enviados.has(perfilId) && lote.vagaUnica) {
     return (
       <Convidado
@@ -201,6 +237,10 @@ export function MarcarConvite({ perfilId, nome, convidado = false }: { perfilId:
       </span>
     );
   }
+  return <CaixaDeMarcar lote={lote} perfilId={perfilId} nome={nome} />;
+}
+
+function CaixaDeMarcar({ lote, perfilId, nome }: { lote: Lote; perfilId: string; nome: string }) {
   const marcado = lote.marcados.has(perfilId);
   return (
     <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-line-strong bg-surface-200 px-3 text-label hover:bg-surface-300 has-[:checked]:border-terra has-[:checked]:bg-terra-soft">

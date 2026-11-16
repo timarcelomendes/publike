@@ -86,5 +86,12 @@ export async function POST(request: Request) {
   }
   // a carga terminou: as matérias do mês viram rascunho em Admin › Notícias (uma vez por mês, depois da resposta)
   if (acao === "fim") after(() => materiasDepoisDaCarga().catch((e) => console.error("Publike: matérias do mês:", e)));
+  // e os centros dos bairros do mapa dos talentos (migração 20270630120000), com os endereços novos
+  if (acao === "fim") {
+    after(async () => {
+      const { error: e } = await c.rpc("servidor_centros_dos_bairros", { p_chave });
+      if (e && e.code !== "PGRST202") console.error("Publike: centros dos bairros:", e.message);
+    });
+  }
   return Response.json({ ok: true, resultado: data });
 }

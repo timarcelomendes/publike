@@ -36,6 +36,37 @@ export async function buscarTalentos(f: {
   return { lista: linhas, total: Number(linhas[0]?.total ?? 0) };
 }
 
+/**
+ * Os convites que já mandei, das minhas vagas no ar, para quem está na página ("Todos os talentos" mostra o
+ * "Convidado", com o Desconvidar). A política de convites_vaga deixa o dono da vaga ler os dele.
+ */
+export async function convitesDasMinhasVagas(
+  perfis: string[],
+  vagas: { id: string; titulo: string }[],
+): Promise<Map<string, { id: string; titulo: string }[]>> {
+  const mapa = new Map<string, { id: string; titulo: string }[]>();
+  if (MODO_DEMO || !perfis.length || !vagas.length) return mapa;
+  const { data, error } = await (await criarClienteServidor())
+    .from("convites_vaga")
+    .select("anuncio_id, perfil_id")
+    .in("perfil_id", perfis.slice(0, 200))
+    .in(
+      "anuncio_id",
+      vagas.map((v) => v.id),
+    );
+  if (error) {
+    console.error(`Publike: falha ao ler os convites da página: ${error.message}`);
+    return mapa;
+  }
+  const titulos = new Map(vagas.map((v) => [v.id, v.titulo]));
+  for (const c of data ?? []) {
+    const titulo = titulos.get(c.anuncio_id);
+    if (!titulo) continue;
+    mapa.set(c.perfil_id, [...(mapa.get(c.perfil_id) ?? []), { id: c.anuncio_id, titulo }]);
+  }
+  return mapa;
+}
+
 /** Quem postou "Procuro trabalho" nos últimos 14 dias (o selo "Procurando agora"; sem a migração 20270323120000, ninguém). */
 export async function procurandoAgora(ids: string[]): Promise<Set<string>> {
   if (MODO_DEMO || !ids.length) return new Set();

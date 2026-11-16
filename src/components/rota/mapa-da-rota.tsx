@@ -7,6 +7,7 @@ import {
   carregarMapLibre,
   CORES_MAPA,
   ESTILO_MAPA,
+  fonteDoEstilo,
   mostrarNomesDasRuas,
   recolherCreditos,
   useMapaAVista,
@@ -39,18 +40,6 @@ function dadosDasVagas(vagas: VagaNoMapa[]): GeoJSON.FeatureCollection<GeoJSON.P
       geometry: { type: "Point", coordinates: [v.lng, v.lat] },
     })),
   };
-}
-
-/** A fonte das letras do próprio estilo do mapa (o estilo só tem as fontes que ele usa). */
-function fonteDoEstilo(m: MapaML): string[] {
-  const fontes: string[][] = [];
-  for (const camada of m.getStyle().layers ?? []) {
-    if (camada.type !== "symbol") continue;
-    const f = (camada.layout as { "text-font"?: unknown } | undefined)?.["text-font"];
-    if (Array.isArray(f) && f.length && f.every((x) => typeof x === "string")) fontes.push(f as string[]);
-  }
-  // a fonte comum (a primeira do estilo costuma ser a itálica dos nomes de rio e lago)
-  return fontes.find((f) => f.some((x) => /regular/i.test(x))) ?? fontes.find((f) => !f.some((x) => /italic/i.test(x))) ?? fontes[0] ?? ["Noto Sans Regular"];
 }
 
 /**

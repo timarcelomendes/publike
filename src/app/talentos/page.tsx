@@ -11,6 +11,7 @@ import { classesChip } from "@/components/painel/fluxo";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { CartaoTalento } from "@/components/talentos/cartao-talento";
 import { ConviteEmLote, MarcarConvite, MarcarTodos } from "@/components/talentos/convite-em-lote";
+import { MapaDosTalentos } from "@/components/talentos/mapa-dos-talentos";
 import { ParaAVaga } from "@/components/talentos/para-a-vaga";
 import { Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -22,7 +23,8 @@ import { formatarNumero, primeiro } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
-import { buscarTalentos, procurandoAgora } from "@/lib/servidor/talentos";
+import { buscarTalentos, convitesDasMinhasVagas, procurandoAgora } from "@/lib/servidor/talentos";
+import { mapaDosTalentos } from "@/lib/servidor/mapa-dos-talentos";
 import { minhasBuscasDeTalentos } from "@/lib/servidor/buscas-talentos";
 import { BuscasSalvas } from "@/components/talentos/buscas-salvas";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
@@ -298,6 +300,11 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
     return (
       <div className="flex flex-col gap-5">
         <QuaisTalentos vagas={noAr} vaga={vaga.id} />
+        {empresa && (
+          <Suspense fallback={<Esqueleto className="h-80 w-full rounded-lg" />}>
+            <MapaDaBusca texto="" cidade={null} />
+          </Suspense>
+        )}
         <ParaAVaga
           vaga={vaga}
           pagina={f.pagina}
@@ -331,7 +338,16 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
   const paginas = Math.min(Math.ceil(total / TALENTOS_POR_PAGINA), MAX_PAGINAS_TALENTOS);
   const filtrado = Boolean(f.q || f.cidade);
   // empresa: o botão Conectar em cada cartão, já com o estado (pedido enviado, conectados…)
-  const estados = empresa ? await estadosDeConexao(lista.map((t) => t.perfil_id)) : null;
+  const [estados, convites] = await Promise.all([
+    empresa ? estadosDeConexao(lista.map((t) => t.perfil_id)) : null,
+    // os convites que já mandei: "Convidado" (com o Desconvidar) no lugar do "Marcar para convidar"
+    empresa
+      ? convitesDasMinhasVagas(
+          lista.map((t) => t.perfil_id),
+          noAr.map((v) => ({ id: v.id, titulo: v.titulo })),
+        )
+      : null,
+  ]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -342,6 +358,11 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
         </p>
       )}
       {noAr.length > 0 && <QuaisTalentos vagas={noAr} vaga={null} />}
+      {empresa && (
+        <Suspense fallback={<Esqueleto className="h-80 w-full rounded-lg" />}>
+          <MapaDaBusca texto={f.q} cidade={f.cidade} />
+        </Suspense>
+      )}
       {lista.length === 0 ? (
         f.pagina > 1 ? (
           <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm">
@@ -386,7 +407,11 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
             </p>
           </div>
           <ConviteEmLote vagas={empresa ? noAr.map((v) => ({ id: v.id, titulo: v.titulo })) : []}>
-          <MarcarTodos perfis={lista.map((t) => t.perfil_id)} />
+          <MarcarTodos
+            perfis={lista
+              .filter((t) => (convites?.get(t.perfil_id)?.length ?? 0) < noAr.length)
+              .map((t) => t.perfil_id)}
+          />
           <ul aria-label="Talentos" className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {lista.map((t) => (
               <li key={t.perfil_id}>
@@ -405,7 +430,11 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
                           para="talento"
                           jeito="cartao"
                         />
-                        <MarcarConvite perfilId={t.perfil_id} nome={t.nome} />
+                        <MarcarConvite
+                          perfilId={t.perfil_id}
+                          nome={t.nome}
+                          convites={convites?.get(t.perfil_id) ?? []}
+                        />
                       </div>
                     )
                   }
@@ -474,6 +503,16 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
       ) : null}
     </div>
   );
+}
+
+/**
+ * Para quem contrata: o mapa dos talentos da busca (migração 20270630120000), pelo bairro de cada um, com as vagas no
+ * ar. Sem a migração, ou sem ninguém com bairro, nada.
+ */
+async function MapaDaBusca({ texto, cidade }: { texto: string; cidade: string | null }) {
+  const dados = await mapaDosTalentos({ texto, cidade });
+  if (!dados || !dados.bairros.length) return null;
+  return <MapaDosTalentos dados={dados} />;
 }
 
 /**
