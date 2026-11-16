@@ -164,12 +164,13 @@ export const MODELOS: Modelo[] = [
     botoes: [{ tipo: "link", texto: "Ver o pedido", exemplo: "painel/caixa" }],
   },
   {
-    nome: "publike_esperando_resposta_v2",
+    nome: "publike_esperando_resposta_v3",
     para: "Quem contrata",
     quando: "Candidatura sem resposta há 1 e 3 dias",
+    // 16/11/2026: a v1 e a v2 a Meta pôs em marketing; a v3 segue o jeito do publike_candidato_novo (utilidade)
     corpo:
-      "Oi, {{nome}}! Na vaga de {{vaga}}, {{quantos}} esperando a sua resposta há mais de um dia. Abra a vaga no Publike para responder cada candidatura.",
-    exemplo: { nome: "Padaria Pão de Ouro", vaga: "Atendente de padaria", quantos: "3 pessoas estão" },
+      "Oi, {{nome}}! Candidaturas sem resposta na vaga de {{vaga}}: {{quantos}} há mais de um dia. Veja e responda pelo Publike.",
+    exemplo: { nome: "Padaria Pão de Ouro", vaga: "Atendente de padaria", quantos: "3 candidaturas" },
     botoes: [{ tipo: "link", texto: "Responder", exemplo: "painel/caixa" }],
   },
   {
@@ -612,8 +613,8 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
       const n = Number(d.esperando ?? 0);
       if (n < 1) return { pular: "ninguém esperando mais" };
       return {
-        modelo: "publike_esperando_resposta_v2",
-        params: { nome, vaga, quantos: n === 1 ? "1 pessoa está" : `${n} pessoas estão` },
+        modelo: "publike_esperando_resposta_v3",
+        params: { nome, vaga, quantos: n === 1 ? "1 candidatura" : `${n} candidaturas` },
       };
     }
     case "ainda_espera":
