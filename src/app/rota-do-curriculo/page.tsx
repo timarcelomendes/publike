@@ -7,7 +7,7 @@ import { CardAnuncio } from "@/components/card-anuncio";
 import { EscolherLugares, type LugarDaRota } from "@/components/rota/escolher-lugares";
 import { EscolherFuncao } from "@/components/rota/escolher-funcao";
 import { OndeMoraDaRota } from "@/components/rota/onde-mora-da-rota";
-import { Aviso, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
+import { Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero, primeiro, tempoRelativo } from "@/lib/formato";
 import { ocupacao } from "@/lib/cbo";
@@ -99,13 +99,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
     agoraDaRequisicao(),
   ]);
 
-  if (usuario && perfil && perfil.tipo !== "pessoa") {
-    return (
-      <Aviso tipo="info" titulo="A rota é para quem procura trabalho" className="mt-6">
-        Entre com a sua conta de pessoa para montar a rota do seu currículo.
-      </Aviso>
-    );
-  }
+  // conta de empresa ou agência: vê o mapa como quem visita, sem montar nem imprimir
+  const daEmpresa = Boolean(usuario && perfil && perfil.tipo !== "pessoa");
 
   const doCurriculo = await funcoesParaARota(curriculo);
   const comuns = funcoesComuns();
@@ -137,7 +132,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
   };
   // para onde vai o botão: sem conta, entrar (e voltar aqui); sem currículo, preencher
   const aqui = linkCom("/rota-do-curriculo", atuais, {});
-  const falta = !usuario
+  const falta = daEmpresa
+    ? null
+    : !usuario
     ? { href: `/entrar?next=${encodeURIComponent(aqui)}`, texto: "Entrar para montar e imprimir" }
     : !curriculo
       ? { href: `/perfil/curriculo?next=${encodeURIComponent(aqui)}`, texto: "Preencher o currículo para imprimir" }
@@ -289,6 +286,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
           </Vazio>
         }
         falta={falta}
+        soVer={daEmpresa ? "A rota é para quem procura trabalho: com uma conta de pessoa, dá para montar e imprimir." : null}
       />
 
       {rotas.length > 0 && (

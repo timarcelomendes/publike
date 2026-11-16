@@ -46,7 +46,10 @@ export function EscolherLugares({
   cartoesDasVagas = null,
   vazio = null,
   falta = null,
+  soVer = null,
 }: {
+  /** conta de empresa: vê os lugares, sem escolher nem imprimir (o texto no lugar do botão) */
+  soVer?: string | null;
   casa: { lat: number; lng: number };
   /** o nome do ponto de partida no mapa ("Sua casa", "Você", "Centro de Goiânia") */
   rotuloCasa: string;
@@ -181,7 +184,7 @@ export function EscolherLugares({
                         {escolhido ? "Vou entregar" : "Vou entregar aqui"}
                       </button>
                     </div>
-                    <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcao} />
+                    {!soVer && <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcao} />}
                   </li>
                 );
               })}
@@ -220,7 +223,9 @@ export function EscolherLugares({
                   </p>
                 )}
               </div>
-              {falta ? (
+              {soVer ? (
+              <p className="max-w-sm text-body-sm text-ink-muted">{soVer}</p>
+            ) : falta ? (
                 <Link href={falta.href} className={`${classesBotao("primario")} shrink-0`}>
                   <Printer aria-hidden />
                   {falta.texto}
