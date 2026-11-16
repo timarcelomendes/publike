@@ -47,7 +47,10 @@ export function EscolherLugares({
   vazio = null,
   falta = null,
   soVer = null,
+  topo = null,
 }: {
+  /** a função, de onde sai e o resumo: no celular, antes do mapa; em tela grande, à esquerda, com o mapa ao lado */
+  topo?: ReactNode;
   /** conta de empresa: vê os lugares, sem escolher nem imprimir (o texto no lugar do botão) */
   soVer?: string | null;
   casa: { lat: number; lng: number };
@@ -110,9 +113,10 @@ export function EscolherLugares({
   }
 
   return (
-    // no celular, o mapa no alto e a lista embaixo; em tela grande, a lista à esquerda e o mapa parado à direita
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-6">
-      <div className="lg:sticky lg:top-20 lg:order-2">
+    // no celular: o topo, o mapa e a lista; em tela grande: o topo e a lista à esquerda, o mapa parado à direita
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-6 lg:gap-y-4">
+      {topo && <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">{topo}</div>}
+      <div className="lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <MapaDaRota
           casa={casa}
           rotuloCasa={rotuloCasa}
@@ -124,7 +128,7 @@ export function EscolherLugares({
         />
       </div>
 
-      <div className="flex min-w-0 flex-col gap-4 lg:order-1">
+      <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
         {cartoesDasVagas}
 
         {lugares.length === 0 ? (

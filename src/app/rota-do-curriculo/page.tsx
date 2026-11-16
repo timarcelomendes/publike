@@ -214,8 +214,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
       </p>
     ) : null;
 
-  return (
-    <div className="mt-5 flex flex-col gap-4">
+  const topo = (
+    <>
       <div className="flex flex-col gap-3">
         {doCurriculo.length > 0 && (
           <div className="flex flex-col gap-1.5">
@@ -267,7 +267,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
           )}
         </p>
       </div>
+    </>
+  );
 
+  return (
+    <div className="mt-5 flex flex-col gap-4">
       <EscolherLugares
         key={`${escolhida.cbo}-${raio}-${origem.ponto.lat},${origem.ponto.lng}`}
         lugares={lugares}
@@ -286,6 +290,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/rota-do-cu
           </Vazio>
         }
         falta={falta}
+        topo={topo}
         soVer={daEmpresa ? "A rota é para quem procura trabalho: com uma conta de pessoa, dá para montar e imprimir." : null}
       />
 
