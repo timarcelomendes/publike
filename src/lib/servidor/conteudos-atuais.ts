@@ -13,12 +13,17 @@ type Publicado = { dados: DadosDoConteudo; em: string };
 
 async function lerPublicados(): Promise<Record<string, Publicado>> {
   "use cache";
-  cacheLife("hours");
   cacheTag("conteudos");
   if (MODO_DEMO) return {};
   const { data, error } = await criarClientePublico().rpc("conteudos_publicados");
-  // a falha sai como erro (e não fica guardada): a próxima visita tenta de novo
-  if (error) throw new Error(`${error.code ?? "erro"}: ${error.message}`);
+  if (error) {
+    // sem quebrar a página (nem o build, que gera os artigos antes da migração rodar): os artigos do repositório, e
+    // a próxima leitura em poucos minutos
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler os conteúdos atualizados: ${error.message}`);
+    cacheLife("minutes");
+    return {};
+  }
+  cacheLife("hours");
   const lista: Record<string, Publicado> = {};
   for (const l of data ?? []) {
     const dados = lerDadosDoConteudo(l.dados);
@@ -31,8 +36,7 @@ async function publicados(): Promise<Record<string, Publicado>> {
   try {
     return await lerPublicados();
   } catch (e) {
-    const m = e instanceof Error ? e.message : String(e);
-    if (!m.startsWith("PGRST202")) console.error("Publike: falha ao ler os conteúdos atualizados:", m);
+    console.error("Publike: falha ao ler os conteúdos atualizados:", e instanceof Error ? e.message : e);
     return {};
   }
 }
