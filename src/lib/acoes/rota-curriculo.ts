@@ -2,9 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
-import { obterLocal } from "@/lib/local";
 import { curriculoImpresso, MAX_LUGARES_DA_ROTA, RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
-import { pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
+import { origemDaRota } from "@/lib/servidor/funcoes-da-rota";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
@@ -19,10 +18,12 @@ export async function montarRota(dados: {
 }): Promise<Resultado> {
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre para montar a rota." };
-  const [perfil, curriculo, local] = await Promise.all([obterMeuPerfil(), obterMeuCurriculo(), obterLocal()]);
+  const [perfil, curriculo] = await Promise.all([obterMeuPerfil(), obterMeuCurriculo()]);
   if (!perfil || !curriculo) return { ok: false, erro: "Preencha o seu currículo antes de montar a rota." };
-  const ponto = local?.ponto ?? local?.centro ?? (await pontoDaPessoa(perfil))?.ponto ?? null;
-  if (!ponto) return { ok: false, erro: "Diga o CEP de casa para saber de onde a rota sai." };
+  // a mesma origem da página (a folha da rota sai na ordem que a pessoa viu); o centro da cidade não vale para montar
+  const origem = await origemDaRota(perfil);
+  if (origem.tipo === "cidade") return { ok: false, erro: "Diga de onde você sai (CEP, bairro ou a sua localização) para montar a rota." };
+  const ponto = origem.ponto;
   const cnpjs = [...new Set((dados?.cnpjs ?? []).filter((c) => /^[0-9A-Z]{12}[0-9]{2}$/.test(String(c))))];
   if (!cnpjs.length) return { ok: false, erro: "Escolha pelo menos um lugar." };
   if (cnpjs.length > MAX_LUGARES_DA_ROTA) return { ok: false, erro: `Escolha até ${MAX_LUGARES_DA_ROTA} lugares.` };

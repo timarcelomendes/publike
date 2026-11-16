@@ -13,6 +13,10 @@ import {
 } from "../mapa/maplibre";
 
 export type PontoDaRota = { cnpj: string; nome: string; lat: number; lng: number; escolhido: boolean };
+/** Uma vaga no ar no Publike da mesma função: outra cor no mapa e o título ao lado. */
+export type VagaNoMapa = { id: string; titulo: string; lat: number; lng: number };
+
+const CINZA = "#b4aba2";
 
 function dados(pontos: PontoDaRota[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
@@ -21,6 +25,17 @@ function dados(pontos: PontoDaRota[]): GeoJSON.FeatureCollection<GeoJSON.Point> 
       type: "Feature",
       properties: { cnpj: p.cnpj, nome: p.nome, escolhido: p.escolhido ? 1 : 0 },
       geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+    })),
+  };
+}
+
+function dadosDasVagas(vagas: VagaNoMapa[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: "FeatureCollection",
+    features: vagas.map((v) => ({
+      type: "Feature",
+      properties: { id: v.id, titulo: v.titulo },
+      geometry: { type: "Point", coordinates: [v.lng, v.lat] },
     })),
   };
 }
@@ -38,34 +53,54 @@ function fonteDoEstilo(m: MapaML): string[] {
 }
 
 /**
- * O mapa da rota do currículo: a casa e os lugares. Os escolhidos ficam em destaque, com o nome ao lado;
- * tocar num ponto escolhe ou tira o lugar.
+ * O mapa da rota do currículo, no alto da página: o ponto de partida, as vagas no ar no Publike (verde, com o título) e
+ * os lugares que costumam contratar a função. Os escolhidos ficam em destaque, com o nome ao lado; tocar num lugar
+ * escolhe ou tira, e tocar numa vaga leva ao cartão dela.
  */
 export function MapaDaRota({
   casa,
+  rotuloCasa = "Sua casa",
   pontos,
+  vagas = [],
   aoTocar,
+  aoTocarVaga,
+  className = "",
 }: {
+  /** a altura em telas grandes (ao lado da lista) */
+  className?: string;
   casa: { lat: number; lng: number };
+  /** "Sua casa", "Você", "Seu bairro" ou "Centro de Goiânia" */
+  rotuloCasa?: string;
   pontos: PontoDaRota[];
+  vagas?: VagaNoMapa[];
   aoTocar?: (cnpj: string) => void;
+  aoTocarVaga?: (id: string) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaML | null>(null);
   const atuais = useRef(pontos);
+  const atuaisVagas = useRef(vagas);
   const tocar = useRef(aoTocar);
+  const tocarVaga = useRef(aoTocarVaga);
   const [falhou, setFalhou] = useState(false);
   const aVista = useMapaAVista(caixa);
 
   useEffect(() => {
     tocar.current = aoTocar;
-  }, [aoTocar]);
+    tocarVaga.current = aoTocarVaga;
+  }, [aoTocar, aoTocarVaga]);
 
   useEffect(() => {
     atuais.current = pontos;
     const fonte = mapa.current?.getSource("lugares") as GeoJSONSource | undefined;
     fonte?.setData(dados(pontos));
   }, [pontos]);
+
+  useEffect(() => {
+    atuaisVagas.current = vagas;
+    const fonte = mapa.current?.getSource("vagas") as GeoJSONSource | undefined;
+    fonte?.setData(dadosDasVagas(vagas));
+  }, [vagas]);
 
   useEffect(() => {
     if (!aVista) return;
@@ -90,6 +125,7 @@ export function MapaDaRota({
         recolherCreditos(instancia);
         instancia.on("load", () => {
           const m = instancia!;
+          const fonte = fonteDoEstilo(m);
           mostrarNomesDasRuas(m);
           m.addSource("lugares", { type: "geojson", data: dados(atuais.current) });
           m.addLayer({
@@ -98,7 +134,7 @@ export function MapaDaRota({
             source: "lugares",
             paint: {
               "circle-radius": ["case", ["==", ["get", "escolhido"], 1], 8, 6],
-              "circle-color": ["case", ["==", ["get", "escolhido"], 1], CORES_MAPA.terra, "#b4aba2"],
+              "circle-color": ["case", ["==", ["get", "escolhido"], 1], CORES_MAPA.terra, CINZA],
               "circle-stroke-color": CORES_MAPA.branco,
               "circle-stroke-width": 2,
             },
@@ -110,7 +146,7 @@ export function MapaDaRota({
             filter: ["==", ["get", "escolhido"], 1],
             layout: {
               "text-field": ["get", "nome"],
-              "text-font": fonteDoEstilo(m),
+              "text-font": fonte,
               "text-size": 12,
               "text-max-width": 10,
               "text-variable-anchor": ["left", "right", "top", "bottom"],
@@ -122,6 +158,39 @@ export function MapaDaRota({
               "text-color": CORES_MAPA.ink,
               "text-halo-color": CORES_MAPA.branco,
               "text-halo-width": 1.6,
+            },
+          });
+          // as vagas do Publike por cima dos lugares: é o que a pessoa pode fazer agora
+          m.addSource("vagas", { type: "geojson", data: dadosDasVagas(atuaisVagas.current) });
+          m.addLayer({
+            id: "vagas",
+            type: "circle",
+            source: "vagas",
+            paint: {
+              "circle-radius": 9,
+              "circle-color": CORES_MAPA.cerrado,
+              "circle-stroke-color": CORES_MAPA.branco,
+              "circle-stroke-width": 2.5,
+            },
+          });
+          m.addLayer({
+            id: "titulos-das-vagas",
+            type: "symbol",
+            source: "vagas",
+            layout: {
+              "text-field": ["get", "titulo"],
+              "text-font": fonte,
+              "text-size": 12,
+              "text-max-width": 11,
+              "text-variable-anchor": ["left", "right", "top", "bottom"],
+              "text-radial-offset": 1,
+              "text-justify": "auto",
+              "text-optional": true,
+            },
+            paint: {
+              "text-color": CORES_MAPA.cerrado,
+              "text-halo-color": CORES_MAPA.branco,
+              "text-halo-width": 1.8,
             },
           });
           m.addSource("casa", {
@@ -143,9 +212,19 @@ export function MapaDaRota({
             const cnpj = e.features?.[0]?.properties?.cnpj;
             if (typeof cnpj === "string") tocar.current?.(cnpj);
           });
-          m.on("mouseenter", "lugares", () => (m.getCanvas().style.cursor = "pointer"));
-          m.on("mouseleave", "lugares", () => (m.getCanvas().style.cursor = ""));
-          const todos = [...atuais.current.map((p) => [p.lng, p.lat] as [number, number]), [casa.lng, casa.lat] as [number, number]];
+          m.on("click", "vagas", (e) => {
+            const id = e.features?.[0]?.properties?.id;
+            if (typeof id === "string") tocarVaga.current?.(id);
+          });
+          for (const camada of ["lugares", "vagas"]) {
+            m.on("mouseenter", camada, () => (m.getCanvas().style.cursor = "pointer"));
+            m.on("mouseleave", camada, () => (m.getCanvas().style.cursor = ""));
+          }
+          const todos = [
+            ...atuais.current.map((p) => [p.lng, p.lat] as [number, number]),
+            ...atuaisVagas.current.map((v) => [v.lng, v.lat] as [number, number]),
+            [casa.lng, casa.lat] as [number, number],
+          ];
           if (todos.length > 1) {
             const lngs = todos.map((t) => t[0]);
             const lats = todos.map((t) => t[1]);
@@ -154,7 +233,7 @@ export function MapaDaRota({
                 [Math.min(...lngs), Math.min(...lats)],
                 [Math.max(...lngs), Math.max(...lats)],
               ],
-              { padding: 40, maxZoom: 15, duration: 0 },
+              { padding: 48, maxZoom: 15, duration: 0 },
             );
           }
         });
@@ -168,19 +247,31 @@ export function MapaDaRota({
   }, [aVista, casa.lat, casa.lng]);
 
   return (
-    <div className="relative h-72 overflow-hidden rounded-lg border border-line bg-surface-300 sm:h-96">
+    <div className={`relative h-[min(62vh,34rem)] min-h-80 overflow-hidden rounded-lg border border-line bg-surface-300 ${className}`}>
       <div className="absolute inset-0">
         <div
           ref={caixa}
           className="h-full w-full"
           role="region"
-          aria-label="Mapa da rota: a sua casa e os lugares. Toque num ponto para escolher o lugar."
+          aria-label="Mapa da rota: o ponto de partida, as vagas no ar e os lugares. Toque num lugar para escolher onde entregar."
         />
       </div>
-      <p className="absolute bottom-2 left-2 rounded-sm bg-surface-100/90 px-2 py-1 text-[12px] text-ink">
-        <span className="mr-1 inline-block size-2.5 rounded-full bg-ink align-middle" /> Sua casa
-        <span className="ml-3 mr-1 inline-block size-2.5 rounded-full bg-terra align-middle" /> Vai entregar
-        <span className="ml-3 mr-1 inline-block size-2.5 rounded-full bg-[#b4aba2] align-middle" /> Outros lugares
+      <p className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-sm bg-surface-100/90 px-2 py-1 text-[12px] text-ink">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block size-2.5 rounded-full bg-ink" /> {rotuloCasa}
+        </span>
+        {vagas.length > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: CORES_MAPA.cerrado }} /> Vaga no
+            Publike
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block size-2.5 rounded-full bg-terra" /> Vai entregar
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: CINZA }} /> Lugares
+        </span>
       </p>
       {falhou && (
         <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-body-sm text-ink-muted">

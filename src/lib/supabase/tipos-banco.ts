@@ -1936,6 +1936,12 @@ export type Database = {
           lat: number;
           lng: number;
           distancia_m: number;
+          /** migração 20270622120000: a data de abertura na Receita (o selo "Lugar novo") */
+          aberta_em: string | null;
+          /** a empresa (o mesmo CNPJ básico) tem conta no Publike */
+          no_publike: boolean;
+          /** quantos lugares há no raio (a lista vem cortada em 30 sem conta e 100 com conta) */
+          total: number;
         }[];
       };
       criar_rota_curriculo: {
