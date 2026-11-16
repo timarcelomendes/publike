@@ -381,19 +381,32 @@ export async function enviarTeste(cfg: ConfigMeta, numero: string, modelos: Situ
     },
   });
   if (r.ok) return { ok: true as const, modelo: "hello_world" };
-  return {
-    ok: false as const,
-    erro:
-      r.erro?.code === 132001
-        ? "Nenhum modelo aprovado ainda. Use \"Cadastrar e conferir na Meta\" e espere a aprovação (minutos ou horas)."
-        : explicarErro(r.texto),
-  };
+  // número de verdade (o hello_world só sai do número de teste da Meta, 131058) ou sem o hello_world (132001): um
+  // texto simples, que a Meta aceita se a pessoa escreveu para o número do Publike nas últimas 24 horas
+  if (r.erro?.code === 131058 || r.erro?.code === 132001) {
+    const t = await enviarTexto(
+      cfg,
+      numero,
+      "Teste do Publike: o WhatsApp oficial está ligado. Os avisos de verdade saem pelos modelos aprovados pela Meta.",
+    );
+    if (t.ok) return { ok: true as const, modelo: "texto" };
+    return {
+      ok: false as const,
+      erro:
+        "Nenhum aviso do Publike aprovado ainda, e o modelo de exemplo da Meta só sai do número de teste. Para testar " +
+        "agora, mande um \"oi\" do seu WhatsApp para o número do Publike e clique de novo (vale por 24 horas). Ou use " +
+        "\"Cadastrar e conferir na Meta\" e espere a aprovação (minutos ou horas).",
+    };
+  }
+  return { ok: false as const, erro: explicarErro(r.texto) };
 }
 
 /** O erro da Meta em português, para o Admin (os mais comuns na hora de ligar). */
 export function explicarErro(texto: string) {
   const codigo = Number(/^(\d+):/.exec(texto)?.[1] ?? 0);
   const explicacao: Record<number, string> = {
+    131058: "o modelo de exemplo da Meta (hello_world) só sai do número de teste; use um aviso do Publike aprovado",
+    131047: "passaram 24 horas desde a última mensagem da pessoa; fora dessa janela, só sai modelo aprovado",
     131030: "o número não está na lista de destinatários do número de teste da Meta (Etapa 1 › Destinatário; até 5 números)",
     190: "o token venceu ou não vale (o token temporário da Meta dura 24 horas; use o do usuário do sistema)",
     131026: "o número não tem WhatsApp ou não recebe mensagens agora",

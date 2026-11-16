@@ -146,6 +146,8 @@ export async function mandarTesteWhatsapp(numero: string): Promise<Resultado> {
     mensagem:
       r.modelo === "hello_world"
         ? "Mandamos o modelo de exemplo da Meta (em inglês). Confira no WhatsApp desse número."
-        : `Mandamos o aviso ${r.modelo} com dados de exemplo. Confira no WhatsApp desse número.`,
+        : r.modelo === "texto"
+          ? "Mandamos uma mensagem de teste em texto. Confira no WhatsApp desse número."
+          : `Mandamos o aviso ${r.modelo} com dados de exemplo. Confira no WhatsApp desse número.`,
   };
 }
