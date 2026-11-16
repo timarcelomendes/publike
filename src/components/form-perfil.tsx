@@ -187,9 +187,15 @@ export function FormPerfil({
   const [nomeDePessoa, setNomeDePessoa] = useState<string | null>(null);
   const tipoSugerido = tipo === "pessoa" && nomeDePessoa !== nome.trim() ? tipoPeloNome(nome) : null;
 
+  // tentou desmarcar "Contratar" tendo vaga publicada: o aviso de por que não dá e de como fazer
+  const [avisoContratar, setAvisoContratar] = useState(false);
+
   function marcarModo(modo: ModoPainel, marcado: boolean) {
-    // com vaga publicada, "Contratar" não sai
-    if (contratarFixo && modo === "contratar" && !marcado) return;
+    // com vaga publicada, "Contratar" não sai: avisa em vez de não fazer nada
+    if (contratarFixo && modo === "contratar" && !marcado) {
+      setAvisoContratar(true);
+      return;
+    }
     setModos((atual) =>
       lerModos(marcado ? [...atual, modo] : atual.filter((m) => m !== modo)),
     );
@@ -586,16 +592,16 @@ export function FormPerfil({
                   return (
                     <label
                       key={valor}
-                      className={`relative flex flex-col gap-1 rounded-md border border-line-strong bg-surface-200 p-3 pr-10 has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${travado ? "cursor-default" : "cursor-pointer"}`}
+                      className={`relative flex flex-col gap-1 rounded-md border border-line-strong bg-surface-200 p-3 pr-10 has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus cursor-pointer`}
+                      onClick={travado ? () => setAvisoContratar(true) : undefined}
                     >
-                      {/* travado: a caixinha desabilitada não vai no formulário, o valor vai escondido */}
+                      {/* travado: a caixinha não vai no formulário (o valor vai escondido) e tocar nela explica por quê */}
                       {travado && <input type="hidden" name="modos" value={valor} />}
                       <input
                         type="checkbox"
                         name={travado ? undefined : "modos"}
                         value={valor}
                         checked={marcado}
-                        disabled={travado}
                         aria-describedby={travado ? "modos-contratar-fixo" : undefined}
                         onChange={(e) => marcarModo(valor, e.target.checked)}
                         className="sr-only"
@@ -618,9 +624,21 @@ export function FormPerfil({
                       <span className="text-body-sm text-ink-muted">
                         {ajuda(tipo === "pessoa")}
                       </span>
-                      {travado && (
+                      {travado && !avisoContratar && (
                         <span id="modos-contratar-fixo" className="text-body-sm text-ink">
-                          Você tem vaga publicada: fica marcado enquanto ela estiver no ar.
+                          Você tem vaga publicada: fica marcado enquanto ela estiver no ar ou pausada.
+                        </span>
+                      )}
+                      {travado && avisoContratar && (
+                        <span id="modos-contratar-fixo" role="alert" className="flex flex-col gap-1 text-body-sm text-ink">
+                          <span className="text-label">Não dá para desmarcar enquanto você tiver vaga publicada.</span>
+                          <span>
+                            Para deixar de contratar, encerre suas vagas em{" "}
+                            <Link href="/painel/anuncios?tipo=vaga" className="underline underline-offset-2">
+                              Vagas
+                            </Link>
+                            . Depois, volte aqui e desmarque.
+                          </span>
                         </span>
                       )}
                     </label>
