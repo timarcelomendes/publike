@@ -1,7 +1,6 @@
 import { ArrowRight, MapPin } from "lucide-react";
 import Link from "next/link";
-import { conteudoDoSlug } from "@/lib/conteudos";
-import type { Conteudo } from "@/lib/conteudos/tipos";
+import { conteudosAtuais } from "@/lib/servidor/conteudos-atuais";
 import { obterUsuario } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, plural } from "@/lib/formato";
@@ -153,8 +152,8 @@ export async function ContratandoPerto({
 
 const DO_BLOG = ["emprego-perto-de-casa-goiania", "emprego-em-goias-2026", "publicar-vaga-gratis-goiania"];
 
-export function DoBlog() {
-  const lista = DO_BLOG.map(conteudoDoSlug).filter((c): c is Conteudo => !!c);
+export async function DoBlog() {
+  const lista = await conteudosAtuais(DO_BLOG);
   if (!lista.length) return null;
   return (
     <section aria-labelledby="do-blog" className={caixa}>

@@ -1,0 +1,29 @@
+# Os números dos conteúdos em dia (migração 20270705120000): a rodada roda sozinha todo dia pela Vercel Cron
+# (vercel.json, /api/conteudos/atualizar). Esta tarefa é para rodar na hora, pelo botão "Run workflow" do GitHub.
+# Usa o mesmo segredo da tarefa das filas (PUBLIKE_CRON_SECRET) e a variável PUBLIKE_URL (opcional).
+name: Números dos conteúdos
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Conferir os números dos artigos
+        env:
+          SEGREDO: ${{ secrets.PUBLIKE_CRON_SECRET }}
+          SITE: ${{ vars.PUBLIKE_URL || 'https://publike.org' }}
+        run: |
+          if [ -z "$SEGREDO" ]; then
+            echo "::error title=Falta o segredo::Crie o segredo PUBLIKE_CRON_SECRET (o mesmo CRON_SECRET da Vercel)."
+            exit 1
+          fi
+          resposta=$(curl -sS --max-time 320 -w '\n%{http_code}' -H "Authorization: Bearer $SEGREDO" "$SITE/api/conteudos/atualizar" || true)
+          codigo=$(printf '%s' "$resposta" | tail -n1)
+          corpo=$(printf '%s' "$resposta" | sed '$d')
+          echo "$corpo" | python3 -m json.tool 2>/dev/null || echo "$corpo"
+          [ "$codigo" = "200" ] || { echo "::error title=Não deu para conferir::$corpo"; exit 1; }

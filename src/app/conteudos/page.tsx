@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { CaminhosGratis } from "@/components/conteudo/blocos";
 import { CartaoConteudo } from "@/components/conteudo/cartao";
 import { Container, Selo } from "@/components/ui/basicos";
-import { CONTEUDOS, conteudosDoTema, TEMAS_CONTEUDO, type TemaConteudo } from "@/lib/conteudos";
+import { CONTEUDOS, TEMAS_CONTEUDO, type TemaConteudo } from "@/lib/conteudos";
+import { conteudosAtuais } from "@/lib/servidor/conteudos-atuais";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
@@ -13,11 +14,14 @@ export const metadata: Metadata = {
 };
 
 /** O artigo em destaque no topo. */
-const DESTAQUE = CONTEUDOS[0];
+const DESTAQUE = CONTEUDOS[0].slug;
 
 const ORDEM: TemaConteudo[] = ["mercado", "procurar", "contratar", "servicos", "direitos"];
 
-export default function Conteudos() {
+export default async function Conteudos() {
+  // com os números atualizados que o admin publicou (Admin › Conteúdos)
+  const todos = await conteudosAtuais();
+  const destaque = todos.find((c) => c.slug === DESTAQUE) ?? todos[0];
   return (
     <>
       <section className="border-b border-line">
@@ -42,7 +46,7 @@ export default function Conteudos() {
         </Container>
       </section>
       <Container className="flex flex-col gap-12 py-10">
-        <CartaoConteudo c={DESTAQUE} destaque />
+        <CartaoConteudo c={destaque} destaque />
         {ORDEM.map((t) => (
           <section key={t} id={t} aria-labelledby={`tema-${t}`} className="scroll-mt-24">
             <h2 id={`tema-${t}`} className="text-h2">
@@ -50,8 +54,8 @@ export default function Conteudos() {
             </h2>
             <p className="mt-1 text-body text-ink-muted">{TEMAS_CONTEUDO[t].descricao}</p>
             <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {conteudosDoTema(t)
-                .filter((c) => c.slug !== DESTAQUE.slug)
+              {todos
+                .filter((c) => c.tema === t && c.slug !== DESTAQUE)
                 .map((c) => (
                 <li key={c.slug}>
                   <CartaoConteudo c={c} />

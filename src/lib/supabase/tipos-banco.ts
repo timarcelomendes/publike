@@ -4144,6 +4144,21 @@ export type Database = {
       };
       /** as migrações registradas e a impressão de produção, para /api/banco (migração 20270629110000) */
       servidor_saude_do_banco: { Args: { p_chave: string }; Returns: Json };
+      /** os números dos conteúdos em dia (migração 20270705120000) */
+      conteudos_publicados: {
+        Args: Record<string, never>;
+        Returns: { slug: string; dados: Json; publicado_em: string }[];
+      };
+      servidor_conteudos_para_conferir: {
+        Args: { p_chave: string; p_slugs: string[]; p_quantos: number };
+        Returns: string[];
+      };
+      servidor_conteudo_conferido: {
+        Args: { p_chave: string; p_slug: string; p_resultado: string; p_dados: Json | null; p_motivo: string | null };
+        Returns: undefined;
+      };
+      admin_conteudos_atualizados: { Args: Record<string, never>; Returns: Json };
+      admin_decidir_conteudo: { Args: { p_id: number; p_publicar: boolean }; Returns: string };
       /** o mapa dos talentos e os centros dos bairros (migração 20270630120000) */
       mapa_dos_talentos: {
         Args: { p_texto?: string | null; p_cidade?: string | null };

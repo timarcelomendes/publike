@@ -1,13 +1,14 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { conteudoDoSlug, type Conteudo } from "@/lib/conteudos";
+import { conteudosAtuais } from "@/lib/servidor/conteudos-atuais";
 import { CartaoConteudo } from "./cartao";
 
 /** Os artigos que aparecem na página inicial: um de cada lado (números, quem procura, quem contrata). */
 const NA_HOME = ["emprego-em-goias-2026", "emprego-perto-de-casa-goiania", "publicar-vaga-gratis-goiania"];
 
-export function ConteudosNaHome() {
-  const lista = NA_HOME.map(conteudoDoSlug).filter((c): c is Conteudo => !!c);
+export async function ConteudosNaHome() {
+  // com os números atualizados que o admin publicou (Admin › Conteúdos)
+  const lista = await conteudosAtuais(NA_HOME);
   return (
     <section aria-labelledby="conteudos-home" className="mt-16 sm:mt-20">
       <div className="flex flex-wrap items-end justify-between gap-3">

@@ -63,6 +63,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/comunicados", nome: "Comunicados" },
       { href: "/admin/novidades", nome: "Novidades" },
       { href: "/admin/noticias", nome: "Notícias" },
+      { href: "/admin/conteudos", nome: "Conteúdos" },
       { href: "/admin/whatsapp", nome: "WhatsApp" },
     ],
   },

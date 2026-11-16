@@ -8,8 +8,9 @@ import { CapaConteudo } from "@/components/conteudo/capa";
 import { CartaoConteudo } from "@/components/conteudo/cartao";
 import { Container, Selo } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
-import { CONTEUDOS, conteudoDoSlug, minutosDeLeitura, relacionados, TEMAS_CONTEUDO } from "@/lib/conteudos";
+import { CONTEUDOS, minutosDeLeitura, relacionados, TEMAS_CONTEUDO } from "@/lib/conteudos";
 import { TemVoltarProprio } from "@/components/voltar";
+import { conteudoAtual, conteudosAtuais } from "@/lib/servidor/conteudos-atuais";
 import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 export function generateStaticParams() {
@@ -17,7 +18,7 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps<"/conteudos/[slug]">): Promise<Metadata> {
-  const c = conteudoDoSlug((await params).slug);
+  const c = await conteudoAtual((await params).slug);
   if (!c) return {};
   return {
     title: c.titulo,
@@ -49,9 +50,11 @@ export default function Pagina({ params }: PageProps<"/conteudos/[slug]">) {
   );
 }
 
-function Artigo({ slug }: { slug: string }) {
-  const c = conteudoDoSlug(slug);
+async function Artigo({ slug }: { slug: string }) {
+  // com os números atualizados que o admin publicou (Admin › Conteúdos, migração 20270705120000)
+  const c = await conteudoAtual(slug);
   if (!c) notFound();
+  const outros = await conteudosAtuais(relacionados(c).map((o) => o.slug));
   const dados = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -78,7 +81,9 @@ function Artigo({ slug }: { slug: string }) {
         <h1 className="mt-3 text-h1">{c.titulo}</h1>
         <p className="mt-3 text-body-lg text-ink">{c.descricao}</p>
         <p className="mt-3 text-body-sm text-ink-muted">
-          Publike · {dataPorExtenso(c.publicado)} · {minutosDeLeitura(c)} min de leitura
+          Publike · {dataPorExtenso(c.publicado)}
+          {c.atualizado && <> · números atualizados em {dataPorExtenso(c.atualizado)}</>} · {minutosDeLeitura(c)} min
+          de leitura
         </p>
         <CapaConteudo c={c} tamanho="grande" className="mt-6 aspect-video rounded-lg border border-line" />
         <div className="mt-8">
@@ -113,7 +118,7 @@ function Artigo({ slug }: { slug: string }) {
             Leia também
           </h2>
           <ul className="mt-4 grid gap-4 sm:grid-cols-3">
-            {relacionados(c).map((o) => (
+            {outros.map((o) => (
               <li key={o.slug}>
                 <CartaoConteudo c={o} />
               </li>

@@ -34,4 +34,6 @@ export type Conteudo = {
   publicado: string;
   blocos: BlocoConteudo[];
   fontes: FonteConteudo[];
+  /** AAAA-MM-DD: a última versão com os números atualizados publicada em Admin › Conteúdos (migração 20270705120000) */
+  atualizado?: string;
 };
