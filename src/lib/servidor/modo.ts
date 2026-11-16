@@ -29,6 +29,20 @@ export const modosMarcados = cache(async (): Promise<ModoPainel[] | null> => (aw
 export const modosNoBanco = cache(async (): Promise<boolean> => (await lerModosDoBanco()).existe);
 
 /**
+ * A conta tem vaga publicada (no ar, pausada ou em análise): "Contratar" fica marcado e travado no perfil
+ * (migração 20270627120000). Sem a migração, false.
+ */
+export const tenhoVagaPublicada = cache(async (): Promise<boolean> => {
+  if (MODO_DEMO || !(await obterUsuario())) return false;
+  const { data, error } = await (await criarClienteServidor()).rpc("tenho_vaga_publicada");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler as vagas da conta: ${error.message}`);
+    return false;
+  }
+  return data === true;
+});
+
+/**
  * Os modos que a conta usa: os marcados no perfil; sem marcação (ou sem a migração), os três,
  * como antes.
  */

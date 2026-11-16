@@ -1441,6 +1441,8 @@ export type Database = {
         Args: { p_modos: string[] };
         Returns: string[];
       };
+      // quem tem vaga publicada contrata (migração 20270627120000)
+      tenho_vaga_publicada: { Args: Record<PropertyKey, never>; Returns: boolean };
       admin_situacao_push: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_marcar_empresa_avisada: { Args: { p_conta: string; p_pessoas?: number }; Returns: string };
       admin_empresas_avisadas: {

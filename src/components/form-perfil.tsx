@@ -126,6 +126,7 @@ export function FormPerfil({
   proximo,
   pedirAceite = false,
   modos: modosIniciais,
+  contratarFixo = false,
   cidadePadrao = PRACA_PADRAO.cidade,
   responsavel: responsavelInicial,
 }: {
@@ -145,6 +146,11 @@ export function FormPerfil({
   pedirAceite?: boolean;
   /** o que a conta faz no Publike (os modos do painel); sem: a pergunta não aparece */
   modos?: ModoPainel[];
+  /**
+   * a conta tem vaga publicada: "Contratar" fica marcado e não desmarca (16/11/2026, Marcelo; migração
+   * 20270627120000). Encerrada a vaga, volta a desmarcar.
+   */
+  contratarFixo?: boolean;
 }) {
   const [estado, acao, enviando] = useActionState(salvarPerfilProtegido, { ok: false } as EstadoForm);
   const [nome, setNome] = useState(perfil?.nome ?? nomeSugerido ?? "");
@@ -163,7 +169,9 @@ export function FormPerfil({
   const [responsavel, setResponsavel] = useState(responsavelInicial?.responsavel ?? "");
   const [mostrarResponsavel, setMostrarResponsavel] = useState(responsavelInicial?.mostrar ?? false);
   const comModos = modosIniciais !== undefined;
-  const [modos, setModos] = useState<ModoPainel[]>(modosIniciais ?? []);
+  const [modos, setModos] = useState<ModoPainel[]>(
+    lerModos([...(modosIniciais ?? []), ...(contratarFixo ? ["contratar"] : [])]),
+  );
   // procurar trabalho é só de pessoa: o que não cabe no tipo some da pergunta e do que vai salvar
   const modosPossiveis = modosDoTipo(tipo);
   const modosValidos = modos.filter((m) => modosPossiveis.includes(m));
@@ -180,6 +188,8 @@ export function FormPerfil({
   const tipoSugerido = tipo === "pessoa" && nomeDePessoa !== nome.trim() ? tipoPeloNome(nome) : null;
 
   function marcarModo(modo: ModoPainel, marcado: boolean) {
+    // com vaga publicada, "Contratar" não sai
+    if (contratarFixo && modo === "contratar" && !marcado) return;
     setModos((atual) =>
       lerModos(marcado ? [...atual, modo] : atual.filter((m) => m !== modo)),
     );
@@ -570,17 +580,23 @@ export function FormPerfil({
             >
               {OPCOES_MODO.filter((o) => modosPossiveis.includes(o.valor)).map(
                 ({ valor, nome, ajuda, icone: Icone }) => {
-                  const marcado = modosValidos.includes(valor);
+                  // com vaga publicada, "Contratar" fica marcado e travado
+                  const travado = contratarFixo && valor === "contratar";
+                  const marcado = travado || modosValidos.includes(valor);
                   return (
                     <label
                       key={valor}
-                      className="relative flex cursor-pointer flex-col gap-1 rounded-md border border-line-strong bg-surface-200 p-3 pr-10 has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+                      className={`relative flex flex-col gap-1 rounded-md border border-line-strong bg-surface-200 p-3 pr-10 has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${travado ? "cursor-default" : "cursor-pointer"}`}
                     >
+                      {/* travado: a caixinha desabilitada não vai no formulário, o valor vai escondido */}
+                      {travado && <input type="hidden" name="modos" value={valor} />}
                       <input
                         type="checkbox"
-                        name="modos"
+                        name={travado ? undefined : "modos"}
                         value={valor}
                         checked={marcado}
+                        disabled={travado}
+                        aria-describedby={travado ? "modos-contratar-fixo" : undefined}
                         onChange={(e) => marcarModo(valor, e.target.checked)}
                         className="sr-only"
                       />
@@ -602,6 +618,11 @@ export function FormPerfil({
                       <span className="text-body-sm text-ink-muted">
                         {ajuda(tipo === "pessoa")}
                       </span>
+                      {travado && (
+                        <span id="modos-contratar-fixo" className="text-body-sm text-ink">
+                          Você tem vaga publicada: fica marcado enquanto ela estiver no ar.
+                        </span>
+                      )}
                     </label>
                   );
                 },

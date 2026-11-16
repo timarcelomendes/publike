@@ -11,9 +11,9 @@ import { MODO_DEMO } from "@/lib/config";
 import { aceitePendente, obterMeuPerfil } from "@/lib/dados";
 import { PAPEIS_EQUIPE } from "@/lib/equipe";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
-import { modoPadrao } from "@/lib/modo-painel";
+import { lerModos, modoPadrao } from "@/lib/modo-painel";
 import { obterIntencao } from "@/lib/servidor/intencao";
-import { modosMarcados, modosNoBanco } from "@/lib/servidor/modo";
+import { modosMarcados, modosNoBanco, tenhoVagaPublicada } from "@/lib/servidor/modo";
 import { meuResponsavel } from "@/lib/servidor/responsavel";
 import { vapidPublica } from "@/lib/servidor/ambiente";
 import { AtivarNotificacoes } from "@/components/notificacoes-celular";
@@ -44,7 +44,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/perfil");
-  const [perfil, pendente, contaAuth, marcados, comModos, intencao, visita, responsavel] = await Promise.all([
+  const [perfil, pendente, contaAuth, marcados, comModos, intencao, visita, responsavel, comVaga] = await Promise.all([
     obterMeuPerfil(),
     aceitePendente(),
     // o e-mail novo que ainda espera confirmação (só o Supabase sabe)
@@ -56,10 +56,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
     cidadeDaVisita(),
     // empresa, comércio e agência: quem responde pela conta (e se o nome vai nas conversas e nos recados)
     meuResponsavel(),
+    // com vaga publicada, "Contratar" fica marcado e travado (migração 20270627120000)
+    tenhoVagaPublicada(),
   ]);
   // "O que você quer fazer no Publike?": o que a conta marcou; conta nova, pelo tipo e pelo que
   // disse que quer fazer. Banco sem a migração: a pergunta não aparece (não teria onde guardar).
-  const modos = comModos ? (marcados ?? [modoPadrao(perfil?.tipo, intencao)]) : undefined;
+  const modos = comModos
+    ? lerModos([...(marcados ?? [modoPadrao(perfil?.tipo, intencao)]), ...(comVaga ? ["contratar"] : [])])
+    : undefined;
   const conta = contaAuth.data.user;
   const proximo = caminhoSeguro(primeiro(sp.next), "");
 
@@ -94,6 +98,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
             pedirAceite={pendente}
             proximo={proximo}
             modos={modos}
+            contratarFixo={comVaga}
             responsavel={responsavel}
           />
         )}
@@ -155,6 +160,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         pedirAceite={pendente}
         proximo={proximo}
         modos={modos}
+        contratarFixo={comVaga}
         responsavel={responsavel}
       />
       {/* os avisos do sino também no celular (cada aparelho liga o seu) */}
