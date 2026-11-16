@@ -194,7 +194,9 @@ export const MODELOS: Modelo[] = [
     nome: "publike_interesse",
     para: "Quem contrata",
     quando: "\"Quero trabalhar aqui\" na Rota do currículo",
-    corpo: "Oi, {{nome}}! {{candidato}} mora perto e quer trabalhar com vocês. O currículo está no Publike.",
+    // 16/11/2026: a versão curta voltou "100: Invalid parameter" (variável demais para o tamanho do texto)
+    corpo:
+      "Oi, {{nome}}! {{candidato}} mora perto da sua empresa e marcou no Publike que quer trabalhar com vocês. O currículo completo está no Publike, e você responde por lá mesmo.",
     exemplo: { nome: "Padaria Pão de Ouro", candidato: "Ana S." },
     botoes: [{ tipo: "link", texto: "Ver o currículo", exemplo: "talentos/123" }],
   },
@@ -202,7 +204,9 @@ export const MODELOS: Modelo[] = [
     nome: "publike_mensagem",
     para: "Todos",
     quando: "Mensagem nova no chat, sem ler há 10 minutos",
-    corpo: "Oi, {{nome}}! {{quem}} te mandou uma mensagem no Publike. Responda por lá.",
+    // 16/11/2026: a versão curta voltou "100: Invalid parameter" (variável demais para o tamanho do texto)
+    corpo:
+      "Oi, {{nome}}! {{quem}} te mandou uma mensagem nova no chat do Publike e está esperando a sua resposta. Abra o Publike para ler e responder na conversa.",
     exemplo: { nome: "Ana", quem: "Padaria Pão de Ouro" },
     botoes: [{ tipo: "link", texto: "Ver a mensagem", exemplo: "painel/conversas" }],
   },
@@ -241,7 +245,13 @@ export function cadastroDoModelo(m: Modelo) {
 
 // --- A API da Meta ---------------------------------------------------------------------------------------------------
 
-type ErroMeta = { code?: number; message?: string; error_subcode?: number; error_data?: { details?: string } };
+type ErroMeta = {
+  code?: number;
+  message?: string;
+  error_subcode?: number;
+  error_user_msg?: string;
+  error_data?: { details?: string };
+};
 type RespostaMeta<T> = { ok: true; dados: T } | { ok: false; status: number; erro: ErroMeta | null; texto: string };
 
 async function graph<T>(
@@ -264,7 +274,7 @@ async function graph<T>(
         ok: false,
         status: r.status,
         erro,
-        texto: erro ? `${erro.code ?? r.status}: ${erro.error_data?.details || erro.message || "erro da Meta"}` : `HTTP ${r.status}`,
+        texto: erro ? `${erro.code ?? r.status}: ${erro.error_user_msg || erro.error_data?.details || erro.message || "erro da Meta"}` : `HTTP ${r.status}`,
       };
     }
     return { ok: true, dados: json };
