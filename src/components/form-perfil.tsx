@@ -11,6 +11,7 @@ import {
   UserSearch,
   X,
   type LucideIcon,
+  CircleAlert,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -631,7 +632,10 @@ export function FormPerfil({
                       )}
                       {travado && avisoContratar && (
                         <span id="modos-contratar-fixo" role="alert" className="flex flex-col gap-1 text-body-sm text-ink">
-                          <span className="text-label">Não dá para desmarcar enquanto você tiver vaga publicada.</span>
+                          <span className="flex items-start gap-1.5 text-label text-danger">
+                            <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+                            Não dá para desmarcar enquanto você tiver vaga publicada.
+                          </span>
                           <span>
                             Para deixar de contratar, encerre suas vagas em{" "}
                             <Link href="/painel/anuncios?tipo=vaga" className="underline underline-offset-2">
