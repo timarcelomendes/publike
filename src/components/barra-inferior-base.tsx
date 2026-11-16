@@ -56,24 +56,18 @@ const PUBLICAR: Record<"vaga" | "servico", Item> = {
  * As abas de cada um (o visitante é `modo` null): quem procura trabalho tem as Candidaturas no lugar do
  * Publicar (quase nunca publica; o recado fica no Início); quem contrata e quem presta serviço publicam
  * pelo botão do meio. O visitante tem o Entrar no lugar do Painel e do Perfil, que só levavam ao login.
- * As Mensagens juntam as conversas, os matches e as conexões: o número soma as mensagens novas e os
- * pedidos de conexão.
+ * As Mensagens juntam as conversas, os matches e as conexões: o número é só das mensagens novas (16/11/2026: os
+ * pedidos de conexão não são mensagem por ler; ficam no aviso do sino e em Conexões).
  */
 export function abasDaBarra(modo: ModoPainel | null, numeros: NumerosDaBarra = {}): Item[] {
   const novas = numeros.mensagens ?? 0;
-  const pedidos = numeros.conexoes ?? 0;
   const mensagens: Item = {
     id: "mensagens",
     href: "/painel/conversas",
     nome: "Mensagens",
     icone: MessagesSquare,
-    numero: novas + pedidos,
-    leitor: [
-      novas > 0 && plural(novas, "mensagem nova", "mensagens novas"),
-      pedidos > 0 && plural(pedidos, "pedido de conexão", "pedidos de conexão"),
-    ]
-      .filter(Boolean)
-      .join(" e "),
+    numero: novas,
+    leitor: novas > 0 ? plural(novas, "mensagem nova", "mensagens novas") : "",
   };
   if (modo === null) {
     return [

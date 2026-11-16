@@ -320,7 +320,8 @@
   "20270703120000_meu_lugar_aproximado",
   "20270704120000_centro_do_bairro_parecido",
   "20270705120000_conteudos_atualizados",
-  "20270706120000_conteudos_na_ordem"
+  "20270706120000_conteudos_na_ordem",
+  "20270707120000_desistir_do_interesse"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -1094,6 +1095,7 @@
   "c|privado.interesses_locais.cnpj": "0d83f26402",
   "c|privado.interesses_locais.conta_id": "4516c61a19",
   "c|privado.interesses_locais.criado_em": "0d502ae88a",
+  "c|privado.interesses_locais.desistiu_em": "de599dc94b",
   "c|privado.interesses_locais.perfil_id": "80d056fc62",
   "c|privado.leitura_de_talentos.ate": "0d502ae88a",
   "c|privado.leitura_de_talentos.id": "a7ea0bef69",
@@ -2948,7 +2950,7 @@
   "f|public.dar_forca(p_recado uuid)": "4a77501cc2",
   "f|public.dar_parabens(p_anuncio uuid, p_perfil uuid)": "5475d7e520",
   "f|public.definir_funcao_da_vaga(p_anuncio uuid, p_cbo text)": "6896963547",
-  "f|public.demonstrar_interesse(p_cnpj text)": "ff37fcc5fd",
+  "f|public.demonstrar_interesse(p_cnpj text)": "6b6d96443f",
   "f|public.denunciar_avaliacao(p_avaliacao bigint, p_motivo text)": "2604c83282",
   "f|public.denunciar_comentario(p_comentario uuid, p_motivo text, p_detalhes text)": "b4b0e86fa3",
   "f|public.denunciar_recado(p_recado uuid, p_motivo text, p_detalhes text)": "58cbb1701f",
@@ -2957,6 +2959,7 @@
   "f|public.desconvidar(p_anuncio uuid, p_perfil uuid)": "1a38ce362a",
   "f|public.desfazer_conexao(p_conexao uuid)": "64c9a1067a",
   "f|public.desfazer_match(p_anuncio uuid, p_perfil uuid, p_motivo text, p_justificativa text, p_futuro boolean)": "b585e09537",
+  "f|public.desistir_interesse(p_cnpj text)": "151c545ac4",
   "f|public.destino_do_anuncio_fora_do_ar(p_id uuid)": "17ba5b65f4",
   "f|public.documento_registrar(p_anuncio uuid, p_item text, p_caminhos text[])": "77161f88ed",
   "f|public.documento_vou_levar(p_anuncio uuid, p_item text, p_levar boolean)": "3789db4aff",
@@ -3066,6 +3069,7 @@
   "f|public.meus_documentos_admissao(p_anuncio uuid)": "f74dffb38b",
   "f|public.meus_horarios_livres()": "06d48bfc45",
   "f|public.meus_impulsos()": "221419b4ed",
+  "f|public.meus_interesses(p_cnpjs text[])": "ac5c1c10d3",
   "f|public.meus_matches()": "ebadd78b78",
   "f|public.meus_modos()": "7bb50d261f",
   "f|public.meus_mutiroes()": "e58b57a420",

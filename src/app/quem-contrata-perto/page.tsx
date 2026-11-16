@@ -163,6 +163,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contr
   if (resposta.error) console.error("Publike: falha ao ler os lugares da rota:", resposta.error.message);
   const linhas = resposta.data ?? [];
   const umAno = 365 * 24 * 3600_000;
+  // os lugares em que a pessoa já disse "quero trabalhar aqui" (abrem com o Desistir; sem a migração, nenhum)
+  const quero = new Set<string>(
+    usuario && linhas.length
+      ? ((await banco.rpc("meus_interesses", { p_cnpjs: linhas.map((l) => l.cnpj) })).data ?? [])
+      : [],
+  );
   const lugares: LugarDaRota[] = linhas.map((l) => ({
     cnpj: l.cnpj,
     nome: l.nome,
@@ -174,6 +180,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contr
     lng: l.lng,
     distancia_m: l.distancia_m,
     no_publike: Boolean(l.no_publike),
+    quero: quero.has(l.cnpj),
     novo:
       l.aberta_em && agora - Date.parse(l.aberta_em) <= umAno ? `Abriu em ${MES_ANO.format(new Date(l.aberta_em))}` : null,
   }));

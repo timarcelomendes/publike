@@ -34,3 +34,18 @@ export async function demonstrarInteresse(cnpj: string): Promise<RespostaDoInter
   const { data: contato } = await banco.rpc("contato_do_lugar", { p_cnpj: cnpj });
   return { ok: true, avisada, contato: (contato as unknown as ContatoDoLugar | null) ?? null };
 }
+
+/**
+ * Desistir do "Quero trabalhar aqui" (migração 20270707120000): o aviso sai do sino da empresa no Publike, e o lugar
+ * volta a mostrar o "Quero trabalhar aqui".
+ */
+export async function desistirDoInteresse(cnpj: string): Promise<{ ok: true } | { ok: false; erro: string }> {
+  if (!/^[0-9A-Z]{12}[0-9]{2}$/.test(String(cnpj ?? ""))) return { ok: false, erro: "Lugar inválido." };
+  if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta." };
+  const { error } = await (await criarClienteServidor()).rpc("desistir_interesse", { p_cnpj: cnpj });
+  if (error) {
+    console.error("Publike: falha ao desistir do interesse:", error.message);
+    return { ok: false, erro: "Não deu agora. Tente de novo." };
+  }
+  return { ok: true };
+}

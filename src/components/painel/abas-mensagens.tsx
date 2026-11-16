@@ -1,6 +1,4 @@
-import { pendenciasDeConexao } from "@/lib/conexoes";
 import { plural } from "@/lib/formato";
-import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { CabecalhoDaPagina } from "./cabecalho-da-pagina";
 import { Segmentos } from "./segmentos";
@@ -52,18 +50,14 @@ export function AbasMensagensBase({
  * três páginas, com as mensagens novas e os pedidos de conexão para responder.
  */
 export async function AbasMensagens({ atual }: { atual: AbaMensagens }) {
-  const [conversas, conexoes] = await Promise.all([
-    conversasPorPessoa().catch(() => null),
-    minhasConexoes().catch(() => null),
-  ]);
+  // só as mensagens novas: os pedidos de conexão não são mensagem por ler (16/11/2026); ficam no sino e em Conexões
+  const conversas = await conversasPorPessoa().catch(() => null);
   const novas = (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0);
-  const pedidos = pendenciasDeConexao(conexoes ?? []);
   return (
     <AbasMensagensBase
       atual={atual}
       numeros={{
         conversas: { n: novas, leitor: plural(novas, "mensagem nova", "mensagens novas") },
-        conexoes: { n: pedidos, leitor: plural(pedidos, "pedido para responder", "pedidos para responder") },
       }}
     />
   );

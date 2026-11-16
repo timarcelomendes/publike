@@ -3,7 +3,7 @@
 import { Check, MessageCircle, Navigation, Phone } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
-import { demonstrarInteresse, type ContatoDoLugar } from "@/lib/acoes/interesse-local";
+import { demonstrarInteresse, desistirDoInteresse, type ContatoDoLugar } from "@/lib/acoes/interesse-local";
 
 const BOTAO =
   "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors disabled:opacity-60";
@@ -12,16 +12,43 @@ const BOTAO =
  * "Quero trabalhar aqui" (migração 20270615120000): a empresa que já está no Publike recebe o aviso com o currículo;
  * a que não está mostra o WhatsApp (se o telefone da Receita for celular), o Ligar e o Traçar rota.
  */
-export function QueroTrabalharAqui({ cnpj, nome, funcao }: { cnpj: string; nome: string; funcao?: string | null }) {
-  const [resposta, setResposta] = useState<{ avisada: boolean; contato: ContatoDoLugar | null } | null>(null);
+export function QueroTrabalharAqui({
+  cnpj,
+  nome,
+  funcao,
+  jaQuer = false,
+}: {
+  cnpj: string;
+  nome: string;
+  funcao?: string | null;
+  /** já disse "quero trabalhar aqui" antes (abre com o Desistir) */
+  jaQuer?: boolean;
+}) {
+  const [resposta, setResposta] = useState<{ avisada: boolean; contato: ContatoDoLugar | null } | null>(
+    jaQuer ? { avisada: false, contato: null } : null,
+  );
+  const [antes, setAntes] = useState(jaQuer);
+  const [desistiu, setDesistiu] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const router = useRouter();
   const caminho = usePathname();
   const busca = useSearchParams().toString();
 
+  function desistir() {
+    setErro(null);
+    iniciar(async () => {
+      const r = await desistirDoInteresse(cnpj);
+      if (!r.ok) return setErro(r.erro);
+      setResposta(null);
+      setAntes(false);
+      setDesistiu(true);
+    });
+  }
+
   function querer() {
     setErro(null);
+    setDesistiu(false);
     iniciar(async () => {
       const r = await demonstrarInteresse(cnpj);
       if (r.ok) return setResposta({ avisada: r.avisada, contato: r.contato });
@@ -44,6 +71,7 @@ export function QueroTrabalharAqui({ cnpj, nome, funcao }: { cnpj: string; nome:
         >
           {pendente ? "Enviando…" : "Quero trabalhar aqui"}
         </button>
+        {desistiu && <span className="text-body-sm text-ink-muted">Pronto: você desistiu deste lugar.</span>}
         {erro && (
           <span role="alert" className="text-body-sm text-danger">
             {erro}
@@ -61,6 +89,35 @@ export function QueroTrabalharAqui({ cnpj, nome, funcao }: { cnpj: string; nome:
         ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.endereco)}`
         : null;
   const texto = `Olá! Moro aqui perto e gostaria de trabalhar na ${nome}${funcao ? ` como ${funcao.toLowerCase()}` : ""}. Posso deixar o meu currículo?`;
+
+  const botaoDesistir = (
+    <button
+      type="button"
+      onClick={desistir}
+      disabled={pendente}
+      className="self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60"
+    >
+      {pendente ? "Desistindo…" : "Desistir de trabalhar aqui"}
+    </button>
+  );
+
+  // já tinha dito que quer (em outra visita): só o lembrete e o Desistir
+  if (antes) {
+    return (
+      <div role="status" className="flex flex-col gap-1 text-body-sm">
+        <p className="inline-flex items-start gap-1.5 text-cerrado-text">
+          <Check aria-hidden className="mt-0.5 size-4 shrink-0" />
+          Você disse que quer trabalhar aqui.
+        </p>
+        {botaoDesistir}
+        {erro && (
+          <span role="alert" className="text-danger">
+            {erro}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div role="status" className="flex flex-col gap-2 text-body-sm">
@@ -105,6 +162,12 @@ export function QueroTrabalharAqui({ cnpj, nome, funcao }: { cnpj: string; nome:
           </a>
         )}
       </div>
+      {botaoDesistir}
+      {erro && (
+        <span role="alert" className="text-danger">
+          {erro}
+        </span>
+      )}
     </div>
   );
 }

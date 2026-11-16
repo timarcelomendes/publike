@@ -4158,6 +4158,9 @@ export type Database = {
         Returns: undefined;
       };
       admin_conteudos_atualizados: { Args: Record<string, never>; Returns: Json };
+      /** desistir do "Quero trabalhar aqui" e os lugares em que já quero (migração 20270707120000) */
+      desistir_interesse: { Args: { p_cnpj: string }; Returns: boolean };
+      meus_interesses: { Args: { p_cnpjs: string[] }; Returns: string[] };
       admin_decidir_conteudo: { Args: { p_id: number; p_publicar: boolean }; Returns: string };
       /** o mapa dos talentos e os centros dos bairros (migração 20270630120000) */
       mapa_dos_talentos: {

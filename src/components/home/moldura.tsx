@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ColunaDoMapa, useVisao, type Visao } from "../explorar/visao-explorar";
+import { MarcarPaginaLarga } from "../largura-da-pagina";
 import { Container } from "../ui/basicos";
 
 /**
@@ -20,8 +21,11 @@ export function MolduraDaHome({
   direitaComMapa,
   mapaAoLado = false,
   padrao = "blocos",
+  larga = false,
   children,
 }: {
+  /** a página larga (até 1280 px, como a linha do tempo): sem a coluna da direita, o meio usa o espaço (Talentos) */
+  larga?: boolean;
   esquerda: ReactNode;
   direita?: ReactNode;
   /** o que fica da direita com Blocos + mapa (o resto foi para cima do mapa) */
@@ -41,7 +45,11 @@ export function MolduraDaHome({
   const comMapa = mapaAoLado && visao === "blocos-mapa";
   const lado = comMapa && direitaComMapa !== undefined ? direitaComMapa : direita;
   return (
-    <Container className="pt-4 pb-4 sm:pt-6">
+    <Container
+      data-pagina-larga={larga ? "" : undefined}
+      className={`pt-4 pb-4 sm:pt-6 ${larga ? "xl:max-w-7xl" : ""}`}
+    >
+      {larga && <MarcarPaginaLarga />}
       <div
         className={`flex flex-col gap-6 lg:grid lg:items-start ${
           comMapa

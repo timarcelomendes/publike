@@ -24,6 +24,8 @@ export type LugarDaRota = {
   distancia_m: number;
   /** aberto há até 12 meses na Receita: "Abriu em mar. de 2026" (o selo "Lugar novo") */
   novo?: string | null;
+  /** já disse "quero trabalhar aqui" (o botão abre com o Desistir) */
+  quero?: boolean;
   /** a empresa tem conta no Publike: o "Quero trabalhar aqui" avisa direto */
   no_publike?: boolean;
 };
@@ -193,7 +195,7 @@ export function EscolherLugares({
                     </div>
                     {!soVer && (
                       <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-                        <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcao} />
+                        <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcao} jaQuer={l.quero} />
                         {/* imprimir é a opção de quem vai passar lá (16/11/2026: "pode ser uma opção secundária") */}
                         <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 text-body-sm text-ink-muted has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
                           <input

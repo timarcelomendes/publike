@@ -117,6 +117,7 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
   if (!usuario) return <TalentosAberta searchParams={searchParams} />;
   return (
     <MolduraDaHome
+      larga
       esquerda={
         <>
           <Suspense fallback={<Esqueleto className="h-56 rounded-lg" />}>
@@ -437,7 +438,7 @@ async function Lista({
               .filter((t) => (convites?.get(t.perfil_id)?.length ?? 0) < noAr.length)
               .map((t) => t.perfil_id)}
           />
-          <ul aria-label="Talentos" className={`mt-3 grid gap-4 sm:grid-cols-2 ${estreita ? "" : "lg:grid-cols-3"}`}>
+          <ul aria-label="Talentos" className={`mt-3 grid gap-4 sm:grid-cols-2 ${estreita ? "xl:grid-cols-3" : "lg:grid-cols-3"}`}>
             {lista.map((t) => (
               <li key={t.perfil_id}>
                 <CartaoTalento

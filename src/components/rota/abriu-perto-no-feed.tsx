@@ -26,6 +26,8 @@ export async function AbriuPertoNoFeed() {
     p_limite: 3,
   });
   if (error || !data?.length) return null;
+  // os lugares em que a pessoa já disse "quero trabalhar aqui" (abrem com o Desistir)
+  const quero = new Set<string>((await banco.rpc("meus_interesses", { p_cnpjs: data.map((l) => l.cnpj) })).data ?? []);
   const titulo = funcoes.find((f) => f.cbo === data[0].cbo)?.titulo ?? funcoes[0].titulo;
   return (
     <section
@@ -46,7 +48,12 @@ export async function AbriuPertoNoFeed() {
               , {[l.bairro && bairroDaReceita(l.bairro), `a ${distanciaCurta(l.distancia_m)} ${onde.deCasa ? "de casa" : "do seu bairro"}`].filter(Boolean).join(", ")}
             </span>
             </span>
-            <QueroTrabalharAqui cnpj={l.cnpj} nome={l.nome} funcao={funcoes.find((f) => f.cbo === l.cbo)?.titulo} />
+            <QueroTrabalharAqui
+              cnpj={l.cnpj}
+              nome={l.nome}
+              funcao={funcoes.find((f) => f.cbo === l.cbo)?.titulo}
+              jaQuer={quero.has(l.cnpj)}
+            />
           </li>
         ))}
       </ul>
