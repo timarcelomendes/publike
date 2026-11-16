@@ -107,6 +107,15 @@ const SEGREDOS = [
     ],
   },
   {
+    valor: "whatsapp",
+    nome: "WHATSAPP_WEBHOOK_TOKEN (webhook do WhatsApp)",
+    passos: [
+      "Na Vercel (Settings › Environment Variables), crie WHATSAPP_WEBHOOK_TOKEN em Production com este valor e faça um Redeploy.",
+      "Com o deploy pronto, no app da Meta (WhatsApp › Configuração › Configurar webhooks): URL de callback https://publike.org/api/whatsapp/webhook e, em Verificar token, este mesmo valor.",
+      "Clique em Verificar e salvar e, em Campos do webhook, assine messages.",
+    ],
+  },
+  {
     valor: "outro",
     nome: "Outro segredo",
     passos: ["Cole o valor no lugar que pediu o segredo (só o valor, sem o nome na frente)."],
