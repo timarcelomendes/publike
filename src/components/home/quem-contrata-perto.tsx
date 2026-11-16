@@ -16,7 +16,10 @@ import { criarClientePublico } from "@/lib/supabase/servidor";
 const FUNCOES_DA_CHAMADA = ["521110", "513505", "421125"];
 const RAIO_KM = 2;
 
-/** Quantos lugares a até 2 km contratam cada função, guardado por uma hora (o ponto vem arredondado, ~1 km). */
+/**
+ * Quantos lugares a até 2 km contratam cada função, guardado por uma hora (o ponto vem arredondado, ~1 km). A falha
+ * sai como erro, e não como lista vazia, para não ficar guardada: a próxima visita tenta de novo.
+ */
 async function contar(lat: number, lng: number, cbos: string[]) {
   "use cache";
   cacheLife("hours");
@@ -27,11 +30,18 @@ async function contar(lat: number, lng: number, cbos: string[]) {
     p_raio_km: RAIO_KM,
     p_cbos: cbos,
   });
-  if (error) {
-    if (error.code !== "PGRST202") console.error("Publike: falha ao contar quem contrata perto:", error.message);
+  if (error) throw new Error(`${error.code ?? "erro"}: ${error.message}`);
+  return data ?? [];
+}
+
+async function contarSemQuebrar(lat: number, lng: number, cbos: string[]) {
+  try {
+    return await contar(lat, lng, cbos);
+  } catch (e) {
+    const mensagem = e instanceof Error ? e.message : String(e);
+    if (!mensagem.startsWith("PGRST202")) console.error("Publike: falha ao contar quem contrata perto:", mensagem);
     return [];
   }
-  return data ?? [];
 }
 
 export async function ChamadaQuemContrata({ className = "" }: { className?: string }) {
@@ -45,7 +55,7 @@ export async function ChamadaQuemContrata({ className = "" }: { className?: stri
   const sua = funcaoPeloTitulo(curriculo?.titulo)?.cbo;
   const cbos = [...new Set([sua, ...FUNCOES_DA_CHAMADA].filter((c): c is string => Boolean(c)))].slice(0, 3);
   const contagens = (
-    await contar(Math.round(origem.ponto.lat * 100) / 100, Math.round(origem.ponto.lng * 100) / 100, cbos)
+    await contarSemQuebrar(Math.round(origem.ponto.lat * 100) / 100, Math.round(origem.ponto.lng * 100) / 100, cbos)
   ).filter((c) => c.total > 0);
   if (!contagens.length) return null;
   const de = {

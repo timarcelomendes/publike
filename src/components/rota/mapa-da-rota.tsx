@@ -1,7 +1,7 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { GeoJSONSource, Map as MapaML } from "maplibre-gl";
+import type { ExpressionSpecification, GeoJSONSource, Map as MapaML } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import {
   carregarMapLibre,
@@ -16,7 +16,8 @@ export type PontoDaRota = { cnpj: string; nome: string; lat: number; lng: number
 /** Uma vaga no ar no Publike da mesma função: outra cor no mapa e o título ao lado. */
 export type VagaNoMapa = { id: string; titulo: string; lat: number; lng: number };
 
-const CINZA = "#b4aba2";
+/** O lugar escolhido para levar impresso (na expressão do MapLibre). */
+const ESCOLHIDO: ExpressionSpecification = ["==", ["get", "escolhido"], 1];
 
 function dados(pontos: PontoDaRota[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
@@ -127,23 +128,47 @@ export function MapaDaRota({
           const m = instancia!;
           const fonte = fonteDoEstilo(m);
           mostrarNomesDasRuas(m);
+          m.addSource("casa", {
+            type: "geojson",
+            data: { type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [casa.lng, casa.lat] } },
+          });
+          // o ponto de partida com um halo, como o "você está aqui" dos mapas (por baixo dos lugares, para não apagá-los)
+          m.addLayer({
+            id: "casa-halo",
+            type: "circle",
+            source: "casa",
+            paint: { "circle-radius": 20, "circle-color": CORES_MAPA.ink, "circle-opacity": 0.12 },
+          });
           m.addSource("lugares", { type: "geojson", data: dados(atuais.current) });
+          // quem contrata em terracota, a cor do Publike, que aparece bem no mapa claro (o cinza sumia no fundo), e
+          // crescendo com o zoom; os escolhidos para levar impresso ficam maiores, com o contorno escuro e o nome ao lado
           m.addLayer({
             id: "lugares",
             type: "circle",
             source: "lugares",
+            layout: { "circle-sort-key": ["get", "escolhido"] },
             paint: {
-              "circle-radius": ["case", ["==", ["get", "escolhido"], 1], 8, 6],
-              "circle-color": ["case", ["==", ["get", "escolhido"], 1], CORES_MAPA.terra, CINZA],
-              "circle-stroke-color": CORES_MAPA.branco,
-              "circle-stroke-width": 2,
+              "circle-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                11,
+                ["case", ESCOLHIDO, 6, 4],
+                14,
+                ["case", ESCOLHIDO, 9, 6.5],
+                17,
+                ["case", ESCOLHIDO, 12, 9],
+              ],
+              "circle-color": CORES_MAPA.terra,
+              "circle-stroke-color": ["case", ESCOLHIDO, CORES_MAPA.ink, CORES_MAPA.branco],
+              "circle-stroke-width": ["case", ESCOLHIDO, 3, 1.5],
             },
           });
           m.addLayer({
             id: "nomes-dos-escolhidos",
             type: "symbol",
             source: "lugares",
-            filter: ["==", ["get", "escolhido"], 1],
+            filter: ESCOLHIDO,
             layout: {
               "text-field": ["get", "nome"],
               "text-font": fonte,
@@ -193,16 +218,13 @@ export function MapaDaRota({
               "text-halo-width": 1.8,
             },
           });
-          m.addSource("casa", {
-            type: "geojson",
-            data: { type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [casa.lng, casa.lat] } },
-          });
+          // e o ponto de partida por cima de tudo
           m.addLayer({
             id: "casa",
             type: "circle",
             source: "casa",
             paint: {
-              "circle-radius": 9,
+              "circle-radius": 8,
               "circle-color": CORES_MAPA.ink,
               "circle-stroke-color": CORES_MAPA.branco,
               "circle-stroke-width": 3,
@@ -257,8 +279,9 @@ export function MapaDaRota({
         />
       </div>
       <p className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-sm bg-surface-100/90 px-2 py-1 text-[12px] text-ink">
+        {/* as cores fixas do mapa (o mapa não muda no tema escuro) */}
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block size-2.5 rounded-full bg-ink" /> {rotuloCasa}
+          <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: CORES_MAPA.ink }} /> {rotuloCasa}
         </span>
         {vagas.length > 0 && (
           <span className="inline-flex items-center gap-1">
@@ -267,11 +290,18 @@ export function MapaDaRota({
           </span>
         )}
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block size-2.5 rounded-full bg-terra" /> Levar impresso
+          <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: CORES_MAPA.terra }} /> Quem
+          contrata
         </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: CINZA }} /> Lugares
-        </span>
+        {pontos.some((p) => p.escolhido) && (
+          <span className="inline-flex items-center gap-1">
+            <span
+              className="inline-block size-2.5 rounded-full"
+              style={{ backgroundColor: CORES_MAPA.terra, boxShadow: `0 0 0 2px ${CORES_MAPA.ink}` }}
+            />{" "}
+            Levar impresso
+          </span>
+        )}
       </p>
       {falhou && (
         <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-body-sm text-ink-muted">
