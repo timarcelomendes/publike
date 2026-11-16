@@ -265,7 +265,7 @@ function Partes({ r, s }: { r: Resumo; s: ReturnType<typeof situacaoWhatsapp> })
       {s.token && s.numero && (
         <Secao
           titulo="Mandar um teste"
-          descricao="Manda o modelo de teste da Meta (“hello_world”, em inglês) para conferir que o número e o token funcionam."
+          descricao="Manda um aviso do Publike já aprovado, com dados de exemplo (ou, antes da aprovação, o modelo de exemplo da Meta), para conferir que o número e o token funcionam. Com o número de teste da Meta, o destino precisa estar na lista de destinatários dele."
         >
           <MandarTeste />
         </Secao>

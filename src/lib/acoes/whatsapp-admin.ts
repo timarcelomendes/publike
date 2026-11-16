@@ -136,8 +136,16 @@ export async function mandarTesteWhatsapp(numero: string): Promise<Resultado> {
   let n = String(numero ?? "").replace(/\D/g, "");
   if (n.length <= 11) n = `55${n}`;
   const { data } = await c.rpc("admin_whatsapp");
-  const lista = ((data as { config?: { numeros_teste?: string[] } } | null)?.config?.numeros_teste ?? []) as string[];
+  const config = (data as { config?: { numeros_teste?: string[]; modelos?: SituacaoModelos } } | null)?.config;
+  const lista = (config?.numeros_teste ?? []) as string[];
   if (!lista.includes(n)) return { ok: false, erro: "Ponha o número na lista de teste e salve antes." };
-  const r = await enviarTeste(cfg, n);
-  return r.ok ? { ok: true, mensagem: "Mandamos. Confira no WhatsApp desse número." } : { ok: false, erro: `A Meta recusou: ${r.erro}` };
+  const r = await enviarTeste(cfg, n, (config?.modelos ?? {}) as SituacaoModelos);
+  if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
+  return {
+    ok: true,
+    mensagem:
+      r.modelo === "hello_world"
+        ? "Mandamos o modelo de exemplo da Meta (em inglês). Confira no WhatsApp desse número."
+        : `Mandamos o aviso ${r.modelo} com dados de exemplo. Confira no WhatsApp desse número.`,
+  };
 }

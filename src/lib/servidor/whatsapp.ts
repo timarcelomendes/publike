@@ -358,7 +358,19 @@ export async function enviarTexto(cfg: ConfigMeta, numero: string, texto: string
 }
 
 /** O modelo de teste da Meta (hello_world, em inglês, que toda conta nova já tem aprovado). */
-export async function enviarTeste(cfg: ConfigMeta, numero: string) {
+export async function enviarTeste(cfg: ConfigMeta, numero: string, modelos: SituacaoModelos = {}) {
+  // um aviso do Publike já aprovado, com os dados de exemplo (o teste de verdade, com o botão que abre o site)
+  const aprovado = MODELOS.find(
+    (m) => modelos[m.nome]?.status === "APPROVED" && m.botoes.length > 0 && m.botoes.every((b) => b.tipo === "link"),
+  );
+  if (aprovado) {
+    const botao = aprovado.botoes[0];
+    const r = await enviarModelo(cfg, numero, aprovado, aprovado.exemplo, {
+      link: botao.tipo === "link" ? botao.exemplo : undefined,
+    });
+    return r.ok ? { ok: true as const, modelo: aprovado.nome } : { ok: false as const, erro: explicarErro(r.erro) };
+  }
+  // sem modelo do Publike aprovado ainda: o de exemplo da Meta (nem toda conta nova tem)
   const r = await graph<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
     metodo: "POST",
     corpo: {
@@ -368,7 +380,31 @@ export async function enviarTeste(cfg: ConfigMeta, numero: string) {
       template: { name: "hello_world", language: { code: "en_US" } },
     },
   });
-  return r.ok ? { ok: true as const } : { ok: false as const, erro: r.texto };
+  if (r.ok) return { ok: true as const, modelo: "hello_world" };
+  return {
+    ok: false as const,
+    erro:
+      r.erro?.code === 132001
+        ? "Nenhum modelo aprovado ainda. Use \"Cadastrar e conferir na Meta\" e espere a aprovação (minutos ou horas)."
+        : explicarErro(r.texto),
+  };
+}
+
+/** O erro da Meta em português, para o Admin (os mais comuns na hora de ligar). */
+export function explicarErro(texto: string) {
+  const codigo = Number(/^(\d+):/.exec(texto)?.[1] ?? 0);
+  const explicacao: Record<number, string> = {
+    131030: "o número não está na lista de destinatários do número de teste da Meta (Etapa 1 › Destinatário; até 5 números)",
+    190: "o token venceu ou não vale (o token temporário da Meta dura 24 horas; use o do usuário do sistema)",
+    131026: "o número não tem WhatsApp ou não recebe mensagens agora",
+    131042: "falta a forma de pagamento da conta do WhatsApp (Gerenciador do WhatsApp › Configurações)",
+    132001: "o modelo não existe nesta conta ou ainda não foi aprovado",
+    133010: "o número do Publike ainda não foi registrado na API (Admin › WhatsApp › Registrar o número)",
+    131031: "a conta do WhatsApp está bloqueada pela Meta",
+    10: "o token não tem permissão para esta conta do WhatsApp (atribua a conta ao usuário do sistema)",
+    200: "o token não tem permissão para esta conta do WhatsApp (atribua a conta ao usuário do sistema)",
+  };
+  return explicacao[codigo] ? `${explicacao[codigo]} (${texto})` : texto;
 }
 
 type DadosDoNumero = {
@@ -677,14 +713,14 @@ export async function enviarWhatsappPendentes(limite = 30): Promise<ResultadoWha
       resultado.enviadas++;
       await marcar(item.id, "enviada", { modelo: m.modelo, wamid: envio.wamid });
     } else if (envio.configuracao) {
-      parar = `a Meta recusou o envio (${envio.erro})`;
+      parar = `a Meta recusou o envio: ${explicarErro(envio.erro)}`;
       resultado.falhas++;
       await marcar(item.id, "pendente", { modelo: m.modelo, motivo: parar, minutos: 30 });
     } else if (envio.passageiro && item.tentativas < 3) {
       await marcar(item.id, "pendente", { modelo: m.modelo, motivo: envio.erro, minutos: 5 * item.tentativas });
     } else {
       resultado.falhas++;
-      await marcar(item.id, "falhou", { modelo: m.modelo, motivo: envio.erro });
+      await marcar(item.id, "falhou", { modelo: m.modelo, motivo: explicarErro(envio.erro) });
     }
   }
   if (parar) resultado.motivo = `WhatsApp parado: ${parar}. Confira o token em Admin › WhatsApp.`;
