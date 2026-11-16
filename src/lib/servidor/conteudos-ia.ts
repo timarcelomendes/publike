@@ -52,9 +52,13 @@ O artigo vem em JSON (titulo, descricao, blocos e fontes). Pesquise na web se sa
 
 type ResultadoRodada = { ok: true; conferidos: { slug: string; resultado: string; rascunho: boolean }[] } | { ok: false; erro: string };
 
-/** Os artigos com número em destaque (os que têm o que atualizar). */
+/** Os que aparecem na página inicial e os números do emprego: conferidos primeiro. */
+const PRIMEIRO = ["emprego-em-goias-2026", "emprego-perto-de-casa-goiania", "publicar-vaga-gratis-goiania", "desemprego-goias-4-por-cento"];
+
+/** Os artigos com número em destaque (os que têm o que atualizar), os de PRIMEIRO na frente. */
 function comNumeros() {
-  return CONTEUDOS.filter((c) => c.blocos.some((b) => b.t === "numero")).map((c) => c.slug);
+  const todos = CONTEUDOS.filter((c) => c.blocos.some((b) => b.t === "numero")).map((c) => c.slug);
+  return [...PRIMEIRO.filter((s) => todos.includes(s)), ...todos.filter((s) => !PRIMEIRO.includes(s))];
 }
 
 export async function atualizarConteudos({ agora = Date.now() } = {}): Promise<ResultadoRodada> {

@@ -319,7 +319,8 @@
   "20270702120000_mapa_para_quem_contrata",
   "20270703120000_meu_lugar_aproximado",
   "20270704120000_centro_do_bairro_parecido",
-  "20270705120000_conteudos_atualizados"
+  "20270705120000_conteudos_atualizados",
+  "20270706120000_conteudos_na_ordem"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3289,7 +3290,7 @@
   "f|public.servidor_contar_uso_da_ia(p_chave text, p_funcionalidade text, p_modelo text, p_falhou boolean, p_entrada integer, p_saida integer, p_buscas integer)": "c439a57460",
   "f|public.servidor_contas_com_vagas(p_chave text)": "36f93294d2",
   "f|public.servidor_conteudo_conferido(p_chave text, p_slug text, p_resultado text, p_dados jsonb, p_motivo text)": "f2173dc49e",
-  "f|public.servidor_conteudos_para_conferir(p_chave text, p_slugs text[], p_quantos integer)": "f1f545da96",
+  "f|public.servidor_conteudos_para_conferir(p_chave text, p_slugs text[], p_quantos integer)": "f426c8cd39",
   "f|public.servidor_convidar_sozinho(p_chave text, p_conta uuid, p_anuncio uuid, p_perfil uuid)": "c84b696484",
   "f|public.servidor_convite_auto_contas(p_chave text)": "98b3789057",
   "f|public.servidor_copiloto_candidatos_da_vaga(p_chave text, p_anuncio uuid)": "5eb9683a82",
