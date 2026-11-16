@@ -8,7 +8,7 @@ import { Aviso, Selo, type VarianteSelo } from "@/components/ui/basicos";
 import { formatarDataHora, formatarNumero } from "@/lib/formato";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { MODELOS, RODAPE_WHATSAPP, situacaoWhatsapp, type SituacaoModelos } from "@/lib/servidor/whatsapp";
-import { TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
+import { TARIFA_WHATSAPP_USD, TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
@@ -23,6 +23,7 @@ type Resumo = {
     para_todos: boolean;
     numeros_teste: string[];
     limite_dia: number;
+    limite_mes: number;
     por_conta_dia: number;
     tipos_desligados: string[];
     modelos: SituacaoModelos;
@@ -44,10 +45,10 @@ type Resumo = {
   motivos: { situacao: string; motivo: string | null; quantas: number }[];
   respostas: { tipo: string; resposta: string; quantas: number }[];
   cobradas_30_dias: number;
+  enviadas_no_mes: number;
+  estimativa: Record<string, { todos: number; aceitaram: number }>;
 };
 
-// a tarifa de utilidade no Brasil (US$ 0,0068 por mensagem entregue, desde julho de 2026)
-const TARIFA_USD = 0.0068;
 
 const STATUS: Record<string, { nome: string; variante: VarianteSelo }> = {
   APPROVED: { nome: "Aprovado", variante: "match" },
@@ -140,16 +141,20 @@ function Partes({ r, s }: { r: Resumo; s: ReturnType<typeof situacaoWhatsapp> })
   return (
     <>
       <Secao
-        titulo="Envio"
+        titulo="Configuração de envios"
         descricao={
           r.config.ativo
             ? r.config.para_todos
               ? "Ligado para todos que aceitaram."
               : "Ligado só para os números de teste."
-            : "Desligado."
+            : "Desligado: nada sai pelo WhatsApp."
         }
       >
-        <ConfigWhatsapp inicial={r.config} />
+        <ConfigWhatsapp
+          inicial={r.config}
+          estimativa={r.estimativa ?? {}}
+          enviadasNoMes={r.enviadas_no_mes ?? 0}
+        />
       </Secao>
 
       <Secao
@@ -208,7 +213,7 @@ function Partes({ r, s }: { r: Resumo; s: ReturnType<typeof situacaoWhatsapp> })
         </div>
         <p className="text-body-sm text-ink-muted">
           Custo estimado nos últimos 30 dias: {formatarNumero(r.cobradas_30_dias)} mensagens cobradas, cerca de US${" "}
-          {(r.cobradas_30_dias * TARIFA_USD).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+          {(r.cobradas_30_dias * TARIFA_WHATSAPP_USD).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
           (US$ 0,0068 cada, a tarifa de utilidade no Brasil). A conta oficial é a da Meta.
         </p>
         {r.por_tipo.length > 0 && (

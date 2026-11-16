@@ -13,7 +13,8 @@ import {
 } from "@/lib/acoes/whatsapp-admin";
 import { classesBotao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
-import { TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
+import { formatarNumero } from "@/lib/formato";
+import { dolares, TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
 
 // As partes de Admin › WhatsApp que mexem (claude/plano-whatsapp-oficial.md).
 
@@ -26,28 +27,53 @@ function Resposta({ r }: { r: { ok: boolean; texto: string } | null }) {
   );
 }
 
+type Estimativa = Record<string, { todos: number; aceitaram: number }>;
+
 export function ConfigWhatsapp({
   inicial,
+  estimativa,
+  enviadasNoMes,
 }: {
   inicial: {
     ativo: boolean;
     para_todos: boolean;
     numeros_teste: string[];
     limite_dia: number;
+    limite_mes: number;
     por_conta_dia: number;
     tipos_desligados: string[];
   };
+  /** quantos de cada aviso o Publike gerou em 30 dias (de quem já aceitou e de todos) */
+  estimativa: Estimativa;
+  enviadasNoMes: number;
 }) {
   const [ativo, setAtivo] = useState(inicial.ativo);
   const [paraTodos, setParaTodos] = useState(inicial.para_todos);
   const [numeros, setNumeros] = useState(inicial.numeros_teste.join("\n"));
   const [limite, setLimite] = useState(String(inicial.limite_dia));
+  const [limiteMes, setLimiteMes] = useState(String(inicial.limite_mes));
   const [porConta, setPorConta] = useState(String(inicial.por_conta_dia));
   const [ligados, setLigados] = useState(
     () => new Set(TIPOS_WHATSAPP.map((t) => t.tipo).filter((t) => !inicial.tipos_desligados.includes(t))),
   );
   const [pendente, iniciar] = useTransition();
   const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  const est = (t: string) => estimativa[t] ?? { todos: 0, aceitaram: 0 };
+  const somaLigados = (campo: "todos" | "aceitaram") =>
+    TIPOS_WHATSAPP.filter((t) => ligados.has(t.tipo)).reduce((n, t) => n + est(t.tipo)[campo], 0);
+  const teto = Math.max(0, Math.round(Number(limiteMes) || 0));
+  const hoje = Math.min(somaLigados("aceitaram"), teto);
+  const todos = Math.min(somaLigados("todos"), teto);
+
+  function predefinir(qual: "economico" | "tudo") {
+    setLigados(new Set(TIPOS_WHATSAPP.filter((t) => qual === "tudo" || t.economico).map((t) => t.tipo)));
+    if (qual === "economico") {
+      setLimite("50");
+      setLimiteMes("1500");
+    }
+    setResposta(null);
+  }
 
   return (
     <form
@@ -61,6 +87,7 @@ export function ConfigWhatsapp({
             paraTodos,
             numerosTeste: numeros,
             limiteDia: Number(limite),
+            limiteMes: Number(limiteMes),
             porContaDia: Number(porConta),
             tiposLigados: [...ligados],
           });
@@ -110,82 +137,129 @@ export function ConfigWhatsapp({
           />
           <span>
             <span className="block text-body text-ink">Todos que aceitaram</span>
-            <span className="block text-body-sm text-ink-muted">
-              As telas deixam de dizer “começam em breve”.
-            </span>
+            <span className="block text-body-sm text-ink-muted">As telas deixam de dizer “começam em breve”.</span>
           </span>
         </label>
       </fieldset>
 
-      <label className="flex max-w-md flex-col gap-1.5">
-        <span className="text-label text-ink">Números de teste</span>
-        <textarea
-          value={numeros}
-          onChange={(e) => setNumeros(e.target.value)}
-          rows={3}
-          placeholder={"62 99999-0000\n62 98888-0000"}
-          className={classesEntrada}
-        />
-        <span className="text-body-sm text-ink-muted">
-          Um por linha, com DDD. A pessoa também precisa ter marcado “Receber pelo WhatsApp” no Publike.
-        </span>
-      </label>
-
-      <div className="flex flex-wrap gap-4">
-        <label className="flex w-40 flex-col gap-1.5">
-          <span className="text-label text-ink">Limite por dia</span>
-          <input
-            type="number"
-            min={0}
-            max={100000}
-            value={limite}
-            onChange={(e) => setLimite(e.target.value)}
+      {!paraTodos && (
+        <label className="flex max-w-md flex-col gap-1.5">
+          <span className="text-label text-ink">Números de teste</span>
+          <textarea
+            value={numeros}
+            onChange={(e) => setNumeros(e.target.value)}
+            rows={3}
+            placeholder={"62 99999-0000\n62 98888-0000"}
             className={classesEntrada}
           />
+          <span className="text-body-sm text-ink-muted">
+            Um por linha, com DDD. A pessoa também precisa ter marcado “Receber pelo WhatsApp” no Publike.
+          </span>
         </label>
-        <label className="flex w-40 flex-col gap-1.5">
-          <span className="text-label text-ink">Por conta por dia</span>
-          <input
-            type="number"
-            min={1}
-            max={20}
-            value={porConta}
-            onChange={(e) => setPorConta(e.target.value)}
-            className={classesEntrada}
-          />
-        </label>
-      </div>
-      <p className="-mt-3 max-w-2xl text-body-sm text-ink-muted">
-        Quem contrata pode receber o dobro do limite por conta (os candidatos de várias vagas). A Meta começa permitindo
-        250 pessoas por dia e sobe sozinha com a qualidade. Os avisos saem das 8h às 21h.
-      </p>
+      )}
 
-      <fieldset className="flex flex-col gap-1">
-        <legend className="mb-1 text-label text-ink">Avisos que saem pelo WhatsApp</legend>
-        {TIPOS_WHATSAPP.map((t) => (
-          <label key={t.tipo} className="flex min-h-10 cursor-pointer items-center gap-3">
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-label text-ink">Limites (o teto do gasto)</legend>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex w-40 flex-col gap-1.5">
+            <span className="text-body-sm text-ink">Por mês</span>
             <input
-              type="checkbox"
-              checked={ligados.has(t.tipo)}
-              onChange={(e) =>
-                setLigados((atual) => {
-                  const novo = new Set(atual);
-                  if (e.target.checked) novo.add(t.tipo);
-                  else novo.delete(t.tipo);
-                  return novo;
-                })
-              }
-              className="size-5 shrink-0 accent-[var(--pk-ink)]"
+              type="number"
+              min={0}
+              max={1000000}
+              value={limiteMes}
+              onChange={(e) => setLimiteMes(e.target.value)}
+              className={classesEntrada}
             />
-            <span className="text-body text-ink">{t.nome}</span>
-            <span className="text-body-sm text-ink-muted">{t.para}</span>
           </label>
-        ))}
+          <label className="flex w-40 flex-col gap-1.5">
+            <span className="text-body-sm text-ink">Por dia</span>
+            <input
+              type="number"
+              min={0}
+              max={100000}
+              value={limite}
+              onChange={(e) => setLimite(e.target.value)}
+              className={classesEntrada}
+            />
+          </label>
+          <label className="flex w-40 flex-col gap-1.5">
+            <span className="text-body-sm text-ink">Por conta por dia</span>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={porConta}
+              onChange={(e) => setPorConta(e.target.value)}
+              className={classesEntrada}
+            />
+          </label>
+        </div>
+        <p className="max-w-2xl text-body-sm text-ink-muted">
+          No máximo {formatarNumero(teto)} mensagens por mês, {dolares(teto)} (US$ 0,0068 cada). Neste mês saíram{" "}
+          {formatarNumero(enviadasNoMes)}. Chegando no teto, o envio para até o dia 1º. Quem contrata pode receber o dobro
+          do limite por conta. Os avisos saem das 8h às 21h.
+        </p>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-label text-ink">Avisos que saem pelo WhatsApp</legend>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={classesBotao("secundario")} onClick={() => predefinir("economico")}>
+            Econômico (o que destrava a contratação)
+          </button>
+          <button type="button" className={classesBotao("secundario")} onClick={() => predefinir("tudo")}>
+            Todos os avisos
+          </button>
+        </div>
+        <p className="max-w-2xl text-body-sm text-ink-muted">
+          Ao lado de cada aviso: quantos o Publike gerou nos últimos 30 dias para quem já aceitou o WhatsApp e, entre
+          parênteses, para todos. O aviso desligado continua no sino, no e-mail e no celular.
+        </p>
+        <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-100">
+          {TIPOS_WHATSAPP.map((t) => {
+            const e = est(t.tipo);
+            return (
+              <li key={t.tipo}>
+                <label className="flex min-h-12 cursor-pointer items-start gap-3 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={ligados.has(t.tipo)}
+                    onChange={(ev) =>
+                      setLigados((atual) => {
+                        const novo = new Set(atual);
+                        if (ev.target.checked) novo.add(t.tipo);
+                        else novo.delete(t.tipo);
+                        return novo;
+                      })
+                    }
+                    className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body text-ink">{t.nome}</span>
+                    <span className="block text-body-sm text-ink-muted">
+                      {t.para}
+                      {!t.economico && " · fora do econômico"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right text-body-sm tabular-nums text-ink-muted">
+                    {formatarNumero(e.aceitaram)} ({formatarNumero(e.todos)})
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="max-w-2xl text-body-sm text-ink">
+          Com estes avisos, pelos últimos 30 dias: cerca de {formatarNumero(hoje)} mensagens por mês hoje ({dolares(hoje)}
+          ) e até {formatarNumero(todos)} ({dolares(todos)}) se todo mundo aceitar, já com o teto do mês. É uma estimativa
+          alta: o que a pessoa já viu no Publike e as candidaturas juntas por vaga não saem.
+        </p>
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pendente} className={classesBotao("primario")}>
-          {pendente ? "Salvando…" : "Salvar"}
+          {pendente ? "Salvando…" : "Salvar a configuração"}
         </button>
         <Resposta r={resposta} />
       </div>

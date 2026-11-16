@@ -4168,6 +4168,7 @@ export type Database = {
           p_para_todos: boolean | null;
           p_numeros_teste: string[];
           p_limite_dia: number | null;
+          p_limite_mes: number | null;
           p_por_conta_dia: number | null;
           p_tipos_desligados: string[] | null;
         };

@@ -32,6 +32,7 @@ export async function salvarWhatsapp(dados: {
   paraTodos: boolean;
   numerosTeste: string;
   limiteDia: number;
+  limiteMes: number;
   porContaDia: number;
   tiposLigados: string[];
 }): Promise<Resultado> {
@@ -50,6 +51,7 @@ export async function salvarWhatsapp(dados: {
     p_para_todos: Boolean(dados.paraTodos),
     p_numeros_teste: numeros,
     p_limite_dia: Math.round(Number(dados.limiteDia) || 0),
+    p_limite_mes: Math.round(Number(dados.limiteMes) || 0),
     p_por_conta_dia: Math.round(Number(dados.porContaDia) || 1),
     p_tipos_desligados: TIPOS.filter((t) => !ligados.has(t)),
   });
