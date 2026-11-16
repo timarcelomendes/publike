@@ -119,6 +119,19 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conversas/[outr
                 </Link>
               </li>
             )}
+            {/* sem vaga nem conexão aceita: o pedido de conexão com o contato liberado (migração 20270626120000) */}
+            {!c.conectados && c.vagas.length === 0 && (
+              <li className="flex flex-wrap items-center gap-2 text-body-sm text-ink-muted">
+                <Handshake aria-hidden className="size-4 shrink-0" />
+                <span>Pedido de conexão</span>
+                <Link
+                  href={`/painel/conexoes/${c.outro_id}`}
+                  className="text-ink underline underline-offset-2 hover:text-ink"
+                >
+                  Ver o pedido e os contatos
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
       </div>

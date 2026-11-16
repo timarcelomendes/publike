@@ -314,8 +314,8 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
 
       <p className="mt-8 text-body-sm text-ink-muted">
         {meu
-          ? "Seu WhatsApp e seu e-mail só aparecem para quem tem um match ou uma conexão aceita com você."
-          : `O contato de ${pessoa ? perfil.nome.split(" ")[0] : perfil.nome} aparece só depois de um match ou de uma conexão aceita.`}
+          ? "Seu WhatsApp e seu e-mail aparecem para quem tem um match ou uma conexão aceita com você e, se você liberou, para a empresa com plano que pedir conexão."
+          : `O contato de ${pessoa ? perfil.nome.split(" ")[0] : perfil.nome} aparece depois de um match ou de uma conexão aceita.`}
       </p>
     </>
   );
@@ -392,7 +392,7 @@ async function CurriculoNoPerfil({
         {meu ? (
           "É assim que todos veem. Empresas, comércios e agências que entraram veem também onde você trabalhou, as datas e o que fazia. Telefone, e-mail e o PDF não aparecem."
         ) : cv ? (
-          `Telefone e e-mail só aparecem quando ${primeiroNome} aceita a conexão ou dá match numa vaga.`
+          `Telefone e e-mail aparecem quando ${primeiroNome} aceita a conexão ou dá match numa vaga e, nos planos do Publike, já no pedido de conexão, se ${primeiroNome} deixou.`
         ) : usuario ? (
           "Empresas, comércios e agências que entraram veem também onde trabalhou, as datas e o que fazia."
         ) : (

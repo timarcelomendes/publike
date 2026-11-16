@@ -43,6 +43,7 @@ export const DOS_PLANOS = [
   "Mapa de talentos: quantas pessoas de cada função moram perto",
   "Vagas em Mosaico e na Linha do tempo: a tendência e os prazos de cada vaga",
   "Candidatos no Quadro de todas as vagas, no Mapa de onde moram e na Agenda das entrevistas",
+  "Contato dos talentos no pedido de conexão: WhatsApp, e-mail e conversa sem esperar o aceite",
 ];
 
 export const SO_DA_AGENCIA = [

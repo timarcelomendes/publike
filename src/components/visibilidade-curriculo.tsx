@@ -1,9 +1,9 @@
 "use client";
 
-import { Store, UserSearch, type LucideIcon } from "lucide-react";
+import { Store, Unlock, UserSearch, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { mudarVisibilidadeCurriculo, mudarVitrineCurriculo } from "@/lib/acoes/talentos";
+import { mostrarContatoNoConvite, mudarVisibilidadeCurriculo, mudarVitrineCurriculo } from "@/lib/acoes/talentos";
 import { useAcao } from "./ui/usar-acao";
 
 /**
@@ -75,20 +75,38 @@ export function Opcao({
 export function VisibilidadeCurriculo({
   visivel: visivelInicial,
   vitrine: vitrineInicial = false,
+  contato: contatoInicial = null,
   perfilId,
   aoMudar,
 }: {
   visivel: boolean;
   vitrine?: boolean;
+  /**
+   * o contato no convite (migração 20270626120000): a escolha (null: ainda não escolheu) e a data em que vale para
+   * quem já estava no Publike e não escolheu. Sem a migração, null (a opção não aparece).
+   */
+  contato?: { escolha: boolean | null; situacao: string; valeEm: string | null } | null;
   /** a página da pessoa na aba Talentos ("Ver como você aparece") */
   perfilId?: string;
   aoMudar?: (escolha: { visivel: boolean; vitrine: boolean }) => void;
 }) {
   const empresas = useAcao();
   const aba = useAcao();
+  const contatoAcao = useAcao();
   const [visivel, setVisivel] = useState(visivelInicial);
   const [vitrine, setVitrine] = useState(vitrineInicial);
-  const pendente = empresas.pendente || aba.pendente;
+  const [escolha, setEscolha] = useState<boolean | null>(contatoInicial?.escolha ?? null);
+  const pendente = empresas.pendente || aba.pendente || contatoAcao.pendente;
+  // sem escolha, vale a partir da data do aviso (para quem já estava no Publike: a situação "aviso")
+  const valeEm = contatoInicial?.valeEm ? new Date(contatoInicial.valeEm) : null;
+  const aindaNaoVale = escolha === null && contatoInicial?.situacao === "aviso";
+  const mudarContato = (novo: boolean) =>
+    contatoAcao.rodar(
+      () => mostrarContatoNoConvite(novo),
+      (r) => {
+        if (r.ok) setEscolha(novo);
+      },
+    );
 
   return (
     <section
@@ -127,7 +145,8 @@ export function VisibilidadeCurriculo({
         }}
       >
         Quem tem vaga na região vê seu currículo e pode convidar você. O nome aparece encurtado (ex.: Maria S.), e o
-        telefone e o e-mail só aparecem se você curtir a vaga e a empresa aceitar.
+        telefone e o e-mail aparecem quando você curte a vaga e a empresa aceita, quando você aceita uma conexão ou,
+        se você liberar abaixo, no pedido de conexão de uma empresa com plano.
       </Opcao>
       {empresas.mensagem}
 
@@ -171,6 +190,43 @@ export function VisibilidadeCurriculo({
         </Opcao>
         {aba.mensagem}
       </div>
+
+      {contatoInicial && (
+        <div className="border-t border-line pt-5">
+          <Opcao
+            id="contato-no-convite"
+            icone={Unlock}
+            titulo="Mostrar meu WhatsApp e e-mail às empresas com plano"
+            nivel={3}
+            menor
+            ligado={escolha ?? true}
+            pendente={pendente}
+            aoMudar={() => mudarContato(!(escolha ?? true))}
+          >
+            <p>
+              Quando uma empresa, comércio ou agência com plano do Publike pede conexão com você, ela já vê o seu
+              WhatsApp e e-mail e pode te chamar, sem esperar você aceitar. Você recebe o aviso e sabe quem foi.
+              Desligado, o contato só aparece quando você aceita a conexão ou dá match numa vaga.
+            </p>
+            {!visivel && <p className="mt-2">Vale quando as empresas puderem encontrar o seu currículo (acima).</p>}
+            {aindaNaoVale && valeEm && (
+              <p className="mt-2">
+                Você ainda não escolheu: passa a valer em{" "}
+                {valeEm.toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "America/Sao_Paulo" })}.{" "}
+                <button
+                  type="button"
+                  disabled={pendente}
+                  onClick={() => mudarContato(true)}
+                  className="text-label text-ink underline underline-offset-2 disabled:opacity-60"
+                >
+                  Liberar agora
+                </button>
+              </p>
+            )}
+          </Opcao>
+          {contatoAcao.mensagem}
+        </div>
+      )}
     </section>
   );
 }

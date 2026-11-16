@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Handshake, UserPlus } from "lucide-react";
+import { Check, Clock, Handshake, Unlock, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -82,6 +82,20 @@ export function BotaoConectarCompacto({
         <Handshake aria-hidden className={`${icone} ${jeito === "icone" ? "pk-aperto" : ""}`} />
         <span className={texto}>Responder pedido</span>
         <span className="sr-only"> de {nome}</span>
+      </Link>
+    );
+  }
+
+  // o pedido saiu com o contato liberado (o plano de quem pediu): os contatos e a conversa ficam na conexão
+  if (estado?.status === "pendente" && estado.contato) {
+    return (
+      <Link
+        href={caminhoConexao(outro.id)}
+        className={`${estadoBase} text-cerrado-text hover:underline hover:underline-offset-2`}
+      >
+        <Unlock aria-hidden className={icone} />
+        <span className={texto}>Contato liberado</span>
+        <span className="sr-only"> de {nome}: ver o WhatsApp, o e-mail e a conversa</span>
       </Link>
     );
   }

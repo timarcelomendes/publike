@@ -21,6 +21,8 @@ function lerConexao(l: Linha): Conexao {
     status: lerStatusConexao(l.status),
     ultima_minha: l.ultima_minha === true,
     nao_lidas: l.nao_lidas ?? 0,
+    // sem a migração 20270626120000, a coluna não vem
+    contato_liberado: l.contato_liberado === true,
   };
 }
 
@@ -62,6 +64,9 @@ export async function estadosDeConexao(ids: string[]): Promise<Map<string, Estad
     return new Map();
   }
   return new Map(
-    (data ?? []).map((e) => [e.outro_id, { id: e.conexao_id, status: lerStatusConexao(e.status), pedi: e.pedi }]),
+    (data ?? []).map((e) => [
+      e.outro_id,
+      { id: e.conexao_id, status: lerStatusConexao(e.status), pedi: e.pedi, contato: e.contato_liberado === true },
+    ]),
   );
 }

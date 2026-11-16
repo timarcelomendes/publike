@@ -214,7 +214,7 @@ export function SeuCartao({
       <JanelaDoCurriculo nome={pessoa.nome} rotulo="Ver o currículo completo" titulo="Seu currículo completo">
         <div className="flex flex-col gap-4">
           <p className="text-body-sm text-ink-muted">
-            Assim uma empresa que entrou no Publike vê o seu currículo. Telefone e e-mail só aparecem no match.
+            Assim uma empresa que entrou no Publike vê o seu currículo. Telefone e e-mail aparecem no match, na conexão aceita ou, se você liberou, no pedido de conexão de uma empresa com plano.
           </p>
           <CurriculoResumo curriculo={curriculo} linkPdf={linkPdf} hoje={hoje} />
         </div>

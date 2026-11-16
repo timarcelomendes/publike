@@ -3005,7 +3005,8 @@ export type Database = {
       };
       pedir_conexao: {
         Args: { p_com: string; p_mensagem?: string | null };
-        Returns: { id: string; status: string }[];
+        // contato_liberado e motivo: o contato no convite (migração 20270626120000)
+        Returns: { id: string; status: string; contato_liberado: boolean | null; motivo: string | null }[];
       };
       responder_conexao: {
         Args: { p_conexao: string; p_aceitar: boolean };
@@ -3037,6 +3038,7 @@ export type Database = {
           ultima_em: string | null;
           ultima_minha: boolean | null;
           nao_lidas: number;
+          contato_liberado: boolean | null;
         }[];
       };
       conversas_por_pessoa: {
@@ -3076,7 +3078,7 @@ export type Database = {
       };
       estado_conexoes: {
         Args: { p_outros: string[] };
-        Returns: { outro_id: string; conexao_id: string; status: string; pedi: boolean }[];
+        Returns: { outro_id: string; conexao_id: string; status: string; pedi: boolean; contato_liberado: boolean }[];
       };
       responder_finalista: {
         Args: {
@@ -4063,6 +4065,13 @@ export type Database = {
       };
       recebo_convites_automaticos: { Args: Record<string, never>; Returns: boolean };
       receber_convites_automaticos: { Args: { p_sim: boolean }; Returns: undefined };
+      // o contato dos talentos no convite (migração 20270626120000)
+      meu_contato_no_convite: { Args: Record<string, never>; Returns: Json };
+      testar_contato_no_convite: { Args: Record<string, never>; Returns: string };
+      liberar_contato_da_conexao: { Args: { p_conexao: string }; Returns: undefined };
+      contato_no_convite_de: { Args: { p_talento: string }; Returns: string | null };
+      meu_contato_no_convite_talento: { Args: Record<string, never>; Returns: Json };
+      mostrar_contato_no_convite: { Args: { p_sim: boolean }; Returns: undefined };
       servidor_convite_auto_contas: { Args: { p_chave: string }; Returns: Json };
       // o limite das entrevistas ao vivo (migração 20270420120000)
       minhas_entrevistas_ao_vivo: { Args: Record<string, never>; Returns: Json };

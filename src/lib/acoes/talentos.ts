@@ -168,6 +168,30 @@ export async function convidarVarios(
   return r;
 }
 
+/**
+ * O contato no convite (migração 20270626120000): liberar ou não o WhatsApp e o e-mail às empresas com plano que
+ * pedirem conexão. No aviso do sino ("Liberar agora" e "Não liberar") e em "Quem vê seu currículo".
+ */
+export async function mostrarContatoNoConvite(mostrar: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (typeof mostrar !== "boolean") return { ok: false, erro: "Pedido inválido." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/curriculo" };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("mostrar_contato_no_convite", { p_sim: mostrar });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Isso ainda não está no ar. Tente mais tarde." };
+    return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora.") };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: mostrar
+      ? "Liberado: as empresas com plano que pedirem conexão veem o seu WhatsApp e e-mail e podem te chamar."
+      : "Certo: o seu contato só aparece quando você aceitar a conexão ou der match numa vaga.",
+  };
+}
+
 /** "Deixar as empresas me encontrarem": entra ou sai de Talentos. */
 export async function mudarVisibilidadeCurriculo(visivel: boolean): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };

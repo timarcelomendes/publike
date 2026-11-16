@@ -27,6 +27,7 @@ import { falaDisponivel } from "@/lib/ia/transcrever";
 import { caminhoSeguro, plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { nomeNaLista } from "@/lib/servidor/contas-perto";
 import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
+import { meuContatoNoConvite } from "@/lib/servidor/contato-no-convite";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
@@ -151,7 +152,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
       </Aviso>
     );
   }
-  const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite, jeito] = await Promise.all([
+  const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite, jeito, contatoNoConvite] = await Promise.all([
     obterMeuCurriculo(),
     listarMinhasCurtidas().catch(() => []),
     meuCurriculoVisivel(),
@@ -159,6 +160,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
     ajudaDaIADisponivel().catch(() => false),
     convite ? dadosDoConvite(convite).catch(() => null) : null,
     meuJeitoDeTrabalhar(usuario.id),
+    // o contato no convite (migração 20270626120000): o terceiro interruptor de "Quem vê seu currículo"
+    meuContatoNoConvite(),
   ]);
   const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : null;
   // acabou de salvar e ainda não tem nenhum aviso de vaga: o convite para avisar de vagas do que a pessoa faz
@@ -317,6 +320,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         cidade: perfil.cidade,
       }}
       quemVe={curriculo ? { visivel, vitrine } : null}
+      contatoNoConvite={curriculo && contatoNoConvite.disponivel ? contatoNoConvite : null}
       salvo={curriculo ? tempoRelativo(curriculo.atualizado_em, agora) : null}
       avisos={avisos}
       depoisDoFormulario={curriculo && jeito !== null ? <JeitoDeTrabalhar inicial={jeito} /> : null}

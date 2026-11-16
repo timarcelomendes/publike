@@ -48,6 +48,7 @@ import { AtivarNotificacoes } from "./notificacoes-celular";
 import { tempoRelativo } from "@/lib/formato";
 import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
 import { mudarVisibilidadeCurriculo } from "@/lib/acoes/talentos";
+import { EscolherContatoNoConvite } from "./conexoes/contato-no-convite";
 import { useAcao } from "./ui/usar-acao";
 
 /** O ícone de cada tipo de aviso (o resto: escudo, da moderação). */
@@ -306,6 +307,10 @@ export function Notificacoes({
                       </span>
                     </Link>
                     {n.tipo === "convite" && <PararConvites />}
+                    {/* o aviso do contato no convite (migração 20270626120000): liberar já ou não */}
+                    {n.tipo === "comunicado" && n.link?.startsWith("/perfil/curriculo#contato-no-convite") && (
+                      <EscolherContatoNoConvite />
+                    )}
                   </li>
                 );
               })}

@@ -15,6 +15,7 @@ import {
   Sparkles,
   Store,
   type LucideIcon,
+  Unlock,
   UserSearch,
   Video,
   Workflow,
@@ -218,6 +219,12 @@ const SO_NOS_PLANOS: Item[] = [
     titulo: "Outras visões de vagas e candidatos",
     texto:
       "Vagas em Mosaico e na Linha do tempo; candidatos no Quadro de todas as vagas, no Mapa de onde moram (por região, nunca a casa) e na Agenda das entrevistas. 15 dias grátis para testar.",
+  },
+  {
+    icone: Unlock,
+    titulo: "Contato dos talentos no convite",
+    texto:
+      "Pediu conexão com alguém da aba Talentos, já vê o WhatsApp e o e-mail e conversa pelo Publike, sem esperar o aceite (se a pessoa deixou). Até 30 contatos por dia; 15 dias grátis para testar.",
   },
 ];
 

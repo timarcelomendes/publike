@@ -134,7 +134,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é a aba Talentos?",
-        r: "É a vitrine de quem procura trabalho, ao lado das abas Vagas e Serviços. Aparece quem salvou o currículo e não desligou “Aparecer na aba Talentos”. Quem visita vê um resumo: o nome encurtado (Maria S.), o bairro, o que a pessoa faz, as habilidades, os cursos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram na conta veem o currículo completo e podem pedir conexão com você (mesmo sem vaga aberta) ou convidar para uma vaga. Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só aparece se você aceitar a conexão ou der match numa vaga.",
+        r: "É a vitrine de quem procura trabalho, ao lado das abas Vagas e Serviços. Aparece quem salvou o currículo e não desligou “Aparecer na aba Talentos”. Quem visita vê um resumo: o nome encurtado (Maria S.), o bairro, o que a pessoa faz, as habilidades, os cursos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram na conta veem o currículo completo e podem pedir conexão com você (mesmo sem vaga aberta) ou convidar para uma vaga. Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato aparece se você aceitar a conexão ou der match numa vaga e, se você liberou, no pedido de conexão de uma empresa com plano (veja abaixo).",
+      },
+      {
+        p: "Quem vê o meu WhatsApp e o meu e-mail?",
+        r: "A empresa de um match numa vaga, quem tem uma conexão aceita com você e, se você liberou, a empresa, comércio ou agência com plano do Publike que pedir conexão com você: ela vê o seu contato na hora, sem esperar o seu sim, e pode te chamar no WhatsApp, por e-mail ou pela conversa. Você recebe um aviso dizendo quem foi e vê o contato dela também. Para escolher, em Meu currículo, no fim da página, ligue ou desligue “Mostrar meu WhatsApp e e-mail às empresas com plano”. Quem já estava no Publike e não escolheu passa a mostrar a partir de 23/11/2026.",
       },
       {
         p: "Posso me conectar com uma empresa sem ter vaga aberta?",
@@ -160,7 +164,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como acho gente pela aba Talentos?",
-        r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo, pede conexão (mesmo sem vaga aberta) ou convida a pessoa para uma vaga sua no ar. No convite, ela vê a vaga e decide se curte; o contato aparece no match. Na busca, dá para combinar palavras: “caixa OU atendente” acha qualquer uma das duas, a frase entre aspas (“\"auxiliar administrativo\"”) acha a frase inteira e o sinal de menos (“-motorista”) tira quem tem essa palavra; palavras soltas acham quem tem todas. Quem contrata salva a busca (“Salvar esta busca”, até 20) e pode ligar o aviso da semana, que conta os talentos novos que batem com ela.",
+        r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo, pede conexão (mesmo sem vaga aberta) ou convida a pessoa para uma vaga sua no ar. No convite, ela vê a vaga e decide se curte; o contato aparece no match. Com um plano (ou nos 15 dias grátis), o pedido de conexão já mostra o WhatsApp e o e-mail da pessoa e abre a conversa, sem esperar o aceite, se ela deixou: até 30 contatos a cada 24 horas (5 no teste). Na busca, dá para combinar palavras: “caixa OU atendente” acha qualquer uma das duas, a frase entre aspas (“\"auxiliar administrativo\"”) acha a frase inteira e o sinal de menos (“-motorista”) tira quem tem essa palavra; palavras soltas acham quem tem todas. Quem contrata salva a busca (“Salvar esta busca”, até 20) e pode ligar o aviso da semana, que conta os talentos novos que batem com ela.",
       },
       {
         p: "Minha vaga aparece em outros sites?",

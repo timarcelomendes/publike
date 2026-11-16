@@ -319,8 +319,9 @@ export async function ParaAVaga({
         </nav>
       )}
       <p className="text-body-sm text-ink-muted">
-        O telefone e o e-mail só aparecem se a pessoa curtir a vaga e você aceitar. Quem não quiser mais aparecer tira o
-        currículo de Talentos quando quiser.
+        O telefone e o e-mail aparecem se a pessoa curtir a vaga e você aceitar, ou quando ela aceita uma conexão; nos
+        planos, já no pedido de conexão, se a pessoa deixou. Quem não quiser mais aparecer tira o currículo de Talentos
+        quando quiser.
       </p>
     </div>
   );

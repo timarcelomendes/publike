@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Handshake, MessageCircle, Send, UserPlus } from "lucide-react";
+import { Check, Clock, Handshake, MessageCircle, Send, Unlock, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
 import { desfazerConexao, pedirConexao } from "@/lib/acoes/conexoes";
@@ -24,7 +24,10 @@ export function BotaoConectar({
   para,
   jeito = "pagina",
   principal = false,
+  rotulo,
 }: {
+  /** o texto do botão antes do pedido (com o plano: "Conectar e ver o contato") */
+  rotulo?: string;
   outroId: string;
   outroNome: string;
   estado: EstadoConexao | null;
@@ -107,6 +110,20 @@ export function BotaoConectar({
     );
   }
 
+  // o pedido saiu com o contato liberado (o plano de quem pediu): os contatos e a conversa ficam na conexão
+  if (estado?.status === "pendente" && estado.pedi && estado.contato) {
+    return (
+      <div className="flex flex-col items-start gap-1">
+        <Link href={caminhoConexao(outroId)} className={classesBotao("sucesso", tamanho)}>
+          <Unlock aria-hidden />
+          Contato liberado
+          <span className="sr-only"> de {outroNome}: ver o WhatsApp, o e-mail e a conversa</span>
+        </Link>
+        {mensagem}
+      </div>
+    );
+  }
+
   if (estado?.status === "pendente" && estado.pedi) {
     return (
       <div className="flex flex-col items-start gap-1">
@@ -164,7 +181,7 @@ export function BotaoConectar({
           onClick={() => (cartao ? pedirComEstado(null) : setAberto(true))}
         >
           <UserPlus aria-hidden />
-          {pendente ? "Enviando…" : "Conectar"}
+          {pendente ? "Enviando…" : (rotulo ?? "Conectar")}
         </Botao>
         {mensagem}
       </div>
@@ -196,13 +213,15 @@ export function BotaoConectar({
         className={`${classesEntrada} resize-y`}
       />
       <p className="text-body-sm text-ink-muted">
-        Sem telefone ou e-mail: o contato aparece para os dois quando {primeiroNome}{" "}
-        {para === "talento" ? "aceitar" : "aceitarem"}. {recado.length}/{MAX_RECADO_CONEXAO}
+        {rotulo
+          ? "Sem telefone ou e-mail no recado: o contato de vocês dois aparece assim que o pedido sair."
+          : `Sem telefone ou e-mail: o contato aparece para os dois quando ${primeiroNome} ${para === "talento" ? "aceitar" : "aceitarem"}.`}{" "}
+        {recado.length}/{MAX_RECADO_CONEXAO}
       </p>
       <div className="flex flex-wrap gap-2">
         <Botao type="submit" variante={principal ? "primario" : "secundario"} disabled={pendente}>
           <Send aria-hidden />
-          {pendente ? "Enviando…" : "Enviar pedido"}
+          {pendente ? "Enviando…" : rotulo ? "Enviar e ver o contato" : "Enviar pedido"}
         </Botao>
         <Botao variante="fantasma" onClick={() => setAberto(false)} disabled={pendente}>
           Cancelar

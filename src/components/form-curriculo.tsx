@@ -640,6 +640,7 @@ export function FormCurriculo({
   melhorarComIA = false,
   pessoa = null,
   quemVe: quemVeInicial = null,
+  contatoNoConvite = null,
   salvo = null,
   avisos = null,
   mercado = null,
@@ -676,6 +677,8 @@ export function FormCurriculo({
   pessoa?: PessoaDoCartao | null;
   /** o currículo salvo: quem acha (os interruptores de "Quem vê seu currículo"); sem currículo, null */
   quemVe?: QuemVe | null;
+  /** o contato no convite (o terceiro interruptor de "Quem vê seu currículo"); sem a migração, null */
+  contatoNoConvite?: { escolha: boolean | null; situacao: string; valeEm: string | null } | null;
   /** quando o currículo foi salvo ("há 3 dias") */
   salvo?: string | null;
   /** os avisos do alto (as vagas que esperam o currículo, "Currículo salvo!"…), na coluna do formulário */
@@ -1890,6 +1893,7 @@ export function FormCurriculo({
             <VisibilidadeCurriculo
               visivel={quemVe?.visivel ?? false}
               vitrine={quemVe?.vitrine ?? false}
+              contato={contatoNoConvite}
               perfilId={usuarioId}
               aoMudar={setQuemVe}
             />

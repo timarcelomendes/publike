@@ -1,10 +1,30 @@
 // Conexões entre quem está na aba Talentos e empresas, comércios e agências, sem precisar de
 // vaga: um lado pede, o outro aceita ou recusa. Aceita: os contatos aparecem e abre uma conversa.
+// Nos planos, o pedido de uma empresa a um talento já vem com o contato e a conversa aberta (o contato no convite,
+// migração 20270626120000), se o talento não desligou.
 
 export type StatusConexao = "pendente" | "aceita" | "recusada";
 
 /** Como está a conexão com uma conta, do meu lado (para os botões). */
-export type EstadoConexao = { id: string; status: StatusConexao; pedi: boolean };
+export type EstadoConexao = {
+  id: string;
+  status: StatusConexao;
+  pedi: boolean;
+  /** pedido pendente com o contato já liberado (o contato no convite) */
+  contato?: boolean;
+};
+
+/**
+ * Por que o contato não veio no pedido: sem o plano, o limite das 24 horas, o talento desligou, o talento ainda está
+ * no prazo do aviso (já estava no Publike) ou não se aplica (não é empresa pedindo a um talento visível).
+ */
+export type MotivoSemContato = "sem_plano" | "limite" | "desligado" | "aviso" | "fora";
+
+export function lerMotivoSemContato(valor: unknown): MotivoSemContato | null {
+  return valor === "sem_plano" || valor === "limite" || valor === "desligado" || valor === "aviso" || valor === "fora"
+    ? valor
+    : null;
+}
 
 export type Conexao = {
   id: string;
@@ -24,13 +44,15 @@ export type Conexao = {
   mensagem: string | null;
   criado_em: string;
   respondida_em: string | null;
-  /** os contatos só vêm na conexão aceita */
+  /** os contatos vêm na conexão aceita ou no pedido com o contato liberado */
   whatsapp: string | null;
   email: string | null;
   ultima_texto: string | null;
   ultima_em: string | null;
   ultima_minha: boolean;
   nao_lidas: number;
+  /** pedido pendente com o contato liberado pelo plano de quem pediu: o nome inteiro, os contatos e a conversa */
+  contato_liberado: boolean;
 };
 
 /** O recado do pedido: até 300 letras, sem telefone, e-mail ou link. */

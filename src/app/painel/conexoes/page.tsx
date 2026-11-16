@@ -6,6 +6,7 @@ import {
   Handshake,
   MessageCircle,
   Search,
+  Unlock,
   UserPlus,
   UsersRound,
   X,
@@ -775,6 +776,16 @@ function AbaConectadas({
                   <Clock aria-hidden className="size-4" />
                   Esperando resposta · {tempoRelativo(c.criado_em, agora)}
                 </span>
+                {/* o contato veio no pedido, pelo plano (migração 20270626120000) */}
+                {c.contato_liberado && (
+                  <Link
+                    href={caminhoConexao(c.outro_id)}
+                    className="inline-flex min-h-9 items-center gap-1.5 text-label text-cerrado-text underline-offset-2 hover:underline"
+                  >
+                    <Unlock aria-hidden className="size-4" />
+                    Contato liberado: falar agora
+                  </Link>
+                )}
                 <DesfazerConexao id={c.id} rotulo="Cancelar pedido" />
               </div>
             </li>
