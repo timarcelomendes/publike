@@ -46,7 +46,10 @@ const nextConfig: NextConfig = {
     /Googlebot|Google-InspectionTool|Storebot-Google|[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|bingbot|BingPreview|msnbot|Slurp|DuckDuckBot|DuckAssistBot|baiduspider|yandex|sogou|Applebot|PetalBot|SeznamBot|Qwantbot|GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-SearchBot|Claude-User|PerplexityBot|Perplexity-User|CCBot|Amazonbot|meta-externalagent|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Yeti|googleweblight/i,
   env: { NEXT_PUBLIC_VERSAO: VERSAO },
   cacheComponents: true,
-  partialPrefetching: true,
+  // sem o partialPrefetching (17/11/2026, "deixe a performance invejável"): ele punha uma segunda cópia do código da
+  // página dentro do HTML (em bytes), e o HTML ficava com quase o dobro do tamanho (a página de Goiânia: ~330 KB a
+  // mais). O site não tem nenhum <Link prefetch={true}>, então o pré-carregamento dos links continua o mesmo.
+  partialPrefetching: false,
   turbopack: {
     rules: {
       "*.css": {
