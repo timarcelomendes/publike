@@ -6,7 +6,6 @@ import {
   Mail,
   MessagesSquare,
   Phone,
-  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
@@ -28,6 +27,7 @@ import { quandoDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
 import type { Curriculo } from "@/lib/tipos";
 import { AcoesInteressado } from "./acoes";
+import { estadoDaModeracao, VagaNaModeracao } from "./vaga-na-moderacao";
 import { Conversa } from "@/components/conversa/conversa";
 import type { MensagemConversa } from "@/lib/dados";
 import { lerPerguntaDaMensagem, type PerguntaNaMensagem } from "@/lib/perguntas-do-match";
@@ -61,10 +61,12 @@ const SITUACAO: Record<EstadoFicha, { nome: string; variante: "aviso" | "match" 
   dispensada: { nome: "Dispensado", variante: "contorno" },
   desfeito: { nome: "Desfez o aceite", variante: "contorno" },
   moderacao: { nome: "Vaga na moderação", variante: "contorno" },
+  removida: { nome: "Vaga removida", variante: "contorno" },
 };
 
 function estadoDe(c: ItemCaixa): EstadoFicha {
-  if (c.anuncio_status === "em_analise" || c.anuncio_status === "removido") return "moderacao";
+  const moderacao = estadoDaModeracao(c.anuncio_status);
+  if (moderacao) return moderacao;
   if (c.status === "match") return "match";
   if (c.aceita) return "aceita";
   if (esperaResposta(c)) return "responder";
@@ -197,6 +199,8 @@ export function FichaCandidato({
   depois: string;
 }) {
   const estado = estadoDe(c);
+  // a vaga em análise ou removida pela moderação: sem responder, sem etapa
+  const naModeracao = estado === "moderacao" || estado === "removida";
   // aceito e na etapa Contratados: o selo diz Contratado
   const situacao =
     estado === "match" && extras?.aba === "contratados"
@@ -217,7 +221,7 @@ export function FichaCandidato({
     c.respostas.length > 0 ||
     Boolean(c.aderencia) ||
     (match && Boolean(c.whatsapp || c.email)) ||
-    (!encerrado && estado !== "moderacao");
+    (!encerrado && !naModeracao);
 
   return (
     <article
@@ -267,11 +271,8 @@ export function FichaCandidato({
         </p>
       </header>
 
-      {estado === "moderacao" ? (
-        <p className="flex items-start gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm text-ink-muted">
-          <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-          Esta vaga está com a moderação: dá para responder depois que ela for liberada.
-        </p>
+      {naModeracao ? (
+        <VagaNaModeracao status={c.anuncio_status} anuncioId={c.anuncio_id} className="rounded-md bg-surface-300 px-3 py-2" />
       ) : (
         <ControlesDaFicha
           anuncioId={c.anuncio_id}
@@ -512,7 +513,7 @@ export function FichaCandidato({
                 </Secao>
               )}
 
-              {!encerrado && estado !== "moderacao" && (
+              {!encerrado && !naModeracao && (
                 <Secao titulo="Etapa e anotação">
                   <EtapaDoCandidato
                     tipo="vaga"

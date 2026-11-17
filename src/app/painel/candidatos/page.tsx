@@ -9,7 +9,6 @@ import {
   NotebookPen,
   Phone,
   Search,
-  ShieldAlert,
   Target,
   Users,
 } from "lucide-react";
@@ -29,6 +28,7 @@ import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
 import { DetalheDaAderencia, NotaAderencia } from "@/components/painel/nota-aderencia";
 import { RespostasDoCandidato } from "@/components/painel/respostas-candidato";
+import { VagaNaModeracao } from "@/components/painel/vaga-na-moderacao";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -641,10 +641,7 @@ function CartaoCandidato({
       {/* o que fazer agora (à esquerda) e a etapa (à direita; no celular, embaixo) */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line px-4 py-3 sm:px-5">
         {comModeracao ? (
-          <p className="flex items-start gap-2 text-body-sm text-ink-muted">
-            <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Esta vaga está com a moderação: dá para responder depois que ela for liberada.
-          </p>
+          <VagaNaModeracao status={c.anuncio_status} anuncioId={c.anuncio_id} />
         ) : match ? (
           <div className="flex flex-wrap items-center gap-2">
             <BotaoConversar outroId={c.perfil_id} />

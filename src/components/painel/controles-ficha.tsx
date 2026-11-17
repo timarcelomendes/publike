@@ -60,7 +60,7 @@ function useUltima() {
   );
 }
 
-export type EstadoFicha = "responder" | "aceita" | "match" | "dispensada" | "desfeito" | "moderacao";
+export type EstadoFicha = "responder" | "aceita" | "match" | "dispensada" | "desfeito" | "moderacao" | "removida";
 
 const digitando = (e: KeyboardEvent) => {
   const t = e.target as HTMLElement | null;

@@ -40,13 +40,15 @@ async function Conteudo({ id }: { id: string }) {
   const venceu = a.status === "expirado" || Date.parse(a.expira_em) <= agora;
   const situacao = a.preenchida_em
     ? "Você marcou esta vaga como preenchida."
-    : a.status === "removido" || a.status === "em_analise"
-      ? "Esta vaga está com a moderação do Publike."
-      : a.status === "encerrado"
-        ? "Esta vaga foi encerrada."
-        : venceu
-          ? `Saiu do ar em ${formatarData(a.expira_em)}: o prazo acabou.`
-          : `Fica no ar até ${formatarData(a.expira_em)}.`;
+    : a.status === "removido"
+      ? "Esta vaga foi removida pela moderação do Publike."
+      : a.status === "em_analise"
+        ? "Esta vaga está com a moderação do Publike."
+        : a.status === "encerrado"
+          ? "Esta vaga foi encerrada."
+          : venceu
+            ? `Saiu do ar em ${formatarData(a.expira_em)}: o prazo acabou.`
+            : `Fica no ar até ${formatarData(a.expira_em)}.`;
   const podeRenovar = !a.preenchida_em && ["ativo", "pausado", "encerrado", "expirado"].includes(a.status);
 
   return (

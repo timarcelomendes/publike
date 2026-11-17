@@ -18,6 +18,7 @@ import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { MesaDeCandidatos } from "@/components/painel/mesa-candidatos";
 import { CabecalhoDaVaga, OrdemPeloCopiloto, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
+import { AvisoDaModeracaoNaVaga } from "@/components/painel/vaga-na-moderacao";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -222,11 +223,7 @@ async function Conteudo({
         </>
       )}
 
-      {(status === "em_analise" || status === "removido") && (
-        <Aviso tipo="alerta" titulo="Este anúncio está com a moderação">
-          Enquanto isso, não dá para {servico ? "aceitar pedidos" : "aceitar candidatos"} e os contatos ficam escondidos.
-        </Aviso>
-      )}
+      <AvisoDaModeracaoNaVaga status={status} anuncioId={id} servico={servico} />
 
       {todos.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -545,6 +542,7 @@ async function MesaDaVaga({
     <div className="flex flex-col gap-5">
       <CabecalhoDaVaga anuncio={anuncio} aba="candidatos" saude={saude} />
       <VistaDosCandidatos id={anuncio.id} atual="lista" />
+      <AvisoDaModeracaoNaVaga status={anuncio.status} anuncioId={anuncio.id} />
       {!todos ? (
         <Aviso tipo="alerta" titulo="Não deu para carregar os candidatos agora">
           Tente de novo em instantes.

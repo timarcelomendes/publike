@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { diaADiaDasVagas } from "@/lib/servidor/jeito-de-trabalhar";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -54,7 +55,16 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
         <CabecalhoDaVaga anuncio={anuncio} aba="editar" />
       </div>
       <div className="max-w-3xl">
-        {anuncio.status === "em_analise" || anuncio.status === "removido" ? (
+        {anuncio.status === "removido" ? (
+          <Aviso tipo="alerta" titulo="Este anúncio foi removido pela moderação">
+            <p>
+              Ele não pode mais ser alterado.{" "}
+              <Link href={`/anuncio/${anuncio.id}#moderacao`} className="underline underline-offset-2">
+                Não concorda? Fale com a moderação
+              </Link>
+            </p>
+          </Aviso>
+        ) : anuncio.status === "em_analise" ? (
           <Aviso tipo="alerta" titulo="Este anúncio está com a moderação">
             Ele não pode ser alterado até a moderação analisar as denúncias.
           </Aviso>
