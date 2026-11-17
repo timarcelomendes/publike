@@ -410,7 +410,7 @@ export function VisaoExplorar({
             <>
               {acimaDoMapa}
               <div className="sticky top-20 h-[calc(100dvh-7rem)] min-h-80">
-                <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} foco={foco} aoMudarArea={setArea} />
+                <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} foco={foco} aoMudarArea={setArea} aoLado />
               </div>
             </>,
             mapaFora,
@@ -428,7 +428,14 @@ export function VisaoExplorar({
                     : "h-80 lg:sticky lg:top-20 lg:h-full lg:max-h-[calc(100dvh-7rem)] lg:min-h-80"
               }
             >
-              <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} foco={foco} aoMudarArea={setArea} />
+              <MapaAnuncios
+                pontos={pontos}
+                filtros={filtros}
+                origem={origem}
+                foco={foco}
+                aoMudarArea={setArea}
+                aoLado={visao === "blocos-mapa"}
+              />
             </div>
           </div>
         )}

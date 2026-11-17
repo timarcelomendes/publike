@@ -358,6 +358,7 @@ export function MapaAnuncios({
   origem = null,
   foco = null,
   aoMudarArea,
+  aoLado = false,
 }: {
   pontos: PontoMapa[];
   filtros: Filtros;
@@ -366,6 +367,12 @@ export function MapaAnuncios({
   foco?: string | null;
   /** a parte do mapa na tela mudou: [oeste, sul, leste, norte] (a lista mostra só o que está nela) */
   aoMudarArea?: (limites: [number, number, number, number] | null) => void;
+  /**
+   * o mapa ao lado da lista (Blocos + mapa, só no computador): carrega com metade dele na tela, ou com o mouse ou o
+   * foco nele. Na home, ele começa quase todo abaixo da dobra, e a lista é o principal. Na vista Mapa (o mapa é a
+   * tela toda, também no celular), carrega assim que chega perto.
+   */
+  aoLado?: boolean;
 }) {
   const router = useRouter();
   const caixa = useRef<HTMLDivElement>(null);
@@ -390,7 +397,7 @@ export function MapaAnuncios({
   const [indo, irDaqui] = useTransition();
   const [avisoGps, setAvisoGps] = useState<string | null>(null);
   // o MapLibre só baixa com o mapa à vista: escondido (a coluna do mapa no celular), não pesa
-  const aVista = useMapaAVista(caixa);
+  const aVista = useMapaAVista(caixa, aoLado);
 
   // Cria o mapa uma vez (quando ele aparece)
   useEffect(() => {

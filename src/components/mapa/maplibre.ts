@@ -30,23 +30,39 @@ export function carregarMapLibre() {
  * montagem do mapa trava a tela por 0,2 a 0,7 s. Na home do computador, isso vinha no meio da hidratação, e era a
  * maior parte do Total Blocking Time (1,7 s no PageSpeed) e da espera dos primeiros cliques.
  */
-export function useMapaAVista(caixa: RefObject<HTMLElement | null>) {
+export function useMapaAVista(caixa: RefObject<HTMLElement | null>, metade = false) {
   const livre = usePaginaLivre();
   const [aVista, setAVista] = useState(false);
   useEffect(() => {
     const el = caixa.current;
     if (!el || aVista) return;
+    const pronto = () => {
+      olho.disconnect();
+      el.removeEventListener("pointerenter", pronto);
+      el.removeEventListener("focusin", pronto);
+      setAVista(true);
+    };
+    // `metade`: só com metade do mapa na tela (ou o mouse ou o foco nele). O mapa ao lado da lista da home, no
+    // computador, começa quase todo abaixo da dobra: carrega ao rolar (ele gruda no alto), e não junto com a página.
+    // Só para o mapa ao lado da lista: na vista Mapa do celular, a caixa começa no pé da tela e ficaria vazia
+    // até rolar (17/11/2026)
     const olho = new IntersectionObserver(
       (entradas) => {
-        if (!entradas.some((e) => e.isIntersecting)) return;
-        olho.disconnect();
-        setAVista(true);
+        if (entradas.some((e) => (metade ? e.intersectionRatio >= 0.5 : e.isIntersecting))) pronto();
       },
-      { rootMargin: "300px 0px" },
+      metade ? { threshold: [0, 0.5, 1] } : { rootMargin: "300px 0px" },
     );
     olho.observe(el);
-    return () => olho.disconnect();
-  }, [caixa, aVista]);
+    if (metade) {
+      el.addEventListener("pointerenter", pronto);
+      el.addEventListener("focusin", pronto);
+    }
+    return () => {
+      olho.disconnect();
+      el.removeEventListener("pointerenter", pronto);
+      el.removeEventListener("focusin", pronto);
+    };
+  }, [caixa, aVista, metade]);
   return aVista && livre;
 }
 
