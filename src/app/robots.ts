@@ -11,7 +11,8 @@ export default function robots(): MetadataRoute.Robots {
         "/painel",
         "/perfil$",
         "/publicar",
-        "/entrar",
+        // o /entrar fica liberado: a página diz noindex, e o Google precisa ler isso para tirar da busca os
+        // /entrar?next=... que já indexou (17/11/2026)
         "/moderacao",
         "/auth/",
         "/*/denunciar",

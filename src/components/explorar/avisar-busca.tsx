@@ -54,7 +54,7 @@ export function AvisarBusca({
     const volta = `${caminho}${caminho.includes("?") ? "&" : "?"}avisar=1`;
     return (
       <Link
-        href={`/entrar?next=${encodeURIComponent(volta)}`}
+        rel="nofollow" href={`/entrar?next=${encodeURIComponent(volta)}`}
         // a folha de entrar por cima da página (claude/plano-curtir-sem-pagina-de-entrar.md); sem ela, o /entrar
         onClick={(e) => {
           if (pedirEntrar({ proximo: volta })) e.preventDefault();

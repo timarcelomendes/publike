@@ -119,7 +119,7 @@ async function Conteudo({ token }: { token: string }) {
             Se ainda não tem conta no Publike, ela é criada na hora, de graça.
           </p>
           <div>
-            <BotaoLink href={`/entrar?next=${encodeURIComponent(aqui)}`} variante="primario">
+            <BotaoLink rel="nofollow" href={`/entrar?next=${encodeURIComponent(aqui)}`} variante="primario">
               {LOGIN_CELULAR ? "Entrar com o celular" : "Entrar para aceitar"}
             </BotaoLink>
           </div>

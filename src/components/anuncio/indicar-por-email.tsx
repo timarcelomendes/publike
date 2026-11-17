@@ -127,7 +127,7 @@ export function IndicarNaJanela({
     const proximo = `/anuncio/${anuncioId}#indicar`;
     return (
       <Link
-        href={`/entrar?next=${encodeURIComponent(proximo)}`}
+        rel="nofollow" href={`/entrar?next=${encodeURIComponent(proximo)}`}
         // a folha de entrar sobe por cima da página (sem a folha, segue para o /entrar)
         onClick={(e) => {
           if (pedirEntrar({ proximo })) e.preventDefault();
@@ -202,7 +202,7 @@ export function IndicarPorEmail({ anuncioId, logado }: { anuncioId: string; loga
       Mandar por e-mail
     </Botao>
   ) : (
-    <Link href={`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}#indicar`)}`} className={classesBotao("secundario", "sm")}>
+    <Link rel="nofollow" href={`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}#indicar`)}`} className={classesBotao("secundario", "sm")}>
       <Mail aria-hidden />
       Mandar por e-mail
     </Link>

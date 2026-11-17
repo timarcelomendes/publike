@@ -40,6 +40,9 @@ export function caminhoDoBairro(cidade: string, bairro: string) {
 }
 
 /** As vagas novas da cidade (claude/plano-vagas-dos-ultimos-3-dias.md): /vagas/goiania/ultimos-3-dias. */
+/** O bairro entra no Google (e no sitemap) com pelo menos estas vagas no ar; com menos, noindex (17/11/2026). */
+export const MINIMO_DO_BAIRRO = 2;
+
 export const SLUG_RECENTES = "ultimos-3-dias";
 export const DIAS_RECENTES = 3;
 export function caminhoDasRecentes(cidade: string) {

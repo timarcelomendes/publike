@@ -159,7 +159,7 @@ export function ConviteDasVagasVistas({
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-13">
         <Link
-          href={`/entrar?next=${encodeURIComponent(volta)}`}
+          rel="nofollow" href={`/entrar?next=${encodeURIComponent(volta)}`}
           onClick={(e) => {
             void registrarFunilVisitante("convite_tocou").catch(() => {});
             // a folha de entrar por cima da página; sem ela, o link leva ao /entrar

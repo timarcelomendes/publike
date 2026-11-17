@@ -77,7 +77,7 @@ async function Conteudo({ params }: { params: PageProps<"/post/[id]">["params"] 
             Ver os posts
           </BotaoLink>
         ) : (
-          <BotaoLink href={`/entrar?next=${encodeURIComponent(`/post/${r.id}`)}`} variante="primario">
+          <BotaoLink rel="nofollow" href={`/entrar?next=${encodeURIComponent(`/post/${r.id}`)}`} variante="primario">
             Entrar no Publike
           </BotaoLink>
         )}

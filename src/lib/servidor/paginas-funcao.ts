@@ -77,10 +77,12 @@ export async function vagasDaFuncao(
   return { vagas: daCidade.filter((a) => funcoes[a.id] === cbo), funcoesDaCidade };
 }
 
-// Página só de salário (sem vaga no ar) entra no Google só na cidade que dá nome à praça: em Aparecida, Trindade ou
-// Senador Canedo, a faixa é a mesma da região de Goiânia, e páginas iguais em cidades vizinhas o Google trata como
-// repetidas. Lá, a página da função entra quando tem vaga.
-const CIDADES_DO_SALARIO: string[] = PRACAS.map((p) => p.cidade);
+// Página só de salário (sem vaga no ar) entra no Google só em Goiânia. Em Aparecida, Trindade ou Senador Canedo, a
+// faixa é a mesma da região de Goiânia, e páginas iguais em cidades vizinhas o Google trata como repetidas. Em
+// Anápolis também saiu (17/11/2026): das 64 páginas só de salário, quase todas ficaram em "Detectada, mas não
+// indexada" no Search Console, e páginas vazias demais fazem o Google visitar menos o site inteiro. Fora de Goiânia, a
+// página da função entra quando tem vaga.
+const CIDADES_DO_SALARIO: string[] = PRACAS.map((p) => p.cidade).filter((c) => c === "Goiânia");
 
 /** A página vai para o Google: tem vaga no ar, ou é da lista, numa cidade de praça, com a faixa do Caged. */
 export function paginaDaFuncaoIndexavel(
@@ -94,8 +96,11 @@ export function paginaDaFuncaoIndexavel(
 }
 
 /** As páginas de função para o sitemap: as com vaga no ar e as da lista com faixa nas cidades de praça. */
-export async function paginasDeFuncao(): Promise<{ cidade: string; funcao: FuncaoDaPagina; vagas: number }[]> {
-  const lista = new Map<string, { cidade: string; funcao: FuncaoDaPagina; vagas: number }>();
+export async function paginasDeFuncao(): Promise<
+  { cidade: string; funcao: FuncaoDaPagina; vagas: number; ultima?: string }[]
+> {
+  // `ultima`: a vaga mais nova (o lastmod do sitemap)
+  const lista = new Map<string, { cidade: string; funcao: FuncaoDaPagina; vagas: number; ultima?: string }>();
   for (const praca of PRACAS) {
     const [todas, funcoes] = await Promise.all([
       anunciosNoAr("vaga", praca.cidade),
@@ -108,7 +113,8 @@ export async function paginasDeFuncao(): Promise<{ cidade: string; funcao: Funca
       if (!funcao) continue;
       const chave = `${a.cidade}|${funcao.slug}`;
       const atual = lista.get(chave);
-      lista.set(chave, { cidade: a.cidade, funcao, vagas: (atual?.vagas ?? 0) + 1 });
+      const ultima = atual?.ultima && atual.ultima > a.criado_em ? atual.ultima : a.criado_em;
+      lista.set(chave, { cidade: a.cidade, funcao, vagas: (atual?.vagas ?? 0) + 1, ultima });
     }
   }
   for (const cidade of CIDADES_DO_SALARIO) {

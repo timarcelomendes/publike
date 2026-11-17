@@ -8,7 +8,7 @@ import { SITE_URL } from "@/lib/config";
 import type { Cidade } from "@/lib/constantes";
 import { distanciaKm } from "@/lib/descobrir";
 import { nomeDoBairro } from "@/lib/formato";
-import { caminhoDaBusca, caminhoDoBairro, cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
+import { caminhoDaBusca, caminhoDoBairro, cidadeDoSlug, MINIMO_DO_BAIRRO, slugDaCidade } from "@/lib/paginas-busca";
 import { anunciosNoAr, type AnuncioNoAr } from "@/lib/servidor/paginas-busca";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { CardAnuncio } from "./card-anuncio";
@@ -74,8 +74,9 @@ export async function metadadosDoBairro(slugCidade: string, slugBairro: string):
       url: caminho,
       type: "website",
     },
-    // bairro sem vaga: o Google não precisa listar
-    robots: total === 0 ? { index: false, follow: true } : undefined,
+    // bairro com menos de 2 vagas: o Google não precisa listar (17/11/2026: com uma vaga só, a página repete a da vaga e
+    // fica em "Detectada, mas não indexada"); os links continuam valendo
+    robots: total < MINIMO_DO_BAIRRO ? { index: false, follow: true } : undefined,
   };
 }
 

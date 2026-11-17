@@ -217,7 +217,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
       ) : (
         <Aviso tipo="info" titulo="Entre para curtir e receber vagas que combinam com você">
           Sem senha: é só {jeitosDeEntrar()}.{" "}
-          <Link href="/entrar?next=/descobrir" className="underline">
+          <Link rel="nofollow" href="/entrar?next=/descobrir" className="underline">
             Entrar
           </Link>
         </Aviso>
@@ -278,7 +278,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
 
       {aba === "salvas" &&
         (!usuario ? (
-          <Vazio icone={Star} titulo="Entre para salvar vagas" acao={<BotaoLink href="/entrar?next=/descobrir?aba=salvas">Entrar</BotaoLink>}>
+          <Vazio icone={Star} titulo="Entre para salvar vagas" acao={<BotaoLink rel="nofollow" href="/entrar?next=/descobrir?aba=salvas">Entrar</BotaoLink>}>
             Deslize a vaga para cima (ou toque na estrela) e ela fica guardada aqui.
           </Vazio>
         ) : salvas.length === 0 ? (

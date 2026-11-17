@@ -140,7 +140,7 @@ async function Conteudo({ token }: { token: string }) {
             O Publike é grátis para quem procura trabalho. O convite vale até {formatarDataCurta(d.expira_em)}.
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <BotaoLink href={`/entrar?next=${encodeURIComponent(aqui)}`} variante="primario">
+            <BotaoLink rel="nofollow" href={`/entrar?next=${encodeURIComponent(aqui)}`} variante="primario">
               {LOGIN_CELULAR ? "Entrar com o celular" : "Entrar para aceitar"}
             </BotaoLink>
             <NaoQuero token={token} />
@@ -180,7 +180,7 @@ function Aceito({ d, token, logado }: { d: DadosDoConvite; token: string; logado
       <Aviso tipo="alerta" titulo="Este convite já foi aceito">
         {logado ? "Ele foi aceito por outra conta." : "Se foi você, entre na sua conta para ver."}{" "}
         {!logado && (
-          <Link href={`/entrar?next=${encodeURIComponent(`/candidatura/${token}`)}`} className="text-label underline">
+          <Link rel="nofollow" href={`/entrar?next=${encodeURIComponent(`/candidatura/${token}`)}`} className="text-label underline">
             Entrar
           </Link>
         )}

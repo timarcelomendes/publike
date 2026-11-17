@@ -66,7 +66,7 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
               Quem procura trabalho, quem contrata e quem presta serviço. Entrar é grátis.
             </p>
           </div>
-          <BotaoLink href="/entrar" variante="secundario" className="shrink-0 self-start sm:self-center">
+          <BotaoLink rel="nofollow" href="/entrar" variante="secundario" className="shrink-0 self-start sm:self-center">
             Criar minha conta grátis
           </BotaoLink>
         </section>

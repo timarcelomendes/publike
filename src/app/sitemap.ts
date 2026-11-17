@@ -11,6 +11,7 @@ import {
   caminhoDoBairro,
   cidadeDoSlug,
   CIDADES_PRINCIPAIS,
+  MINIMO_DO_BAIRRO,
   REGIMES_PROGRAMAS,
   slugDaCidade,
 } from "@/lib/paginas-busca";
@@ -21,6 +22,16 @@ import { caminhoDaFuncao } from "@/lib/funcoes-das-paginas";
 import { CASOS_RESCISAO } from "@/lib/rescisao-casos";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { TipoAnuncio } from "@/lib/tipos";
+
+/**
+ * A data do anúncio mais novo de uma lista (o "lastmod" das páginas de busca, 17/11/2026: o Google volta quando a
+ * página muda de verdade); sem anúncio, nada (melhor sem data do que com uma que não diz nada).
+ */
+function maisNova(lista: { criado_em: string }[]) {
+  let maior = "";
+  for (const a of lista) if (a.criado_em > maior) maior = a.criado_em;
+  return maior ? new Date(maior).toISOString() : undefined;
+}
 
 /** Páginas de busca por cidade e área: as cidades principais sempre; o resto, se tiver anúncio. */
 async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
@@ -34,32 +45,54 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
       const daCidade = anuncios.filter((a) => a.cidade === cidade);
       lista.push({
         url: `${SITE_URL}${caminhoDaBusca(tipo, cidade)}`,
+        lastModified: maisNova(daCidade),
         changeFrequency: "hourly",
         priority: cidadeDePraca(cidade) ? 0.9 : 0.8,
       });
       // as vagas novas da cidade (/vagas/goiania/ultimos-3-dias), nas cidades principais
       if (tipo === "vaga" && CIDADES_PRINCIPAIS.includes(cidade)) {
-        lista.push({ url: `${SITE_URL}${caminhoDasRecentes(cidade)}`, changeFrequency: "daily", priority: 0.7 });
+        lista.push({
+          url: `${SITE_URL}${caminhoDasRecentes(cidade)}`,
+          lastModified: maisNova(daCidade),
+          changeFrequency: "daily",
+          priority: 0.7,
+        });
       }
       // estágio e jovem aprendiz: Goiânia sempre (o conteúdo se sustenta); as outras, com vaga assim no ar
       const temPrograma = daCidade.some((a) => REGIMES_PROGRAMAS.includes(a.regime ?? ""));
       if (tipo === "vaga" && (cidade === "Goiânia" || temPrograma)) {
-        lista.push({ url: `${SITE_URL}${caminhoDosProgramas(cidade)}`, changeFrequency: "daily", priority: 0.6 });
+        lista.push({
+          url: `${SITE_URL}${caminhoDosProgramas(cidade)}`,
+          lastModified: maisNova(daCidade.filter((a) => REGIMES_PROGRAMAS.includes(a.regime ?? ""))),
+          changeFrequency: "daily",
+          priority: 0.6,
+        });
       }
-      // os bairros com vaga no ar (só vagas: /vagas/goiania/bairro/setor-bueno)
+      // os bairros com pelo menos 2 vagas no ar (só vagas: /vagas/goiania/bairro/setor-bueno); com uma só, a página
+      // repete a da vaga e tem noindex (17/11/2026)
       if (tipo === "vaga") {
-        const bairros = new Set(
-          daCidade.filter((a) => a.bairro && a.bairro !== cidade).map((a) => slugDaCidade(a.bairro as string)),
-        );
-        for (const slug of bairros) {
-          const b = daCidade.find((a) => a.bairro && slugDaCidade(a.bairro) === slug)?.bairro as string;
-          lista.push({ url: `${SITE_URL}${caminhoDoBairro(cidade, b)}`, changeFrequency: "daily", priority: 0.6 });
+        const porBairro = new Map<string, typeof daCidade>();
+        for (const a of daCidade) {
+          if (!a.bairro || a.bairro === cidade) continue;
+          const slug = slugDaCidade(a.bairro);
+          porBairro.set(slug, [...(porBairro.get(slug) ?? []), a]);
+        }
+        for (const doBairro of porBairro.values()) {
+          if (doBairro.length < MINIMO_DO_BAIRRO) continue;
+          lista.push({
+            url: `${SITE_URL}${caminhoDoBairro(cidade, doBairro[0].bairro as string)}`,
+            lastModified: maisNova(doBairro),
+            changeFrequency: "daily",
+            priority: 0.6,
+          });
         }
       }
       for (const c of CATEGORIAS) {
-        if (c.slug === "outros" || !daCidade.some((a) => a.categoria === c.slug)) continue;
+        const daArea = daCidade.filter((a) => a.categoria === c.slug);
+        if (c.slug === "outros" || !daArea.length) continue;
         lista.push({
           url: `${SITE_URL}${caminhoDaBusca(tipo, cidade, c.slug)}`,
+          lastModified: maisNova(daArea),
           changeFrequency: "daily",
           priority: 0.7,
         });
@@ -152,6 +185,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // as vagas por função e cidade: com vaga no ar, ou só com o salário nas cidades de praça
     ...(await paginasDeFuncao().catch(() => [])).map((f) => ({
       url: `${SITE_URL}${caminhoDaFuncao(f.cidade, f.funcao.slug)}`,
+      lastModified: f.ultima ? new Date(f.ultima).toISOString() : undefined,
       changeFrequency: "daily" as const,
       priority: f.vagas > 0 ? 0.7 : 0.5,
     })),

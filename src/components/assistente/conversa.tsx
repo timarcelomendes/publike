@@ -120,7 +120,7 @@ function Mensagem({ m, caminho }: { m: ItemConversa; caminho: string }) {
             )}
             {m.acao === "pedir_login" && (
               <Link
-                href={`/entrar?next=${encodeURIComponent(caminho)}`}
+                rel="nofollow" href={`/entrar?next=${encodeURIComponent(caminho)}`}
                 className="inline-flex min-h-10 items-center gap-1.5 rounded-pill bg-ink px-4 text-label text-surface-100 hover:opacity-90"
               >
                 <LogIn aria-hidden className="size-4" />

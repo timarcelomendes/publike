@@ -165,7 +165,7 @@ export function PainelConversas({
         <p className="text-body-sm text-ink-muted">
           Entre para conversar com quem deu match ou se conectou com você: vagas, serviços e entrevistas, tudo aqui.
         </p>
-        <Link href="/entrar" className="text-label text-terra-text underline underline-offset-2">
+        <Link rel="nofollow" href="/entrar" className="text-label text-terra-text underline underline-offset-2">
           Entrar
         </Link>
       </div>

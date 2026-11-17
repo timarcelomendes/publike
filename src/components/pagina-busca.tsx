@@ -23,6 +23,8 @@ import { nomeDoBairro } from "@/lib/formato";
 import { vagasDoQuadro } from "@/lib/impulso";
 import { pracaDaCidade } from "@/lib/pracas";
 import { anunciosNoAr, vagasImpulsionadas, type VagaImpulsionada } from "@/lib/servidor/paginas-busca";
+import { CONTEUDOS } from "@/lib/conteudos";
+import type { TemaConteudo } from "@/lib/conteudos/tipos";
 import { funcoesDasVagasDaPraca } from "@/lib/servidor/paginas-funcao";
 import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -199,6 +201,23 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
     }
   }
   const bairros = [...porBairro.values()].sort((x, y) => y.total - x.total || x.nome.localeCompare(y.nome, "pt-BR"));
+
+  // os artigos para ler (17/11/2026: os conteúdos com poucos links de dentro do site ficavam fora do Google): os da
+  // cidade primeiro (aparecida-de-goiania-empregos), depois os do tema da página, um de cada tema por vez; cada cidade
+  // e área começa num ponto diferente da lista, para os links se espalharem por todos os artigos
+  const temas: TemaConteudo[] = vaga ? ["procurar", "mercado"] : ["servicos"];
+  const slugCidade = slugDaCidade(cidade);
+  const artigosDaCidade = CONTEUDOS.filter((c) => temas.includes(c.tema) && c.slug.includes(slugCidade));
+  let giro = 0;
+  for (const ch of `${slugCidade}/${area?.slug ?? ""}`) giro = (giro * 31 + ch.charCodeAt(0)) % 9973;
+  const porTema = temas.map((t) => {
+    const l = CONTEUDOS.filter((c) => c.tema === t && !artigosDaCidade.includes(c));
+    return l.length ? [...l.slice(giro % l.length), ...l.slice(0, giro % l.length)] : [];
+  });
+  const paraLer = [...artigosDaCidade];
+  for (let k = 0; paraLer.length < 6 && porTema.some((l) => l[k]); k++) {
+    for (const l of porTema) if (l[k] && paraLer.length < 6) paraLer.push(l[k]);
+  }
 
   // as funções das vagas desta lista (cada uma tem a sua página: /vagas/goiania/frentista)
   const porFuncao = new Map<string, { slug: string; nome: string; total: number }>();
@@ -438,6 +457,23 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
                   {c}
                 </Link>
                 {total > 0 && <span className="text-ink-muted"> ({total})</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {paraLer.length > 0 && (
+        <section aria-labelledby="para-ler" className="mt-10">
+          <h2 id="para-ler" className="text-h3">
+            {vaga ? `Para quem procura trabalho em ${cidade}` : `Para quem trabalha por conta em ${cidade}`}
+          </h2>
+          <ul className="mt-3 flex flex-col gap-2 text-body-sm">
+            {paraLer.map((c) => (
+              <li key={c.slug}>
+                <Link href={`/conteudos/${c.slug}`} className="underline underline-offset-2 hover:text-terra-text">
+                  {c.titulo}
+                </Link>
               </li>
             ))}
           </ul>

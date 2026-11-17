@@ -72,7 +72,7 @@ export function BotaoConectar({
   if (!logado) {
     return (
       <Link
-        href={`/entrar?next=${encodeURIComponent(voltar)}`}
+        rel="nofollow" href={`/entrar?next=${encodeURIComponent(voltar)}`}
         className={classesBotao(principal ? "primario" : "secundario", tamanho)}
       >
         <UserPlus aria-hidden />

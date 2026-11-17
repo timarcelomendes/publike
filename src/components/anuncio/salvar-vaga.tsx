@@ -60,7 +60,7 @@ export function BotaoSalvarVaga({
     const proximo = `/anuncio/${anuncioId}?salvar=1`;
     return (
       <Link
-        href={`/entrar?next=${encodeURIComponent(proximo)}`}
+        rel="nofollow" href={`/entrar?next=${encodeURIComponent(proximo)}`}
         // a folha de entrar por cima da página; sem ela, o link leva ao /entrar
         onClick={(e) => {
           if (pedirEntrar({ proximo })) e.preventDefault();

@@ -150,7 +150,7 @@ async function Conteudo({ codigo }: { codigo: string }) {
               política de privacidade
             </Link>
             . Já usa o Publike com o celular?{" "}
-            <Link href={`/entrar?next=${encodeURIComponent(pronto)}`} className="underline underline-offset-2 hover:text-ink">
+            <Link rel="nofollow" href={`/entrar?next=${encodeURIComponent(pronto)}`} className="underline underline-offset-2 hover:text-ink">
               Entre com ele
             </Link>
             .
@@ -160,7 +160,7 @@ async function Conteudo({ codigo }: { codigo: string }) {
 
       {d.no_ar && !usuario && !podeCriar && (
         <div className="flex flex-wrap gap-2">
-          <BotaoLink href={`/entrar?next=${encodeURIComponent(pronto)}`}>Entrar e me candidatar</BotaoLink>
+          <BotaoLink rel="nofollow" href={`/entrar?next=${encodeURIComponent(pronto)}`}>Entrar e me candidatar</BotaoLink>
           <BotaoLink href={linkDaVaga} variante="secundario">
             Só ver a vaga
           </BotaoLink>

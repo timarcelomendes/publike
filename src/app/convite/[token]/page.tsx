@@ -67,7 +67,7 @@ async function Conteudo({ token }: { token: string }) {
           )}
         </section>
       )}
-      <BotaoLink href={`/entrar?next=${encodeURIComponent(destino)}`} variante="primario" className="self-start">
+      <BotaoLink rel="nofollow" href={`/entrar?next=${encodeURIComponent(destino)}`} variante="primario" className="self-start">
         Entrar e conferir minha vitrine
       </BotaoLink>
     </div>

@@ -294,7 +294,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contr
             <>
               {" "}
               Sem conta, aparecem os {lugares.length} mais perto.{" "}
-              <Link href={`/entrar?next=${encodeURIComponent(aqui)}`} className="text-ink underline underline-offset-2">
+              <Link rel="nofollow" href={`/entrar?next=${encodeURIComponent(aqui)}`} className="text-ink underline underline-offset-2">
                 Entre para ver os {formatarNumero(total)}
               </Link>
               .

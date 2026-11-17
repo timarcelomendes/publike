@@ -55,7 +55,7 @@ export function BotaoSeguir({
     }`;
     if (!logado) {
       return (
-        <Link href={`/entrar?next=${encodeURIComponent(voltar)}`} className={redondo} title={rotulo}>
+        <Link rel="nofollow" href={`/entrar?next=${encodeURIComponent(voltar)}`} className={redondo} title={rotulo}>
           <BellPlus aria-hidden className="size-4" />
           <span className="sr-only">{rotulo}</span>
         </Link>
@@ -93,7 +93,7 @@ export function BotaoSeguir({
   if (!logado) {
     return (
       <Link
-        href={`/entrar?next=${encodeURIComponent(voltar)}`}
+        rel="nofollow" href={`/entrar?next=${encodeURIComponent(voltar)}`}
         className={classesBotao("secundario", "sm", "max-w-full")}
       >
         <BellPlus aria-hidden />

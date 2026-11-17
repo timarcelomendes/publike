@@ -629,7 +629,7 @@ export async function Explorar({
               <BotaoLink href="/painel/anuncios">Meus anúncios</BotaoLink>
             </>
           ) : (
-            <BotaoLink href="/entrar?next=%2F%3Fmeus%3D1">Entrar</BotaoLink>
+            <BotaoLink rel="nofollow" href="/entrar?next=%2F%3Fmeus%3D1">Entrar</BotaoLink>
           )
         }
       >

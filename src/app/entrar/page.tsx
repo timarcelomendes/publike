@@ -27,7 +27,11 @@ const ERROS: Record<string, string> = {
 
 export const metadata: Metadata = {
   title: "Entrar",
-  robots: { index: false },
+  // fora do Google (17/11/2026): o robots.txt não bloqueia mais o /entrar, para o Google ler este noindex e tirar da
+  // busca os /entrar?next=... que já tinha indexado ("Indexada, mas bloqueada pelo robots.txt"); os links para cá
+  // levam rel="nofollow"
+  robots: { index: false, follow: false },
+  alternates: { canonical: "/entrar" },
 };
 
 export default function Entrar({ searchParams }: PageProps<"/entrar">) {

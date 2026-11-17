@@ -393,7 +393,7 @@ export function ComentariosDaVaga({
       <MessageSquareText aria-hidden className="size-4 text-ink-muted" />
       Ficou com dúvida?
       <Link
-        href={`/entrar?next=${encodeURIComponent(voltar)}`}
+        rel="nofollow" href={`/entrar?next=${encodeURIComponent(voltar)}`}
         // a folha de entrar sobe por cima da página (sem a folha, segue para o /entrar)
         onClick={(e) => {
           if (pedirEntrar({ proximo: voltar })) e.preventDefault();

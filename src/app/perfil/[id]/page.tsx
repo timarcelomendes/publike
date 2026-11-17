@@ -399,7 +399,7 @@ async function CurriculoNoPerfil({
           <>
             Empresas, comércios e agências que entram veem também onde {primeiroNome} trabalhou, as datas e o que fazia.{" "}
             <Link
-              href={`/entrar?next=${encodeURIComponent(`/perfil/${perfilId}`)}`}
+              rel="nofollow" href={`/entrar?next=${encodeURIComponent(`/perfil/${perfilId}`)}`}
               className="text-label text-ink underline underline-offset-2"
             >
               Entrar como empresa

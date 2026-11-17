@@ -108,7 +108,7 @@ export function BotaoEntrarCabecalho() {
   const caminho = usePathname();
   if (caminho.startsWith("/entrar")) return null;
   return (
-    <BotaoLink href="/entrar" variante="secundario" tamanho="sm">
+    <BotaoLink rel="nofollow" href="/entrar" variante="secundario" tamanho="sm">
       Entrar
     </BotaoLink>
   );

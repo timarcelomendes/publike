@@ -31,7 +31,7 @@ export function FormRecomendar({
   if (!logado) {
     return (
       <Link
-        href={`/entrar?next=${encodeURIComponent(`/perfil/${profissionalId}#recomendacoes`)}`}
+        rel="nofollow" href={`/entrar?next=${encodeURIComponent(`/perfil/${profissionalId}#recomendacoes`)}`}
         className={classesBotao("secundario", "sm")}
       >
         <ThumbsUp aria-hidden />

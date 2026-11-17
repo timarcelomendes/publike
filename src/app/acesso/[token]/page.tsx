@@ -46,7 +46,7 @@ async function Conteudo({ token }: { token: string }) {
         <Aviso tipo="alerta" titulo={t.titulo}>
           {t.texto}
         </Aviso>
-        <BotaoLink href="/entrar?next=/painel" variante="primario">
+        <BotaoLink rel="nofollow" href="/entrar?next=/painel" variante="primario">
           Entrar
         </BotaoLink>
       </div>

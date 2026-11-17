@@ -80,7 +80,7 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
             {pedeConta(erro) && (
               // a folha de entrar abre por cima; sem ela (demonstração), o link segue para o /entrar
               <a
-                href={`/entrar?next=${encodeURIComponent(VOLTA)}`}
+                rel="nofollow" href={`/entrar?next=${encodeURIComponent(VOLTA)}`}
                 onClick={(e) => {
                   if (
                     pedirEntrar({

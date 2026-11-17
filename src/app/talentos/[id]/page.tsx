@@ -247,7 +247,7 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
             as datas e o que fazia, e você pede conexão (mesmo sem vaga aberta) ou convida para uma vaga sua. É grátis.
           </p>
           <p className="mt-2">
-            <BotaoLink href={`/entrar?next=${encodeURIComponent(`/talentos/${id}`)}`} tamanho="sm" variante="primario">
+            <BotaoLink rel="nofollow" href={`/entrar?next=${encodeURIComponent(`/talentos/${id}`)}`} tamanho="sm" variante="primario">
               Entrar como empresa
             </BotaoLink>
           </p>
