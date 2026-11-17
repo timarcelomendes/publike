@@ -490,8 +490,11 @@ export async function perguntasDasVagas(anuncioIds: string[]): Promise<Map<strin
   return new Map((data ?? []).map((a) => [a.id, perguntasDoBanco(a.perguntas)]));
 }
 
-/** Todos os candidatos das minhas vagas, com a etapa (página "Candidatos" do painel). */
-export async function listarMeusCandidatos() {
+/**
+ * Todos os candidatos das minhas vagas, com a etapa (página "Candidatos" do painel). Uma leitura por requisição: no
+ * topo da home, o botão "Responder N candidatos" e a faixa "Suas vagas" usam a mesma.
+ */
+export const listarMeusCandidatos = cache(async () => {
   const supabase = await criarClienteServidor();
   const [{ data, error }, aceitas] = await Promise.all([supabase.rpc("meus_candidatos"), aceitasEsperandoCurriculo()]);
   // sem a migração das etapas a página avisa, em vez de quebrar
@@ -505,7 +508,7 @@ export async function listarMeusCandidatos() {
     etapa: etapaQueVale("vaga", l.status, (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato),
     aceita_em: aceitas.get(`${l.anuncio_id}:${l.perfil_id}`) ?? null,
   }));
-}
+});
 
 /** A etapa de cada coisa que eu curti (quem publicou marca; a anotação não vem). */
 export async function listarMinhasEtapas(): Promise<Map<string, { etapa: EtapaCandidato; atualizado_em: string }>> {

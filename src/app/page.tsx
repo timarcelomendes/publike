@@ -18,6 +18,8 @@ import { NovosPerto } from "@/components/home/novos-perto";
 import { CombinamComVoce } from "@/components/home/combinam";
 import { LateralDaLinha } from "@/components/home/linha/lateral-da-linha";
 import { LinhaDoTempo } from "@/components/home/linha/linha-do-tempo";
+import { AteALinha } from "@/components/home/linha/ate-a-linha";
+import { AbriuPertoNoFeed } from "@/components/rota/abriu-perto-no-feed";
 import { CartaoDaVisita } from "@/components/cartao-da-visita";
 import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
 import { EsqueletoCards } from "@/components/card-anuncio";
@@ -29,6 +31,7 @@ import { Container, Esqueleto } from "@/components/ui/basicos";
 import { REDES_DO_PUBLIKE, SITE_URL } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { obterLocal } from "@/lib/local";
+import { chaveDaLinha } from "@/lib/servidor/linha";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { ONDE_FUNCIONA, PRACA_PADRAO, PRACAS } from "@/lib/pracas";
@@ -212,20 +215,27 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
           )}
         </aside>
         <div className="min-w-0">
-          <Suspense fallback={<Esqueleto className="mb-6 h-40 rounded-lg" />}>
+          {/* O topo, o convite da localização, a chamada e a linha num Suspense só (17/11/2026, "deixe a performance
+              invejável"). O topo e a linha esperam a mesma leitura (dadosDaLinha) e chegavam com ~30 ms de diferença,
+              mas cada um no seu Suspense: o topo trocava um esqueleto de 160 px por ~300 px e empurrava a linha, e o
+              convite da localização aparecia depois de abrir e empurrava de novo (de 0,3 a 0,5 de CLS no celular, no
+              Admin › Velocidade). Juntos, o que já está na tela não muda de lugar. */}
+          <Suspense
+            fallback={
+              <>
+                <Esqueleto className="mb-6 h-40 rounded-lg" />
+                <EsqueletoCards quantos={3} />
+              </>
+            }
+          >
             <TopoDaConta searchParams={searchParams} soOlhar={soOlhar} />
-          </Suspense>
-          {/* o convite da localização e, para a pessoa sem bairro, "É onde você mora?" (somem sozinhos) */}
-          {!soOlhar && (
-            <Suspense fallback={null}>
+            {/* o convite da localização e, para a pessoa sem bairro, "É onde você mora?" (decididos no servidor) */}
+            {!soOlhar && (
               <div className="mb-4 empty:hidden">
                 <LocalizacaoDaPagina />
               </div>
-            </Suspense>
-          )}
-          {/* Quem contrata perto no começo da linha (só para quem procura trabalho; a chamada some para empresa), no
-              mesmo Suspense da linha: aparecem juntas (num Suspense próprio, a chamada chegava depois e empurrava a linha) */}
-          <Suspense fallback={<EsqueletoCards quantos={3} />}>
+            )}
+            {/* Quem contrata perto no começo da linha (só para quem procura trabalho; a chamada some para empresa) */}
             {!soOlhar && <ChamadaQuemContrata className="mb-4" />}
             <CentroDaLinha searchParams={searchParams} contratando={contratando} meio={meio} soOlhar={soOlhar} />
           </Suspense>
@@ -273,18 +283,18 @@ async function CentroDaLinha({
       </Suspense>
     );
   }
+  // Os blocos do alto da linha começam já, junto com a leitura dela, e vêm com ela ou ficam de fora desta vez
+  // (AteALinha, 17/11/2026): num Suspense próprio, o que terminava depois aparecia em cima da linha e a empurrava
+  const chave = chaveDaLinha(sp);
   return (
     <>
       {/* as vagas (ou os talentos) que combinam com a conta, no alto da linha; "só olhar" vê a linha de pessoa */}
-      {!soOlhar && (
-        <Suspense fallback={null}>
-          <CombinamComVoce />
-        </Suspense>
-      )}
+      {!soOlhar && <AteALinha bloco={CombinamComVoce().catch(() => null)} chave={chave} />}
       <LinhaDoTempo
         searchParams={searchParams}
         meio={meio}
         soOlhar={soOlhar}
+        abriuPerto={soOlhar ? null : AbriuPertoNoFeed().catch(() => null)}
         doPublike={
           soOlhar ? null : (
             <Suspense fallback={null}>
@@ -293,11 +303,7 @@ async function CentroDaLinha({
           )
         }
         noTopo={
-          soOlhar ? null : (
-            <Suspense fallback={null}>
-              <CartaoDaVisita jeito="topo" />
-            </Suspense>
-          )
+          soOlhar ? null : <AteALinha bloco={CartaoDaVisita({ jeito: "topo" }).catch(() => null)} chave={chave} />
         }
       />
     </>

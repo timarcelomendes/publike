@@ -4,6 +4,7 @@ import { esperaResposta } from "@/lib/constantes";
 import { listarMeusAnuncios, listarMeusCandidatos } from "@/lib/dados";
 import { plural } from "@/lib/formato";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
+import { agoraDaRequisicao } from "@/lib/tempo";
 
 const UM_DIA = 24 * 60 * 60 * 1000;
 
@@ -13,10 +14,11 @@ const UM_DIA = 24 * 60 * 60 * 1000;
  * publica não via a vaga em lugar nenhum e achava que não tinha saído). Senão: as vagas no ar, os
  * candidatos para responder e o painel.
  */
-export async function FaixaDeQuemContrata({ agora }: { agora: number }) {
-  const [anuncios, candidatos] = await Promise.all([
+export async function FaixaDeQuemContrata() {
+  const [anuncios, candidatos, agora] = await Promise.all([
     listarMeusAnuncios().catch(() => []),
     listarMeusCandidatos().catch(() => []),
+    agoraDaRequisicao(),
   ]);
   const noAr = anuncios.filter((a) => a.tipo === "vaga" && a.status === "ativo");
   if (!noAr.length) return null;

@@ -8,8 +8,8 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import { Suspense, type ReactNode } from "react";
-import { AbriuPertoNoFeed } from "../../rota/abriu-perto-no-feed";
+import type { ReactNode } from "react";
+import { AteALinha } from "./ate-a-linha";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { horaNaLinha, montarLinha, quandoFoi, recolherRecados, type ItemDaLinha } from "@/lib/linha-do-tempo";
 import type { EstadoConexao } from "@/lib/conexoes";
@@ -210,6 +210,7 @@ export async function LinhaDoTempo({
   soOlhar = false,
   doPublike = null,
   noTopo = null,
+  abriuPerto = null,
 }: {
   searchParams: Parametros;
   meio?: ReactNode;
@@ -219,8 +220,11 @@ export async function LinhaDoTempo({
   doPublike?: ReactNode;
   /** o cartão "Do Publike" no topo da linha (um banner no formato topo), antes de tudo */
   noTopo?: ReactNode;
+  /** "Abriu perto de você", já começado (vem junto com a linha ou fica de fora: `AteALinha`) */
+  abriuPerto?: Promise<ReactNode> | null;
 }) {
-  const daConta = await dadosDaLinha(chaveDaLinha(await searchParams));
+  const chave = chaveDaLinha(await searchParams);
+  const daConta = await dadosDaLinha(chave);
   const d = soOlhar && daConta.usuarioId ? { ...daConta, usuarioId: QUEM_SO_OLHA } : daConta;
   const logado = d.usuarioId !== null;
   const autores = [
@@ -239,19 +243,15 @@ export async function LinhaDoTempo({
     <PerguntaDeRespostaNoFeed key={`r:${respondeu.anuncio_id}:${respondeu.perguntas}`} pergunta={respondeu} />
   ) : null;
   // sem pergunta: "Abriu perto de você" (migração 20270606120000), para quem procura com CEP de casa (o cartão some
-  // sozinho quando não há nada)
-  const abriuPerto =
-    !pergunta && logado && !soOlhar ? (
-      <Suspense fallback={null}>
-        <AbriuPertoNoFeed />
-      </Suspense>
-    ) : null;
+  // sozinho quando não há nada). Começado antes da linha (CentroDaLinha, na home) e esperado só até ela ficar pronta:
+  // num Suspense, chegava depois e empurrava a linha para baixo (17/11/2026)
+  const abriu = !pergunta && logado && !soOlhar && abriuPerto ? <AteALinha bloco={abriuPerto} chave={chave} /> : null;
   if (!d.itens.length) {
     const maior = RAIOS[RAIOS.length - 1];
     return (
       <section aria-label="Linha do tempo" className="flex flex-col gap-3">
         {pergunta}
-        {abriuPerto}
+        {abriu}
         {d.aba === "recado" ? (
           <Vazio
             icone={MessageSquareText}
@@ -367,7 +367,7 @@ export async function LinhaDoTempo({
   return (
     <>
       {pergunta && <div className="mb-3">{pergunta}</div>}
-      {abriuPerto}
+      {abriu}
       {/* fora da linha do tempo (o traço não passa por ele) */}
       {quadro.length > 0 && (
         <div className="mb-4">

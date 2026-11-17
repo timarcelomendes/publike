@@ -1,7 +1,6 @@
 import { ArrowLeft, FileText, Inbox, Plus, Search, Store, type LucideIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { Suspense } from "react";
 import { esperaResposta } from "@/lib/constantes";
 import { COOKIE_CONVITE_RECADO, conviteRecadoFechado } from "@/lib/convite-recado";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
@@ -155,7 +154,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   }
   // "Informe seu CEP" (?casa=1): os filtros já abrem com o "Onde você mora?"
   const casa = primeiro(sp.casa) === "1";
-  const [d, perfil, proxima, usuario, visita, convite, pdfNaoSalvo] = await Promise.all([
+  const [d, perfil, proxima, usuario, visita, convite, pdfNaoSalvo, faixaDeQuemContrata] = await Promise.all([
     dadosDaLinha(chaveDaLinha(sp)),
     obterMeuPerfil(),
     // só olhando (empresa vendo como pessoa), nada a fazer pela conta
@@ -165,6 +164,9 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
     soOlhar ? Promise.resolve(null) : conviteDoRecado().catch(() => null),
     // mandou o PDF do currículo e ele não foi salvo: o aviso fica aqui até salvar
     soOlhar ? Promise.resolve(null) : meuPdfNaoSalvo(),
+    // a faixa de quem tem vaga no ar, junto com o resto do topo (17/11/2026): num Suspense próprio, ela chegava depois
+    // e empurrava as abas e a linha para baixo
+    soOlhar ? Promise.resolve(null) : FaixaDeQuemContrata().catch(() => null),
   ]);
   const acao: Acao | null =
     pdfNaoSalvo && proxima?.href === "/perfil/curriculo" ? { ...proxima, texto: "Terminar o currículo" } : proxima;
@@ -278,11 +280,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
       </section>
       {/* quem tem vaga no ar: um atalho para as vagas e os candidatos (o Início é o mesmo feed para todos) */}
       {/* a margem vai na própria faixa (no celular, a "Suas vagas" não aparece e não deixa espaço) */}
-      {!soOlhar && (
-        <Suspense fallback={null}>
-          <FaixaDeQuemContrata agora={d.agora} />
-        </Suspense>
-      )}
+      {faixaDeQuemContrata}
       <div aria-hidden className="h-3 sm:h-4" />
       <AbasDaLinha
         aba={d.aba}

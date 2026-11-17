@@ -646,6 +646,33 @@ function ordenarDaPessoa(
 export const chaveDaLinha = (sp: Parametros) =>
   JSON.stringify(Object.fromEntries(Object.entries(sp).sort(([a], [b]) => a.localeCompare(b))));
 
+/**
+ * Um bloco do alto da linha (Combinam com você, Abriu perto de você, o banner do topo) esperado só até a linha ficar
+ * pronta, mais uma folga (17/11/2026, "deixe a performance invejável"): ele vem junto com a linha, ou fica de fora
+ * desta vez. Num Suspense próprio, o bloco que terminava depois da linha aparecia em cima dela e a empurrava para
+ * baixo (o pulo que o Admin › Velocidade mostrou na home de quem entrou). Comece o bloco cedo, antes de esperar a
+ * linha, para ele ter o tempo dela.
+ */
+export async function ateALinha<T>(bloco: Promise<T>, chave: string, folgaMs = 150): Promise<T | null> {
+  let espera: ReturnType<typeof setTimeout> | undefined;
+  let fim = false;
+  const prazo = dadosDaLinha(chave)
+    .catch(() => null)
+    .then(
+      () =>
+        new Promise<null>((ok) => {
+          if (fim) return ok(null);
+          espera = setTimeout(() => ok(null), folgaMs);
+        }),
+    );
+  try {
+    return await Promise.race([bloco.catch(() => null), prazo]);
+  } finally {
+    fim = true;
+    clearTimeout(espera);
+  }
+}
+
 /** Os pontos do mapa da linha (os anúncios dela) e de onde contam as distâncias. */
 export function mapaDaLinha(d: DadosDaLinha): { pontos: PontoMapa[]; origem: OrigemMapa } {
   const pontos: PontoMapa[] = [];
