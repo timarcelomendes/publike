@@ -1,12 +1,16 @@
 "use client";
 
 import { PenLine, SlidersHorizontal } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useId, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
 import { COOKIE_CONVITE_RECADO, conviteRecadoContadoHoje, valorConviteRecadoFechado } from "@/lib/convite-recado";
 import { DicaDeNovidade } from "../../ui/dica-de-novidade";
 import { ConviteRecado, type TextoDoConvite } from "../../recados/convite-recado";
-import { EscreverRecado } from "../../recados/escrever-recado";
+import type { EscreverRecado as TipoEscreverRecado } from "../../recados/escrever-recado";
 import { assinarFiltrosDaLinha, EVENTO_FILTROS, filtrosDaLinhaAbertos } from "./abas-da-linha";
+
+// o campo do recado é de quem entrou: em pedaço à parte, quem está sem conta não baixa (17/11/2026)
+const EscreverRecado = dynamic(() => import("../../recados/escrever-recado").then((m) => m.EscreverRecado));
 
 /**
  * No celular e no tablet, a busca, o Filtros (só no celular, um ícone: no tablet ele fica na linha das
@@ -22,7 +26,7 @@ export function BuscaERecado({
 }: {
   busca: ReactNode;
   /** sem conta (ou só olhando), sem o Recado */
-  recado?: ComponentProps<typeof EscreverRecado>;
+  recado?: ComponentProps<typeof TipoEscreverRecado>;
   /** quantos filtros foram mudados (o número no ícone) */
   mudados?: number;
   /** a conta nunca deixou recado (e não fechou o convite há pouco): o convite em cima do campo */

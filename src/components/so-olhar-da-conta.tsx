@@ -1,7 +1,7 @@
 import { obterMeuPerfil } from "@/lib/dados";
 import { nomeDaConta } from "@/lib/so-olhar";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
-import { FaixaSoOlhar } from "./faixa-so-olhar";
+import { FaixaSoOlhar } from "./sob-demanda";
 
 /** No alto de todas as páginas (layout): a faixa do "só olhar", quando a conta está vendo como pessoa. */
 export async function SoOlharDaConta() {

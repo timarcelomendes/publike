@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { chaveDaLinha, dadosDaLinha, mapaDaLinha } from "@/lib/servidor/linha";
-import { MapaAnuncios } from "../../mapa/mapa-anuncios";
+import { MapaAnuncios } from "../../mapa/mapa-sob-demanda";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 

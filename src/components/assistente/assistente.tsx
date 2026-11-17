@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { assistenteDisponivel } from "@/lib/servidor/assistente";
-import { PerguntaDoMatch } from "../pergunta-do-match";
+import { PerguntaDoMatch } from "../sob-demanda";
 import { BotaoAssistente } from "./botao-assistente";
 
 /**

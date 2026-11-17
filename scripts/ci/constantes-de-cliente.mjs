@@ -29,9 +29,12 @@ for (const f of arquivos) {
   if (!USE_CLIENT.test(s)) continue;
   const nomes = new Set();
   for (const m of s.matchAll(/export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) {
-    // `export const Nome = (...) =>` ou `forwardRef(...)`/`memo(...)` com nome de componente continuam componentes
+    // `export const Nome = (...) =>`, `forwardRef(...)`, `memo(...)`, `dynamic(...)` ou `lazy(...)` com nome de
+    // componente continuam componentes
     const resto = s.slice(m.index + m[0].length, m.index + m[0].length + 80);
-    if (/^[A-Z][a-z]/.test(m[1]) && /^\s*(?::[^=]+)?=\s*(?:\(|function|memo\(|forwardRef\(|React\.)/.test(resto)) continue;
+    if (/^[A-Z][a-z]/.test(m[1]) && /^\s*(?::[^=]+)?=\s*(?:\(|function|memo\(|forwardRef\(|dynamic\(|lazy\(|React\.)/.test(resto)) {
+      continue;
+    }
     nomes.add(m[1]);
   }
   for (const m of s.matchAll(/export\s+(?:async\s+)?function\s+([a-z_$][\w$]*)/g)) nomes.add(m[1]);

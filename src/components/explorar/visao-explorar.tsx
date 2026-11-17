@@ -23,7 +23,8 @@ import {
 import { createPortal } from "react-dom";
 import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/filtros";
 import { CHAVE_VISAO, CHAVE_VISAO_BUSCA, semDetalhes, VISOES_CELULAR, type Visao } from "@/lib/visao";
-import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
+import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
+import { MapaAnuncios } from "../mapa/mapa-sob-demanda";
 import { AreaDoMapa, type Limites } from "./area-do-mapa";
 import { DicaVerComo } from "./dica-ver-como";
 import { ListaComDetalhe } from "./lista-com-detalhe";

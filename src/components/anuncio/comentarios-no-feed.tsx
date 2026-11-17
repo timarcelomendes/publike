@@ -1,14 +1,17 @@
 "use client";
 
 import { MessageCircle, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useId, useRef, useState, useTransition } from "react";
 import { Esqueleto } from "@/components/ui/basicos";
 import { DicaDeNovidade, usarDica } from "@/components/ui/dica-de-novidade";
 import { lerComentariosDaVaga } from "@/lib/acoes/comentarios";
 import { contarComentarios, type ComentariosDaVaga as Dados, type ResumoComentarios } from "@/lib/comentarios";
 import { CLASSES_DA_ACAO } from "./acao-do-feed";
-import { ComentariosDaVaga } from "./comentarios";
 import { IndicarNaJanela } from "./indicar-por-email";
+
+// os comentários abertos sob demanda (17/11/2026): o código da lista e do campo só baixa ao tocar em Comentar
+const ComentariosDaVaga = dynamic(() => import("./comentarios").then((m) => m.ComentariosDaVaga), { ssr: false });
 
 // Comentar no próprio feed (09/11/2026). Na linha do tempo, embaixo de cada vaga: quantos comentários ela tem, o
 // último ("Ana S. Qual o horário de sábado?") e o "Indicar"; um toque abre a conversa ali mesmo, com o campo para

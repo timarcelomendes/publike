@@ -1,4 +1,4 @@
-import { BannerDoSite } from "@/components/home/banner-da-home";
+import { BannerDoSite } from "@/components/sob-demanda";
 import { bannersDaVisita } from "@/lib/servidor/banners";
 
 /**

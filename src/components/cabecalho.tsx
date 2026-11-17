@@ -20,8 +20,8 @@ import {
 import { EntradaComABusca, EntradaDaBusca } from "./busca-do-topo";
 import { BotaoInstalarApp } from "./instalar-app";
 import { NavDaConta } from "./nav-topo";
-import { MenuUsuario } from "./menu-usuario";
-import { Notificacoes } from "./notificacoes";
+// o sino e o menu da conta em pedaços à parte: quem está sem conta não baixa o código deles (sob-demanda.tsx)
+import { MenuUsuario, Notificacoes } from "./sob-demanda";
 import { BotaoAjudaTopo } from "./assistente/botao-ajuda-topo";
 import { BotaoTema } from "./tema";
 import { Container, LARGO_NO_PAINEL, Logo } from "./ui/basicos";
