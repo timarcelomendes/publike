@@ -36,14 +36,17 @@ export async function CurriculoNoMercado({
   curriculo,
   agora,
   ia,
+  pronto,
 }: {
   pessoa: { id: string; cidade: string | null; bairro: string | null };
   curriculo: Curriculo;
   agora: number;
   /** a ajuda da IA está ligada: o convite para "Melhorar com a IA" */
   ia: boolean;
+  /** a conta já começada pela página (vem junto com o formulário, sem Suspense; null: ficou de fora desta vez) */
+  pronto?: Promise<Awaited<ReturnType<typeof curriculoNoMercado>>>;
 }) {
-  const m = await curriculoNoMercado(pessoa, curriculo, agora);
+  const m = await (pronto ?? curriculoNoMercado(pessoa, curriculo, agora));
   if (!m) return null;
   const { nota, faixa, funcao } = m;
   return (

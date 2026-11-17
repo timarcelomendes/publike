@@ -29,6 +29,8 @@ import { nomeNaLista } from "@/lib/servidor/contas-perto";
 import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
 import { meuContatoNoConvite } from "@/lib/servidor/contato-no-convite";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
+import { curriculoNoMercado } from "@/lib/servidor/curriculo-mercado";
+import { comPrazo } from "@/lib/servidor/prazo";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -163,6 +165,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
     // o contato no convite (migração 20270626120000): o terceiro interruptor de "Quem vê seu currículo"
     meuContatoNoConvite(),
   ]);
+  const agora = await agoraDaRequisicao();
+  // "Seu currículo no mercado" começa já e vem junto com o formulário (17/11/2026, "deixe a performance invejável"):
+  // num Suspense, chegava depois, maior que o esqueleto, e empurrava o formulário para baixo (0,37 de CLS no celular,
+  // no Admin › Velocidade). Até 1,5 s; passou disso, fica de fora desta vez
+  const mercado = curriculo
+    ? comPrazo(curriculoNoMercado({ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }, curriculo, agora), 1500)
+    : null;
   const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : null;
   // acabou de salvar e ainda não tem nenhum aviso de vaga: o convite para avisar de vagas do que a pessoa faz
   const oQueFaz =
@@ -171,7 +180,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
     primeiro(sp.salvo) === "1" && oQueFaz ? (await minhasBuscasSalvas().catch(() => [null])).length === 0 : false;
   // mandou o PDF e o currículo não foi salvo: o formulário já vem com ele
   const pdfNaoSalvo = !curriculo && !lido ? await meuPdfNaoSalvo() : null;
-  const agora = await agoraDaRequisicao();
   const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? pdfNaoSalvo?.caminho ?? null);
   // as vagas que já aceitaram a pessoa e só esperam o currículo
   const aceitas = curtidas.filter((c) => c.tipo === "vaga" && esperaCurriculo(c));
@@ -325,16 +333,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
       avisos={avisos}
       depoisDoFormulario={curriculo && jeito !== null ? <JeitoDeTrabalhar inicial={jeito} /> : null}
       mercado={
-        // a nota, a faixa de salário e o que abre mais vagas (só a pessoa vê)
-        curriculo && (
-          <Suspense fallback={<Esqueleto className="h-80 w-full rounded-lg" />}>
-            <CurriculoNoMercado
-              pessoa={{ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }}
-              curriculo={curriculo}
-              agora={agora}
-              ia={ia}
-            />
-          </Suspense>
+        // a nota, a faixa de salário e o que abre mais vagas (só a pessoa vê), já começada lá em cima
+        curriculo &&
+        mercado && (
+          <CurriculoNoMercado
+            pessoa={{ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }}
+            curriculo={curriculo}
+            agora={agora}
+            ia={ia}
+            pronto={mercado}
+          />
         )
       }
     />
