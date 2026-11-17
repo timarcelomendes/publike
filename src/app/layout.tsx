@@ -145,10 +145,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {/* lê o endereço da página: no build, precisa estar num Suspense */}
           <Suspense fallback={null}>
             <BoasVindasParceiro />
-            <AvisoCookies />
             {/* só carrega o Google depois do "Aceitar" no aviso de cookies */}
             <GoogleAds />
           </Suspense>
+          {/* fora de Suspense: vai no HTML na ordem, na primeira pintura (não lê o endereço no servidor) */}
+          <AvisoCookies />
           <AvisoAtualizacao />
           {/* a localização já liberada: renova a posição a cada visita, sem perguntar (components/local) */}
           <AtualizarLocalizacao />

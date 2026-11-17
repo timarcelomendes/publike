@@ -124,6 +124,10 @@ function assinarInteracao(avisar: () => void) {
 
 export function BoasVindasParceiro() {
   const caminho = usePathname() ?? "/";
+  // a página mudou: quem espera as boas-vindas (o aviso de cookies) confere de novo
+  useEffect(() => {
+    window.dispatchEvent(new Event(EVENTO_BOAS_VINDAS));
+  }, [caminho]);
   // no servidor (e antes de ler o navegador) não aparece: nada pisca para quem já viu
   const visto = useSyncExternalStore(assinar, jaViu, () => true);
   const pergunta = useSyncExternalStore(assinar, comPerguntaAberta, () => false);

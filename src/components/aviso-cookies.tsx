@@ -2,7 +2,6 @@
 
 import { Cookie } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { guardarPropaganda } from "./google-ads";
 import { CHAVE_AVISO_COOKIES, VERSAO_AVISO_COOKIES } from "@/lib/aviso-cookies";
@@ -46,11 +45,13 @@ export function avisoDeCookiesFechado() {
 export function AvisoCookies() {
   // no servidor o aviso vem no HTML (SCRIPT_AVISO_COOKIES o esconde, antes de pintar, de quem não deve vê-lo)
   const visto = useSyncExternalStore(assinar, jaViu, () => false);
-  // na primeira visita, as boas-vindas vêm antes: o aviso espera elas fecharem
-  const caminho = usePathname() ?? "/";
+  // na primeira visita, as boas-vindas vêm antes: o aviso espera elas fecharem. O endereço vem do navegador (e não
+  // do usePathname): sem ler o endereço no servidor, o aviso vai no HTML fora de Suspense, logo na primeira pintura;
+  // num Suspense, ele ia escondido para o fim do HTML e virava o LCP das páginas de área (17/11/2026). As boas-vindas
+  // avisam quando a página muda (EVENTO_BOAS_VINDAS).
   const esperando = useSyncExternalStore(
     assinarBoasVindas,
-    () => esperandoBoasVindas(caminho),
+    () => esperandoBoasVindas(window.location.pathname),
     () => false,
   );
   const [fechado, setFechado] = useState(false);
