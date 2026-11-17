@@ -258,7 +258,11 @@ export async function LinhaDoTempo({
       d.itens.flatMap((i) => ("recado" in i.dados && !i.dados.recado.meu ? [i.dados.recado.autor_id] : [])),
     ),
   ];
-  const conexoes = logado && autores.length ? await estadosDeConexao(autores) : new Map<string, EstadoConexao>();
+  // as conexões dos autores dos recados e as vagas impulsionadas do quadro numa ida só (17/11/2026: eram duas)
+  const [conexoes, quadro] = await Promise.all([
+    logado && autores.length ? estadosDeConexao(autores) : Promise.resolve(new Map<string, EstadoConexao>()),
+    d.aba === "tudo" || d.aba === "vaga" ? vagasDoQuadroDaLinha(d) : Promise.resolve([]),
+  ]);
   // "Deu certo?" e "Mostrar no Publike?": a pergunta da conquista, uma por vez, no alto (não no "só olhar")
   // sem ela, "A empresa te respondeu?" (migração 20270526120000): uma pergunta por vez
   const pendente = !soOlhar ? d.conquistasPendentes[0] : undefined;
@@ -326,8 +330,7 @@ export async function LinhaDoTempo({
     );
     contam.push(false);
   }
-  // as vagas impulsionadas perto de quem vê, no alto da linha (claude/plano-destaque-das-vagas-impulsionadas.md)
-  const quadro = d.aba === "tudo" || d.aba === "vaga" ? await vagasDoQuadroDaLinha(d) : [];
+  // as vagas impulsionadas perto de quem vê vão no alto da linha (`quadro`, claude/plano-destaque-das-vagas-impulsionadas.md)
 
   // só os primeiros itens vêm na página; o resto, o "Ver mais" pede (ITENS_NA_PAGINA)
   const ate = itensNaPagina(sp);

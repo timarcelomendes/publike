@@ -310,6 +310,16 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     aba !== "recado" && !filtros.tempo && filtros.raio < maiorRaio
       ? buscarAnuncios({ ...filtros, raio: maiorRaio, ordem: "perto" }, agora, local, usuarioId).catch(() => [])
       : Promise.resolve([] as AnuncioResumo[]);
+  const marca = marcaDaVisita(prefs.vistaEm, prefs.marcaEm, agora);
+  const visitaNova = prefs.vistaEm !== null && agora - new Date(prefs.vistaEm).getTime() > SESSAO_DA_HOME;
+  // os números das abas fora de Tudo contam tudo junto (com marca): a busca de tudo também já começa aqui
+  const todosDasNovas =
+    aba !== "tudo" && marca !== null
+      ? (deTudo ??
+        buscarAnuncios({ ...filtros, tipo: null, tudo: true, regime: null, turno: null }, agora, local, usuarioId).catch(
+          () => [] as AnuncioResumo[],
+        ))
+      : null;
   const [encontrados, quem, matchesDaConta, recados, perfil, conquistas, conquistasPendentesDaConta, respostasDaConta] =
     await Promise.all([
     aba === "recado"
@@ -325,9 +335,29 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     usuario ? conquistasPendentes() : Promise.resolve([] as ConquistaPendente[]),
     usuario ? perguntasDeResposta() : Promise.resolve([] as PerguntaDeResposta[]),
   ]);
-  const marca = marcaDaVisita(prefs.vistaEm, prefs.marcaEm, agora);
-  const visitaNova = prefs.vistaEm !== null && agora - new Date(prefs.vistaEm).getTime() > SESSAO_DA_HOME;
-  const [requisitos, sinais] = await Promise.all([
+  const turno = filtros.turno;
+  // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
+  const ja = filtros.ja;
+  // com o turno ou o "Começa já", a lista é filtrada pelos requisitos antes de contar as curtidas da ordem
+  const filtraPelosRequisitos = Boolean(turno || ja);
+  // nas relevantes, as curtidas recentes entram na ordem ("em alta"), e quem responde as curtidas sobe (o mesmo
+  // número do selo de quem responde rápido): contadas antes de cortar a lista
+  const comCurtidasNaOrdem = relevantes && (aba === "tudo" || aba === "vaga");
+  const curtidasDe = (lista: AnuncioResumo[]) =>
+    curtidasDasVagas(lista.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+      () => new Map<string, CurtidasDaVaga>(),
+    );
+  const respostaDe = (lista: AnuncioResumo[]) =>
+    respostaDeQuemPublica(
+      lista.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId).map((a) => a.autor_id),
+    ).catch(() => new Map<string, Resposta>());
+  // os aceites de quem curtiu (o outro lado aceitou), dos últimos 7 dias, só em Tudo
+  const recentes = matchesDaConta.filter(
+    (m) => m.papel === "curti" && m.match_em && agora - Date.parse(m.match_em) <= ACEITE_NA_LINHA,
+  );
+  // O que só depende dos encontrados, numa ida ao banco (17/11/2026, "deixe a performance invejável": os requisitos,
+  // as curtidas da ordem e as respostas da ordem eram três idas, uma depois da outra; a linha chegava em 0,7 a 0,9 s)
+  const [requisitos, sinais, curtidasCedo, respostaCedo, diretos] = await Promise.all([
     requisitosDaLista(encontrados).catch(() => null),
     relevantes && usuario
       ? sinaisDaPessoa(
@@ -335,12 +365,15 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
           encontrados.map((a) => a.id),
         ).catch(() => SEM_SINAIS)
       : Promise.resolve(SEM_SINAIS),
+    comCurtidasNaOrdem && !filtraPelosRequisitos ? curtidasDe(encontrados) : Promise.resolve(null),
+    comCurtidasNaOrdem && !filtraPelosRequisitos ? respostaDe(encontrados) : Promise.resolve(null),
+    // contato direto: o match saiu na hora, sem aceite (o cartão e o link da mensagem mudam)
+    aba === "tudo" && recentes.length
+      ? anunciosComContatoDireto(recentes.map((m) => m.anuncio_id))
+      : Promise.resolve(new Set<string>()),
   ]);
-  const turno = filtros.turno;
-  // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
-  const ja = filtros.ja;
   const filtrados =
-    (turno || ja) && requisitos
+    filtraPelosRequisitos && requisitos
       ? encontrados.filter((a) => {
           const v = requisitos.get(a.id);
           return (
@@ -351,35 +384,37 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   // o % de match de todas (nas relevantes, ele entra na ordem antes de cortar a lista)
   const matches =
     usuarioId && quem && requisitos ? matchDasVagas(filtrados, requisitos, quem, usuarioId, agora) : new Map();
-  // nas relevantes, as curtidas recentes entram na ordem ("em alta"): contadas antes de cortar a lista
-  const curtidasDaOrdem =
-    relevantes && (aba === "tudo" || aba === "vaga")
-      ? await curtidasDasVagas(filtrados.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-          () => new Map<string, CurtidasDaVaga>(),
-        )
-      : null;
-  // e quem responde as curtidas sobe (o mesmo número do selo de quem responde rápido)
-  const respostaDaOrdem = curtidasDaOrdem
-    ? await respostaDeQuemPublica(
-        filtrados.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId).map((a) => a.autor_id),
-      ).catch(() => new Map<string, Resposta>())
-    : null;
+  const [curtidasDaOrdem, respostaDaOrdem] = !comCurtidasNaOrdem
+    ? [null, null]
+    : filtraPelosRequisitos
+      ? await Promise.all([curtidasDe(filtrados), respostaDe(filtrados)])
+      : [curtidasCedo, respostaCedo];
   const naOrdem = relevantes
     ? ordenarDaPessoa(filtrados, requisitos, sinais, matches, agora, curtidasDaOrdem, respostaDaOrdem)
     : filtrados;
   const anuncios = naOrdem.slice(0, LIMITE);
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId);
-  const [resposta, salvas, logos, textosDosServicos, comentarios] = await Promise.all([
-    respostaDaOrdem
-      ? Promise.resolve(respostaDaOrdem)
-      : respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map<string, Resposta>()),
-    usuarioId ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
-    fotosDosAutores(anuncios.map((a) => a.autor_id)),
-    descricoesDosServicos(anuncios.filter((a) => a.tipo === "servico").map((a) => a.id)),
-    comentariosDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-      () => new Map<string, ResumoComentarios>(),
-    ),
-  ]);
+  const vagasDaLinha = anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id);
+  // o que os cartões mostram, mais as curtidas (em Recentes) e as respostas aos comentários: numa ida só (eram três)
+  const [resposta, salvas, logos, textosDosServicos, comentarios, curtidasDosCartoes, respostasNoFeed] =
+    await Promise.all([
+      respostaDaOrdem
+        ? Promise.resolve(respostaDaOrdem)
+        : respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map<string, Resposta>()),
+      usuarioId ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
+      fotosDosAutores(anuncios.map((a) => a.autor_id)),
+      descricoesDosServicos(anuncios.filter((a) => a.tipo === "servico").map((a) => a.id)),
+      comentariosDasVagas(vagasDaLinha).catch(() => new Map<string, ResumoComentarios>()),
+      // as vagas que as pessoas curtiram: o número de curtidas e de matches no cartão (nas relevantes, já contadas)
+      aba === "tudo" || aba === "vaga"
+        ? (curtidasDaOrdem ??
+          curtidasDasVagas(vagasDaLinha).catch(() => new Map<string, CurtidasDaVaga>()))
+        : Promise.resolve(null),
+      // as respostas de quem publicou aos comentários (uma por vaga do feed, dos últimos 7 dias): só em Tudo
+      aba === "tudo"
+        ? respostasDasVagas(vagasDaLinha).catch(() => [] as RespostaNoFeed[])
+        : Promise.resolve([] as RespostaNoFeed[]),
+    ]);
 
   const itens: ItemDaLinha<DadoDaLinha>[] = anuncios.map((a) => ({
     tipo: a.tipo === "servico" ? "servico" : "vaga",
@@ -400,27 +435,13 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   }));
   // as vagas que as pessoas curtiram: o número de curtidas e de matches no cartão. A vaga não muda de
   // lugar em Recentes (vale a publicação); nas relevantes, as curtidas recentes já entraram na ordem
-  if (aba === "tudo" || aba === "vaga") {
-    const curtidas =
-      curtidasDaOrdem ??
-      (await curtidasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-        () => new Map<string, CurtidasDaVaga>(),
-      ));
+  if (curtidasDosCartoes) {
     for (const i of itens) {
-      const c = curtidas.get(i.id);
+      const c = curtidasDosCartoes.get(i.id);
       if (i.tipo !== "vaga" || !c || !c.total || !("anuncio" in i.dados)) continue;
       i.dados.anuncio.curtidas = { total: c.total, matches: c.matches, ultima: c.ultima };
     }
   }
-  // os aceites de quem curtiu (o outro lado aceitou), dos últimos 7 dias, só em Tudo
-  const recentes = matchesDaConta.filter(
-    (m) => m.papel === "curti" && m.match_em && agora - Date.parse(m.match_em) <= ACEITE_NA_LINHA,
-  );
-  // contato direto: o match saiu na hora, sem aceite (o cartão e o link da mensagem mudam)
-  const diretos =
-    aba === "tudo" && recentes.length
-      ? await anunciosComContatoDireto(recentes.map((m) => m.anuncio_id))
-      : new Set<string>();
   const aceites: ItemDaLinha<DadoDaLinha>[] = recentes.map((m) => ({
     tipo: "aceite",
     id: m.anuncio_id,
@@ -436,10 +457,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   // as respostas de quem publicou aos comentários (uma por vaga do feed, dos últimos 7 dias): só em Tudo; nas
   // recentes, na hora; nas relevantes, a mais nova entra depois do 4º item
   if (aba === "tudo") {
-    const respostas = await respostasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-      () => [] as RespostaNoFeed[],
-    );
-    const itensDeResposta: ItemDaLinha<DadoDaLinha>[] = respostas.map((r) => ({
+    const itensDeResposta: ItemDaLinha<DadoDaLinha>[] = respostasNoFeed.map((r) => ({
       tipo: "resposta",
       id: `resposta-${r.anuncio_id}`,
       quando: r.quando,
@@ -484,15 +502,9 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     aba === "tudo" ? [...itens.filter((i) => i.tipo !== "recado" && i.tipo !== "conquista"), ...recadosDeOutros] : itens,
     marca,
   );
-  if (aba !== "tudo" && marca !== null) {
-    const todos =
-      (await deTudo) ??
-      (await buscarAnuncios(
-        { ...filtros, tipo: null, tudo: true, regime: null, turno: null },
-        agora,
-        local,
-        usuarioId,
-      ).catch(() => []));
+  if (todosDasNovas) {
+    // a busca de tudo começou junto com a da linha (todosDasNovas)
+    const todos = await todosDasNovas;
     // as vagas que subiram contam pela hora da última curtida, como na linha
     novas = novidades(
       [
