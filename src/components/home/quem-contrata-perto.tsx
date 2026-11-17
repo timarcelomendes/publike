@@ -6,6 +6,7 @@ import { obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero } from "@/lib/formato";
 import { funcaoPeloTitulo, tituloDaFuncao } from "@/lib/funcao-cbo";
 import { origemDaRota } from "@/lib/servidor/funcoes-da-rota";
+import { procuraEmprego } from "@/lib/servidor/modo";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 
 // A chamada de "Quem contrata perto" no alto da home (16/11/2026, Marcelo: "deveríamos ter uma opção de chegar logo
@@ -45,11 +46,13 @@ async function contarSemQuebrar(lat: number, lng: number, cbos: string[]) {
 }
 
 export async function ChamadaQuemContrata({ className = "" }: { className?: string }) {
+  // só para quem procura emprego (17/11/2026): nem empresa, comércio e agência, nem a pessoa que só contrata ou só
+  // oferece serviços; sem conta, quem não disse que contrata ou oferece serviços
+  if (!(await procuraEmprego())) return null;
   const usuario = await obterUsuario().catch(() => null);
   const [perfil, curriculo] = usuario
     ? await Promise.all([obterMeuPerfil().catch(() => null), obterMeuCurriculo().catch(() => null)])
     : [null, null];
-  // empresa, comércio e agência: a chamada é para quem procura trabalho
   if (perfil && perfil.tipo !== "pessoa") return null;
   const origem = await origemDaRota(perfil);
   const sua = funcaoPeloTitulo(curriculo?.titulo)?.cbo;

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
 import { distanciaCurta } from "@/lib/rota-curriculo";
 import { funcoesParaARota, pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
+import { procuraEmprego } from "@/lib/servidor/modo";
 import { NOTA_DO_RAMO, ramoNaCidade } from "@/lib/servidor/ramo-na-cidade";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { QueroTrabalharAqui } from "./quero-trabalhar-aqui";
@@ -14,8 +15,9 @@ import { bairroDaReceita } from "@/lib/cnpj";
  * 3 km, nos ramos que contratam essas funções. Nunca diz que há vaga: lugar novo costuma contratar.
  */
 export async function AbriuPertoNoFeed() {
-  const [perfil, curriculo] = await Promise.all([obterMeuPerfil(), obterMeuCurriculo()]);
-  if (!perfil || perfil.tipo !== "pessoa" || !curriculo) return null;
+  const [perfil, curriculo, procura] = await Promise.all([obterMeuPerfil(), obterMeuCurriculo(), procuraEmprego()]);
+  // só para quem procura emprego (17/11/2026): a pessoa que só contrata ou só oferece serviços não vê
+  if (!perfil || perfil.tipo !== "pessoa" || !curriculo || !procura) return null;
   const [funcoes, onde] = await Promise.all([funcoesParaARota(curriculo), pontoDaPessoa(perfil)]);
   if (!funcoes.length || !onde) return null;
   const banco = await criarClienteServidor();

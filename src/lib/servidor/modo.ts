@@ -67,6 +67,18 @@ export async function modoDaConta(): Promise<ModoPainel> {
 }
 
 /**
+ * Quem procura emprego (17/11/2026, Marcelo: o "Quem contrata perto" e o "Abriu perto de você" "só devem aparecer
+ * para quem procura emprego"). Com conta: "Procurar trabalho" entre as atividades (as marcadas no perfil; sem
+ * marcação, a principal, pelo tipo e pela intenção). Sem conta: o que respondeu em "O que você quer fazer no
+ * Publike?"; sem resposta, conta como quem procura (a vitrine fala com quem procura trabalho).
+ */
+export async function procuraEmprego(): Promise<boolean> {
+  if (await obterUsuario().catch(() => null)) return (await atividadesDoMenu()).includes("trabalhar");
+  const intencao = await obterIntencao().catch(() => null);
+  return intencao === null || intencao === "trabalho" || intencao === "talento";
+}
+
+/**
  * As atividades que aparecem no menu do painel, a principal primeiro: as que a conta marcou (só as
  * que o tipo de conta permite). Sem marcação, só a principal (antes, as três ficavam para trocar).
  */
