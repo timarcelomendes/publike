@@ -85,6 +85,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/ia", nome: "IA" },
       { href: "/admin/chaves", nome: "Chaves" },
       { href: "/admin/telas", nome: "Quem vê cada tela" },
+      { href: "/admin/velocidade", nome: "Velocidade" },
     ],
   },
 ];
@@ -113,6 +114,8 @@ export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" |
   { href: "/admin/receita", nome: "Base da Receita", precisa: "equipe" },
   // o WhatsApp oficial (migração 20270619120000; só a equipe publike.org)
   { href: "/admin/whatsapp", nome: "WhatsApp", precisa: "equipe" },
+  // a velocidade de verdade de quem abre o site (migração 20270709120000; só a equipe publike.org)
+  { href: "/admin/velocidade", nome: "Velocidade", precisa: "equipe" },
 ];
 
 /** Todas as telas da lista, com o nome (as do menu e as que só existem no site, como Números). */

@@ -21,6 +21,7 @@ import { Voltar } from "@/components/voltar";
 import { EntrarNumToque } from "@/components/entrar-num-toque";
 import { FolhaDeEntrar } from "@/components/folha-de-entrar";
 import { ContarTempo } from "@/components/contar-tempo";
+import { MedirVelocidade } from "@/components/medir-velocidade";
 import { ConviteInstalar } from "@/components/instalar-app";
 import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/navegacao";
 import { RodapeDaPagina } from "@/components/rodape-da-pagina";
@@ -169,6 +170,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {/* o tempo de cada página na tela, sem saber quem (lib/tempo-na-pagina.ts); lê o endereço da página */}
           <Suspense fallback={null}>
             <ContarTempo />
+          </Suspense>
+          {/* a velocidade de verdade de quem abre o site (Admin › Velocidade); baixa só depois de a página carregar */}
+          <Suspense fallback={null}>
+            <MedirVelocidade />
           </Suspense>
         </ProvedorDoApelido>
       </body>

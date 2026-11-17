@@ -2322,6 +2322,19 @@ export type Database = {
       servidor_avisar_noticias: { Args: { p_chave: string }; Returns: number };
       contar_teste_app: { Args: { p_evento: string; p_origem: string }; Returns: undefined };
       contar_tempo: { Args: { p_pagina: string; p_de: number; p_ate: number }; Returns: undefined };
+      /** a velocidade de verdade (migração 20270709120000) */
+      registrar_velocidade: {
+        Args: {
+          p_visita: string;
+          p_pagina: string;
+          p_celular: boolean;
+          p_conexao: string | null;
+          p_navegacao: string | null;
+          p_medidas: Json;
+        };
+        Returns: undefined;
+      };
+      admin_velocidade: { Args: { p_dias?: number }; Returns: Json };
       empresas_sugeridas: { Args: { p_texto: string }; Returns: { nome: string; com_conta: boolean }[] };
       empresas_do_curriculo: {
         Args: { p_nomes: string[] };
