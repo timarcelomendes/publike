@@ -665,6 +665,9 @@ function EmpresaRespondeu({
   const total = linhas.length;
   const c = contar(linhas);
   const responderam = c.sim + c.ainda_nao + c.desisti;
+  // quantas pessoas responderam (17/11/2026: "a quantidade de pessoas que respondeu"); uma pessoa responde por vaga
+  const pessoasQueResponderam = new Set(linhas.filter((l) => l.resposta).map((l) => l.perfil_id)).size;
+  const pessoasPerguntadas = new Set(linhas.map((l) => l.perfil_id)).size;
   const visiveis = filtro === "todas" ? linhas : linhas.filter((l) => chaveDa(l) === filtro);
   // por empresa: quem deixa mais gente esperando primeiro, depois quem tem mais perguntas
   const porEmpresa = new Map<string, { nome: string; linhas: RespostaDoCandidato[] }>();
@@ -693,13 +696,37 @@ function EmpresaRespondeu({
         <Vazio icone={MessageCircleQuestion} titulo={`Nenhuma pergunta nos últimos ${nomePeriodo}`} />
       ) : (
         <div className="flex flex-col gap-5">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Numero
+              rotulo="Pessoas perguntadas"
+              valor={formatarNumero(pessoasPerguntadas)}
+              detalhe={plural(total, "candidatura", "candidaturas")}
+            />
+            <Numero
+              rotulo="Pessoas que responderam"
+              valor={formatarNumero(pessoasQueResponderam)}
+              detalhe={`${pct(pessoasQueResponderam, pessoasPerguntadas)} das perguntadas`}
+              alerta={pessoasPerguntadas >= 10 && pessoasQueResponderam * 5 < pessoasPerguntadas}
+            />
+            <Numero
+              rotulo="A empresa respondeu"
+              valor={formatarNumero(c.sim)}
+              detalhe={`de ${plural(responderam, "resposta", "respostas")}`}
+            />
+            <Numero
+              rotulo="Ainda esperam"
+              valor={formatarNumero(c.ainda_nao)}
+              detalhe={`${formatarNumero(c.desisti)} desistiram`}
+              alerta={c.ainda_nao > c.sim}
+            />
+          </dl>
           <p className="max-w-3xl text-body">
             Nos últimos {nomePeriodo}, o Publike perguntou sobre {plural(total, "candidatura", "candidaturas")}, de{" "}
-            {plural(new Set(linhas.map((l) => l.perfil_id)).size, "pessoa", "pessoas")} (quem se candidatou a mais de uma
+            {plural(pessoasPerguntadas, "pessoa", "pessoas")} (quem se candidatou a mais de uma
             vaga é perguntado por cada uma).{" "}
             {responderam === 0
               ? "Ninguém respondeu a pergunta ainda."
-              : `${plural(responderam, "respondeu", "responderam")}: ${formatarNumero(c.sim)} ${c.sim === 1 ? "disse" : "disseram"} que a empresa respondeu, ${formatarNumero(c.ainda_nao)} ainda ${c.ainda_nao === 1 ? "espera" : "esperam"} e ${formatarNumero(c.desisti)} ${c.desisti === 1 ? "desistiu" : "desistiram"}.`}
+              : `${plural(responderam, "candidatura teve resposta", "candidaturas tiveram resposta")}, de ${plural(pessoasQueResponderam, "pessoa", "pessoas")}: ${formatarNumero(c.sim)} ${c.sim === 1 ? "disse" : "disseram"} que a empresa respondeu, ${formatarNumero(c.ainda_nao)} ainda ${c.ainda_nao === 1 ? "espera" : "esperam"} e ${formatarNumero(c.desisti)} ${c.desisti === 1 ? "desistiu" : "desistiram"}.`}
           </p>
 
           <div className="flex flex-col gap-2">
