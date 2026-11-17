@@ -235,7 +235,13 @@ function dadosVaga(a: AnuncioCompleto) {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
-        ...(a.local_exato && a.endereco ? { streetAddress: a.endereco } : {}),
+        // sem o endereço exato, o bairro (17/11/2026: o Search Console avisava "streetAddress não encontrado" em quase
+        // todas as vagas; o bairro ajuda o Google Vagas a mostrar a vaga para quem busca perto)
+        ...(a.local_exato && a.endereco
+          ? { streetAddress: a.endereco }
+          : a.bairro && a.bairro !== a.cidade
+            ? { streetAddress: a.bairro }
+            : {}),
         ...(a.local_exato && a.cep ? { postalCode: a.cep } : {}),
         addressLocality: a.cidade,
         addressRegion: "GO",
