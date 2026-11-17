@@ -15,10 +15,11 @@ import {
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
-import { TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
+import { PARAMETROS_WHATSAPP, TIPOS_WHATSAPP, type ParametroWhatsapp } from "@/lib/whatsapp-tipos";
 
-// Admin › WhatsApp (migração 20270619120000; claude/plano-whatsapp-oficial.md): ligar, o modo de teste, os limites,
-// cadastrar e conferir os modelos na Meta, o número e a mensagem de teste. Só a equipe publike.org.
+// Admin › WhatsApp (migrações 20270619120000 e 20270710120000; claude/plano-whatsapp-oficial.md): ligar, o modo de
+// teste, os limites e os parâmetros do envio, cadastrar e conferir os modelos na Meta, o número e a mensagem de teste.
+// Só a equipe publike.org.
 
 async function banco(): Promise<ClienteBanco | null> {
   const admin = await clienteAdminOuNulo();
@@ -27,14 +28,36 @@ async function banco(): Promise<ClienteBanco | null> {
 
 const TIPOS = TIPOS_WHATSAPP.map((t) => t.tipo);
 
+/** Como cada parâmetro aparece na mensagem de erro. */
+const NOME_DO_PARAMETRO: Record<ParametroWhatsapp, string> = {
+  hora_inicio: "O começo do horário de envio",
+  hora_fim: "O fim do horário de envio",
+  por_conta_dia: "O limite por pessoa por dia",
+  por_conta_dia_empresa: "O limite por conta de quem contrata por dia",
+  juntar_minutos: "A espera para juntar as candidaturas",
+  intervalo_vaga_horas: "O intervalo entre os avisos de uma vaga",
+  mensagem_minutos: "A espera da mensagem do chat",
+  intervalo_conversa_horas: "O intervalo entre os avisos de uma conversa",
+  validade_horas: "Quanto o aviso pode esperar na fila",
+};
+
+/** Número inteiro dentro da faixa, ou a frase do erro. */
+function inteiro(valor: unknown, nome: string, min: number, max: number): number | string {
+  const n = typeof valor === "string" && !valor.trim() ? NaN : Number(valor);
+  if (!Number.isInteger(n) || n < min || n > max)
+    return `${nome}: use um número inteiro de ${min.toLocaleString("pt-BR")} a ${max.toLocaleString("pt-BR")}.`;
+  return n;
+}
+
 export async function salvarWhatsapp(dados: {
   ativo: boolean;
   paraTodos: boolean;
   numerosTeste: string;
-  limiteDia: number;
-  limiteMes: number;
-  porContaDia: number;
+  limiteDia: number | string;
+  limiteMes: number | string;
   tiposLigados: string[];
+  /** os parâmetros do envio (o que faltar fica como está) */
+  parametros: Partial<Record<ParametroWhatsapp, number | string>>;
 }): Promise<Resultado> {
   const c = await banco();
   if (!c) return { ok: false, erro: "Só a equipe do Publike." };
@@ -45,19 +68,47 @@ export async function salvarWhatsapp(dados: {
     .map((n) => (n.length <= 11 ? `55${n}` : n));
   const ruins = numeros.filter((n) => !/^55[1-9][0-9][0-9]{8,9}$/.test(n));
   if (ruins.length) return { ok: false, erro: `Número de teste inválido: ${ruins[0]}. Use DDD e número, como 62 99999-0000.` };
+  const limiteDia = inteiro(dados.limiteDia, "O limite por dia", 0, 100_000);
+  if (typeof limiteDia === "string") return { ok: false, erro: limiteDia };
+  const limiteMes = inteiro(dados.limiteMes, "O limite por mês", 0, 1_000_000);
+  if (typeof limiteMes === "string") return { ok: false, erro: limiteMes };
+  const p: Partial<Record<ParametroWhatsapp, number>> = {};
+  for (const k of Object.keys(PARAMETROS_WHATSAPP) as ParametroWhatsapp[]) {
+    const v = dados.parametros?.[k];
+    if (v === undefined || v === null) continue;
+    const [min, max] = PARAMETROS_WHATSAPP[k].faixa;
+    const n = inteiro(v, NOME_DO_PARAMETRO[k], min, max);
+    if (typeof n === "string") return { ok: false, erro: n };
+    p[k] = n;
+  }
+  if (p.por_conta_dia === undefined) return { ok: false, erro: "Falta o limite por pessoa por dia." };
+  if (p.hora_inicio !== undefined && p.hora_fim !== undefined && p.hora_inicio >= p.hora_fim)
+    return { ok: false, erro: "O horário de envio precisa começar antes de terminar." };
   const ligados = new Set((dados.tiposLigados ?? []).filter((t) => TIPOS.includes(t)));
   const { error } = await c.rpc("admin_salvar_whatsapp", {
     p_ativo: Boolean(dados.ativo),
     p_para_todos: Boolean(dados.paraTodos),
     p_numeros_teste: numeros,
-    p_limite_dia: Math.round(Number(dados.limiteDia) || 0),
-    p_limite_mes: Math.round(Number(dados.limiteMes) || 0),
-    p_por_conta_dia: Math.round(Number(dados.porContaDia) || 1),
+    p_limite_dia: limiteDia,
+    p_limite_mes: limiteMes,
+    p_por_conta_dia: p.por_conta_dia,
     p_tipos_desligados: TIPOS.filter((t) => !ligados.has(t)),
+    p_por_conta_dia_empresa: p.por_conta_dia_empresa,
+    p_hora_inicio: p.hora_inicio,
+    p_hora_fim: p.hora_fim,
+    p_juntar_minutos: p.juntar_minutos,
+    p_intervalo_vaga_horas: p.intervalo_vaga_horas,
+    p_mensagem_minutos: p.mensagem_minutos,
+    p_intervalo_conversa_horas: p.intervalo_conversa_horas,
+    p_validade_horas: p.validade_horas,
   });
-  if (error) return { ok: false, erro: error.message || "Não deu para salvar agora." };
+  if (error) {
+    // o site já novo e o banco ainda sem a migração 20270710120000 (a função não conhece os parâmetros novos)
+    if (error.code === "PGRST202") return { ok: false, erro: "Falta rodar a migração 20270710120000 no banco." };
+    return { ok: false, erro: error.message || "Não deu para salvar agora." };
+  }
   refresh();
-  return { ok: true, mensagem: "Salvo." };
+  return { ok: true, mensagem: "Salvo. Os parâmetros valem a partir do próximo aviso." };
 }
 
 /** Cadastra na Meta os modelos que faltam e confere a aprovação de todos. */

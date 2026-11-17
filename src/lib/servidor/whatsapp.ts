@@ -64,6 +64,8 @@ type Botao = { tipo: "link"; texto: string; exemplo: string } | { tipo: "respost
 
 export type Modelo = {
   nome: string;
+  /** o aviso do Publike que sai por este modelo (o tipo da notificação; a escolha fica em montarMensagem) */
+  aviso: string;
   /** quem recebe e quando (para o Admin) */
   para: string;
   quando: string;
@@ -77,6 +79,7 @@ export const RODAPE_WHATSAPP = "Responda PARAR para não receber mais";
 export const MODELOS: Modelo[] = [
   {
     nome: "publike_match",
+    aviso: "match",
     para: "Candidato",
     quando: "A empresa aceitou a candidatura (o match)",
     corpo:
@@ -86,6 +89,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_entrevista",
+    aviso: "entrevista",
     para: "Candidato",
     quando: "Entrevista marcada ou remarcada",
     corpo:
@@ -95,6 +99,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_escolher_horario",
+    aviso: "entrevista",
     para: "Candidato",
     quando: "A empresa mandou horários para escolher",
     corpo:
@@ -104,6 +109,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_entrevista_amanha",
+    aviso: "entrevista_lembrete",
     para: "Candidato",
     quando: "Véspera da entrevista, à noite",
     corpo:
@@ -113,6 +119,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_te_respondeu",
+    aviso: "te_respondeu",
     para: "Candidato",
     quando: "2 dias depois do contato: a empresa respondeu?",
     corpo:
@@ -126,6 +133,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_deu_certo_v2",
+    aviso: "conquista_pergunta",
     para: "Candidato",
     quando: "7 dias depois: começou a trabalhar?",
     // 16/11/2026: a 1ª versão a Meta pôs em marketing; esta fala só da candidatura (utilidade)
@@ -140,6 +148,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_retorno",
+    aviso: "dispensada",
     para: "Candidato",
     quando: "Não seguiu: o retorno da empresa",
     corpo:
@@ -149,6 +158,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_candidato_novo",
+    aviso: "curtida",
     para: "Quem contrata",
     quando: "Candidatura nova (juntas por vaga)",
     corpo: "Oi, {{nome}}! Chegou candidatura nova na vaga de {{vaga}}: {{candidatos}}. Veja e responda pelo Publike.",
@@ -157,6 +167,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_pedido_servico",
+    aviso: "curtida",
     para: "Prestador de serviço",
     quando: "Pedido novo num serviço",
     corpo: "Oi, {{nome}}! Chegou pedido novo para {{servico}} pelo Publike: {{clientes}}. Veja e responda pelo Publike.",
@@ -165,6 +176,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_esperando_resposta_v3",
+    aviso: "lembrete_curtida",
     para: "Quem contrata",
     quando: "Candidatura sem resposta há 1 e 3 dias",
     // 16/11/2026: a v1 e a v2 a Meta pôs em marketing; a v3 segue o jeito do publike_candidato_novo (utilidade)
@@ -175,6 +187,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_ainda_espera_v2",
+    aviso: "ainda_espera",
     para: "Quem contrata",
     quando: "O candidato disse que ainda não teve resposta",
     corpo:
@@ -184,6 +197,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_confirma_inicio",
+    aviso: "conquista_confirmar",
     para: "Quem contrata",
     quando: "Confirmar se a pessoa começou",
     corpo: "Oi, {{nome}}! {{candidato}} começou a trabalhar com vocês pela vaga de {{vaga}}? Toque numa opção para confirmar.",
@@ -195,6 +209,7 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_interesse_v2",
+    aviso: "interesse_local",
     para: "Quem contrata",
     quando: "\"Quero trabalhar aqui\" em Quem contrata perto",
     // 16/11/2026: a versão curta voltou "100: Invalid parameter" (variável demais para o tamanho do texto). A v3, sem o
@@ -207,8 +222,9 @@ export const MODELOS: Modelo[] = [
   },
   {
     nome: "publike_mensagem",
+    aviso: "mensagem",
     para: "Todos",
-    quando: "Mensagem nova no chat, sem ler há 10 minutos",
+    quando: "Mensagem nova no chat que ficou sem ler (a espera fica em Parâmetros)",
     // 16/11/2026: a versão curta voltou "100: Invalid parameter" (variável demais para o tamanho do texto)
     corpo:
       "Oi, {{nome}}! {{quem}} te mandou uma mensagem nova no chat do Publike e está esperando a sua resposta. Abra o Publike para ler e responder na conversa.",
@@ -288,10 +304,13 @@ async function graph<T>(
   }
 }
 
+/** Os códigos do erro que passa (a Meta ocupada, o limite por minuto). */
+const CODIGOS_PASSAGEIROS = [1, 2, 4, 80007, 130429, 131000, 131016, 131056];
+
 /** Erro que passa (a Meta ocupada, limite por minuto, rede): tenta de novo. */
 function passageiro(r: { status: number; erro: ErroMeta | null }) {
   const c = r.erro?.code;
-  return r.status === 0 || r.status >= 500 || r.status === 429 || [1, 2, 4, 80007, 130429, 131000, 131016, 131056].includes(c ?? -1);
+  return r.status === 0 || r.status >= 500 || r.status === 429 || CODIGOS_PASSAGEIROS.includes(c ?? -1);
 }
 
 /** O token ou a conta com problema: para tudo (não é culpa de um aviso). */
@@ -416,7 +435,10 @@ export async function enviarTeste(cfg: ConfigMeta, numero: string, modelos: Situ
   return { ok: false as const, erro: explicarErro(r.texto) };
 }
 
-/** O erro da Meta em português, para o Admin (os mais comuns na hora de ligar). */
+/**
+ * O erro da Meta em português, para o Admin: os da hora de ligar e os do envio e da entrega (a lista de códigos da
+ * API de nuvem). Sem código conhecido, ou já explicado, volta como veio.
+ */
 export function explicarErro(texto: string) {
   const codigo = Number(/^(\d+):/.exec(texto)?.[1] ?? 0);
   const explicacao: Record<number, string> = {
@@ -424,15 +446,48 @@ export function explicarErro(texto: string) {
     131047: "passaram 24 horas desde a última mensagem da pessoa; fora dessa janela, só sai modelo aprovado",
     131030: "o número não está na lista de destinatários do número de teste da Meta (Etapa 1 › Destinatário; até 5 números)",
     190: "o token venceu ou não vale (o token temporário da Meta dura 24 horas; use o do usuário do sistema)",
-    131026: "o número não tem WhatsApp ou não recebe mensagens agora",
+    131026: "o número não tem WhatsApp, o aplicativo da pessoa está desatualizado ou ela não aceitou os termos novos do WhatsApp",
     131042: "falta a forma de pagamento da conta do WhatsApp (Gerenciador do WhatsApp › Configurações)",
     132001: "o modelo não existe nesta conta ou ainda não foi aprovado",
-    133010: "o número do Publike ainda não foi registrado na API (Admin › WhatsApp › Registrar o número)",
+    133010: "o número do Publike ainda não foi registrado na API (Admin › WhatsApp › Ligação e teste)",
     131031: "a conta do WhatsApp está bloqueada pela Meta",
     10: "o token não tem permissão para esta conta do WhatsApp (atribua a conta ao usuário do sistema)",
     200: "o token não tem permissão para esta conta do WhatsApp (atribua a conta ao usuário do sistema)",
+    // o envio e a entrega
+    4: "chamadas demais à Meta em pouco tempo",
+    100: "a Meta recusou um campo da mensagem (parâmetro inválido); confira o modelo e as variáveis",
+    368: "a conta foi bloqueada por um tempo por violar as regras da Meta (veja o Gerenciador do WhatsApp)",
+    80007: "a conta chegou no limite de envios da Meta por um tempo",
+    130429: "a Meta limitou a velocidade de envio (mensagens por segundo)",
+    130472: "a pessoa está num teste da Meta e não recebe mensagens de marketing",
+    131000: "erro desconhecido na Meta",
+    131005: "o app perdeu uma permissão na Meta (confira o usuário do sistema e o token)",
+    131008: "faltou um campo obrigatório na mensagem",
+    131009: "um valor da mensagem não vale para a Meta",
+    131016: "a Meta estava fora do ar",
+    131021: "o número de destino é o próprio número do Publike",
+    131037: "o número do Publike precisa do nome de exibição aprovado pela Meta antes de mandar",
+    131045: "o número do Publike está com erro de registro (registre de novo em Ligação e teste)",
+    131048: "a Meta limitou o número do Publike porque muitas mensagens foram bloqueadas ou marcadas como spam",
+    131049: "a Meta não entregou para não cansar a pessoa (o limite de mensagens de marketing por pessoa)",
+    131050: "a pessoa parou de receber mensagens de marketing de empresas no WhatsApp",
+    131051: "um tipo de mensagem que a Meta não aceita",
+    131056: "mensagens demais para a mesma pessoa em pouco tempo",
+    131057: "a conta do WhatsApp estava em manutenção na Meta",
+    132000: "o número de variáveis não bate com o do modelo aprovado",
+    132005: "o texto do modelo, com as variáveis, passou de 1.024 letras",
+    132012: "o formato de uma variável não bate com o do modelo aprovado",
+    132015: "a Meta pausou o modelo por baixa qualidade (muita gente bloqueou ou denunciou)",
+    132016: "a Meta desligou o modelo de vez (foi pausado vezes demais); é preciso cadastrar outro",
+    133004: "a Meta estava com um problema técnico",
+    135000: "erro genérico da Meta com os dados da mensagem",
   };
   return explicacao[codigo] ? `${explicacao[codigo]} (${texto})` : texto;
+}
+
+/** O erro passageiro pelo texto guardado na fila ("130429: …"): o robô tenta de novo até 3 vezes. */
+export function erroPassageiro(texto: string) {
+  return CODIGOS_PASSAGEIROS.includes(Number(/^(\d+):/.exec(texto)?.[1] ?? 0));
 }
 
 type DadosDoNumero = {

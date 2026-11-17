@@ -7,8 +7,19 @@ function diaMes(iso: string) {
   return `${d}/${m}`;
 }
 
-/** Barras por dia (últimos 30 dias). Sem biblioteca: SVG simples, que escala com a largura. */
-export function Barras({ titulo, valores, dias }: { titulo: string; valores: number[]; dias: string[] }) {
+/** Barras por dia (últimos 30 dias, ou o `periodo`). Sem biblioteca: SVG simples, que escala com a largura. */
+export function Barras({
+  titulo,
+  valores,
+  dias,
+  periodo = "30 dias",
+}: {
+  titulo: string;
+  valores: number[];
+  dias: string[];
+  /** quantos dias as barras mostram, como aparece no texto ("7 dias") */
+  periodo?: string;
+}) {
   const total = valores.reduce((a, b) => a + b, 0);
   const maior = Math.max(...valores, 0);
   const iMaior = valores.indexOf(maior);
@@ -16,13 +27,15 @@ export function Barras({ titulo, valores, dias }: { titulo: string; valores: num
   const altura = 56;
   const descricao =
     total === 0
-      ? `${titulo}: nenhum nos últimos 30 dias.`
-      : `${titulo}: ${total} nos últimos 30 dias; o dia com mais foi ${diaMes(dias[iMaior])}, com ${maior}.`;
+      ? `${titulo}: nenhum nos últimos ${periodo}.`
+      : `${titulo}: ${total} nos últimos ${periodo}; o dia com mais foi ${diaMes(dias[iMaior])}, com ${maior}.`;
   return (
     <figure className="flex flex-col gap-2">
       <figcaption className="flex items-baseline justify-between gap-3">
         <span className="text-label">{titulo}</span>
-        <span className="text-body-sm text-ink-muted">{formatarNumero(total)} em 30 dias</span>
+        <span className="text-body-sm text-ink-muted">
+          {formatarNumero(total)} em {periodo}
+        </span>
       </figcaption>
       <svg viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none" role="img" aria-label={descricao} className="h-16 w-full">
         {valores.map((v, i) => {

@@ -12,9 +12,15 @@ import {
   type NumeroDaMeta,
 } from "@/lib/acoes/whatsapp-admin";
 import { classesBotao } from "../ui/botao";
-import { classesEntrada } from "../ui/campo";
+import { classesEntrada, Seletor } from "../ui/campo";
 import { formatarNumero } from "@/lib/formato";
-import { dolares, TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
+import {
+  dolares,
+  PARAMETROS_WHATSAPP,
+  TIPOS_WHATSAPP,
+  type ParametrosWhatsapp,
+  type ParametroWhatsapp,
+} from "@/lib/whatsapp-tipos";
 
 // As partes de Admin › WhatsApp que mexem (claude/plano-whatsapp-oficial.md).
 
@@ -29,20 +35,105 @@ function Resposta({ r }: { r: { ok: boolean; texto: string } | null }) {
 
 type Estimativa = Record<string, { todos: number; aceitaram: number }>;
 
+export type ConfigInicial = {
+  ativo: boolean;
+  para_todos: boolean;
+  numeros_teste: string[];
+  limite_dia: number;
+  limite_mes: number;
+  tipos_desligados: string[];
+  /** o horário, os limites por conta, os tempos de juntar e espaçar e a validade (migração 20270710120000) */
+  parametros: ParametrosWhatsapp;
+};
+
+type Textos = Record<ParametroWhatsapp, string>;
+
+const comoTexto = (p: ParametrosWhatsapp) =>
+  Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)])) as Textos;
+
+/** Os tempos que o "Voltar ao padrão" refaz (os limites por conta ficam como estão). */
+const TEMPOS: ParametroWhatsapp[] = [
+  "hora_inicio",
+  "hora_fim",
+  "juntar_minutos",
+  "intervalo_vaga_horas",
+  "mensagem_minutos",
+  "intervalo_conversa_horas",
+  "validade_horas",
+];
+
+/** Uma frase com o número no meio: "Esperar [5] minutos para juntar…". */
+function Frase({
+  antes,
+  depois,
+  valor,
+  mudar,
+  faixa,
+}: {
+  antes: string;
+  depois: string;
+  valor: string;
+  mudar: (v: string) => void;
+  faixa: readonly [number, number];
+}) {
+  return (
+    <label className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-ink">
+      <span>{antes}</span>
+      <span className="w-20 shrink-0">
+        <input
+          type="number"
+          inputMode="numeric"
+          required
+          min={faixa[0]}
+          max={faixa[1]}
+          step={1}
+          value={valor}
+          onChange={(e) => mudar(e.target.value)}
+          className={classesEntrada}
+        />
+      </span>
+      <span>{depois}</span>
+    </label>
+  );
+}
+
+function Hora({
+  rotulo,
+  valor,
+  mudar,
+  horas,
+}: {
+  rotulo: string;
+  valor: string;
+  mudar: (v: string) => void;
+  horas: number[];
+}) {
+  return (
+    <Seletor
+      envoltorio="w-32 shrink-0"
+      aria-label={rotulo}
+      value={valor}
+      onChange={(e) => mudar(e.target.value)}
+      className={classesEntrada}
+    >
+      {horas.map((h) => (
+        <option key={h} value={h}>
+          {h === 24 ? "24h (meia-noite)" : `${h}h`}
+        </option>
+      ))}
+    </Seletor>
+  );
+}
+
+const HORAS_DO_INICIO = Array.from({ length: 24 }, (_, h) => h);
+const HORAS_DO_FIM = Array.from({ length: 24 }, (_, h) => h + 1);
+
 export function ConfigWhatsapp({
   inicial,
   estimativa,
   enviadasNoMes,
 }: {
-  inicial: {
-    ativo: boolean;
-    para_todos: boolean;
-    numeros_teste: string[];
-    limite_dia: number;
-    limite_mes: number;
-    por_conta_dia: number;
-    tipos_desligados: string[];
-  };
+  inicial: ConfigInicial;
   /** quantos de cada aviso o Publike gerou em 30 dias (de quem já aceitou e de todos) */
   estimativa: Estimativa;
   enviadasNoMes: number;
@@ -52,12 +143,16 @@ export function ConfigWhatsapp({
   const [numeros, setNumeros] = useState(inicial.numeros_teste.join("\n"));
   const [limite, setLimite] = useState(String(inicial.limite_dia));
   const [limiteMes, setLimiteMes] = useState(String(inicial.limite_mes));
-  const [porConta, setPorConta] = useState(String(inicial.por_conta_dia));
+  const [p, setP] = useState<Textos>(() => comoTexto(inicial.parametros));
   const [ligados, setLigados] = useState(
     () => new Set(TIPOS_WHATSAPP.map((t) => t.tipo).filter((t) => !inicial.tipos_desligados.includes(t))),
   );
   const [pendente, iniciar] = useTransition();
   const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const mudar = (k: ParametroWhatsapp) => (v: string) => {
+    setP((atual) => ({ ...atual, [k]: v }));
+    setResposta(null);
+  };
 
   const est = (t: string) => estimativa[t] ?? { todos: 0, aceitaram: 0 };
   const somaLigados = (campo: "todos" | "aceitaram") =>
@@ -65,6 +160,15 @@ export function ConfigWhatsapp({
   const teto = Math.max(0, Math.round(Number(limiteMes) || 0));
   const hoje = Math.min(somaLigados("aceitaram"), teto);
   const todos = Math.min(somaLigados("todos"), teto);
+
+  const inicio = Number(p.hora_inicio);
+  const fimDoHorario = Number(p.hora_fim);
+  const horarioRuim = !(inicio < fimDoHorario);
+  // fora do horário o aviso espera; se a espera máxima for menor que a janela fechada, o da noite vence antes de sair
+  const fechado = horarioRuim ? 0 : 24 - (fimDoHorario - inicio);
+  const validade = Number(p.validade_horas);
+  const venceAntes = !horarioRuim && Number.isFinite(validade) && validade > 0 && validade < fechado;
+  const tempoNoPadrao = TEMPOS.every((k) => Number(p[k]) === PARAMETROS_WHATSAPP[k].padrao);
 
   function predefinir(qual: "economico" | "tudo") {
     setLigados(new Set(TIPOS_WHATSAPP.filter((t) => qual === "tudo" || t.economico).map((t) => t.tipo)));
@@ -75,9 +179,14 @@ export function ConfigWhatsapp({
     setResposta(null);
   }
 
+  function voltarAoPadrao() {
+    setP((atual) => ({ ...atual, ...Object.fromEntries(TEMPOS.map((k) => [k, String(PARAMETROS_WHATSAPP[k].padrao)])) }));
+    setResposta(null);
+  }
+
   return (
     <form
-      className="flex flex-col gap-5"
+      className="flex flex-col gap-6"
       onSubmit={(e) => {
         e.preventDefault();
         setResposta(null);
@@ -86,10 +195,10 @@ export function ConfigWhatsapp({
             ativo,
             paraTodos,
             numerosTeste: numeros,
-            limiteDia: Number(limite),
-            limiteMes: Number(limiteMes),
-            porContaDia: Number(porConta),
+            limiteDia: limite,
+            limiteMes,
             tiposLigados: [...ligados],
+            parametros: p,
           });
           setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Salvo." } : { ok: false, texto: r.erro });
         });
@@ -160,11 +269,13 @@ export function ConfigWhatsapp({
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-label text-ink">Limites (o teto do gasto)</legend>
-        <div className="flex flex-wrap gap-4">
-          <label className="flex w-40 flex-col gap-1.5">
+        <div className="grid grid-cols-2 items-end gap-4 sm:flex sm:flex-wrap">
+          <label className="flex flex-col gap-1.5 sm:w-40">
             <span className="text-body-sm text-ink">Por mês</span>
             <input
               type="number"
+              inputMode="numeric"
+              required
               min={0}
               max={1000000}
               value={limiteMes}
@@ -172,10 +283,12 @@ export function ConfigWhatsapp({
               className={classesEntrada}
             />
           </label>
-          <label className="flex w-40 flex-col gap-1.5">
-            <span className="text-body-sm text-ink">Por dia</span>
+          <label className="flex flex-col gap-1.5 sm:w-40">
+            <span className="text-body-sm text-ink">Por dia (todas)</span>
             <input
               type="number"
+              inputMode="numeric"
+              required
               min={0}
               max={100000}
               value={limite}
@@ -183,23 +296,126 @@ export function ConfigWhatsapp({
               className={classesEntrada}
             />
           </label>
-          <label className="flex w-40 flex-col gap-1.5">
-            <span className="text-body-sm text-ink">Por conta por dia</span>
+          <label className="flex flex-col gap-1.5 sm:w-40">
+            <span className="text-body-sm text-ink">Por pessoa por dia</span>
             <input
               type="number"
-              min={1}
-              max={20}
-              value={porConta}
-              onChange={(e) => setPorConta(e.target.value)}
+              inputMode="numeric"
+              required
+              min={PARAMETROS_WHATSAPP.por_conta_dia.faixa[0]}
+              max={PARAMETROS_WHATSAPP.por_conta_dia.faixa[1]}
+              value={p.por_conta_dia}
+              onChange={(e) => mudar("por_conta_dia")(e.target.value)}
+              className={classesEntrada}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 sm:w-48">
+            <span className="text-body-sm text-ink">Por quem contrata por dia</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              required
+              min={PARAMETROS_WHATSAPP.por_conta_dia_empresa.faixa[0]}
+              max={PARAMETROS_WHATSAPP.por_conta_dia_empresa.faixa[1]}
+              value={p.por_conta_dia_empresa}
+              onChange={(e) => mudar("por_conta_dia_empresa")(e.target.value)}
               className={classesEntrada}
             />
           </label>
         </div>
         <p className="max-w-2xl text-body-sm text-ink-muted">
           No máximo {formatarNumero(teto)} mensagens por mês, {dolares(teto)} (US$ 0,0068 cada). Neste mês saíram{" "}
-          {formatarNumero(enviadasNoMes)}. Chegando no teto, o envio para até o dia 1º. Quem contrata pode receber o dobro
-          do limite por conta. Os avisos saem das 8h às 21h.
+          {formatarNumero(enviadasNoMes)}. Chegando no teto, o envio para até o dia 1º. O limite do dia conta as últimas
+          24 horas. Quem contrata tem o próprio limite por conta (os candidatos de várias vagas).
         </p>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-label text-ink">Horário de envio</legend>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-ink">
+          <span>Os avisos saem das</span>
+          <Hora rotulo="Começo do horário" valor={p.hora_inicio} mudar={mudar("hora_inicio")} horas={HORAS_DO_INICIO} />
+          <span>às</span>
+          <Hora rotulo="Fim do horário" valor={p.hora_fim} mudar={mudar("hora_fim")} horas={HORAS_DO_FIM} />
+          <span>(hora de Brasília).</span>
+        </div>
+        {horarioRuim ? (
+          <p role="alert" className="text-body-sm text-danger">
+            O horário precisa começar antes de terminar.
+          </p>
+        ) : (
+          <p className="max-w-2xl text-body-sm text-ink-muted">
+            Fora do horário, o aviso espera na fila e sai às {inicio}h (a fila fica fechada {fechado} horas por dia).
+          </p>
+        )}
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-label text-ink">Juntar e espaçar</legend>
+        <div className="flex flex-col gap-2">
+          <p className="text-body-sm font-semibold text-ink">Candidatura nova (para quem contrata)</p>
+          <Frase
+            antes="Esperar"
+            depois="minutos para juntar as da mesma vaga numa mensagem só."
+            valor={p.juntar_minutos}
+            mudar={mudar("juntar_minutos")}
+            faixa={PARAMETROS_WHATSAPP.juntar_minutos.faixa}
+          />
+          <Frase
+            antes="Depois de um aviso de uma vaga, o próximo dela espera"
+            depois="horas."
+            valor={p.intervalo_vaga_horas}
+            mudar={mudar("intervalo_vaga_horas")}
+            faixa={PARAMETROS_WHATSAPP.intervalo_vaga_horas.faixa}
+          />
+          <p className="max-w-2xl text-body-sm text-ink-muted">
+            As candidaturas desse tempo vão juntas (“Ana e mais 2 pessoas”). Se quem contrata vir no Publike antes, a
+            mensagem não sai.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-body-sm font-semibold text-ink">Mensagem nova no chat</p>
+          <Frase
+            antes="Esperar"
+            depois="minutos sem ler antes de avisar."
+            valor={p.mensagem_minutos}
+            mudar={mudar("mensagem_minutos")}
+            faixa={PARAMETROS_WHATSAPP.mensagem_minutos.faixa}
+          />
+          <Frase
+            antes="Depois de um aviso de uma conversa, o próximo dela espera"
+            depois="horas."
+            valor={p.intervalo_conversa_horas}
+            mudar={mudar("intervalo_conversa_horas")}
+            faixa={PARAMETROS_WHATSAPP.intervalo_conversa_horas.faixa}
+          />
+          <p className="max-w-2xl text-body-sm text-ink-muted">Se a pessoa ler no Publike nesse tempo, não sai.</p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-body-sm font-semibold text-ink">Na fila</p>
+          <Frase
+            antes="O aviso pode esperar na fila até"
+            depois="horas."
+            valor={p.validade_horas}
+            mudar={mudar("validade_horas")}
+            faixa={PARAMETROS_WHATSAPP.validade_horas.faixa}
+          />
+          <p className="max-w-2xl text-body-sm text-ink-muted">
+            Passou disso (fora do horário, no limite do dia ou com o modelo em análise na Meta), o aviso é descartado:
+            velho, ele já não ajuda. Continua no sino e no e-mail.
+          </p>
+          {venceAntes && (
+            <p role="alert" className="max-w-2xl text-body-sm text-terra-text">
+              Com {validade} horas, o aviso que chega logo depois das {fimDoHorario === 24 ? "24h" : `${fimDoHorario}h`}{" "}
+              vence antes de a fila abrir, às {inicio}h (ela fica fechada {fechado} horas).
+            </p>
+          )}
+        </div>
+        {!tempoNoPadrao && (
+          <button type="button" className={`${classesBotao("secundario")} self-start`} onClick={voltarAoPadrao}>
+            Voltar os tempos ao padrão
+          </button>
+        )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
@@ -258,7 +474,7 @@ export function ConfigWhatsapp({
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pendente} className={classesBotao("primario")}>
+        <button type="submit" disabled={pendente || horarioRuim} className={classesBotao("primario")}>
           {pendente ? "Salvando…" : "Salvar a configuração"}
         </button>
         <Resposta r={resposta} />

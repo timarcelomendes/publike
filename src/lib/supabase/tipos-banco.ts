@@ -4255,6 +4255,7 @@ export type Database = {
         Returns: Json;
       };
       admin_whatsapp: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_whatsapp_resultados: { Args: { p_dias?: number }; Returns: Json };
       admin_salvar_whatsapp: {
         Args: {
           p_ativo: boolean | null;
@@ -4264,6 +4265,14 @@ export type Database = {
           p_limite_mes: number | null;
           p_por_conta_dia: number | null;
           p_tipos_desligados: string[] | null;
+          p_por_conta_dia_empresa?: number | null;
+          p_hora_inicio?: number | null;
+          p_hora_fim?: number | null;
+          p_juntar_minutos?: number | null;
+          p_intervalo_vaga_horas?: number | null;
+          p_mensagem_minutos?: number | null;
+          p_intervalo_conversa_horas?: number | null;
+          p_validade_horas?: number | null;
         };
         Returns: undefined;
       };
