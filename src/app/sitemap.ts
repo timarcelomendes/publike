@@ -38,7 +38,13 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
   const lista: MetadataRoute.Sitemap = [];
   for (const tipo of ["vaga", "servico"] as TipoAnuncio[]) {
     // os anúncios de todas as praças
-    const anuncios = (await Promise.all(PRACAS.map((p) => anunciosNoAr(tipo, p.cidade)))).flat();
+    // (sem repetir: a lista de cada praça pega 100 km, e a de Anápolis traz as vagas de Goiânia de novo; repetidas, a
+    // vaga contava duas vezes e o bairro de uma vaga só entrava no sitemap)
+    const anuncios = [
+      ...new Map(
+        (await Promise.all(PRACAS.map((p) => anunciosNoAr(tipo, p.cidade)))).flat().map((a) => [a.id, a] as const),
+      ).values(),
+    ];
     const cidades = new Set(CIDADES_PRINCIPAIS);
     for (const a of anuncios) if (cidadeDoSlug(slugDaCidade(a.cidade))) cidades.add(a.cidade);
     for (const cidade of cidades) {

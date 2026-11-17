@@ -101,12 +101,16 @@ export async function paginasDeFuncao(): Promise<
 > {
   // `ultima`: a vaga mais nova (o lastmod do sitemap)
   const lista = new Map<string, { cidade: string; funcao: FuncaoDaPagina; vagas: number; ultima?: string }>();
+  const vistas = new Set<string>();
   for (const praca of PRACAS) {
     const [todas, funcoes] = await Promise.all([
       anunciosNoAr("vaga", praca.cidade),
       funcoesDasVagasDaPraca(praca.cidade),
     ]);
     for (const a of todas) {
+      // a mesma vaga vem na lista de mais de uma praça (cada uma pega 100 km): conta uma vez
+      if (vistas.has(a.id)) continue;
+      vistas.add(a.id);
       const cbo = funcoes[a.id];
       if (!cbo || !cidadeDoSlug(slugDaCidade(a.cidade))) continue;
       const funcao = funcaoDaListaPeloCbo(cbo);
