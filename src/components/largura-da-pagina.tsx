@@ -6,12 +6,9 @@ import { useLayoutEffect } from "react";
 // A largura do topo, do "Voltar" e do rodapé (11/11/2026). Antes vinha de body:has(...) olhando a página, mas o Next
 // guarda escondida a página de onde se saiu (e o topo ficava com a largura dela) e o Safari não aceitou o :has com
 // :not que tentou contornar isso. Agora o <html> é marcado:
-// - data-largura="painel": pelo endereço (/painel e o que vem embaixo), no <head> e a cada troca de endereço;
+// - data-largura="painel": pelo endereço (/painel e o que vem embaixo), no <head> (SCRIPT_LARGURA, em
+//   lib/largura-da-pagina.ts: fora deste arquivo de cliente) e a cada troca de endereço;
 // - data-pagina-larga: pela página larga que está na tela (o Início de quem entrou na conta), com MarcarPaginaLarga.
-
-/** marca o html antes de pintar a primeira vez (no <head>), para o topo não pular */
-// Talentos (/talentos) tem a largura do painel desde 16/11/2026: é uma tela de trabalho de quem contrata
-export const SCRIPT_LARGURA = `(function(){var c=location.pathname;if(c==="/painel"||c.indexOf("/painel/")===0||c==="/talentos")document.documentElement.setAttribute("data-largura","painel")})()`;
 
 export function LarguraDaPagina() {
   const caminho = usePathname();

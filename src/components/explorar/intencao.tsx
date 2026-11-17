@@ -3,8 +3,7 @@
 import { ArrowRight, Briefcase, FileUser, HandHelping, UserSearch, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
-import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { salvarIntencao } from "@/lib/acoes/intencao";
 import { avisarPerguntaAberta } from "../boas-vindas-parceiro";
@@ -133,12 +132,16 @@ function OpcoesIntencao({
 export const classesAgoraNao =
   "inline-flex min-h-10 shrink-0 items-center text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60";
 
-const noCliente = () => () => {};
-
 /**
  * Primeira visita: a pergunta numa janela por cima da página (folha de baixo no celular,
  * caixa no meio no computador), para ninguém deixar de ver. O topo da página continua leve.
  * "Agora não" (ou Esc, ou tocar fora) fecha; a pergunta volta na próxima visita.
+ *
+ * Vem no HTML do servidor (17/11/2026): montada só depois do JavaScript, ela era o maior conteúdo (LCP) da home no
+ * celular e aparecia segundos depois da página. Quem já tocou em "Agora não" nesta visita não a vê: o script do
+ * <head> marca o <html> (data-intencao-adiada, lib/aviso-cookies.ts) e o globals.css a esconde até o React decidir.
+ * O toque num botão antes de o React ficar pronto fica guardado e é refeito (lib/toque-cedo.ts). Fica no lugar
+ * (sem portal): nenhum bloco em volta prende um "position: fixed" (o lugar vira display: contents, em explorar.tsx).
  */
 export function FolhaIntencao({
   aoEscolher,
@@ -164,22 +167,15 @@ export function FolhaIntencao({
   useEffect(() => {
     fechar.current = aoAdiar;
   });
-  // só no navegador: no servidor não se sabe se a pessoa já fechou nesta visita
-  const montado = useSyncExternalStore(
-    noCliente,
-    () => true,
-    () => false,
-  );
 
   // na chegada, é a única janela: as boas-vindas não abrem por cima (e contam como vistas ao fechar)
   useEffect(() => {
-    if (!montado || !primeiraVisita) return;
+    if (!primeiraVisita) return;
     avisarPerguntaAberta(true);
     return () => avisarPerguntaAberta(false);
-  }, [montado, primeiraVisita]);
+  }, [primeiraVisita]);
 
   useEffect(() => {
-    if (!montado) return;
     const antes = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     // o foco vai para a janela (não para uma opção, que pareceria já escolhida)
@@ -190,12 +186,11 @@ export function FolhaIntencao({
       document.body.style.overflow = antes;
       document.removeEventListener("keydown", esc);
     };
-  }, [montado]);
+  }, []);
 
-  if (!montado) return null;
-  // no corpo da página: dentro de uma faixa que rola, a janela ficaria cortada
-  return createPortal(
+  return (
     <div
+      data-janela-intencao=""
       className="fixed inset-0 z-50 flex items-end justify-center bg-veu sm:items-center sm:p-6"
       onClick={(e) => e.target === e.currentTarget && aoAdiar()}
     >
@@ -240,8 +235,7 @@ export function FolhaIntencao({
           )}
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
 

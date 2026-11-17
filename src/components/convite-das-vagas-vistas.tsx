@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { salvarBusca } from "@/lib/acoes/buscas";
 import { registrarFunilVisitante } from "@/lib/acoes/funil-visitante";
+import { PARAMETRO_DA_VOLTA } from "@/lib/vagas-vistas";
 import { pedirEntrar } from "./folha-de-entrar";
 
 // O convite que acompanha o que a pessoa vê (claude/plano-visitante-que-entra.md): na página da vaga, para quem está
@@ -16,7 +17,6 @@ import { pedirEntrar } from "./folha-de-entrar";
 const CHAVE = "publike_vagas_vistas";
 const CHAVE_DEPOIS = "publike_convite_depois";
 const SETE_DIAS = 7 * 24 * 3600 * 1000;
-export const PARAMETRO_DA_VOLTA = "avisar_area";
 
 type Vista = { id: string; area: string; em: number };
 

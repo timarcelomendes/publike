@@ -232,11 +232,31 @@ export function Logo({ altura = 32, className = "" }: { altura?: number; classNa
   );
 }
 
-/** O símbolo sozinho: o pino vermelho com o check vazado (vermelho também no tema escuro). */
-export function Simbolo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
+/**
+ * O símbolo sozinho: o pino vermelho com o check vazado (vermelho também no tema escuro). `semPressa`: sem o
+ * pré-carregamento que o React põe no <head> para cada <img> de componente do servidor. A página "não encontrada"
+ * vai no RSC de todas as páginas (o Next a manda para o caso de um 404), e a imagem dela era pedida, com pressa,
+ * em todas, sem aparecer (17/11/2026).
+ */
+export function Simbolo({
+  altura = 32,
+  className = "",
+  semPressa = false,
+}: {
+  altura?: number;
+  className?: string;
+  semPressa?: boolean;
+}) {
   const largura = Math.round((altura * 131) / 183);
   return (
     // eslint-disable-next-line @next/next/no-img-element -- SVG pequeno e fixo, não precisa do otimizador
-    <img src="/logo/publike-simbolo.svg" alt="" width={largura} height={altura} className={`block ${className}`} />
+    <img
+      src="/logo/publike-simbolo.svg"
+      alt=""
+      width={largura}
+      height={altura}
+      fetchPriority={semPressa ? "low" : undefined}
+      className={`block ${className}`}
+    />
   );
 }

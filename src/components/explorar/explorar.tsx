@@ -485,7 +485,9 @@ export async function Explorar({
     filtros.meus || (comoBusca && feed) ? null : (
       // vazia (respondida, adiada ou sem nada a perguntar), some: um bloco de 0 px ainda ganhava o espaço entre os
       // blocos (16 px), e os cartões começavam abaixo do mapa ao lado (12/11/2026)
-      <div className={`empty:hidden ${respondidas ? "lg:hidden" : ""}`}>
+      // com a janela da primeira visita (fixa, por cima de tudo, já no HTML), o bloco não ocupa lugar na coluna
+      // (display: contents): fechada a janela, ela some sem a lista pular
+      <div className={`empty:hidden has-[>[data-janela-intencao]]:contents ${respondidas ? "lg:hidden" : ""}`}>
         <PerguntasNaLista
           filtros={filtros}
           intencao={intencao}

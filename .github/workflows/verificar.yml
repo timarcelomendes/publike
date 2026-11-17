@@ -29,6 +29,8 @@ jobs:
         run: npx tsc --noEmit
       - name: ESLint
         run: npm run lint
+      - name: Nenhuma constante de "use client" no servidor
+        run: node scripts/ci/constantes-de-cliente.mjs
 
   migracoes:
     name: Migrações do banco

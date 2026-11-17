@@ -616,3 +616,9 @@ html[data-ck-visto] [data-aviso-cookies],
 html[data-bv-pendente] [data-aviso-cookies] {
   display: none;
 }
+
+/* a pergunta da primeira visita da home ("O que você quer fazer no Publike?", explorar/intencao.tsx) vem no HTML;
+   antes do React, some para quem já tocou em "Agora não" nesta visita (o mesmo script do <head>) */
+html[data-intencao-adiada] [data-janela-intencao] {
+  display: none;
+}

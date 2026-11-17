@@ -3,6 +3,7 @@
 import { ChevronDown, House, LocateFixed, X } from "lucide-react";
 import { useId, useState, useSyncExternalStore, useTransition, type FormEvent } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
+import { CHAVE_PERGUNTA_ADIADA } from "@/lib/aviso-cookies";
 import { buscarCep } from "@/lib/acoes/cep";
 import { esquecerLocal, salvarLocal } from "@/lib/acoes/local";
 import { formatarCep, limparCep } from "@/lib/cep";
@@ -233,7 +234,8 @@ export function PainelOndeMora({
   );
 }
 
-const ADIADO = "publike_onde_mora_depois";
+// a mesma chave que o script do <head> lê para esconder a pergunta que vem no HTML (lib/aviso-cookies.ts)
+const ADIADO = CHAVE_PERGUNTA_ADIADA;
 const EVENTO_ADIADO = "publike-onde-mora-depois";
 
 /** A pessoa tocou em "Agora não" nesta visita: a pergunta some até ela fechar o navegador. */

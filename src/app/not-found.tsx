@@ -7,7 +7,8 @@ export default function NaoEncontrado() {
     <Container className="flex flex-col items-center py-16 text-center">
       {/* o tempo nesta página conta como "não encontrada", não pelo endereço */}
       <MarcarNaoEncontrada />
-      <Simbolo altura={56} />
+      {/* sem pressa: esta página vai no RSC de todas (para o caso de um 404) e a imagem não deve ser pré-carregada */}
+      <Simbolo altura={56} semPressa />
       <h1 className="mt-6 text-h2 sm:text-h1">Não encontramos essa página</h1>
       <p className="mt-2 max-w-md text-body text-ink-muted">
         O anúncio pode ter saído do ar, ou o link está errado.
