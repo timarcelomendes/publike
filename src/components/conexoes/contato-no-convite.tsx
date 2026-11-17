@@ -2,7 +2,6 @@
 
 import { Sparkles, Unlock } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { liberarContatoDaConexao, testarContatoNoConvite } from "@/lib/acoes/conexoes";
 import { mostrarContatoNoConvite } from "@/lib/acoes/talentos";
 import { Selo } from "../ui/basicos";
@@ -87,34 +86,55 @@ export function BotaoLiberarContato({ conexaoId }: { conexaoId: string }) {
 /**
  * Para quem procura, embaixo do aviso do sino: liberar já o WhatsApp e o e-mail às empresas com plano que pedirem
  * conexão, ou não (16/11/2026, Marcelo: "dar ao usuário a opção de liberar o acesso, no aviso do sino, assim ele
- * mesmo pode ter interesse").
+ * mesmo pode ter interesse"). Com a escolha feita, mostra o que vale e o "Mudar" no lugar dos botões. A escolha vem do
+ * banco (o sino lê ao abrir) e não da tela: a lista some quando o sino fecha, e os botões voltavam mesmo com a escolha
+ * salva (17/11/2026, Marcelo: "cliquei em Liberar várias vezes mas ele volta").
  */
-export function EscolherContatoNoConvite() {
+export function EscolherContatoNoConvite({
+  escolha,
+  aoEscolher,
+  aoSair,
+}: {
+  /** true: liberou; false: não liberou; null: ainda não escolheu (ou não deu para ler) */
+  escolha: boolean | null;
+  aoEscolher: (mostrar: boolean) => void;
+  /** tocou no "Mudar" (o sino fecha) */
+  aoSair?: () => void;
+}) {
   const { rodar, pendente, mensagem } = useAcao();
-  const [feito, setFeito] = useState(false);
-  const escolher = (mostrar: boolean) => rodar(() => mostrarContatoNoConvite(mostrar), (r) => r.ok && setFeito(true));
+  const escolher = (mostrar: boolean) => rodar(() => mostrarContatoNoConvite(mostrar), (r) => r.ok && aoEscolher(mostrar));
+  if (escolha !== null) {
+    return (
+      <p className="pb-2 pl-[42px] pr-3 text-[13px] text-ink-muted">
+        {escolha
+          ? "Liberado: as empresas com plano que pedirem conexão veem o seu WhatsApp e e-mail."
+          : "Não liberado: o seu contato só aparece quando você aceitar a conexão ou der match numa vaga."}{" "}
+        <Link href="/perfil/curriculo#contato-no-convite" onClick={aoSair} className="text-ink underline underline-offset-2">
+          Mudar
+        </Link>
+      </p>
+    );
+  }
   return (
     <div className="flex flex-col gap-1 pb-2 pl-[42px] pr-3">
-      {!feito && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => escolher(true)}
-            className="min-h-9 rounded-pill bg-terra px-3 text-[13px] font-semibold text-on-terra transition-colors hover:bg-terra-hover disabled:opacity-60"
-          >
-            Liberar agora
-          </button>
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => escolher(false)}
-            className="min-h-9 rounded-sm px-2 text-[13px] text-ink-muted underline hover:text-ink disabled:opacity-60"
-          >
-            Não liberar
-          </button>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={pendente}
+          onClick={() => escolher(true)}
+          className="min-h-9 rounded-pill bg-terra px-3 text-[13px] font-semibold text-on-terra transition-colors hover:bg-terra-hover disabled:opacity-60"
+        >
+          Liberar agora
+        </button>
+        <button
+          type="button"
+          disabled={pendente}
+          onClick={() => escolher(false)}
+          className="min-h-9 rounded-sm px-2 text-[13px] text-ink-muted underline hover:text-ink disabled:opacity-60"
+        >
+          Não liberar
+        </button>
+      </div>
       {mensagem}
     </div>
   );

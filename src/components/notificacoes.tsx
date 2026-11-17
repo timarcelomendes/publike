@@ -160,6 +160,19 @@ type Notificacao = {
   link?: string | null;
 };
 
+/** O aviso do contato no convite (migração 20270626120000), com "Liberar agora" e "Não liberar" embaixo. */
+function ehAvisoDoContato(n: Notificacao) {
+  return n.tipo === "comunicado" && !!n.link?.startsWith("/perfil/curriculo#contato-no-convite");
+}
+
+/**
+ * O que o sino sabe de quem procura, para o que vai embaixo dos avisos: a escolha do contato no convite (null: ainda
+ * não escolheu) e se saiu de Talentos. Vem do banco a cada vez que o sino abre, porque a lista some ao fechar e a
+ * escolha também muda em "Quem vê seu currículo" (17/11/2026, Marcelo: "cliquei em Liberar várias vezes mas ele
+ * volta"). "lendo": a primeira leitura não voltou. Sem dar para ler, fica como antes (os botões aparecem).
+ */
+type DoTalento = { escolha: boolean | null; saiu: boolean } | "lendo";
+
 /** Sino com avisos de curtida e de match, que chegam na hora (Supabase Realtime). */
 export function Notificacoes({
   usuarioId,
@@ -172,6 +185,7 @@ export function Notificacoes({
   const [itens, setItens] = useState<Notificacao[]>([]);
   const [aberto, setAberto] = useState(false);
   const [agora, setAgora] = useState(0);
+  const [talento, setTalento] = useState<DoTalento>("lendo");
   const caixa = useRef<HTMLDivElement>(null);
   const naoLidas = itens.filter((i) => !i.lida).length;
 
@@ -226,10 +240,27 @@ export function Notificacoes({
     };
   }, [aberto]);
 
+  function lerTalento() {
+    // sem a migração ou sem internet: mantém o que já sabia; na primeira vez, os botões aparecem, como antes
+    const semLer = () => setTalento((t) => (t === "lendo" ? { escolha: null, saiu: false } : t));
+    void clienteDoNavegador()
+      .then((c) => c.rpc("meu_contato_no_convite_talento"))
+      .then(({ data, error }) => {
+        const d = data as { escolha?: unknown; situacao?: unknown } | null;
+        if (error || !d || typeof d !== "object") {
+          if (error) console.warn("Publike: não deu para ler a escolha do contato no convite:", error.message);
+          semLer();
+          return;
+        }
+        setTalento({ escolha: typeof d.escolha === "boolean" ? d.escolha : null, saiu: d.situacao === "fora" });
+      }, semLer);
+  }
+
   function alternar() {
     const abrir = !aberto;
     setAberto(abrir);
     setAgora(Date.now());
+    if (abrir && itens.some((n) => ehAvisoDoContato(n) || n.tipo === "convite")) lerTalento();
     if (abrir && naoLidas > 0) {
       const antes = itens;
       setItens((atual) => atual.map((i) => ({ ...i, lida: true })));
@@ -309,10 +340,19 @@ export function Notificacoes({
                         <span className="text-[13px] text-ink-muted">{tempoRelativo(n.criado_em, agora)}</span>
                       </span>
                     </Link>
-                    {n.tipo === "convite" && <PararConvites />}
+                    {n.tipo === "convite" && (
+                      <PararConvites
+                        saiu={talento !== "lendo" && talento.saiu}
+                        aoParar={() => setTalento((t) => (t === "lendo" ? t : { ...t, saiu: true }))}
+                      />
+                    )}
                     {/* o aviso do contato no convite (migração 20270626120000): liberar já ou não */}
-                    {n.tipo === "comunicado" && n.link?.startsWith("/perfil/curriculo#contato-no-convite") && (
-                      <EscolherContatoNoConvite />
+                    {ehAvisoDoContato(n) && talento !== "lendo" && (
+                      <EscolherContatoNoConvite
+                        escolha={talento.escolha}
+                        aoEscolher={(mostrar) => setTalento((t) => (t === "lendo" ? t : { ...t, escolha: mostrar }))}
+                        aoSair={() => setAberto(false)}
+                      />
                     )}
                   </li>
                 );
@@ -325,12 +365,16 @@ export function Notificacoes({
   );
 }
 
-/** No aviso de convite: parar os convites com um toque (sai de Talentos; volta em Currículo quando quiser). */
-function PararConvites() {
+/**
+ * No aviso de convite: parar os convites com um toque (sai de Talentos; volta em Currículo quando quiser). Quem já
+ * saiu (aqui ou em Currículo) não vê mais o "Não quero mais convites": antes, ele voltava ao abrir o sino de novo.
+ */
+function PararConvites({ saiu, aoParar }: { saiu: boolean; aoParar: () => void }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
   const [feito, setFeito] = useState(false);
   if (feito) return <div className="pb-2 pl-[42px] pr-3">{mensagem}</div>;
+  if (saiu) return null;
   return (
     <div className="flex flex-col gap-1 pb-2 pl-[42px] pr-3">
       {confirmar ? (
@@ -345,7 +389,11 @@ function PararConvites() {
               onClick={() =>
                 rodar(
                   () => mudarVisibilidadeCurriculo(false),
-                  (r) => r.ok && setFeito(true),
+                  (r) => {
+                    if (!r.ok) return;
+                    setFeito(true);
+                    aoParar();
+                  },
                 )
               }
               className="min-h-9 rounded-sm px-2 text-[13px] font-semibold text-danger underline disabled:opacity-60"
