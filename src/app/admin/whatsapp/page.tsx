@@ -433,7 +433,16 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
             </Situacao>
             {/* sem os resultados, os erros do período não foram vistos: não dá para dizer "nenhum" */}
             <Situacao ok={Boolean(res) && erros.length === 0}>
-              {erros.length > 0 ? plural(erros.length, "erro", "erros") : res ? "Nenhum erro" : "Erros: falta a migração do banco"}
+              {erros.length > 0
+                ? [
+                    graves > 0 && plural(graves, "erro", "erros"),
+                    erros.length > graves && plural(erros.length - graves, "ponto de atenção", "pontos de atenção"),
+                  ]
+                    .filter(Boolean)
+                    .join(" e ")
+                : res
+                  ? "Nenhum erro"
+                  : "Erros: falta a migração do banco"}
             </Situacao>
           </div>
         )}
@@ -555,7 +564,7 @@ function AbaResultados({
           <p>
             {graves.length > 1 && `${graves[0].titulo}. `}
             <Link href={enderecoDa("erros", periodo)} scroll={false} className="text-ink underline underline-offset-2">
-              Ver {erros.length === 1 ? "o erro" : `os ${formatarNumero(erros.length)} erros e avisos`}
+              Ver tudo na aba Erros
             </Link>
           </p>
         </Aviso>
