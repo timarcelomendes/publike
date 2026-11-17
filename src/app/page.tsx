@@ -5,6 +5,7 @@ import { Suspense, type ReactNode } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
 import { MarcarPaginaLarga } from "@/components/largura-da-pagina";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
+import { PerguntaDaChegada } from "@/components/explorar/pergunta-da-chegada";
 import { EmpresasContratando } from "@/components/home/empresas-contratando";
 import { FaixaArte } from "@/components/home/faixa-arte";
 import { ChamadaQuemContrata } from "@/components/home/quem-contrata-perto";
@@ -97,6 +98,10 @@ function HomeVisitante({ searchParams }: { searchParams: Parametros }) {
   return (
     <>
       <ContarFunilDaVitrine />
+      {/* a pergunta da primeira visita, fora da lista: só lê os cookies e vem logo depois do esqueleto (era o LCP) */}
+      <Suspense fallback={null}>
+        <PerguntaDaChegada searchParams={searchParams} />
+      </Suspense>
       <HeroVitrine
         busca={
           <Suspense fallback={<BuscaEsqueleto />}>
@@ -108,6 +113,7 @@ function HomeVisitante({ searchParams }: { searchParams: Parametros }) {
         <Suspense fallback={<ExplorarEsqueleto />}>
           <Explorar
             searchParams={searchParams}
+            janelaFora
             doPublike={
               <Suspense fallback={null}>
                 <CartaoDaVisita jeito="lista" />

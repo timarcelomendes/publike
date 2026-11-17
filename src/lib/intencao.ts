@@ -61,6 +61,12 @@ export const VOCE: Record<Intencao, string> = {
 
 export const COOKIE_INTENCAO = "publike_intencao";
 
+/**
+ * A resposta tocada na janela da chegada (explorar/janela-da-chegada.tsx, fora da lista): a lista
+ * (PerguntasNaLista) já mostra a pergunta seguinte, sem esperar o servidor.
+ */
+export const EVENTO_INTENCAO_ESCOLHIDA = "publike:intencao-escolhida";
+
 export function lerIntencao(valor: string | undefined | null): Intencao | null {
   return INTENCOES.some((i) => i.valor === valor) ? (valor as Intencao) : null;
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { Filtros } from "@/lib/filtros";
-import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
+import { EVENTO_INTENCAO_ESCOLHIDA, tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { AVISOS_GPS, pedirPosicao, useIrPara } from "./barra-busca";
 import { FaixaIntencao, FolhaIntencao, type ProximoPasso } from "./intencao";
 import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
@@ -22,9 +22,15 @@ export function PerguntasNaLista({
   temLocal,
   proximoPasso,
   cidade,
+  janelaFora = false,
 }: {
   filtros: Filtros;
   intencao: Intencao | null;
+  /**
+   * a janela da primeira visita vem de fora da lista (PerguntaDaChegada, na home de quem está sem conta): aqui, só
+   * o que vem depois da resposta
+   */
+  janelaFora?: boolean;
   /** a cidade de quem vê (`cidadeDaVisita`) */
   cidade: string;
   /** a pessoa já disse onde mora (CEP, bairro ou o bairro do perfil) */
@@ -39,6 +45,14 @@ export function PerguntasNaLista({
   const [avisoGps, setAvisoGps] = useState<string | null>(null);
   const painel = useId();
   const intencaoAtual = escolhidaAgora ?? intencao;
+
+  // a resposta tocada na janela da chegada (fora da lista): a próxima pergunta aparece já (a janela leva à busca)
+  useEffect(() => {
+    if (!janelaFora) return;
+    const aoEscolher = (e: Event) => setEscolhidaAgora((e as CustomEvent<Intencao>).detail);
+    window.addEventListener(EVENTO_INTENCAO_ESCOLHIDA, aoEscolher);
+    return () => window.removeEventListener(EVENTO_INTENCAO_ESCOLHIDA, aoEscolher);
+  }, [janelaFora]);
 
   // Procuro trabalho → Vagas; Quero contratar um serviço → Serviços; Ofereço serviços fica em
   // Tudo (Procuro funcionário vai para a aba Talentos: a própria pergunta leva, em intencao.tsx)
@@ -67,7 +81,8 @@ export function PerguntasNaLista({
   const buscaPronta = Boolean(filtros.q.trim()) || filtros.ordem === "recentes";
   if (!intencaoAtual && buscaPronta) return null;
   if (!intencaoAtual) {
-    // "Agora não": a pergunta volta na próxima visita
+    // "Agora não": a pergunta volta na próxima visita (com a janela de fora, ela é que pergunta)
+    if (janelaFora) return null;
     return adiada ? null : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita cidade={cidade} />;
   }
 

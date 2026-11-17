@@ -187,6 +187,7 @@ export async function Explorar({
   abasDaBusca = false,
   contrata = false,
   doPublike = null,
+  janelaFora = false,
 }: {
   searchParams: Parametros;
   variante?: "vitrine" | "feed";
@@ -207,6 +208,11 @@ export async function Explorar({
   contrata?: boolean;
   /** o cartão "Do Publike" (só na vitrine de quem não tem conta, sem busca por palavra) */
   doPublike?: ReactNode;
+  /**
+   * a janela da primeira visita vem de fora da lista (PerguntaDaChegada, no alto da home de quem está sem conta):
+   * a lista não espera a busca dos anúncios para mostrá-la
+   */
+  janelaFora?: boolean;
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
@@ -259,6 +265,13 @@ export async function Explorar({
   // mesma busca até o maior raio diz quantos ficaram de fora e de onde (03/11/2026)
   const maiorRaio = RAIOS[RAIOS.length - 1];
   const veLonge = !filtros.meus && !filtros.tempo && filtros.raio < maiorRaio && !soAsQueCombinam;
+  // as vagas impulsionadas (claude/plano-destaque-das-vagas-impulsionadas.md): só as que passaram no filtro desta lista,
+  // no quadro do alto e nos espaços patrocinados. Fora de "Combina mais" (a lista do currículo), dos "Só os meus" e de
+  // quem contrata. Começam junto com a busca (em cache; antes, esperavam a busca terminar).
+  const comDestaque = !contrata && !filtros.meus && !soAsQueCombinam && filtros.tipo !== "servico";
+  const impulsionadasCedo: Promise<Record<string, VagaImpulsionada>> = comDestaque
+    ? vagasImpulsionadas().catch(() => ({}))
+    : Promise.resolve({});
   const [encontrados, proximoPasso, publica, quem, salvas, ateOMaior, combinamNoCartao] = await Promise.all([
     buscarAnuncios(
       soAsQueCombinam
@@ -318,7 +331,26 @@ export async function Explorar({
   const doCartao = soAsQueCombinam && combinamNoCartao ? encontrados.filter((a) => combinamNoCartao.has(a.id)) : null;
   // o que cada vaga pede e oferece: para o % de match, o turno (a busca do banco não filtra
   // turno) e a linha de benefícios do cartão
-  const requisitos = await requisitosDaLista(doCartao ?? encontrados).catch(() => null);
+  // O que vem dos anúncios encontrados, numa ida só ao banco (17/11/2026: eram duas, uma depois da outra, e as vagas
+  // impulsionadas numa terceira): o que cada vaga pede, quem responde, as curtidas, as salvas, os logos e os
+  // comentários. Vem para todos os encontrados (até 120, ou 200); a lista final é um pedaço deles.
+  const base = doCartao ?? encontrados;
+  const deOutros = base.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id);
+  const temMinhas = Boolean(usuario) && base.some((a) => a.autor_id === usuario?.id);
+  const [requisitos, resposta, curtidas, salvasAgora, minhas, logos, comentarios] = await Promise.all([
+    requisitosDaLista(base).catch(() => null),
+    respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map()),
+    // "12 já curtiram" no cartão, também para quem está sem conta (só o número, e só a partir de 3)
+    curtidasDasVagas(deOutros.map((a) => a.id)).catch(() => new Map()),
+    usuario ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
+    temMinhas ? listarMeusAnuncios().catch(() => []) : Promise.resolve([]),
+    // o logo de quem publicou (a foto do perfil), no alto do cartão
+    fotosDosAutores(base.map((a) => a.autor_id)),
+    // os comentários à vista no cartão (com o Indicar)
+    comentariosDasVagas(base.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+      () => new Map<string, ResumoComentarios>(),
+    ),
+  ]);
   const turno = filtros.turno;
   // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
   const ja = filtros.ja;
@@ -358,34 +390,14 @@ export async function Explorar({
     // tem a palavra no título vem antes (do mais perto ao mais longe dentro de cada grupo)
     anuncios = ordenarPeloTitulo(anuncios, termo);
   }
-  // as vagas impulsionadas (claude/plano-destaque-das-vagas-impulsionadas.md): só as que passaram no filtro desta lista,
-  // no quadro do alto e nos espaços patrocinados. Fora de "Combina mais" (a lista do currículo), dos "Só os meus" e de
-  // quem contrata.
-  const comDestaque = !contrata && !filtros.meus && !combina && filtros.tipo !== "servico";
-  const impulsionadas: Record<string, VagaImpulsionada> = comDestaque
-    ? await vagasImpulsionadas().catch(() => ({}))
-    : {};
+  // as impulsionadas (começaram junto com a busca, lá em cima)
+  const impulsionadas: Record<string, VagaImpulsionada> = await impulsionadasCedo;
   const destaques = destaquesDaLista(
     anuncios,
     (a) => a.tipo === "vaga" && a.autor_id !== usuario?.id && Boolean(impulsionadas[a.id]),
     agora,
   );
   anuncios = destaques.lista;
-  const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id);
-  const temMinhas = Boolean(usuario) && anuncios.some((a) => a.autor_id === usuario?.id);
-  const [resposta, curtidas, salvasAgora, minhas, logos, comentarios] = await Promise.all([
-    respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map()),
-    // "12 já curtiram" no cartão, também para quem está sem conta (só o número, e só a partir de 3)
-    curtidasDasVagas(deOutros.map((a) => a.id)).catch(() => new Map()),
-    usuario ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
-    temMinhas ? listarMeusAnuncios().catch(() => []) : Promise.resolve([]),
-    // o logo de quem publicou (a foto do perfil), no alto do cartão
-    fotosDosAutores(anuncios.map((a) => a.autor_id)),
-    // os comentários à vista no cartão (com o Indicar)
-    comentariosDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-      () => new Map<string, ResumoComentarios>(),
-    ),
-  ]);
   const minhaPorId = new Map(minhas.map((m) => [m.id, { curtidas: m.curtidas_total, novas: m.curtidas_novas }]));
   const buscaSalva = usuario && avisar ? acharBuscaSalva(filtros, salvas) : null;
 
@@ -494,6 +506,7 @@ export async function Explorar({
           temLocal={Boolean(local)}
           proximoPasso={proximoPasso}
           cidade={visita.cidade}
+          janelaFora={janelaFora}
         />
       </div>
     );
