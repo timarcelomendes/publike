@@ -62,10 +62,9 @@ export async function HeroVitrine({ busca }: { busca: ReactNode }) {
             </a>
           </p>
           <div className="text-ink sm:max-w-xl">{busca}</div>
-          {/* Quem contrata perto, logo abaixo da busca: o número de lugares perto e um toque até o mapa */}
-          <Suspense fallback={null}>
-            <ChamadaQuemContrata className="sm:max-w-xl" />
-          </Suspense>
+          {/* Quem contrata perto, logo abaixo da busca: o número de lugares perto e um toque até o mapa. Sem Suspense:
+              vem com a faixa, antes da lista (num Suspense próprio, chegava depois e empurrava a lista; até 300 ms) */}
+          <ChamadaQuemContrata className="sm:max-w-xl" />
           <Suspense fallback={null}>
             <PortaDeQuemContrata />
           </Suspense>

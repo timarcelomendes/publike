@@ -223,13 +223,10 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
               </div>
             </Suspense>
           )}
-          {/* Quem contrata perto no começo da linha (só para quem procura trabalho; a chamada some para empresa) */}
-          {!soOlhar && (
-            <Suspense fallback={null}>
-              <ChamadaQuemContrata className="mb-4" />
-            </Suspense>
-          )}
+          {/* Quem contrata perto no começo da linha (só para quem procura trabalho; a chamada some para empresa), no
+              mesmo Suspense da linha: aparecem juntas (num Suspense próprio, a chamada chegava depois e empurrava a linha) */}
           <Suspense fallback={<EsqueletoCards quantos={3} />}>
+            {!soOlhar && <ChamadaQuemContrata className="mb-4" />}
             <CentroDaLinha searchParams={searchParams} contratando={contratando} meio={meio} soOlhar={soOlhar} />
           </Suspense>
         </div>

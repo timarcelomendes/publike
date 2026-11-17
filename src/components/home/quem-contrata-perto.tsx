@@ -45,7 +45,27 @@ async function contarSemQuebrar(lat: number, lng: number, cbos: string[]) {
   }
 }
 
+/** O tempo que a chamada pode segurar a página (ela vem sem Suspense, junto com o que está embaixo dela). */
+const ORCAMENTO_MS = 300;
+
+/**
+ * A chamada vem sem Suspense em volta (17/11/2026): num Suspense próprio, ela chegava depois da lista e empurrava tudo
+ * para baixo (CLS de 0,16 no PageSpeed do celular). Agora aparece junto com o que está embaixo dela. Para não segurar
+ * a página, tem até 300 ms (quase sempre vem do cache em milissegundos); passou disso, fica de fora desta vez.
+ */
 export async function ChamadaQuemContrata({ className = "" }: { className?: string }) {
+  let espera: ReturnType<typeof setTimeout> | undefined;
+  const tempoEsgotado = new Promise<null>((ok) => {
+    espera = setTimeout(() => ok(null), ORCAMENTO_MS);
+  });
+  try {
+    return await Promise.race([montarChamada(className), tempoEsgotado]);
+  } finally {
+    clearTimeout(espera);
+  }
+}
+
+async function montarChamada(className: string) {
   // só para quem procura emprego (17/11/2026): nem empresa, comércio e agência, nem a pessoa que só contrata ou só
   // oferece serviços; sem conta, quem não disse que contrata ou oferece serviços
   if (!(await procuraEmprego())) return null;

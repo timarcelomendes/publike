@@ -25,8 +25,13 @@ export function carregarMapLibre() {
  * O mapa está (ou fica) à vista? Só então vale baixar o MapLibre: a coluna do mapa da home, que só
  * aparece no computador grande, e o mapa no pé da página da vaga não pesam no celular. Chegando perto
  * ao rolar (300 px), já começa a carregar.
+ *
+ * E só depois de a página carregar, com o navegador à toa (17/11/2026): o MapLibre é ~1 MB de JavaScript e a
+ * montagem do mapa trava a tela por 0,2 a 0,7 s. Na home do computador, isso vinha no meio da hidratação, e era a
+ * maior parte do Total Blocking Time (1,7 s no PageSpeed) e da espera dos primeiros cliques.
  */
 export function useMapaAVista(caixa: RefObject<HTMLElement | null>) {
+  const livre = usePaginaLivre();
   const [aVista, setAVista] = useState(false);
   useEffect(() => {
     const el = caixa.current;
@@ -42,7 +47,29 @@ export function useMapaAVista(caixa: RefObject<HTMLElement | null>) {
     olho.observe(el);
     return () => olho.disconnect();
   }, [caixa, aVista]);
-  return aVista;
+  return aVista && livre;
+}
+
+/** A página já carregou e o navegador ficou à toa (ou passaram 2 s do load): a hora do que pesa e pode esperar. */
+function usePaginaLivre() {
+  const [livre, setLivre] = useState(false);
+  useEffect(() => {
+    let cancelado = false;
+    const marcar = () => {
+      if (!cancelado) setLivre(true);
+    };
+    const depoisDoLoad = () => {
+      if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(marcar, { timeout: 2000 });
+      else setTimeout(marcar, 300);
+    };
+    if (document.readyState === "complete") depoisDoLoad();
+    else window.addEventListener("load", depoisDoLoad, { once: true });
+    return () => {
+      cancelado = true;
+      window.removeEventListener("load", depoisDoLoad);
+    };
+  }, []);
+  return livre;
 }
 
 export const ESTILO_MAPA = MAPA_ESTILO;
