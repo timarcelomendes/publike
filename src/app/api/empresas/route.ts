@@ -8,7 +8,8 @@ import type { Json } from "@/lib/supabase/tipos-banco";
 // A base de empresas da Receita (claude/plano-base-de-empresas-da-receita.md, parte 0): o robô do GitHub
 // (.github/workflows/empresas.yml) pergunta o que o site já tem e as cidades das praças (GET) e manda a carga do mês em
 // lotes (POST { acao: "lote" | "meis" | "cnaes" | "fim", ... }). O robô dos salários manda o que cada ramo contrata
-// (POST { acao: "ramos", linhas }). Sempre com "Authorization: Bearer <CRON_SECRET>", o mesmo segredo das filas.
+// (POST { acao: "ramos", linhas }) e quantas pessoas cada ramo contratou em cada cidade, em lotes
+// (POST { acao: "ramos_cidades", linhas, de, ate, limpar }). Sempre com "Authorization: Bearer <CRON_SECRET>", o mesmo segredo das filas.
 export const maxDuration = 60;
 
 function autorizado(cabecalho: string | null) {
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   return Response.json({ ok: true, situacao: data, pracas: pracasDosSalarios() });
 }
 
-type Corpo = { acao?: unknown; mes?: unknown; linhas?: unknown; resumo?: unknown };
+type Corpo = { acao?: unknown; mes?: unknown; linhas?: unknown; resumo?: unknown; de?: unknown; ate?: unknown; limpar?: unknown };
 
 export async function POST(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
@@ -48,11 +49,12 @@ export async function POST(request: Request) {
   const mes = typeof corpo?.mes === "string" && MES.test(corpo.mes) ? corpo.mes : null;
   const linhas = Array.isArray(corpo?.linhas) && corpo.linhas.length > 0 ? (corpo.linhas as Json) : null;
   const precisaMes = acao === "lote" || acao === "meis" || acao === "fim";
-  const precisaLinhas = acao === "lote" || acao === "meis" || acao === "cnaes" || acao === "ramos";
+  const precisaLinhas = acao === "lote" || acao === "meis" || acao === "cnaes" || acao === "ramos" || acao === "ramos_cidades";
   if (
     !corpo ||
-    !["lote", "meis", "cnaes", "fim", "ramos"].includes(String(acao)) ||
+    !["lote", "meis", "cnaes", "fim", "ramos", "ramos_cidades"].includes(String(acao)) ||
     (precisaMes && !mes) ||
+    (acao === "ramos_cidades" && !(typeof corpo.de === "string" && MES.test(corpo.de) && typeof corpo.ate === "string" && MES.test(corpo.ate))) ||
     (precisaLinhas && !linhas)
   ) {
     return Response.json(
@@ -73,7 +75,15 @@ export async function POST(request: Request) {
           ? await c.rpc("servidor_ramos_nomes", { p_chave, p_linhas: linhas! })
           : acao === "ramos"
             ? await c.rpc("servidor_ramos_salvar", { p_chave, p_linhas: linhas! })
-            : await c.rpc("servidor_empresas_fim", {
+            : acao === "ramos_cidades"
+              ? await c.rpc("servidor_ramos_cidades_salvar", {
+                  p_chave,
+                  p_linhas: linhas!,
+                  p_de: String(corpo.de),
+                  p_ate: String(corpo.ate),
+                  p_limpar: corpo.limpar === true,
+                })
+              : await c.rpc("servidor_empresas_fim", {
                 p_chave,
                 p_mes: mes!,
                 p_resumo: (corpo.resumo && typeof corpo.resumo === "object" ? corpo.resumo : {}) as Json,

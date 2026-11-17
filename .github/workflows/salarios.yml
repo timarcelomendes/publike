@@ -147,3 +147,25 @@ jobs:
             # os salários já foram; só avisa
             echo "::warning title=Ramos::O site respondeu $codigo ao receber o que cada ramo contrata."
           fi
+
+      - name: Quantas pessoas cada ramo contratou em cada cidade (nos cartões de Quem contrata perto)
+        if: steps.meses.outputs.novo == 'sim'
+        run: |
+          node scripts/salarios/caged.mjs cidades cidades.json --municipios ibge.json caged-go/go-*.tsv
+          # em lotes de 5 mil (o corpo da chamada tem limite); o primeiro apaga a conta velha
+          node -e '
+            const r = require("./cidades.json"); const fs = require("fs");
+            for (let i = 0, k = 0; i < r.linhas.length; i += 5000, k++)
+              fs.writeFileSync(`cidades-post-${String(k).padStart(3, "0")}.json`, JSON.stringify({
+                acao: "ramos_cidades", de: r.de, ate: r.ate, limpar: i === 0, linhas: r.linhas.slice(i, i + 5000) }));
+          '
+          for f in cidades-post-*.json; do
+            resposta=$(curl -sS --max-time 120 -w '\n%{http_code}' -X POST -H "Authorization: Bearer $SEGREDO" \
+              -H "Content-Type: application/json" --data-binary @"$f" "$SITE/api/empresas" || true)
+            codigo=$(printf '%s' "$resposta" | tail -n1)
+            echo "$f: $(echo "$resposta" | sed '$d')"
+            if [ "$codigo" != "200" ]; then
+              echo "::warning title=Ramos por cidade::O site respondeu $codigo ao receber $f; a conta fica incompleta até a próxima rodada."
+              break
+            fi
+          done

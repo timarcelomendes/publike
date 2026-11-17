@@ -4161,6 +4161,15 @@ export type Database = {
       /** desistir do "Quero trabalhar aqui" e os lugares em que já quero (migração 20270707120000) */
       desistir_interesse: { Args: { p_cnpj: string }; Returns: boolean };
       meus_interesses: { Args: { p_cnpjs: string[] }; Returns: string[] };
+      /** quantas pessoas o ramo contratou na cidade (migração 20270708120000) */
+      servidor_ramos_cidades_salvar: {
+        Args: { p_chave: string; p_linhas: Json; p_de: string; p_ate: string; p_limpar: boolean };
+        Returns: number;
+      };
+      contratacoes_do_ramo: {
+        Args: { p_cnpjs: string[] };
+        Returns: { cnpj: string; cidade: string; contratacoes: number; funcoes: Json; de: string; ate: string }[];
+      };
       admin_decidir_conteudo: { Args: { p_id: number; p_publicar: boolean }; Returns: string };
       /** o mapa dos talentos e os centros dos bairros (migração 20270630120000) */
       mapa_dos_talentos: {

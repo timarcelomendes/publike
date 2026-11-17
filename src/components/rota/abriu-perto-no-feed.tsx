@@ -3,6 +3,7 @@ import Link from "next/link";
 import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
 import { distanciaCurta } from "@/lib/rota-curriculo";
 import { funcoesParaARota, pontoDaPessoa } from "@/lib/servidor/funcoes-da-rota";
+import { NOTA_DO_RAMO, ramoNaCidade } from "@/lib/servidor/ramo-na-cidade";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { QueroTrabalharAqui } from "./quero-trabalhar-aqui";
 import { bairroDaReceita } from "@/lib/cnpj";
@@ -27,7 +28,12 @@ export async function AbriuPertoNoFeed() {
   });
   if (error || !data?.length) return null;
   // os lugares em que a pessoa já disse "quero trabalhar aqui" (abrem com o Desistir)
-  const quero = new Set<string>((await banco.rpc("meus_interesses", { p_cnpjs: data.map((l) => l.cnpj) })).data ?? []);
+  // e quantas pessoas o ramo de cada um contratou na cidade (Novo Caged; do ramo, não da empresa)
+  const [queroLista, noRamo] = await Promise.all([
+    banco.rpc("meus_interesses", { p_cnpjs: data.map((l) => l.cnpj) }).then((r) => r.data ?? []),
+    ramoNaCidade(data.map((l) => l.cnpj)),
+  ]);
+  const quero = new Set<string>(queroLista);
   const titulo = funcoes.find((f) => f.cbo === data[0].cbo)?.titulo ?? funcoes[0].titulo;
   return (
     <section
@@ -48,6 +54,7 @@ export async function AbriuPertoNoFeed() {
               , {[l.bairro && bairroDaReceita(l.bairro), `a ${distanciaCurta(l.distancia_m)} ${onde.deCasa ? "de casa" : "do seu bairro"}`].filter(Boolean).join(", ")}
             </span>
             </span>
+            {noRamo.get(l.cnpj) && <span className="text-ink-muted">{noRamo.get(l.cnpj)}.</span>}
             <QueroTrabalharAqui
               cnpj={l.cnpj}
               nome={l.nome}
@@ -57,7 +64,9 @@ export async function AbriuPertoNoFeed() {
           </li>
         ))}
       </ul>
-      <p className="text-ink-muted">Lugar novo costuma contratar. Diga que quer trabalhar lá.</p>
+      <p className="text-ink-muted">
+        Lugar novo costuma contratar. Diga que quer trabalhar lá.{noRamo.size > 0 && <> {NOTA_DO_RAMO}</>}
+      </p>
       <Link
         href={`/quem-contrata-perto?cbo=${data[0].cbo}`}
         className="self-start text-label text-ink underline underline-offset-4 hover:no-underline"

@@ -16,6 +16,7 @@ import { caminhoDaFuncao, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas
 import { obterLocal } from "@/lib/local";
 import { RAIOS_DA_ROTA } from "@/lib/rota-curriculo";
 import { funcoesParaARota, nomeDoLugarAqui, origemDaRota, vagasDaFuncaoPerto } from "@/lib/servidor/funcoes-da-rota";
+import { NOTA_DO_RAMO, ramoNaCidade } from "@/lib/servidor/ramo-na-cidade";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -164,11 +165,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contr
   const linhas = resposta.data ?? [];
   const umAno = 365 * 24 * 3600_000;
   // os lugares em que a pessoa já disse "quero trabalhar aqui" (abrem com o Desistir; sem a migração, nenhum)
-  const quero = new Set<string>(
+  // e quantas pessoas o ramo de cada um contratou na cidade (Novo Caged; o número é do ramo, não da empresa)
+  const [queroLista, noRamo] = await Promise.all([
     usuario && linhas.length
-      ? ((await banco.rpc("meus_interesses", { p_cnpjs: linhas.map((l) => l.cnpj) })).data ?? [])
-      : [],
-  );
+      ? banco.rpc("meus_interesses", { p_cnpjs: linhas.map((l) => l.cnpj) }).then((r) => r.data ?? [])
+      : Promise.resolve([] as string[]),
+    ramoNaCidade(
+      linhas.map((l) => l.cnpj),
+      escolhida.cbo,
+    ),
+  ]);
+  const quero = new Set<string>(queroLista);
   const lugares: LugarDaRota[] = linhas.map((l) => ({
     cnpj: l.cnpj,
     nome: l.nome,
@@ -181,6 +188,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contr
     distancia_m: l.distancia_m,
     no_publike: Boolean(l.no_publike),
     quero: quero.has(l.cnpj),
+    ramo_na_cidade: noRamo.get(l.cnpj) ?? null,
     novo:
       l.aberta_em && agora - Date.parse(l.aberta_em) <= umAno ? `Abriu em ${MES_ANO.format(new Date(l.aberta_em))}` : null,
   }));
@@ -281,6 +289,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/quem-contr
           {padrao && <>Mostrando {funcao}, uma função comum: escolha a sua acima. </>}
           {deOnde} Lugar no mapa não quer dizer vaga aberta
           {vagas.perto.length > 0 ? "; as vagas do Publike estão em verde." : "."}
+          {noRamo.size > 0 && <> {NOTA_DO_RAMO}</>}
           {!usuario && total > lugares.length && (
             <>
               {" "}

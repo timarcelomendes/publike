@@ -306,6 +306,66 @@ async function ramos(saida, opcoes, arquivos) {
   );
 }
 
+/**
+ * O que cada ramo contrata em cada cidade (16/11/2026, "cruzar as empresas x Caged"): o Caged público não diz a empresa
+ * (sem CNPJ), então o número é do ramo (subclasse do CNAE) na cidade, nos meses filtrados: as contratações e as 8
+ * funções que mais entraram (cada uma com 3 ou mais). Só os pares com 10 contratações ou mais (número pequeno quase aponta uma empresa).
+ *   node scripts/salarios/caged.mjs cidades cidades.json --municipios ibge.json go-*.tsv
+ */
+async function cidades(saida, opcoes, arquivos) {
+  if (!saida || !opcoes.municipios || !arquivos.length) {
+    throw new Error("Use: cidades <saida.json> --municipios ibge.json go-AAAAMM.tsv...");
+  }
+  const minimo = Number(opcoes.minimo ?? 10);
+  // o código do Caged (6 dígitos) → o nome da cidade, como a Receita escreve
+  const nomes = new Map();
+  const texto = readFileSync(opcoes.municipios, "utf8");
+  if (texto.trimStart().startsWith("[")) {
+    for (const m of JSON.parse(texto)) if (String(m.id).startsWith(GOIAS)) nomes.set(String(m.id).slice(0, 6), m.nome);
+  } else {
+    const [cabeca, ...linhas] = texto.split(/\r?\n/);
+    const c = cabeca.split(",");
+    const iCodigo = c.indexOf("codigo_ibge");
+    const iNome = c.indexOf("nome");
+    for (const l of linhas) {
+      const v = l.split(",");
+      if ((v[iCodigo] ?? "").startsWith(GOIAS)) nomes.set(v[iCodigo].slice(0, 6), v[iNome]);
+    }
+  }
+  const meses = arquivos
+    .map((a) => basename(a).match(/(\d{6})/)?.[1])
+    .filter(Boolean)
+    .sort();
+  const contas = new Map();
+  for (const arquivo of arquivos) {
+    for (const linha of readFileSync(arquivo, "utf8").split("\n")) {
+      if (!linha) continue;
+      const [municipio, cbo, , cnae] = linha.split("\t");
+      const cidade = nomes.get(municipio);
+      if (!cnae || !cidade) continue;
+      const chave = `${cidade}\t${cnae}`;
+      const g = contas.get(chave) ?? { n: 0, funcoes: new Map() };
+      g.n++;
+      g.funcoes.set(cbo, (g.funcoes.get(cbo) ?? 0) + 1);
+      contas.set(chave, g);
+    }
+  }
+  const linhas = [];
+  for (const [chave, g] of contas) {
+    if (g.n < minimo) continue;
+    const [cidade, cnae] = chave.split("\t");
+    const funcoes = [...g.funcoes.entries()]
+      .filter(([, n]) => n >= 3)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([cbo, n]) => ({ cbo, n }));
+    linhas.push({ cidade, cnae, contratacoes: g.n, funcoes });
+  }
+  const mes = (m) => `${m.slice(0, 4)}-${m.slice(4, 6)}-01`;
+  writeFileSync(saida, JSON.stringify({ de: mes(meses[0]), ate: mes(meses[meses.length - 1]), linhas }));
+  console.log(JSON.stringify({ saida, pares: linhas.length, cidades: new Set(linhas.map((l) => l.cidade)).size }));
+}
+
 async function principal() {
   const [comando, ...resto] = process.argv.slice(2);
   const opcoes = {};
@@ -317,7 +377,8 @@ async function principal() {
   if (comando === "filtrar") return filtrar(posicionais[0], posicionais.slice(1));
   if (comando === "calcular") return calcular(posicionais[0], opcoes, posicionais.slice(1));
   if (comando === "ramos") return ramos(posicionais[0], opcoes, posicionais.slice(1));
-  throw new Error("Comandos: filtrar, calcular, ramos (veja o começo de scripts/salarios/caged.mjs).");
+  if (comando === "cidades") return cidades(posicionais[0], opcoes, posicionais.slice(1));
+  throw new Error("Comandos: filtrar, calcular, ramos, cidades (veja o começo de scripts/salarios/caged.mjs).");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

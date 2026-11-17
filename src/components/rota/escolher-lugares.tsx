@@ -1,6 +1,6 @@
 "use client";
 
-import { House, MapPin, Printer, Sparkles, Store } from "lucide-react";
+import { House, MapPin, Printer, Sparkles, Store, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo, useState, useTransition, type ReactNode } from "react";
 import { deslocamentoProvavel } from "@/lib/deslocamento";
@@ -28,6 +28,8 @@ export type LugarDaRota = {
   quero?: boolean;
   /** a empresa tem conta no Publike: o "Quero trabalhar aqui" avisa direto */
   no_publike?: boolean;
+  /** quantas pessoas o ramo contratou na cidade (Novo Caged): "No ramo, em Goiânia: 312 contratações..." */
+  ramo_na_cidade?: string | null;
 };
 
 const SELO = "inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[12px] font-semibold";
@@ -187,6 +189,12 @@ export function EscolherLugares({
                         {[l.endereco, l.bairro && bairroDaReceita(l.bairro), l.cidade].filter(Boolean).join(", ")}
                       </p>
                       {l.novo && <p className="text-body-sm text-ink-muted">{l.novo}: lugar novo costuma contratar.</p>}
+                      {l.ramo_na_cidade && (
+                        <p className="mt-1 flex items-start gap-1 text-body-sm text-ink">
+                          <TrendingUp aria-hidden className="mt-0.5 size-3.5 shrink-0 text-terra-text" />
+                          <span>{l.ramo_na_cidade}</span>
+                        </p>
+                      )}
                       <p className="mt-1 inline-flex items-center gap-1 text-body-sm tabular-nums text-ink">
                         <MapPin aria-hidden className="size-3.5 text-ink-muted" />
                         {distanciaCurta(l.distancia_m)} {semOrigem ? "do centro" : "de você"},{" "}
