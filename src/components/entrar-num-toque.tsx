@@ -5,7 +5,7 @@ import { startTransition, useEffect } from "react";
 import { ehNavegacao } from "@/lib/acao-segura";
 import { registrarFunilVisitante } from "@/lib/acoes/funil-visitante";
 import { irDepoisDoLogin } from "@/lib/acoes/perfil";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { clienteDoNavegador } from "@/lib/supabase/navegador-sob-demanda";
 import { avisoDeCookiesFechado, EVENTO_AVISO_COOKIES } from "./aviso-cookies";
 import { carregarGoogle, donoDoGoogle, novoNonce } from "./botao-google";
 
@@ -88,7 +88,7 @@ export function EntrarNumToque({ clientId, automatico = false }: { clientId: str
 
 /** O Google devolveu o token: o Supabase confere, abre a sessão e a pessoa segue (perfil novo ou a página). */
 async function entrar(token: string, nonce: string) {
-  const supabase = criarClienteNavegador();
+  const supabase = await clienteDoNavegador();
   const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token, nonce });
   if (error) {
     console.warn("Publike: não deu para entrar num toque:", error.message);

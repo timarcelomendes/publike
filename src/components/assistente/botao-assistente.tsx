@@ -13,8 +13,15 @@ import {
   type PedidoConversa,
 } from "@/lib/abrir-conversa";
 import { esperandoBoasVindas } from "../boas-vindas-parceiro";
-import { PainelConversas, useConversasDoChat } from "../conversa/janela-mensagens";
-import { Conversa } from "./conversa";
+import dynamic from "next/dynamic";
+import { useConversasDoChat } from "../conversa/conversas-do-chat";
+
+// a janela do chat (a Ajuda e as Conversas, com o Supabase ao vivo) só baixa quando a pessoa abre o chat (17/11/2026:
+// ia no primeiro carregamento de todas as páginas e pesava no celular)
+const Conversa = dynamic(() => import("./conversa").then((m) => m.Conversa), { ssr: false });
+const PainelConversas = dynamic(() => import("../conversa/janela-mensagens").then((m) => m.PainelConversas), {
+  ssr: false,
+});
 import { vagasVistasParaOChat } from "@/lib/acoes/assistente";
 import { registrarFunilVisitante } from "@/lib/acoes/funil-visitante";
 import type { CartaoChat } from "@/lib/assistente";

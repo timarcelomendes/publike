@@ -14,7 +14,7 @@ import {
   type CurriculoCitavel,
 } from "@/lib/acoes/recados";
 import { reduzirImagem } from "@/lib/reduzir-imagem";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { clienteDoNavegador } from "@/lib/supabase/navegador-sob-demanda";
 
 const MAXIMO = 280;
 
@@ -223,7 +223,7 @@ export function EscreverRecado({
     try {
       const imagem = await reduzirImagem(arquivo, 1280);
       const caminho = `${pessoaId}/${Date.now()}.jpg`;
-      const { error } = await criarClienteNavegador()
+      const { error } = await (await clienteDoNavegador())
         .storage.from("recados")
         .upload(caminho, imagem, { contentType: "image/jpeg", upsert: false });
       if (error) throw error;
@@ -237,7 +237,7 @@ export function EscreverRecado({
   }
 
   async function tirarFoto(caminho: string) {
-    await criarClienteNavegador()
+    await (await clienteDoNavegador())
       .storage.from("recados")
       .remove([caminho])
       .catch(() => {});

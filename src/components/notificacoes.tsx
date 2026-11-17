@@ -46,7 +46,8 @@ import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "
 import { destinoDoAviso } from "@/lib/destino-aviso";
 import { AtivarNotificacoes } from "./notificacoes-celular";
 import { tempoRelativo } from "@/lib/formato";
-import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
+// o Supabase do navegador só baixa para quem tem conta (17/11/2026: o import fixo levava o pacote para todas as páginas)
+import { clienteDoNavegador } from "@/lib/supabase/navegador-sob-demanda";
 import { mudarVisibilidadeCurriculo } from "@/lib/acoes/talentos";
 import { EscolherContatoNoConvite } from "./conexoes/contato-no-convite";
 import { useAcao } from "./ui/usar-acao";
@@ -175,32 +176,36 @@ export function Notificacoes({
   const naoLidas = itens.filter((i) => !i.lida).length;
 
   useEffect(() => {
-    const supabase = criarClienteNavegador();
     let ativo = true;
-    supabase
-      .from("notificacoes")
-      // tudo: o link do comunicado vem quando o banco tem a coluna (sem ela, a lista sai do mesmo jeito)
-      .select("*")
-      .order("criado_em", { ascending: false })
-      .limit(20)
-      .then(({ data }) => {
-        if (ativo && data) setItens(data);
-      });
-    // o canal entra já com o login (sem ele, o Realtime recusa o filtro e o aviso só aparece ao recarregar)
-    const fechar = ouvirAoVivo(supabase, (s) =>
-      s
-        .channel(`notificacoes-${usuarioId}`)
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "notificacoes", filter: `destinatario_id=eq.${usuarioId}` },
-          (mudanca) => {
-            const nova = mudanca.new as Notificacao;
-            setItens((atual) => [nova, ...atual].slice(0, 20));
-            // a janela de conversas atualiza com o aviso de mensagem (ela não tem canal ao vivo próprio)
-            window.dispatchEvent(new CustomEvent("publike:aviso", { detail: { tipo: nova.tipo } }));
-          },
-        ),
-    );
+    let fechar = () => {};
+    void (async () => {
+      const [supabase, { ouvirAoVivo }] = await Promise.all([clienteDoNavegador(), import("@/lib/supabase/navegador")]);
+      if (!ativo) return;
+      supabase
+        .from("notificacoes")
+        // tudo: o link do comunicado vem quando o banco tem a coluna (sem ela, a lista sai do mesmo jeito)
+        .select("*")
+        .order("criado_em", { ascending: false })
+        .limit(20)
+        .then(({ data }) => {
+          if (ativo && data) setItens(data);
+        });
+      // o canal entra já com o login (sem ele, o Realtime recusa o filtro e o aviso só aparece ao recarregar)
+      fechar = ouvirAoVivo(supabase, (s) =>
+        s
+          .channel(`notificacoes-${usuarioId}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "notificacoes", filter: `destinatario_id=eq.${usuarioId}` },
+            (mudanca) => {
+              const nova = mudanca.new as Notificacao;
+              setItens((atual) => [nova, ...atual].slice(0, 20));
+              // a janela de conversas atualiza com o aviso de mensagem (ela não tem canal ao vivo próprio)
+              window.dispatchEvent(new CustomEvent("publike:aviso", { detail: { tipo: nova.tipo } }));
+            },
+          ),
+      );
+    })();
     return () => {
       ativo = false;
       fechar();
@@ -229,10 +234,8 @@ export function Notificacoes({
       const antes = itens;
       setItens((atual) => atual.map((i) => ({ ...i, lida: true })));
       // não marcou no banco: os avisos voltam a contar como novos (senão sumiriam só nesta tela)
-      criarClienteNavegador()
-        .from("notificacoes")
-        .update({ lida: true })
-        .eq("lida", false)
+      void clienteDoNavegador()
+        .then((c) => c.from("notificacoes").update({ lida: true }).eq("lida", false))
         .then(
           ({ error }) => {
             if (error) {

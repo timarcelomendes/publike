@@ -1,4 +1,5 @@
 import "server-only";
+import { MODO_DEMO } from "@/lib/config";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { TESTES_DA_PUBLIKE, testeSugerido } from "@/lib/testes";
 
@@ -31,6 +32,8 @@ export async function porTesteSugerido(
 }
 
 export async function testesDaVaga(anuncioId: string) {
+  // no modo de demonstração não há banco (sem isto, a página da vaga quebrava na demonstração)
+  if (MODO_DEMO) return [];
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("avaliacoes_da_vaga", { p_anuncio: anuncioId });
   if (error && error.code !== "PGRST202") console.error(`Publike: falha ao ler os testes da vaga: ${error.message}`);

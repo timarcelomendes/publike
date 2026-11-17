@@ -3,8 +3,9 @@
 import { Cookie } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { guardarPropaganda } from "./google-ads";
+import { CHAVE_AVISO_COOKIES, VERSAO_AVISO_COOKIES } from "@/lib/aviso-cookies";
 import { assinarBoasVindas, esperandoBoasVindas } from "./boas-vindas-parceiro";
 import { Botao } from "./ui/botao";
 
@@ -14,8 +15,8 @@ import { Botao } from "./ui/botao";
 // Fica no lugar do convite para instalar o app, que espera o aviso ser fechado,
 // e espera as boas-vindas da primeira visita fecharem (boas-vindas-parceiro.tsx).
 
-const CHAVE = "publike_aviso_cookies";
-const VERSAO = "1";
+const CHAVE = CHAVE_AVISO_COOKIES;
+const VERSAO = VERSAO_AVISO_COOKIES;
 /** Avisa quem espera o aviso fechar (o convite de instalar o app e o banner da página inicial). */
 export const EVENTO_AVISO_COOKIES = "publike:aviso-cookies";
 const EVENTO = EVENTO_AVISO_COOKIES;
@@ -43,16 +44,23 @@ export function avisoDeCookiesFechado() {
 }
 
 export function AvisoCookies() {
-  // no servidor (e antes de ler o navegador) o aviso não aparece: nada pisca para quem já viu
-  const visto = useSyncExternalStore(assinar, jaViu, () => true);
+  // no servidor o aviso vem no HTML (SCRIPT_AVISO_COOKIES o esconde, antes de pintar, de quem não deve vê-lo)
+  const visto = useSyncExternalStore(assinar, jaViu, () => false);
   // na primeira visita, as boas-vindas vêm antes: o aviso espera elas fecharem
   const caminho = usePathname() ?? "/";
   const esperando = useSyncExternalStore(
     assinarBoasVindas,
     () => esperandoBoasVindas(caminho),
-    () => true,
+    () => false,
   );
   const [fechado, setFechado] = useState(false);
+  // já com o React: as marcas do <html> saem quando o aviso deve aparecer (as boas-vindas fecharam, por exemplo)
+  const mostrar = !visto && !fechado && !esperando;
+  useEffect(() => {
+    if (!mostrar) return;
+    document.documentElement.removeAttribute("data-ck-visto");
+    document.documentElement.removeAttribute("data-bv-pendente");
+  }, [mostrar]);
   if (visto || fechado || esperando) return null;
 
   function escolher(propaganda: boolean) {
@@ -68,6 +76,7 @@ export function AvisoCookies() {
 
   return (
     <section
+      data-aviso-cookies=""
       aria-label="Aviso de cookies"
       className="fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[45] rounded-lg border border-line-strong bg-surface-200 p-4 shadow-raised md:inset-x-auto md:bottom-6 md:left-6 md:w-[24rem]"
     >

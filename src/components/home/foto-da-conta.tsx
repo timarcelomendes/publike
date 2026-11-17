@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { trocarFotoPeloTopo } from "@/lib/acoes/home";
 import { reduzirImagem } from "@/lib/reduzir-imagem";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { clienteDoNavegador } from "@/lib/supabase/navegador-sob-demanda";
 import { Avatar } from "../ui/basicos";
 
 /**
@@ -50,7 +50,7 @@ export function FotoDaConta({
       // logo: sem cortar (fica inteiro no quadro branco); foto de pessoa: quadrada
       const imagem = await reduzirImagem(arquivo, 320, !empresa);
       const caminho = `${pessoaId}/${Date.now()}.jpg`;
-      const { error } = await criarClienteNavegador()
+      const { error } = await (await clienteDoNavegador())
         .storage.from("avatars")
         .upload(caminho, imagem, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
       if (error) throw error;

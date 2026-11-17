@@ -1,12 +1,12 @@
 import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
 import { SITE_URL } from "@/lib/config";
 import { caminhoDaBusca, caminhoDosProgramas, CIDADES_PRINCIPAIS, REGIMES_PROGRAMAS } from "@/lib/paginas-busca";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
-import { agoraDaRequisicao } from "@/lib/tempo";
+import { agoraDaPaginaPublica } from "@/lib/tempo";
 import { CardAnuncio } from "./card-anuncio";
+import { CARTOES_INTEIROS, ListaLeveDeAnuncios } from "./lista-leve-de-anuncios";
 import { DadosEstruturados } from "./dados-estruturados";
 import { AvisarBusca } from "./explorar/avisar-busca";
 import { BotaoLink } from "./ui/botao";
@@ -120,9 +120,8 @@ export function PaginaDosProgramas({ cidade }: { cidade: string }) {
         </ol>
       </nav>
       <h1 className="mt-3 max-w-4xl text-h2 sm:text-h1">{titulo(cidade)}</h1>
-      <Suspense fallback={<div aria-hidden className="mt-6 h-56 animate-pulse rounded-lg bg-surface-300" />}>
-        <Vagas cidade={cidade} />
-      </Suspense>
+      {/* sem Suspense (17/11/2026): os dados vêm do cache e a página sai pronta */}
+      <Vagas cidade={cidade} />
 
       <div className="mt-12 grid max-w-5xl gap-8 md:grid-cols-2">
         <section aria-labelledby="para-quem-procura">
@@ -201,7 +200,7 @@ export function PaginaDosProgramas({ cidade }: { cidade: string }) {
 }
 
 async function Vagas({ cidade }: { cidade: string }) {
-  const [vagas, agora] = await Promise.all([vagasDosProgramas(cidade), agoraDaRequisicao()]);
+  const [vagas, agora] = await Promise.all([vagasDosProgramas(cidade), agoraDaPaginaPublica()]);
   return (
     <>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-ink-muted">
@@ -214,7 +213,7 @@ async function Vagas({ cidade }: { cidade: string }) {
       </div>
       {vagas.length > 0 ? (
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {vagas.map((a) => (
+          {vagas.slice(0, CARTOES_INTEIROS).map((a) => (
             <li key={a.id} className="grid">
               <CardAnuncio anuncio={a} agora={agora} usuarioId={null} />
             </li>
@@ -229,6 +228,7 @@ async function Vagas({ cidade }: { cidade: string }) {
           .
         </p>
       )}
+      <ListaLeveDeAnuncios anuncios={vagas.slice(CARTOES_INTEIROS)} agora={agora} titulo={`Mais ${vagas.length - CARTOES_INTEIROS} vagas`} />
     </>
   );
 }

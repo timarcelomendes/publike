@@ -9,7 +9,7 @@ import { irDepoisDoLogin } from "@/lib/acoes/perfil";
 import { LOGIN_CELULAR } from "@/lib/config";
 import { contexto } from "@/lib/contexto-de-entrar";
 import { REDES, type BotaoRede, type RedeSocial } from "@/lib/login-social";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { clienteDoNavegador } from "@/lib/supabase/navegador-sob-demanda";
 import { BotaoGoogle } from "./botao-google";
 import { classesBotaoRede } from "./ui/botao";
 
@@ -105,7 +105,7 @@ export function FolhaDeEntrar({ redes, googleClientId }: { redes: BotaoRede[]; g
     setAbrindo(rede);
     const volta = new URLSearchParams({ next: pedido.proximo, via: rede });
     // o cliente só na hora do toque: a folha está em toda página de quem não entrou
-    const { error } = await criarClienteNavegador().auth.signInWithOAuth({
+    const { error } = await (await clienteDoNavegador()).auth.signInWithOAuth({
       provider: REDES[rede].provedor,
       options: { redirectTo: `${window.location.origin}/auth/callback?${volta}` },
     });
@@ -120,7 +120,7 @@ export function FolhaDeEntrar({ redes, googleClientId }: { redes: BotaoRede[]; g
     if (!pedido) return;
     setErro(null);
     setAbrindo("google");
-    const { error } = await criarClienteNavegador().auth.signInWithIdToken({ provider: "google", token, nonce });
+    const { error } = await (await clienteDoNavegador()).auth.signInWithIdToken({ provider: "google", token, nonce });
     if (error) {
       setErro("Não deu para entrar com o Google agora. Tente de novo ou entre com o e-mail.");
       setAbrindo(null);

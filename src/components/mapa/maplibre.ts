@@ -11,7 +11,9 @@ let carregando: Promise<MapLibre> | null = null;
 
 export function carregarMapLibre() {
   if (!carregando) {
-    carregando = import("maplibre-gl").then((ml) => {
+    // o CSS do mapa vem junto, só quando um mapa aparece (17/11/2026: importado nos componentes, ele ia no CSS de toda
+    // página que tem um mapa, ~12 KiB a mais segurando a primeira pintura no celular)
+    carregando = Promise.all([import("maplibre-gl"), import("maplibre-gl/dist/maplibre-gl.css")]).then(([ml]) => {
       ml.setWorkerUrl(`/vendor/maplibre-gl-worker.mjs?v=${ml.getVersion()}`);
       return ml;
     });

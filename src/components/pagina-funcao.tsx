@@ -2,7 +2,6 @@ import { ChevronRight, HandCoins } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { SITE_URL } from "@/lib/config";
 import { CATEGORIAS } from "@/lib/constantes";
 import { formatarNumero, nomeDoBairro } from "@/lib/formato";
@@ -22,8 +21,9 @@ import {
   paginaDaFuncaoIndexavel,
   vagasDaFuncao,
 } from "@/lib/servidor/paginas-funcao";
-import { agoraDaRequisicao } from "@/lib/tempo";
+import { agoraDaPaginaPublica } from "@/lib/tempo";
 import { CardAnuncio } from "./card-anuncio";
+import { CARTOES_INTEIROS, ListaLeveDeAnuncios } from "./lista-leve-de-anuncios";
 import { DadosEstruturados } from "./dados-estruturados";
 import { AvisarBusca } from "./explorar/avisar-busca";
 import { BotaoLink } from "./ui/botao";
@@ -106,9 +106,8 @@ export function PaginaDeFuncao({ cidade, funcao }: PaginaFuncao) {
         </ol>
       </nav>
       <h1 className="mt-3 max-w-4xl text-h2 sm:text-h1">{tituloDaFuncao(funcao.nome, cidade)}</h1>
-      <Suspense fallback={<Esqueleto />}>
-        <Conteudo cidade={cidade} funcao={funcao} />
-      </Suspense>
+      {/* sem Suspense (17/11/2026): os dados vêm do cache e a página sai pronta, com o texto logo depois do título */}
+      <Conteudo cidade={cidade} funcao={funcao} />
     </Container>
   );
 }
@@ -117,7 +116,7 @@ async function Conteudo({ cidade, funcao }: PaginaFuncao) {
   const [{ vagas, funcoesDaCidade }, faixa, agora] = await Promise.all([
     vagasDaFuncao(funcao.cbo, cidade),
     faixaDaFuncaoNaCidade(funcao.cbo, cidade),
-    agoraDaRequisicao(),
+    agoraDaPaginaPublica(),
   ]);
   const nome = funcao.nome;
   const caminho = caminhoDaFuncao(cidade, funcao.slug);
@@ -231,7 +230,7 @@ async function Conteudo({ cidade, funcao }: PaginaFuncao) {
 
       {vagas.length > 0 ? (
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {vagas.map((a) => (
+          {vagas.slice(0, CARTOES_INTEIROS).map((a) => (
             <li key={a.id} className="grid">
               <CardAnuncio anuncio={a} agora={agora} usuarioId={null} />
             </li>
@@ -249,6 +248,7 @@ async function Conteudo({ cidade, funcao }: PaginaFuncao) {
           </p>
         </div>
       )}
+      <ListaLeveDeAnuncios anuncios={vagas.slice(CARTOES_INTEIROS)} agora={agora} titulo={`Mais ${vagas.length - CARTOES_INTEIROS} vagas`} />
 
       {faixa && (
         <section aria-labelledby="quanto-ganha" className="mt-10 max-w-3xl">
@@ -343,12 +343,3 @@ async function Conteudo({ cidade, funcao }: PaginaFuncao) {
   );
 }
 
-function Esqueleto() {
-  return (
-    <div aria-hidden className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="h-56 animate-pulse rounded-lg bg-surface-300" />
-      ))}
-    </div>
-  );
-}

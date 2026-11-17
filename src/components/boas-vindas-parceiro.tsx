@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Briefcase, Store, Wrench, X } from "lucide-react";
+import { CHAVE_BOAS_VINDAS, SEM_BOAS_VINDAS, VERSAO_BOAS_VINDAS } from "@/lib/aviso-cookies";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -13,14 +14,12 @@ import { Botao } from "./ui/botao";
 // Na página inicial, quem dá as boas-vindas é a pergunta "O que você quer fazer no
 // Publike?" (FolhaIntencao): uma janela só. Fechada a pergunta, as boas-vindas contam como vistas.
 
-const CHAVE = "publike_boas_vindas";
-const VERSAO = "1";
+const CHAVE = CHAVE_BOAS_VINDAS;
+const VERSAO = VERSAO_BOAS_VINDAS;
 export const EVENTO_BOAS_VINDAS = "publike:boas-vindas";
 
-// Páginas onde a pessoa já sabe o que veio fazer (ou que são da equipe): sem aviso. As listas de vagas
-// (/vagas/goiania/alimentacao) e as páginas para empresas (/empresas/fim-da-6x1) são a entrada dos anúncios
-// do Google: a página aparece sem nada por cima.
-const SEM_AVISO = /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|anuncio\/|email|versao|vagas\/|empresas)/;
+// as páginas sem as boas-vindas: lib/aviso-cookies.ts
+const SEM_AVISO = SEM_BOAS_VINDAS;
 
 function jaViu() {
   try {
@@ -96,6 +95,33 @@ const PARA_QUEM = [
   },
 ];
 
+let interagiuNaPagina = false;
+const DEPOIS_DA_INTERACAO = 1500;
+const EVENTOS_DE_INTERACAO = ["pointerdown", "keydown", "scroll", "wheel", "touchstart"] as const;
+
+function jaInteragiu() {
+  return interagiuNaPagina;
+}
+
+/** Avisa na primeira interação com a página (toque, tecla, rolagem). */
+function assinarInteracao(avisar: () => void) {
+  if (interagiuNaPagina) return () => {};
+  let espera: number | undefined;
+  const marcar = () => {
+    for (const e of EVENTOS_DE_INTERACAO) window.removeEventListener(e, marcar, true);
+    // um pouco depois: o quadro não abre no meio do toque (que cairia nele)
+    espera = window.setTimeout(() => {
+      interagiuNaPagina = true;
+      avisar();
+    }, DEPOIS_DA_INTERACAO);
+  };
+  for (const e of EVENTOS_DE_INTERACAO) window.addEventListener(e, marcar, { capture: true, passive: true });
+  return () => {
+    window.clearTimeout(espera);
+    for (const e of EVENTOS_DE_INTERACAO) window.removeEventListener(e, marcar, true);
+  };
+}
+
 export function BoasVindasParceiro() {
   const caminho = usePathname() ?? "/";
   // no servidor (e antes de ler o navegador) não aparece: nada pisca para quem já viu
@@ -110,7 +136,12 @@ export function BoasVindasParceiro() {
     const t = window.setTimeout(() => setEsperouEm(caminho), ESPERA_NA_INICIAL);
     return () => window.clearTimeout(t);
   }, [naInicial, caminho]);
-  const mostrar = !visto && !pergunta && !SEM_AVISO.test(caminho) && (!naInicial || esperouEm === caminho);
+  // só depois do primeiro toque, rolagem ou tecla (17/11/2026, "deixe a performance invejável"): aberto sozinho, o
+  // quadro era o maior texto da tela e virava o LCP da página no celular (2,5 s ou mais, para quem chega pela
+  // primeira vez); depois de a pessoa mexer na página, o Chrome já fechou a conta do LCP
+  const interagiu = useSyncExternalStore(assinarInteracao, jaInteragiu, () => false);
+  const mostrar =
+    !visto && !pergunta && interagiu && !SEM_AVISO.test(caminho) && (!naInicial || esperouEm === caminho);
 
   useEffect(() => {
     const d = dialogo.current;

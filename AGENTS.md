@@ -12,6 +12,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Código, nomes e textos em português do Brasil. Voz da marca: direta e calorosa, verbos nos botões ("Publicar vaga", "Curtir").
 - Next.js 16 com **Cache Components** ligado: qualquer leitura de cookies, `params`, `searchParams` ou do banco fica dentro de um `<Suspense>`; horário da requisição só com `agoraDaRequisicao()` (`src/lib/tempo.ts`) dentro dessas partes.
+- **Velocidade (17/11/2026, "deixe a performance invejável"):**
+  - As páginas públicas de busca (`/vagas/<cidade>`, `/vagas/<cidade>/<área ou função>`, `/servicos/...`) têm `generateStaticParams`, leem o endereço sem `<Suspense>` e usam `agoraDaPaginaPublica()` (a hora guardada por 15 min): saem prontas do cache, com o título e o texto no começo do HTML. Um `<Suspense>` em volta de algo que espera (`await`) faz o React mandar aquela parte escondida no fim do HTML (ela só aparece depois); só use onde o conteúdo depende de quem vê.
+  - Lista grande: no máximo 24 cartões inteiros (`CARTOES_INTEIROS`, `components/lista-leve-de-anuncios.tsx`); o resto vai numa lista leve de links. Na home, `ListaPaginada` recebe só 24 cartões (o "Ver os outros" abre `?mais=1`).
+  - O Supabase no navegador só com `clienteDoNavegador()` (`lib/supabase/navegador-sob-demanda.ts`), nunca com o `import` de `lib/supabase/navegador` num componente que vai em toda página: o pacote (~70 KiB) ia no primeiro carregamento de todas.
+  - O CSS do MapLibre vem com o próprio mapa (`carregarMapLibre`); não importe `maplibre-gl/dist/maplibre-gl.css` nos componentes.
+  - Nada que abra sozinho por cima da página depois do JavaScript (vira o LCP): o aviso de cookies vem no HTML (o script `SCRIPT_AVISO_COOKIES` esconde de quem já viu) e as boas-vindas só abrem depois do primeiro toque ou rolagem.
 - O proxy (antigo middleware) fica em `src/proxy.ts`.
 - Banco: `supabase/migrations/`. Segurança no banco (RLS + permissões por coluna); as ações em `src/lib/acoes/` sempre conferem o login de novo.
 - Equipe da agência: quem é da equipe age pela agência com o próprio login (o gancho do Auth `custom_access_token_hook` põe a conta no token). No banco, "a minha conta" é `public.conta_atual()`; `auth.uid()` só para o que é da pessoa (aceite dos termos, moderação, excluir a conta, a própria equipe). No site, `obterUsuario().id` é a conta pela qual se age e `pessoaId` é a pessoa; `papel` diz dono, admin ou recrutador.

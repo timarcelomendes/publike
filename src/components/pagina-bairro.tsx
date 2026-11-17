@@ -10,7 +10,7 @@ import { distanciaKm } from "@/lib/descobrir";
 import { nomeDoBairro } from "@/lib/formato";
 import { caminhoDaBusca, caminhoDoBairro, cidadeDoSlug, MINIMO_DO_BAIRRO, slugDaCidade } from "@/lib/paginas-busca";
 import { anunciosNoAr, type AnuncioNoAr } from "@/lib/servidor/paginas-busca";
-import { agoraDaRequisicao } from "@/lib/tempo";
+import { agoraDaPaginaPublica } from "@/lib/tempo";
 import { CardAnuncio } from "./card-anuncio";
 import { DadosEstruturados } from "./dados-estruturados";
 import { BotaoLink } from "./ui/botao";
@@ -94,7 +94,7 @@ export function RotaDoBairro({ params }: { params: Promise<{ cidade: string; bai
 async function PaginaDoBairro({ params }: { params: Promise<{ cidade: string; bairro: string }> }) {
   const { cidade: slugCidade, bairro: slugBairro } = await params;
   const b = lerBairro(slugCidade, slugBairro);
-  const [{ daCidade, doBairro, nome }, agora] = await Promise.all([dadosDoBairro(b), agoraDaRequisicao()]);
+  const [{ daCidade, doBairro, nome }, agora] = await Promise.all([dadosDoBairro(b), agoraDaPaginaPublica()]);
   if (!nome) notFound();
   const perto = doBairro.length < 6 ? vagasPerto(daCidade, doBairro) : [];
   const total = doBairro.length;

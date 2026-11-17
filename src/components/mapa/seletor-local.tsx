@@ -1,6 +1,5 @@
 "use client";
 
-import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeoJSONSource, Map as MapaML } from "maplibre-gl";
 import { LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";

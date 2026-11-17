@@ -27,9 +27,10 @@ import { CONTEUDOS } from "@/lib/conteudos";
 import type { TemaConteudo } from "@/lib/conteudos/tipos";
 import { funcoesDasVagasDaPraca } from "@/lib/servidor/paginas-funcao";
 import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
-import { agoraDaRequisicao } from "@/lib/tempo";
+import { agoraDaPaginaPublica } from "@/lib/tempo";
 import type { AnuncioResumo, TipoAnuncio } from "@/lib/tipos";
 import { CardAnuncio } from "./card-anuncio";
+import { CARTOES_INTEIROS, ListaLeveDeAnuncios } from "./lista-leve-de-anuncios";
 import { ConviteParaImpulsionar } from "./convite-para-impulsionar";
 import { AvisarBusca } from "./explorar/avisar-busca";
 import { DadosEstruturados } from "./dados-estruturados";
@@ -74,30 +75,11 @@ export async function metadadosDaBusca({ tipo, cidade, area }: Busca): Promise<M
 }
 
 /**
- * A rota: lê a cidade e a área do endereço dentro de um Suspense (o Next 16 exige,
- * para pré-montar a página).
+ * A rota: lê a cidade e a área do endereço. Sem Suspense em volta (17/11/2026, "deixe a performance invejável"): as
+ * cidades vêm do generateStaticParams e a página sai pronta do build/cache com o título e o texto no começo do HTML.
+ * Com o Suspense, o React mandava a página inteira depois do topo, escondida, e ela só aparecia no fim do HTML.
  */
-export function RotaDeBusca({
-  tipo,
-  params,
-}: {
-  tipo: TipoAnuncio;
-  params: Promise<{ cidade: string; area?: string }>;
-}) {
-  return (
-    <Suspense
-      fallback={
-        <Container className="py-8 sm:py-10">
-          <ListaEsqueleto />
-        </Container>
-      }
-    >
-      <BuscaDoEndereco tipo={tipo} params={params} />
-    </Suspense>
-  );
-}
-
-async function BuscaDoEndereco({
+export async function RotaDeBusca({
   tipo,
   params,
 }: {
@@ -146,9 +128,8 @@ export function PaginaDeBusca(busca: Busca) {
       {/* página de uma área (a entrada dos anúncios do Google): título menor, para a lista caber na primeira tela */}
       <h1 className={`mt-3 max-w-4xl ${area ? "text-h2 sm:text-h1" : "text-h1 sm:text-display"}`}>{titulo}</h1>
 
-      <Suspense fallback={<ListaEsqueleto />}>
-        <Conteudo {...busca} />
-      </Suspense>
+      {/* sem Suspense (17/11/2026): os dados vêm do cache e a página sai pronta, com o texto logo depois do título */}
+      <Conteudo {...busca} />
     </Container>
   );
 }
@@ -157,7 +138,7 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
   // os da praça desta cidade
   const [todos, agora, funcoesDasVagas, impulsionadas] = await Promise.all([
     anunciosNoAr(tipo, cidade),
-    agoraDaRequisicao(),
+    agoraDaPaginaPublica(),
     tipo === "vaga" ? funcoesDasVagasDaPraca(cidade) : Promise.resolve({} as Record<string, string>),
     tipo === "vaga" ? vagasImpulsionadas() : Promise.resolve({} as Record<string, VagaImpulsionada>),
   ]);
@@ -275,7 +256,6 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
 
   return (
     <>
-      <DadosEstruturados dados={dados} />
       {listaPrimeiro ? (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-ink-muted">
           <span>
@@ -302,6 +282,7 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
         </>
       )}
 
+      <DadosEstruturados dados={dados} />
       {destaques.length > 0 && (
         <section aria-labelledby="vagas-impulsionadas" className={listaPrimeiro ? "mt-4" : "mt-8"}>
           <h2 id="vagas-impulsionadas" className="text-h3">
@@ -338,7 +319,7 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
         <ul
           className={`${destaques.length > 0 ? "mt-4" : listaPrimeiro ? "mt-4" : "mt-8"} grid gap-4 sm:grid-cols-2 lg:grid-cols-3`}
         >
-          {itens.map((a) => (
+          {itens.slice(0, CARTOES_INTEIROS).map((a) => (
             <li key={a.id} className="grid">
               <CardAnuncio anuncio={a} agora={agora} usuarioId={null} />
             </li>
@@ -363,6 +344,11 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
           </p>
         </div>
       )}
+      <ListaLeveDeAnuncios
+        anuncios={itens.slice(CARTOES_INTEIROS)}
+        agora={agora}
+        titulo={`Mais ${itens.length - CARTOES_INTEIROS} ${vaga ? "vagas" : "anúncios"}${area ? ` de ${area.nome.toLowerCase()}` : ""} em ${cidade}`}
+      />
 
       {listaPrimeiro && (
         <>
@@ -494,12 +480,3 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
   );
 }
 
-function ListaEsqueleto() {
-  return (
-    <div aria-hidden className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="h-56 animate-pulse rounded-lg bg-surface-300" />
-      ))}
-    </div>
-  );
-}

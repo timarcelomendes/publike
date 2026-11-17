@@ -2,7 +2,6 @@ import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { SITE_URL } from "@/lib/config";
 import {
   caminhoDaBusca,
@@ -12,7 +11,7 @@ import {
   DIAS_RECENTES,
 } from "@/lib/paginas-busca";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
-import { agoraDaRequisicao } from "@/lib/tempo";
+import { agoraDaPaginaPublica } from "@/lib/tempo";
 import { CardAnuncio } from "./card-anuncio";
 import { DadosEstruturados } from "./dados-estruturados";
 import { AvisarBusca } from "./explorar/avisar-busca";
@@ -97,15 +96,14 @@ export function PaginaDasRecentes({ cidade }: { cidade: string }) {
         </ol>
       </nav>
       <h1 className="mt-3 max-w-4xl text-h2 sm:text-h1">{titulo(cidade)}</h1>
-      <Suspense fallback={<div aria-hidden className="mt-6 h-56 animate-pulse rounded-lg bg-surface-300" />}>
-        <Conteudo cidade={cidade} />
-      </Suspense>
+      {/* sem Suspense (17/11/2026): os dados vêm do cache e a página sai pronta */}
+      <Conteudo cidade={cidade} />
     </Container>
   );
 }
 
 async function Conteudo({ cidade }: { cidade: string }) {
-  const [todas, agora] = await Promise.all([anunciosNoAr("vaga", cidade), agoraDaRequisicao()]);
+  const [todas, agora] = await Promise.all([anunciosNoAr("vaga", cidade), agoraDaPaginaPublica()]);
   const daCidade = todas
     .filter((a) => a.cidade === cidade)
     .sort((x, y) => Date.parse(y.criado_em ?? "") - Date.parse(x.criado_em ?? ""));

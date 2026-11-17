@@ -1,6 +1,5 @@
 "use client";
 
-import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeoJSONSource, Map as MapaML } from "maplibre-gl";
 import { ChevronDown, ChevronLeft, MapPin } from "lucide-react";
 import Link from "next/link";

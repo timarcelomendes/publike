@@ -1,6 +1,5 @@
 "use client";
 
-import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeoJSONSource, Map as MapaML, Marker, Popup } from "maplibre-gl";
 import { House, LocateFixed, Search } from "lucide-react";
 import { useRouter } from "next/navigation";

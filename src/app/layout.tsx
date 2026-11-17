@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { Assistente } from "@/components/assistente/assistente";
 import { AvisoCookies } from "@/components/aviso-cookies";
+import { SCRIPT_AVISO_COOKIES } from "@/lib/aviso-cookies";
 import { AvisoDepois } from "@/components/aviso-depois";
 import { BannerDaVisita } from "@/components/banner-da-visita";
 import { GoogleAds } from "@/components/google-ads";
@@ -46,6 +47,9 @@ const bricolage = localFont({
   variable: "--font-bricolage",
   weight: "200 800",
   display: "swap",
+  // sem o "preload" (17/11/2026): são 77 KiB só para os títulos, e no 4G eles disputavam a banda com o HTML e o CSS
+  // no começo da página; o título aparece na hora com a letra de reserva (com as medidas ajustadas) e troca depois
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -98,6 +102,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_PEDIDO }} />
         {/* o toque num botão antes de a página ficar pronta não se perde (lib/toque-cedo.ts) */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TOQUE_CEDO }} />
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_AVISO_COOKIES }} />
       </head>
       <body className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 [html[data-sem-barra]_&]:pb-0">
         <ProvedorDoApelido apelido={apelido}>

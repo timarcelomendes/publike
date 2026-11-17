@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, MapPinned } from "lucide-react";
+import Link from "next/link";
 import { Fragment, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { dentro, useAreaDoMapa } from "./area-do-mapa";
 
@@ -37,10 +38,13 @@ export function ListaPaginada({
   depois,
   entre,
   className,
+  maisHref,
 }: {
   itens: { id: string; lat: number; lng: number }[];
-  /** os cartões, na mesma ordem dos itens */
+  /** os cartões, na mesma ordem dos itens (podem vir só os primeiros: o resto, pelo maisHref) */
   cartoes: ReactNode[];
+  /** o endereço com todos os cartões (quando vieram só os primeiros) */
+  maisHref?: string;
   /** o que vem no fim da lista (avisos), na última página */
   depois?: ReactNode;
   /**
@@ -58,12 +62,16 @@ export function ListaPaginada({
   const [pagina, setPagina] = useState({ area: chaveArea, n: 1 });
   const atual = pagina.area === chaveArea ? pagina.n : 1;
 
-  const visiveis = useMemo(
+  const carregados = cartoes.length;
+  const naArea = useMemo(
     () => itens.map((it, i) => ({ ...it, i })).filter((it) => !area || dentro(area, it.lat, it.lng)),
     [itens, area],
   );
-  const total = visiveis.length;
-  const paginas = Math.max(1, Math.ceil(total / porPagina));
+  const total = naArea.length;
+  // só os que têm o cartão na página; os outros, pelo "Ver os outros"
+  const visiveis = naArea.filter((it) => it.i < carregados);
+  const faltam = total - visiveis.length;
+  const paginas = Math.max(1, Math.ceil(visiveis.length / porPagina));
   const n = Math.min(atual, paginas);
   const desta = visiveis.slice((n - 1) * porPagina, n * porPagina);
   const foraDaArea = itens.length - total;
@@ -87,12 +95,25 @@ export function ListaPaginada({
         <div className={className}>
           {desta.map((it, i) => (
             <Fragment key={it.id}>
-              {cartoes[it.i]}
+              {/* no servidor vão 12 (ele não sabe o tamanho da tela): o CSS já esconde os que a tela não mostra, e o
+                  celular abre com os 4 dele, sem a página encolher depois (17/11/2026: era o pulo da home no celular) */}
+              <div className={`contents ${escondidoNaTela(i)}`}>{cartoes[it.i]}</div>
               {n === 1 && entre && i === Math.min(desta.length, 3) - 1 && entre}
             </Fragment>
           ))}
-          {n === paginas && depois}
+          {n === paginas && faltam === 0 && depois}
         </div>
+      )}
+      {n === paginas && faltam > 0 && maisHref && (
+        <p className="flex justify-center">
+          <Link
+            href={maisHref}
+            scroll={false}
+            className="inline-flex min-h-11 items-center justify-center rounded-pill border border-line-strong bg-surface-200 px-5 text-label text-ink hover:bg-surface-300"
+          >
+            Ver {faltam === 1 ? "o outro anúncio" : `os outros ${faltam} anúncios`}
+          </Link>
+        </p>
       )}
       {paginas > 1 && (
         <nav
@@ -144,6 +165,16 @@ export function ListaPaginada({
       )}
     </div>
   );
+}
+
+/**
+ * Os cartões que a tela não mostra numa página: a mesma regra do usePorPagina (4 no celular, 6 no tablet, 9 no
+ * computador e 12 no grande), em CSS, para valer já no HTML do servidor.
+ */
+function escondidoNaTela(i: number) {
+  return [i >= NO_CELULAR && "max-sm:hidden", i >= 6 && "sm:max-lg:hidden", i >= 9 && "lg:max-xl:hidden"]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** 1 … 4 5 6 … 10: a primeira, a última e as vizinhas da atual. */

@@ -1,6 +1,5 @@
 "use client";
 
-import "maplibre-gl/dist/maplibre-gl.css";
 import type { ExpressionSpecification, GeoJSONSource, Map as MapaML } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import {

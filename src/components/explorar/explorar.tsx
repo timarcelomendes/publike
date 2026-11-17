@@ -66,6 +66,12 @@ type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
 /** Quantos anúncios a busca traz (a lista mostra de 12 em 12, e o mapa todos). */
 const LIMITE = 120;
+/**
+ * Quantos cartões vão na página (17/11/2026, "deixe a performance invejável"): os 120 iam inteiros no código da página
+ * (1,5 MB na home, com o celular mostrando 4 por vez). Vão os 24 primeiros; o "Ver os outros" abre a lista inteira
+ * (?mais=1). O mapa continua com todos.
+ */
+const CARTOES_NA_PAGINA = 24;
 
 /** Combina: 70% ou mais e não "Outra área" (a conta do cartão "Seu currículo no mercado"). */
 const combinaNaLista = (m: Aderencia | undefined) => Boolean(m && (m.nota ?? 0) >= NOTA_QUE_COMBINA && !outraArea(m));
@@ -500,6 +506,15 @@ export async function Explorar({
     !combina &&
     (intencao === null || intencao === "contratar_pessoa");
 
+  // "Ver os outros": o mesmo endereço com ?mais=1 (todos os cartões)
+  const todosOsCartoes = primeiro(parametros.mais) === "1";
+  const paraTodos = new URLSearchParams();
+  for (const [k, v] of Object.entries(parametros)) {
+    if (k !== "mais" && v !== undefined) for (const x of Array.isArray(v) ? v : [v]) paraTodos.append(k, x);
+  }
+  paraTodos.set("mais", "1");
+  const hrefDeTodos = `?${paraTodos.toString()}`;
+
   const lista =
     n > 0 ? (
       // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar).
@@ -512,7 +527,8 @@ export async function Explorar({
         }
         itens={anuncios.map((a) => ({ id: a.id, lat: a.lat, lng: a.lng }))}
         entre={!feed && !usuario && !busca && !filtros.meus ? doPublike : null}
-        cartoes={anuncios.map((a) => (
+        maisHref={hrefDeTodos}
+        cartoes={anuncios.slice(0, todosOsCartoes ? undefined : CARTOES_NA_PAGINA).map((a) => (
           <Fragment key={a.id}>
             <CardAnuncio
               anuncio={{ ...a, autor_foto: logos[a.autor_id] ?? null }}

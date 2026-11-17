@@ -609,3 +609,10 @@ html[data-so-olhar]
     filter: invert(0.92) hue-rotate(180deg) saturate(0.6) brightness(0.95);
   }
 }
+
+/* o aviso de cookies vem no HTML; antes do React, some para quem já escolheu e para quem vai ver as boas-vindas
+   (SCRIPT_AVISO_COOKIES, em lib/aviso-cookies.ts) */
+html[data-ck-visto] [data-aviso-cookies],
+html[data-bv-pendente] [data-aviso-cookies] {
+  display: none;
+}
