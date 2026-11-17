@@ -18,6 +18,7 @@ import { Cabecalho } from "@/components/cabecalho";
 import { LarguraDaPagina } from "@/components/largura-da-pagina";
 import { SCRIPT_LARGURA } from "@/lib/largura-da-pagina";
 import { Voltar } from "@/components/voltar";
+import { SCRIPT_VOLTAR } from "@/lib/voltar";
 import { EntrarNumToque } from "@/components/entrar-num-toque";
 import { FolhaDeEntrar } from "@/components/folha-de-entrar";
 import { ContarTempo } from "@/components/contar-tempo";
@@ -105,6 +106,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {/* o toque num botão antes de a página ficar pronta não se perde (lib/toque-cedo.ts) */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TOQUE_CEDO }} />
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_AVISO_COOKIES }} />
+        {/* o lugar do "‹ Voltar para …", que só aparece depois do React (lib/voltar.ts) */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_VOLTAR }} />
       </head>
       <body className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 [html[data-sem-barra]_&]:pb-0">
         <ProvedorDoApelido apelido={apelido}>
@@ -124,10 +127,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </Suspense>
           {MODO_DEMO && <AvisoDemo />}
           <main id="conteudo" className="flex-1">
-            {/* "‹ Voltar para …": a tela de onde a pessoa veio (lê o endereço: no build, num Suspense) */}
-            <Suspense fallback={null}>
-              <Voltar />
-            </Suspense>
+            {/* "‹ Voltar para …": a tela de onde a pessoa veio (lê o endereço: no build, num Suspense). O lugar dele fica
+                guardado desde antes de pintar (SCRIPT_VOLTAR e globals.css): ele chega depois do React */}
+            <div data-lugar-do-voltar="">
+              <Suspense fallback={null}>
+                <Voltar />
+              </Suspense>
+            </div>
             {/* veio de uma vaga que saiu do ar (?vaga=encerrada): o aviso em cima das parecidas */}
             <Suspense fallback={null}>
               <AvisoVagaEncerrada />

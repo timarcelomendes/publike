@@ -626,3 +626,22 @@ html[data-bv-pendente] [data-aviso-cookies] {
 html[data-intencao-adiada] [data-janela-intencao] {
   display: none;
 }
+
+/* "‹ Voltar para …" (src/components/voltar.tsx) só aparece depois do React: o script do <head> (SCRIPT_VOLTAR, em
+   src/lib/voltar.ts) marca o <html> quando ele vai aparecer, e o lugar dele (pt-3 + min-h-10 = 52 px) fica guardado
+   desde a primeira pintura. Sem isso, a página descia 52 px quando ele chegava (17/11/2026). O "‹ Painel" sem tela
+   anterior é só do celular; e a página com o próprio voltar (TemVoltarProprio) não tem o de cima: pela marca no HTML
+   (vale desde a primeira pintura; depois do React, a página escondida que o Next guarda pode ter a marca, mas aí o
+   botão já está desenhado e ocupa o próprio lugar) e pelo data-voltar-proprio */
+html[data-tem-voltar] [data-lugar-do-voltar] {
+  min-height: 3.25rem;
+}
+@media (min-width: 64rem) {
+  html[data-tem-voltar="painel"] [data-lugar-do-voltar] {
+    min-height: 0;
+  }
+}
+html[data-voltar-proprio] [data-lugar-do-voltar],
+html:has([data-marca-voltar-proprio]) [data-lugar-do-voltar] {
+  min-height: 0;
+}

@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
+import { CHAVE_TRILHA } from "@/lib/voltar";
 
 /**
  * "‹ Voltar para Candidatos": de qualquer página, volta à tela de onde a pessoa veio, com o nome dela.
@@ -14,7 +15,8 @@ import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 
 type Tela = { caminho: string; url: string; titulo: string };
 
-const CHAVE = "publike_trilha";
+// a chave e o script do <head> que guarda o lugar do botão ficam em src/lib/voltar.ts (o layout lê o script)
+const CHAVE = CHAVE_TRILHA;
 const EVENTO = "publike-trilha";
 const MAXIMO = 30;
 
@@ -72,7 +74,8 @@ export function TemVoltarProprio() {
       else delete html.dataset.voltarProprio;
     };
   }, []);
-  return null;
+  // a marca no HTML do servidor: antes do React, o globals.css não guarda o lugar do "Voltar para..." de cima
+  return <span hidden data-marca-voltar-proprio="" />;
 }
 
 export function Voltar() {
@@ -110,8 +113,16 @@ export function Voltar() {
   }, [caminho, url]);
 
   const texto = useSyncExternalStore(assinar, anterior, () => "");
+  const tela: Tela | null = caminho !== "/" && texto ? JSON.parse(texto) : null;
+  // o lugar do botão (o globals.css guarda a altura dele): o script do <head> marcou antes de pintar; aqui fica certo
+  // depois de cada troca de tela (sem o botão, o lugar some)
+  const lugar = tela ? "" : caminho.startsWith("/painel/") ? "painel" : null;
+  useEffect(() => {
+    const html = document.documentElement;
+    if (lugar === null) html.removeAttribute("data-tem-voltar");
+    else html.setAttribute("data-tem-voltar", lugar);
+  }, [lugar]);
   if (caminho === "/") return null;
-  const tela: Tela | null = texto ? JSON.parse(texto) : null;
 
   if (!tela) {
     // entrou direto numa página do painel: o "‹ Painel" de antes, no celular (no computador, o menu faz isso)
