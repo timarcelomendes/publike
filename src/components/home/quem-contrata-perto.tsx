@@ -22,7 +22,10 @@ const RAIO_KM = 2;
  * sai como erro, e não como lista vazia, para não ficar guardada: a próxima visita tenta de novo.
  */
 async function contar(lat: number, lng: number, cbos: string[]) {
-  "use cache";
+  // "remote" (17/11/2026): o cache dividido entre as instâncias do servidor (na Vercel, o da plataforma; fora dela,
+  // o mesmo de sempre). Só na memória de cada instância, a conta (~0,1 s no banco) refazia a cada instância nova, e
+  // a chamada, que agora vem junto com a faixa, passava do tempo dela e ficava de fora
+  "use cache: remote";
   cacheLife("hours");
   if (MODO_DEMO) return [];
   const { data, error } = await criarClientePublico().rpc("quantos_contratam", {
