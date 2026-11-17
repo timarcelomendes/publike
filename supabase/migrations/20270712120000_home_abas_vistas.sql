@@ -20,3 +20,5 @@ grant insert (home_viu_servicos_em, home_viu_posts_em), update (home_viu_servico
   on public.preferencias to authenticated;
 
 notify pgrst, 'reload schema';
+
+select privado.migracao_aplicada('20270712120000_home_abas_vistas');
