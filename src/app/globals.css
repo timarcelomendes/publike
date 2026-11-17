@@ -231,6 +231,10 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    /* o espaço da barra de rolagem fica guardado (17/11/2026): no computador com a barra à mostra, a página nascia
+       curta (só o esqueleto), a barra aparecia quando o conteúdo chegava e tudo andava 15 px para o lado (os pulos
+       pequenos do cabeçalho no Admin › Velocidade). No celular, a barra não ocupa espaço e nada muda */
+    scrollbar-gutter: stable;
   }
 
   /* rede de segurança: nada largo demais faz a página andar para os lados no celular. "clip" (e não

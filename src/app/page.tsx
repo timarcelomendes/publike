@@ -178,6 +178,8 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
       <ContratandoAcimaDoMapa />
     </Suspense>
   );
+  // o mesmo, em cima do mapa da coluna da direita: começado já, vem junto com o mapa (LateralDaLinha)
+  const contratandoNoLado = ContratandoAcimaDoMapa({}).catch(() => null);
   // no meio da linha (celular e tablet): quem está contratando e quem chegou perto, em faixas que rolam de lado
   const meio = (
     <div className="flex flex-col gap-6">
@@ -241,7 +243,7 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
           </Suspense>
         </div>
         <Suspense fallback={null}>
-          <LadoDaLinha searchParams={searchParams} contratando={contratando} />
+          <LadoDaLinha searchParams={searchParams} contratando={contratandoNoLado} />
         </Suspense>
       </div>
       <Suspense fallback={null}>
@@ -327,7 +329,14 @@ function CartaoSoOlhar() {
 }
 
 /** À direita (computador grande): quem está contratando e o mapa (o da busca ou o da linha). */
-async function LadoDaLinha({ searchParams, contratando }: { searchParams: Parametros; contratando: ReactNode }) {
+async function LadoDaLinha({
+  searchParams,
+  contratando,
+}: {
+  searchParams: Parametros;
+  /** quem está contratando, já começado (vem junto com o mapa) */
+  contratando: Promise<ReactNode>;
+}) {
   const sp = await searchParams;
   if (primeiro(sp.q) || ordemDeLista(sp)) {
     return <ColunaDoMapa className="hidden min-w-0 flex-col gap-4 self-stretch xl:flex" />;

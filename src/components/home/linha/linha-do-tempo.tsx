@@ -198,6 +198,31 @@ function PoucosPosts({ d }: { d: DadosDaLinha }) {
 const QUEM_SO_OLHA = "so-olhar";
 
 /**
+ * Quantos itens da linha vêm na página (17/11/2026, "deixe a performance invejável"). A linha lê até 120, mas a tela
+ * mostra 20 e o "Ver mais" traz de 20 em 20: os 120 iam inteiros no HTML (1,35 MB, 116 cartões para mostrar 21).
+ * Agora vêm 40; passando deles, o "Ver mais" pede ao servidor mais 40 (`?ate=80`, até os 120).
+ */
+const ITENS_NA_PAGINA = 40;
+const ITENS_NO_MAXIMO = 120;
+
+function itensNaPagina(sp: Awaited<Parametros>) {
+  const pedido = Number(Array.isArray(sp.ate) ? sp.ate[0] : sp.ate);
+  if (!Number.isFinite(pedido) || pedido <= ITENS_NA_PAGINA) return ITENS_NA_PAGINA;
+  return Math.min(Math.ceil(pedido / ITENS_NA_PAGINA) * ITENS_NA_PAGINA, ITENS_NO_MAXIMO);
+}
+
+/** O endereço desta mesma linha com mais itens (os parâmetros de agora e o `ate` novo). */
+function hrefComMais(sp: Awaited<Parametros>, ate: number) {
+  const q = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(sp)) {
+    if (chave === "ate" || valor === undefined) continue;
+    for (const v of Array.isArray(valor) ? valor : [valor]) q.append(chave, v);
+  }
+  q.set("ate", String(ate));
+  return `/?${q}`;
+}
+
+/**
  * A linha do tempo da home: vagas, serviços, recados e aceites, do mais novo para o mais antigo,
  * com os separadores de dia e a marca "Você parou aqui". No Tudo, depois de 2 recados seguidos, o
  * resto recolhe. `meio`: o que entra uma vez depois do 4º item, só no celular (quem está
@@ -223,7 +248,8 @@ export async function LinhaDoTempo({
   /** "Abriu perto de você", já começado (vem junto com a linha ou fica de fora: `AteALinha`) */
   abriuPerto?: Promise<ReactNode> | null;
 }) {
-  const chave = chaveDaLinha(await searchParams);
+  const sp = await searchParams;
+  const chave = chaveDaLinha(sp);
   const daConta = await dadosDaLinha(chave);
   const d = soOlhar && daConta.usuarioId ? { ...daConta, usuarioId: QUEM_SO_OLHA } : daConta;
   const logado = d.usuarioId !== null;
@@ -303,7 +329,17 @@ export async function LinhaDoTempo({
   // as vagas impulsionadas perto de quem vê, no alto da linha (claude/plano-destaque-das-vagas-impulsionadas.md)
   const quadro = d.aba === "tudo" || d.aba === "vaga" ? await vagasDoQuadroDaLinha(d) : [];
 
+  // só os primeiros itens vêm na página; o resto, o "Ver mais" pede (ITENS_NA_PAGINA)
+  const ate = itensNaPagina(sp);
+  let naPagina = 0;
+  let temMais = false;
   for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes, d.porQue), d.aba === "tudo")) {
+    const conta = p.tipo !== "dia" && p.tipo !== "marca";
+    if (conta && naPagina >= ate) {
+      temMais = true;
+      break;
+    }
+    if (conta) naPagina++;
     if (p.tipo === "dia") {
       blocos.push(
         // "Relevantes para você": no celular, a ordem logo acima já diz (o título fica para o leitor de tela)
@@ -363,6 +399,11 @@ export async function LinhaDoTempo({
       }
     }
   }
+  // cortada no meio: um separador de dia (ou a marca) sem item depois não serve
+  while (temMais && contam.length && !contam[contam.length - 1]) {
+    blocos.pop();
+    contam.pop();
+  }
 
   return (
     <>
@@ -386,6 +427,7 @@ export async function LinhaDoTempo({
         <ListaDaLinha
           partes={blocos}
           contam={contam}
+          mais={temMais ? hrefComMais(sp, ate + ITENS_NA_PAGINA) : null}
           fim={d.aba === "recado" ? <PoucosPosts d={d} /> : <FimDoRaio d={d} />}
         />
         <RegistrarVisita />
