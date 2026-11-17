@@ -24,10 +24,12 @@ import { lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import {
   ACEITE_NA_LINHA,
   COOKIE_ORDEM_DA_LINHA,
+  desdeDaAba,
   marcaDaVisita,
   SESSAO_DA_HOME,
   novidades,
   type ItemDaLinha,
+  type NovidadeDaAba,
 } from "@/lib/linha-do-tempo";
 import {
   categoriasDasCurtidas,
@@ -43,8 +45,6 @@ import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
-import { obterIntencao } from "@/lib/servidor/intencao";
-import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
 import { recadosDaLinha, type Recado } from "@/lib/servidor/recados";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, Match, MeuPerfil } from "@/lib/tipos";
@@ -65,7 +65,6 @@ import { comPertoGuardado } from "@/lib/servidor/perto";
 
 /** As abas da linha. */
 export type AbaDaLinha = "tudo" | "vaga" | "servico" | "recado";
-export const ABAS_DA_LINHA: AbaDaLinha[] = ["tudo", "vaga", "servico", "recado"];
 
 /** Quantos anúncios a linha busca (do mais novo para o mais antigo). */
 const LIMITE = 120;
@@ -74,29 +73,56 @@ const LIMITE = 120;
 export type PreferenciasDaHome = {
   vistaEm: string | null;
   marcaEm: string | null;
-  aba: AbaDaLinha | null;
+  /** a última vez que a pessoa abriu Serviços e Posts (migração 20270712120000; sem ela, null) */
+  viuServicosEm: string | null;
+  viuPostsEm: string | null;
   fundo: string;
   fundoArquivo: string | null;
 };
 
 export const preferenciasDaHome = cache(async (): Promise<PreferenciasDaHome> => {
-  const vazio: PreferenciasDaHome = { vistaEm: null, marcaEm: null, aba: null, fundo: "preto", fundoArquivo: null };
+  const vazio: PreferenciasDaHome = {
+    vistaEm: null,
+    marcaEm: null,
+    viuServicosEm: null,
+    viuPostsEm: null,
+    fundo: "preto",
+    fundoArquivo: null,
+  };
   const usuario = await obterUsuario();
   if (!usuario) return vazio;
   try {
     const supabase = await criarClienteServidor();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("preferencias")
-      .select("home_vista_em, home_marca_em, home_aba, fundo, fundo_arquivo")
+      .select("home_vista_em, home_marca_em, fundo, fundo_arquivo, home_viu_servicos_em, home_viu_posts_em")
       .eq("perfil_id", usuario.id)
       .maybeSingle();
-    if (!data) return vazio;
+    let linha: {
+      home_vista_em: string | null;
+      home_marca_em: string | null;
+      fundo: string;
+      fundo_arquivo: string | null;
+      home_viu_servicos_em?: string | null;
+      home_viu_posts_em?: string | null;
+    } | null = data;
+    if (error) {
+      // sem a migração 20270712120000 (entre a publicação e a migração): o resto, sem as abas vistas
+      const antes = await supabase
+        .from("preferencias")
+        .select("home_vista_em, home_marca_em, fundo, fundo_arquivo")
+        .eq("perfil_id", usuario.id)
+        .maybeSingle();
+      linha = antes.data;
+    }
+    if (!linha) return vazio;
     return {
-      vistaEm: data.home_vista_em,
-      marcaEm: data.home_marca_em,
-      aba: ABAS_DA_LINHA.includes(data.home_aba as AbaDaLinha) ? (data.home_aba as AbaDaLinha) : null,
-      fundo: data.fundo,
-      fundoArquivo: data.fundo_arquivo,
+      vistaEm: linha.home_vista_em,
+      marcaEm: linha.home_marca_em,
+      viuServicosEm: linha.home_viu_servicos_em ?? null,
+      viuPostsEm: linha.home_viu_posts_em ?? null,
+      fundo: linha.fundo,
+      fundoArquivo: linha.fundo_arquivo,
     };
   } catch {
     // sem a migração da home (ou o banco fora): a linha funciona sem marca e abre em Tudo
@@ -221,6 +247,11 @@ export type DadosDaLinha = {
   /** esta abertura começa uma visita (a anterior foi há mais de 30 min): só aí o topo diz quantas novidades */
   visitaNova: boolean;
   novas: { tudo: number; vaga: number; servico: number; recado: number };
+  /**
+   * O que chegou nas abas Serviços e Posts desde que a pessoa abriu cada uma (até 7 dias, `desdeDaAba`), de quem está
+   * na área: o número das duas abas e o aviso embaixo delas. null: sem conta.
+   */
+  naoVistos: { servicos: NovidadeDaAba; posts: NovidadeDaAba } | null;
   /** a pessoa pode escrever recado (tem conta) e o que ela faz ("pessoa" escreve o que procura) */
   autorTipo: string | null;
   /** as perguntas da conquista da pessoa ("Deu certo?", "Mostrar no Publike?"), no alto do feed */
@@ -257,25 +288,11 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     cidadeDaVisita(),
   ]);
   const lidos = lerFiltros(sp);
-  // a aba: a da URL; sem ela, a última que a pessoa escolheu (vale para todo mundo, 09/11/2026). Quem nunca
-  // escolheu: quem procura trabalho abre em Vagas; quem quer contratar um serviço (a resposta "O que você quer
-  // fazer"), em Serviços; o resto (quem contrata, quem presta serviço, quem visita), em Tudo
-  // a aba Posts não vira a de abertura (ainda tem poucos posts): quem tocou nela por último abre pela regra de sempre
-  const abaGuardada = prefs.aba === "recado" ? null : prefs.aba;
-  const semEscolha = !lidos.tipo && !lidos.tudo && primeiro(sp.tipo) !== "recado" && !abaGuardada;
-  const abaDoUso = usuario && semEscolha ? await perfilDeUso() : null;
+  // a aba: a da URL; sem ela, Vagas, para todo mundo e sem guardar a última escolhida (17/11/2026, Marcelo: "voltar ao
+  // padrao de abrir vagas como padrao ao acessar e o usuário muda se quiser ver outra aba da linha do tempo"). O que
+  // chega em Serviços e em Posts aparece no número da aba e no aviso embaixo das abas (`naoVistos`)
   const aba: AbaDaLinha =
-    primeiro(sp.tipo) === "recado"
-      ? "recado"
-      : (lidos.tipo ??
-        (lidos.tudo
-          ? "tudo"
-          : (abaGuardada ??
-            (abaDoUso === "trabalho"
-              ? "vaga"
-              : (await obterIntencao().catch(() => null)) === "contratar_servico"
-                ? "servico"
-                : "tudo"))));
+    primeiro(sp.tipo) === "recado" ? "recado" : (lidos.tipo ?? (lidos.tudo ? "tudo" : "vaga"));
   const filtrosDaBusca: Filtros = {
     ...lidos,
     tipo: aba === "vaga" || aba === "servico" ? aba : null,
@@ -320,6 +337,37 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
           () => [] as AnuncioResumo[],
         ))
       : null;
+  // os serviços que a pessoa ainda não viu, fora da aba Serviços (o número da aba e o aviso embaixo das abas): os da
+  // área, do mais novo para o mais antigo, sem os filtros da aba de agora. Os rostos de quem publicou já vêm junto
+  const desdeServicos = desdeDaAba(prefs.viuServicosEm, agora);
+  const servicosNovosDe = (lista: AnuncioResumo[]) =>
+    lista
+      .filter((a) => a.tipo === "servico" && a.autor_id !== usuarioId && Date.parse(a.criado_em) > desdeServicos)
+      .sort((a, b) => Date.parse(b.criado_em) - Date.parse(a.criado_em));
+  const servicosNaoVistos =
+    usuarioId && aba !== "servico"
+      ? buscarAnuncios(
+          {
+            ...filtros,
+            tipo: "servico",
+            tudo: false,
+            categoria: null,
+            regime: null,
+            turno: null,
+            ja: false,
+            quem: null,
+            ordem: "ultimas",
+          },
+          agora,
+          local,
+          usuarioId,
+        )
+          .then(async (lista) => {
+            const novos = servicosNovosDe(lista);
+            return { novos, fotos: await fotosDosAutores(novos.slice(0, 3).map((a) => a.autor_id)) };
+          })
+          .catch(() => ({ novos: [] as AnuncioResumo[], fotos: {} as Record<string, string | null> }))
+      : null;
   const [encontrados, quem, matchesDaConta, recados, perfil, conquistas, conquistasPendentesDaConta, respostasDaConta] =
     await Promise.all([
     aba === "recado"
@@ -331,7 +379,8 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     usuario ? listarMatches().catch(() => []) : Promise.resolve([]),
     usuario ? recadosDaLinha(filtros) : Promise.resolve([]),
     usuario ? obterMeuPerfil().catch(() => null) : Promise.resolve(null),
-    usuario && (aba === "tudo" || aba === "recado") ? conquistasDaLinha(filtros) : Promise.resolve([] as Conquista[]),
+    // em todas as abas: fora de Tudo e de Posts, elas só contam como novidade de Posts
+    usuario ? conquistasDaLinha(filtros) : Promise.resolve([] as Conquista[]),
     usuario ? conquistasPendentes() : Promise.resolve([] as ConquistaPendente[]),
     usuario ? perguntasDeResposta() : Promise.resolve([] as PerguntaDeResposta[]),
   ]);
@@ -497,6 +546,70 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     ...itensDeConquista.filter((i) => "conquista" in i.dados && !i.dados.conquista.minha),
   ];
 
+  // o que chegou em Posts e em Serviços desde que a pessoa abriu cada aba (até 7 dias): o número das duas abas e o
+  // aviso embaixo delas (17/11/2026, Marcelo: "adicione uma indicador de mensagens novas em posts ou servicos")
+  let naoVistos: DadosDaLinha["naoVistos"] = null;
+  if (usuarioId) {
+    const desdePosts = desdeDaAba(prefs.viuPostsEm, agora);
+    const posts = recadosDeOutros
+      .filter((i) => Date.parse(i.quando) > desdePosts)
+      .sort((a, b) => Date.parse(b.quando) - Date.parse(a.quando));
+    const quemPostou = posts.flatMap((i) =>
+      "recado" in i.dados
+        ? [
+            {
+              id: i.dados.recado.autor_id,
+              nome: i.dados.recado.autor_nome,
+              foto: i.dados.recado.autor_foto,
+              empresa: i.dados.recado.autor_tipo !== "pessoa",
+            },
+          ]
+        : "conquista" in i.dados
+          ? [
+              {
+                id: i.dados.conquista.perfil_id,
+                nome: i.dados.conquista.pessoa_nome,
+                foto: i.dados.conquista.pessoa_foto,
+                empresa: i.dados.conquista.pessoa_tipo !== "pessoa",
+              },
+            ]
+          : [],
+    );
+    const rostosDosPosts = quemPostou.filter((r, i) => quemPostou.findIndex((x) => x.id === r.id) === i).slice(0, 3);
+    // na aba Serviços, a própria lista (só o número: o aviso dos serviços não aparece nela)
+    const servicos = servicosNaoVistos
+      ? await servicosNaoVistos
+      : { novos: servicosNovosDe(encontrados), fotos: {} as Record<string, string | null> };
+    const rostosDosServicos = servicos.novos
+      .filter((a, i) => servicos.novos.findIndex((x) => x.autor_id === a.autor_id) === i)
+      .slice(0, 3)
+      .map((a) => ({
+        id: a.autor_id,
+        nome: a.autor_nome,
+        foto: servicos.fotos[a.autor_id] ?? null,
+        empresa: a.autor_tipo !== "pessoa",
+      }));
+    const primeiroPost = rostosDosPosts[0];
+    naoVistos = {
+      posts: {
+        quantos: posts.length,
+        rostos: rostosDosPosts,
+        // pessoa: o primeiro nome; empresa, comércio e agência: o nome inteiro
+        sobre:
+          posts.length === 1 && primeiroPost
+            ? primeiroPost.empresa
+              ? primeiroPost.nome
+              : (primeiroPost.nome.split(" ")[0] ?? primeiroPost.nome)
+            : null,
+      },
+      servicos: {
+        quantos: servicos.novos.length,
+        rostos: rostosDosServicos,
+        sobre: servicos.novos.length === 1 ? servicos.novos[0].titulo : null,
+      },
+    };
+  }
+
   // os números das abas contam tudo junto: fora de Tudo, uma busca a mais (só com marca)
   let novas = novidades(
     aba === "tudo" ? [...itens.filter((i) => i.tipo !== "recado" && i.tipo !== "conquista"), ...recadosDeOutros] : itens,
@@ -553,6 +666,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     marca,
     visitaNova,
     novas,
+    naoVistos,
     autorTipo: perfil?.tipo ?? null,
     conquistasPendentes: conquistasPendentesDaConta,
     perguntasDeResposta: respostasDaConta,

@@ -314,7 +314,7 @@ export async function LinhaDoTempo({
               : "Quando aparecer algo novo perto de você, entra aqui."}
           </Vazio>
         )}
-        <RegistrarVisita />
+        <RegistrarVisita aba={d.aba} />
       </section>
     );
   }
@@ -433,7 +433,7 @@ export async function LinhaDoTempo({
           mais={temMais ? hrefComMais(sp, ate + ITENS_NA_PAGINA) : null}
           fim={d.aba === "recado" ? <PoucosPosts d={d} /> : <FimDoRaio d={d} />}
         />
-        <RegistrarVisita />
+        <RegistrarVisita aba={d.aba} />
       </section>
     </>
   );

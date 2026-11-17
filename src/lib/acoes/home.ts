@@ -15,7 +15,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
  * abertura anterior). Chamada pelo navegador depois que a página aparece: a página não grava
  * enquanto desenha. Sem a migração da home, não faz nada.
  */
-export async function registrarVisitaDaHome(): Promise<void> {
+export async function registrarVisitaDaHome(aba?: unknown): Promise<void> {
   if (MODO_DEMO) return;
   const usuario = await obterUsuario();
   if (!usuario) return;
@@ -26,22 +26,18 @@ export async function registrarVisitaDaHome(): Promise<void> {
     .eq("perfil_id", usuario.id)
     .maybeSingle();
   if (error) return;
+  const visita = proximaVisita(data?.home_vista_em ?? null, data?.home_marca_em ?? null, Date.now());
+  // abriu Serviços ou Posts: o que chegou até agora deixa de ser novidade (o número da aba e o aviso embaixo das abas;
+  // migração 20270712120000). A linha abre sempre em Vagas: a aba não fica guardada
+  const agora = new Date().toISOString();
+  const viu =
+    aba === "servico" ? { home_viu_servicos_em: agora } : aba === "recado" ? { home_viu_posts_em: agora } : null;
   // perfil_id vem sozinho (auth.uid()); a pessoa só escreve as colunas dela
-  await supabase
+  const { error: semAbas } = await supabase
     .from("preferencias")
-    .upsert(proximaVisita(data?.home_vista_em ?? null, data?.home_marca_em ?? null, Date.now()), {
-      onConflict: "perfil_id",
-    });
-}
-
-/** Guarda a aba escolhida na linha do tempo (a home abre nela da próxima vez). */
-export async function escolherAbaDaHome(aba: string): Promise<void> {
-  // a aba Posts não fica guardada: o feed não abre nela (ainda tem poucos posts)
-  if (MODO_DEMO || !["tudo", "vaga", "servico"].includes(aba)) return;
-  const usuario = await obterUsuario();
-  if (!usuario) return;
-  const supabase = await criarClienteServidor();
-  await supabase.from("preferencias").upsert({ home_aba: aba }, { onConflict: "perfil_id" });
+    .upsert({ ...visita, ...viu }, { onConflict: "perfil_id" });
+  // sem a migração das abas vistas, a visita fica gravada do mesmo jeito
+  if (semAbas && viu) await supabase.from("preferencias").upsert(visita, { onConflict: "perfil_id" });
 }
 
 /** Escolhe uma das imagens prontas (ou o preto) para o fundo do topo; apaga a foto enviada antes. */

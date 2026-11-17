@@ -17,6 +17,7 @@ import type { TextoDoConvite } from "../../recados/convite-recado";
 import { BarraBusca, FiltrosLista } from "../../explorar/barra-busca";
 import { FotoDaConta } from "../foto-da-conta";
 import { AbasDaLinha, OrdemDaLinha } from "./abas-da-linha";
+import { NovidadesDasAbas } from "./novidades-das-abas";
 import { RaioDaLinha } from "./raio-da-linha";
 import { FaixaDeQuemContrata } from "./faixa-de-quem-contrata";
 import { BuscaERecado } from "./busca-e-recado";
@@ -186,6 +187,13 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   const mudados = filtrosMudados(d.filtrosDaBusca, true);
   const textoDoRaio = d.filtros.tempo ? nomeDoTempo(d.filtros.tempo).toLowerCase() : `até ${d.filtros.raio} km`;
   const Icone = acao?.icone;
+  const hrefsDasAbas = {
+    tudo: hrefFiltros(base, { tipo: null, tudo: true, regime: base.regime, turno: null }),
+    vaga: hrefFiltros(base, { tipo: "vaga", tudo: false }),
+    servico: hrefFiltros(base, { tipo: "servico", tudo: false, regime: null, turno: null }),
+    // a aba dos recados não é um tipo de anúncio: o mesmo endereço de Tudo, com tipo=recado
+    recado: hrefFiltros(base, { tipo: null, tudo: true, regime: null, turno: null }).replace("tipo=tudo", "tipo=recado"),
+  };
 
   // sem um invólucro: as abas ficam presas no alto ao rolar a página toda (o "sticky" vale dentro do pai)
   return (
@@ -287,19 +295,12 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
         numeros={{
           tudo: numeroDaAba(d.novas.tudo),
           vaga: numeroDaAba(d.novas.vaga),
-          servico: numeroDaAba(d.novas.servico),
-          recado: numeroDaAba(d.novas.recado),
+          // Serviços e Posts: o que chegou desde que a pessoa abriu a aba (o mesmo número do aviso embaixo das abas)
+          servico: numeroDaAba(d.naoVistos ? d.naoVistos.servicos.quantos : d.novas.servico),
+          recado: numeroDaAba(d.naoVistos ? d.naoVistos.posts.quantos : d.novas.recado),
         }}
-        hrefs={{
-          tudo: hrefFiltros(base, { tipo: null, tudo: true, regime: base.regime, turno: null }),
-          vaga: hrefFiltros(base, { tipo: "vaga", tudo: false }),
-          servico: hrefFiltros(base, { tipo: "servico", tudo: false, regime: null, turno: null }),
-          // a aba dos recados não é um tipo de anúncio: o mesmo endereço de Tudo, com tipo=recado
-          recado: hrefFiltros(base, { tipo: null, tudo: true, regime: null, turno: null }).replace(
-            "tipo=tudo",
-            "tipo=recado",
-          ),
-        }}
+        hrefs={hrefsDasAbas}
+        novidades={<NovidadesDasAbas aba={d.aba} naoVistos={d.naoVistos} hrefs={hrefsDasAbas} />}
         mudados={mudados}
         abrirFiltros={casa}
         textoDoRaio={textoDoRaio}

@@ -459,6 +459,8 @@ export type Database = {
           home_aba: string | null;
           fundo: string;
           fundo_arquivo: string | null;
+          home_viu_servicos_em: string | null;
+          home_viu_posts_em: string | null;
         };
         Insert: {
           procuro?: string | null;
@@ -467,6 +469,8 @@ export type Database = {
           home_aba?: string | null;
           fundo?: string;
           fundo_arquivo?: string | null;
+          home_viu_servicos_em?: string | null;
+          home_viu_posts_em?: string | null;
         };
         Update: {
           procuro?: string | null;
@@ -475,6 +479,8 @@ export type Database = {
           home_aba?: string | null;
           fundo?: string;
           fundo_arquivo?: string | null;
+          home_viu_servicos_em?: string | null;
+          home_viu_posts_em?: string | null;
         };
         Relationships: [];
       };

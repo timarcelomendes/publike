@@ -3,7 +3,6 @@
 import { Briefcase, Layers, MessageSquareText, SlidersHorizontal, Wrench, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { escolherAbaDaHome } from "@/lib/acoes/home";
 import { guardarOrdemDaLinha } from "@/lib/linha-do-tempo";
 import { Botao } from "../../ui/botao";
 
@@ -35,8 +34,9 @@ const ABAS: { valor: Aba; nome: string; icone: LucideIcon }[] = [
 
 /**
  * As abas da linha do tempo, sublinhadas como as outras abas do site: cada uma mostra quantas
- * novidades chegaram desde a última visita. Ficam presas no alto ao rolar. À direita, Filtros (no
- * celular, o ícone ao lado da busca); o painel dos filtros abre logo embaixo, numa linha só que rola de lado.
+ * novidades chegaram (Tudo e Vagas, desde a última visita; Serviços e Posts, desde que a pessoa abriu a aba). Ficam
+ * presas no alto ao rolar. À direita, Filtros (no celular, o ícone ao lado da busca); o painel dos filtros abre logo
+ * embaixo, numa linha só que rola de lado. A linha abre sempre em Vagas: a aba escolhida não fica guardada.
  */
 export function AbasDaLinha({
   aba,
@@ -47,6 +47,7 @@ export function AbasDaLinha({
   textoDoRaio,
   filtros,
   ordem = null,
+  novidades = null,
 }: {
   aba: Aba;
   numeros: Record<Aba, string | null>;
@@ -59,6 +60,8 @@ export function AbasDaLinha({
   filtros: ReactNode;
   /** Relevantes ou Recentes (OrdemDaLinha): fora do painel, sempre à vista logo acima da lista */
   ordem?: ReactNode;
+  /** o aviso do que chegou em Posts e em Serviços (NovidadesDasAbas), logo embaixo das abas */
+  novidades?: ReactNode;
 }) {
   // com filtro mudado, o painel abre sozinho só na primeira vez neste aparelho (para a pessoa ver o que está
   // valendo); depois fica fechado, e o número no botão Filtros avisa (03/11/2026). "Informe seu CEP" sempre abre.
@@ -146,9 +149,6 @@ export function AbasDaLinha({
                   href={hrefs[valor]}
                   scroll={false}
                   aria-current={atual ? "page" : undefined}
-                  onClick={() => {
-                    escolherAbaDaHome(valor).catch(() => {});
-                  }}
                   className={`relative -mb-px flex flex-1 flex-col items-center gap-0.5 border-b-[3px] px-1 pt-2.5 pb-2 text-[13px] leading-4 font-semibold whitespace-nowrap transition-colors sm:flex-initial sm:flex-row sm:gap-2 sm:px-0.5 sm:pt-3 sm:pb-3 sm:text-[15px] sm:leading-5 focus-visible:-outline-offset-2 ${
                     atual ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
                   }`}
@@ -196,6 +196,7 @@ export function AbasDaLinha({
         </div>
         {filtros}
       </div>
+      {novidades}
       {ordem && <div className="mt-3">{ordem}</div>}
     </>
   );

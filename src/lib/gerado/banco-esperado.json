@@ -325,7 +325,8 @@
   "20270708120000_contratacoes_do_ramo",
   "20270709120000_velocidade_real",
   "20270710120000_whatsapp_resultados_e_parametros",
-  "20270711120000_whatsapp_avisos_escolhidos"
+  "20270711120000_whatsapp_avisos_escolhidos",
+  "20270712120000_home_abas_vistas"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2207,6 +2208,8 @@
   "c|public.preferencias.home_aba": "00bdf2fb04",
   "c|public.preferencias.home_marca_em": "de599dc94b",
   "c|public.preferencias.home_vista_em": "de599dc94b",
+  "c|public.preferencias.home_viu_posts_em": "de599dc94b",
+  "c|public.preferencias.home_viu_servicos_em": "de599dc94b",
   "c|public.preferencias.perfil_id": "80d056fc62",
   "c|public.preferencias.procuro": "00bdf2fb04",
   "c|public.processo_da_conta.atualizado_em": "0d502ae88a",

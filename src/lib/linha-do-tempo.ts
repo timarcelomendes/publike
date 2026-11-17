@@ -11,6 +11,29 @@ const DIA = 24 * HORA;
 
 /** Mais que isso desde a última abertura da home: é uma visita nova (a marca anda). */
 export const SESSAO_DA_HOME = 30 * MINUTO;
+
+/**
+ * Até quanto tempo para trás conta o que a pessoa não viu nas abas Serviços e Posts (migração 20270712120000): a
+ * linha abre sempre em Vagas, e o que chega nas outras abas aparece no número delas e no aviso embaixo (17/11/2026).
+ * Quem nunca abriu a aba vê os últimos 7 dias.
+ */
+export const JANELA_DAS_ABAS = 7 * DIA;
+
+/** Desde quando conta a novidade de uma aba: a última vez que a pessoa a abriu, no máximo 7 dias atrás. */
+export function desdeDaAba(vistaEm: string | null, agora: number) {
+  const vista = vistaEm ? Date.parse(vistaEm) : Number.NaN;
+  return Math.max(Number.isNaN(vista) ? 0 : vista, agora - JANELA_DAS_ABAS);
+}
+
+/** O que chegou numa aba e a pessoa ainda não viu: quantos e quem publicou (os mais novos primeiro, até 3). */
+export type NovidadeDaAba = {
+  quantos: number;
+  rostos: { id: string; nome: string; foto: string | null; empresa: boolean }[];
+  /** com um só: o título do serviço ou o nome de quem postou */
+  sobre: string | null;
+};
+
+export const SEM_NOVIDADE: NovidadeDaAba = { quantos: 0, rostos: [], sobre: null };
 /** Depois de tanto tempo fora, a marca não aparece (tudo seria "novo"). */
 export const MARCA_MAXIMA = 30 * DIA;
 /** Quanto tempo o aceite de uma curtida fica na linha. */
