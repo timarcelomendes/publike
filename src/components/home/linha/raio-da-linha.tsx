@@ -76,12 +76,13 @@ export function RaioDaBusca({
   const origem = f.origem === "gps" ? "de onde você está agora" : d.origem;
   const deOnde = d.deOnde && <DeOnde filtros={d.base} {...d.deOnde} />;
   const raios = (
-    <nav aria-label="Até onde buscar" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+    <nav aria-label="Até onde buscar" className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">
       <span className="inline-flex items-center gap-1 text-body-sm font-semibold text-ink">
         <MapPinned aria-hidden className="size-4 shrink-0 text-ink-muted" />
         Até onde
       </span>
-      <span className="flex flex-wrap gap-1">
+      {/* no celular, uma linha que rola de lado (16/11/2026: quebrando, o "100 km" ficava sozinho embaixo) */}
+      <span className="flex gap-1 overflow-x-auto [scrollbar-width:none] max-sm:-ml-4 max-sm:w-screen max-sm:px-4 sm:flex-wrap [&>*]:shrink-0 [&>*]:whitespace-nowrap">
         {f.tempo && (
           <span
             aria-current="true"
@@ -114,7 +115,7 @@ export function RaioDaBusca({
   );
   // de onde primeiro, depois até onde: a distância conta a partir da origem (12/11/2026)
   const botoes = deOnde ? (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
       {deOnde}
       {raios}
     </div>
@@ -122,16 +123,16 @@ export function RaioDaBusca({
     raios
   );
   const distancia = f.tempo ? nomeDoTempo(f.tempo) : `Até ${f.raio} km`;
-  // nada de fora: só uma linha curta, e o Mudar abre os raios (sem script: <details>). Aberto, ele ocupa a linha
-  // toda, e o `depois` desce
-  if (!longe || !proximo)
-    return (
-      <div
-        className={`flex flex-wrap items-center gap-x-4 gap-y-1 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""} ${
-          aoLado ? "has-[details[open]]:basis-full" : ""
-        }`}
-      >
-        <details id="ate-onde" className="group scroll-mt-24 open:basis-full">
+  // uma linha curta, e o Mudar abre os botões (sem script: <details>). Aberto, ele ocupa a linha toda, e o resto
+  // desce. Com anúncios mais longe, o "Exibir mais" vem ao lado (16/11/2026: com os botões sempre abertos, no celular
+  // o "De onde" e o "Até onde" ocupavam a tela inteira antes da primeira vaga)
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-x-4 gap-y-1 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""} ${
+        aoLado ? "has-[details[open]]:basis-full" : ""
+      }`}
+    >
+      <details id="ate-onde" className="group min-w-0 scroll-mt-24 open:basis-full">
         <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 text-body-sm text-ink-muted [&::-webkit-details-marker]:hidden">
           <MapPinned aria-hidden className="size-4 shrink-0" />
           <span>
@@ -141,21 +142,10 @@ export function RaioDaBusca({
           </span>
         </summary>
         <div className="pt-1.5">{botoes}</div>
-        </details>
-        {depois}
-      </div>
-    );
-  return (
-    <div
-      id="ate-onde"
-      className={`flex scroll-mt-24 flex-col gap-1.5 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""} ${aoLado ? "basis-full" : ""}`}
-    >
-      {botoes}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      </details>
+      {longe && proximo && (
         <p className="text-body-sm text-ink-muted">
-          {/* com o "De onde", o raio e a origem já estão marcados nos botões: a frase fica curta */}
-          {deOnde ? "Há" : `Mostrando só até ${f.raio} km. Há`} mais {plural(longe.total, um, varios)} mais longe
-          {cidades(longe.cidades, longe.total)}.{" "}
+          Há mais {plural(longe.total, um, varios)} mais longe{cidades(longe.cidades, longe.total)}.{" "}
           <Link
             href={hrefFiltros(d.base, { raio: proximo.raio })}
             scroll={false}
@@ -164,8 +154,8 @@ export function RaioDaBusca({
             Exibir mais
           </Link>
         </p>
-        {depois}
-      </div>
+      )}
+      {depois}
     </div>
   );
 }

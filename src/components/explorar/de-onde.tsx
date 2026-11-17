@@ -82,12 +82,17 @@ export function DeOnde({
   return (
     // com o "Onde você mora?" aberto, a linha toda (ao lado dos raios, ele ficaria espremido)
     <div data-de-onde className={`flex flex-col gap-2 ${pedindoCep ? "basis-full" : ""}`}>
-      <div role="group" aria-label="De onde contar" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <div
+        role="group"
+        aria-label="De onde contar"
+        className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2"
+      >
         <span className="inline-flex items-center gap-1 text-body-sm font-semibold text-ink">
           <Route aria-hidden className="size-4 shrink-0 text-ink-muted" />
           De onde
         </span>
-        <span className="flex flex-wrap gap-1">
+        {/* no celular, uma linha que rola de lado, na largura da tela (passa embaixo do "Filtros"; cada opção numa linha ocupava a tela) */}
+        <span className="flex gap-1 overflow-x-auto [scrollbar-width:none] max-sm:-ml-4 max-sm:w-screen max-sm:px-4 sm:flex-wrap [&>*]:shrink-0 [&>*]:whitespace-nowrap">
           <Opcao atual={atual === "voce"} cor="voce" onClick={daqui} ocupado={procurando || pendente}>
             <PontoVoce claro={atual === "voce"} />
             {procurando ? "Procurando você…" : "Onde estou agora"}
