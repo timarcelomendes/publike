@@ -132,12 +132,15 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
           <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
             <Busca searchParams={searchParams} />
           </Suspense>
-          <Suspense fallback={null}>
-            <DicaEBuscasSalvas searchParams={searchParams} />
-          </Suspense>
-          <Suspense fallback={null}>
-            <ChamadaTalento />
-          </Suspense>
+          {/* a dica e o "Você aparece aqui" na mesma linha (16/11/2026); no celular, um embaixo do outro */}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <Suspense fallback={null}>
+              <DicaEBuscasSalvas searchParams={searchParams} emLinha />
+            </Suspense>
+            <Suspense fallback={null}>
+              <ChamadaTalento compacta />
+            </Suspense>
+          </div>
           <Suspense fallback={null}>
             <div className="mt-3 empty:hidden">
               <LocalizacaoDaPagina />
@@ -267,19 +270,23 @@ async function Busca({ searchParams }: { searchParams: Parametros }) {
 /**
  * Embaixo da busca: o jeito de combinar palavras e, para quem contrata, as buscas salvas (migração 20270308120000).
  */
-async function DicaEBuscasSalvas({ searchParams }: { searchParams: Parametros }) {
+async function DicaEBuscasSalvas({ searchParams, emLinha = false }: { searchParams: Parametros; emLinha?: boolean }) {
   const [sp, perfil] = await Promise.all([searchParams, obterMeuPerfil().catch(() => null)]);
   const f = lerBusca(sp);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
   const buscas = empresa ? await minhasBuscasDeTalentos() : null;
   return (
     <>
-      <p className="mt-2 text-body-sm text-ink-muted">
+      <p className={`text-body-sm text-ink-muted ${emLinha ? "min-w-0 flex-1 basis-80" : "mt-2"}`}>
         Dica: <span className="text-ink">caixa OU atendente</span> acha qualquer uma;{" "}
         <span className="text-ink">&quot;auxiliar administrativo&quot;</span>, a frase inteira;{" "}
         <span className="text-ink">-motorista</span> tira quem tem essa palavra.
       </p>
-      {buscas && <BuscasSalvas buscas={buscas} atual={{ texto: f.q, cidade: f.cidade }} />}
+      {buscas && (
+        <div className={emLinha ? "order-last basis-full" : ""}>
+          <BuscasSalvas buscas={buscas} atual={{ texto: f.q, cidade: f.cidade }} />
+        </div>
+      )}
     </>
   );
 }
@@ -586,11 +593,26 @@ function QuaisTalentos({ vagas, vaga }: { vagas: MeuAnuncio[]; vaga: string | nu
  * No alto da aba, o cadastro de quem procura trabalho: "Cadastrar meu currículo" (ou, para quem
  * já aparece, o lembrete de manter o currículo em dia). Empresa e quem procura funcionário não veem.
  */
-async function ChamadaTalento() {
+async function ChamadaTalento({ compacta = false }: { compacta?: boolean }) {
   if (MODO_DEMO) return null;
   const [perfil, intencao] = await Promise.all([obterMeuPerfil().catch(() => null), obterIntencao().catch(() => null)]);
   if ((perfil && perfil.tipo !== "pessoa") || (!perfil && intencao === "contratar_pessoa")) return null;
   const naAba = perfil ? await meuCurriculoNaVitrine() : false;
+  // na linha da dica (quem entrou): só a frase curta e o link
+  if (compacta) {
+    return (
+      <p className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm">
+        <FileUser aria-hidden className="size-4 shrink-0 text-terra-text" />
+        <span className="text-label">{naAba ? "Você aparece aqui." : "Procura trabalho? Apareça aqui."}</span>
+        <Link
+          href={naAba ? "/perfil/curriculo" : "/perfil/curriculo?para=talentos"}
+          className="text-label text-terra-text underline underline-offset-2 hover:text-ink"
+        >
+          {naAba ? "Editar meu currículo" : "Cadastrar meu currículo"}
+        </Link>
+      </p>
+    );
+  }
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-line-strong bg-surface-200 px-3 py-3 shadow-card sm:px-4">
       <FileUser aria-hidden className="size-5 shrink-0 text-terra-text" />
