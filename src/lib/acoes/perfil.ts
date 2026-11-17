@@ -60,6 +60,15 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     };
   }
   const d = leitura.data;
+  // "Receber pelo WhatsApp" no cadastro: precisa do número
+  const querWhatsapp = formData.get("receber_whatsapp") === "on";
+  if (querWhatsapp && !d.whatsapp) {
+    return {
+      ok: false,
+      erro: "Confira os campos marcados.",
+      erros: { whatsapp: "Para receber pelo WhatsApp, ponha o seu número." },
+    };
+  }
 
   // A foto precisa estar na pasta da própria pessoa no Storage (o banco confere de novo).
   if (d.foto && !d.foto.startsWith(`${usuario.id}/`)) {
@@ -94,6 +103,12 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     return { ok: false, erro: "Confira os campos marcados.", erros: { cnpj: mensagemDeErro(error) } };
   }
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar o perfil agora.") };
+  // o aceite do WhatsApp oficial no cadastro (migração 20270711120000): vai com o número que acabou de salvar; se não
+  // der, o perfil fica salvo e a pessoa liga em Preferências
+  if (querWhatsapp) {
+    const { error: erroWhatsapp } = await supabase.rpc("mudar_whatsapp", { p_aceito: true, p_origem: "cadastro" });
+    if (erroWhatsapp) console.error("Publike: não deu para ligar o WhatsApp no cadastro:", erroWhatsapp.message);
+  }
   // o que a conta faz: o painel e a home mostram só esses modos (banco sem a migração: segue)
   if (modos.length) {
     const { error: erroModos } = await supabase.rpc("salvar_meus_modos", { p_modos: modos });

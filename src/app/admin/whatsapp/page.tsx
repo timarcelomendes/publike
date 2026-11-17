@@ -60,6 +60,8 @@ type Resumo = {
   cobradas_30_dias: number;
   enviadas_no_mes: number;
   estimativa: Record<string, { todos: number; aceitaram: number }>;
+  /** quantas pessoas com o WhatsApp ligado desligaram cada aviso (migração 20270711120000) */
+  desligados_por_tipo?: Record<string, number>;
 };
 
 type Contagem = {
@@ -159,6 +161,7 @@ const PORQUE: Record<string, string> = {
   "limite do dia da conta": "a conta já tinha recebido o limite do dia",
   "modo de teste": "o envio estava só para os números de teste",
   "parou de receber": "a pessoa parou de receber pelo WhatsApp",
+  "desligou este aviso": "a pessoa desligou este aviso no WhatsApp (Preferências)",
 };
 
 export default function WhatsappAdmin({ searchParams }: PageProps<"/admin/whatsapp">) {
@@ -826,6 +829,7 @@ function AbaParametros({ r, p }: { r: Resumo; p: ParametrosWhatsapp }) {
         }}
         estimativa={r.estimativa ?? {}}
         enviadasNoMes={r.enviadas_no_mes ?? 0}
+        desligadosPorTipo={r.desligados_por_tipo ?? {}}
       />
     </Secao>
   );

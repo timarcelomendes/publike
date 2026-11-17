@@ -4256,6 +4256,7 @@ export type Database = {
       };
       admin_whatsapp: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_whatsapp_resultados: { Args: { p_dias?: number }; Returns: Json };
+      mudar_whatsapp_avisos: { Args: { p_desligados: string[] }; Returns: undefined };
       admin_salvar_whatsapp: {
         Args: {
           p_ativo: boolean | null;

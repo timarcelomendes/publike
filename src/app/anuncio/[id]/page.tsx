@@ -53,6 +53,8 @@ import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
 import { VerMaisPerto } from "@/components/anuncio/ver-mais";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
 import { BotaoVagaPreenchida } from "@/components/painel/acoes";
+import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
+import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { QuadroNoSite } from "@/components/anuncio/candidatar-no-site";
 import { candidaturaNoSite, nomeDoSiteDeCandidatura } from "@/lib/candidatura";
@@ -341,6 +343,9 @@ async function DetalheAnuncio({
   // com a moderação (em análise ou removido): quem publicou conversa com a equipe aqui (migração 20270405120000)
   const comModeracao = status === "em_analise" || status === "removido";
   const conversaModeracao = proprio && comModeracao ? await minhaConversaModeracao(anuncio.id) : [];
+  // vaga recém-publicada: quem ainda não ligou o WhatsApp vê a pergunta (Marcelo, 17/11: "perguntar ao criar a vaga")
+  const whatsappAoPublicar =
+    proprio && vaga && status === "ativo" && primeiro(sp.publicado) === "1" ? await meuWhatsapp() : null;
   const fotos = anuncio.fotos.map((f) => urlDaFotoTrabalho(f)).filter((u): u is string => Boolean(u));
   const [nota, avaliacoes] = vaga
     ? [null, []]
@@ -518,10 +523,22 @@ async function DetalheAnuncio({
 
       {primeiro(sp.publicado) === "1" &&
         (status === "ativo" ? (
-          <Aviso tipo="sucesso" className="mt-4" titulo="Seu anúncio está no ar!">
-            Ele fica no ar pelo prazo que você escolheu e pode ser renovado. Quando alguém curtir, você recebe um aviso e
-            vê a pessoa no seu painel. Preencheu a vaga? Marque como preenchida no painel.
-          </Aviso>
+          <>
+            <Aviso tipo="sucesso" className="mt-4" titulo="Seu anúncio está no ar!">
+              Ele fica no ar pelo prazo que você escolheu e pode ser renovado. Quando alguém curtir, você recebe um aviso e
+              vê a pessoa no seu painel. Preencheu a vaga? Marque como preenchida no painel.
+            </Aviso>
+            {whatsappAoPublicar?.pode && !whatsappAoPublicar.aceito && (
+              <div className="mt-3 rounded-lg border border-line bg-surface-200 p-4">
+                <AceiteWhatsapp
+                  inicial={whatsappAoPublicar}
+                  origem="publicar"
+                  rotulo="Receber os candidatos novos pelo WhatsApp"
+                  esconderSeAceito
+                />
+              </div>
+            )}
+          </>
         ) : (
           // salvou, mas ainda não está para todo mundo (o aviso logo abaixo diz por quê)
           <Aviso tipo="sucesso" className="mt-4" titulo="Anúncio salvo." />

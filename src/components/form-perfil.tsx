@@ -717,6 +717,21 @@ export function FormPerfil({
           <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
             {campoWhatsapp}
             <p className="-mt-3 text-body-sm text-ink-muted">Só aparece para quem der match com você.</p>
+            {/* o aceite do WhatsApp oficial no cadastro (migração 20270711120000): desmarcado, a pessoa escolhe */}
+            <label className="flex min-h-11 cursor-pointer items-start gap-3">
+              <input type="checkbox" name="receber_whatsapp" className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]" />
+              <span>
+                <span className="block text-label">
+                  {tipo === "pessoa"
+                    ? "Receber o andamento das candidaturas pelo WhatsApp"
+                    : "Receber os candidatos novos pelo WhatsApp"}
+                </span>
+                <span className="block text-body-sm text-ink-muted">
+                  Pelo WhatsApp oficial do Publike, neste número. Dá para escolher os avisos e desligar quando quiser, em
+                  Preferências, ou respondendo PARAR.
+                </span>
+              </span>
+            </label>
             {/* quem contrata: o e-mail também é obrigatório (os avisos e a nota fiscal) */}
             {tipo !== "pessoa" && camposEmail}
           </section>

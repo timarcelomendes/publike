@@ -78,6 +78,46 @@ export const TIPOS_WHATSAPP: { tipo: string; nome: string; curto: string; para: 
   },
 ];
 
+/**
+ * Os avisos que a conta escolhe em Preferências (migração 20270711120000), com o nome para quem recebe. Quem procura
+ * emprego vê os de candidato (e o pedido de serviço, se tem serviço); quem contrata, os de quem contrata. Só os que o
+ * Publike manda hoje (Admin › WhatsApp › Parâmetros).
+ */
+const ROTULO_PARA_QUEM_RECEBE: Record<string, string> = {
+  match: "A empresa aceitou a sua candidatura",
+  entrevista: "Entrevista marcada ou horários para escolher",
+  entrevista_lembrete: "Lembrete na véspera da entrevista",
+  te_respondeu: "“A empresa te respondeu?”, para contar com um toque",
+  conquista_pergunta: "“Deu certo? Você começou?”, para contar com um toque",
+  dispensada: "O retorno de quem não seguiu com você",
+  curtida: "Candidatura nova nas suas vagas (juntas por vaga)",
+  lembrete_curtida: "Candidatos esperando a sua resposta",
+  ainda_espera: "Candidato que ainda espera o seu retorno",
+  conquista_confirmar: "“Começou a trabalhar?”, para confirmar com um toque",
+  interesse_local: "“Quero trabalhar aqui”: currículo enviado para a sua empresa",
+  mensagem: "Mensagem nova no chat",
+};
+
+export function avisosParaEscolher(conta: {
+  tipoConta: string | null;
+  temServicos: boolean;
+  doPublikeDesligados: string[];
+}): { tipo: string; rotulo: string }[] {
+  const pessoa = (conta.tipoConta ?? "pessoa") === "pessoa";
+  return TIPOS_WHATSAPP.filter((t) => !conta.doPublikeDesligados.includes(t.tipo))
+    .filter((t) =>
+      t.para === "Todos"
+        ? true
+        : pessoa
+          ? t.para === "Candidato" || (t.tipo === "curtida" && conta.temServicos)
+          : t.para === "Quem contrata",
+    )
+    .map((t) => ({
+      tipo: t.tipo,
+      rotulo: t.tipo === "curtida" && pessoa ? "Pedido novo nos seus serviços" : (ROTULO_PARA_QUEM_RECEBE[t.tipo] ?? t.nome),
+    }));
+}
+
 export function nomeDoAvisoWhatsapp(tipo: string, curto = false) {
   const t = TIPOS_WHATSAPP.find((x) => x.tipo === tipo);
   return (curto ? t?.curto : t?.nome) ?? tipo;

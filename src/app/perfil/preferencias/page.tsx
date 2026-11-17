@@ -141,6 +141,7 @@ async function Conteudo() {
             <AceiteWhatsapp
               inicial={whatsapp}
               origem="avisos"
+              escolher
               rotulo={
                 empresa
                   ? "Receber os candidatos novos pelo WhatsApp"

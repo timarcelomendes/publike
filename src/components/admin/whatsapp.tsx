@@ -132,11 +132,14 @@ export function ConfigWhatsapp({
   inicial,
   estimativa,
   enviadasNoMes,
+  desligadosPorTipo = {},
 }: {
   inicial: ConfigInicial;
   /** quantos de cada aviso o Publike gerou em 30 dias (de quem já aceitou e de todos) */
   estimativa: Estimativa;
   enviadasNoMes: number;
+  /** quantas pessoas com o WhatsApp ligado desligaram cada aviso em Preferências */
+  desligadosPorTipo?: Record<string, number>;
 }) {
   const [ativo, setAtivo] = useState(inicial.ativo);
   const [paraTodos, setParaTodos] = useState(inicial.para_todos);
@@ -429,8 +432,9 @@ export function ConfigWhatsapp({
           </button>
         </div>
         <p className="max-w-2xl text-body-sm text-ink-muted">
-          Ao lado de cada aviso: quantos o Publike gerou nos últimos 30 dias para quem já aceitou o WhatsApp e, entre
-          parênteses, para todos. O aviso desligado continua no sino, no e-mail e no celular.
+          Ao lado de cada aviso: quantos o Publike gerou nos últimos 30 dias para quem já aceitou o WhatsApp (sem os que a
+          pessoa desligou em Preferências) e, entre parênteses, para todos. O aviso desligado continua no sino, no e-mail e
+          no celular.
         </p>
         <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-100">
           {TIPOS_WHATSAPP.map((t) => {
@@ -456,6 +460,8 @@ export function ConfigWhatsapp({
                     <span className="block text-body-sm text-ink-muted">
                       {t.para}
                       {!t.economico && " · fora do econômico"}
+                      {(desligadosPorTipo[t.tipo] ?? 0) > 0 &&
+                        ` · ${formatarNumero(desligadosPorTipo[t.tipo])} ${desligadosPorTipo[t.tipo] === 1 ? "pessoa desligou" : "pessoas desligaram"}`}
                     </span>
                   </span>
                   <span className="shrink-0 text-right text-body-sm tabular-nums text-ink-muted">
