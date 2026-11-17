@@ -61,19 +61,19 @@ function somarMinutos(inicio: string, minutos: number) {
 }
 
 /**
- * Cria o evento na agenda, no horário de Brasília, com a sala do Meet. Com `convidar`, o prospect entra como convidado
- * e o Google manda o convite (com Aceitar e Recusar) do e-mail de quem atende.
+ * Cria o evento na agenda, no horário de Brasília, com a sala do Meet. Com `convidados`, as pessoas entram como
+ * convidadas e o Google manda o convite (com Aceitar e Recusar) do e-mail de quem atende.
  */
 export async function criarReuniaoMeet(p: {
   titulo: string;
   inicio: string; // "AAAA-MM-DDTHH:MM"
   minutos: number;
   descricao: string;
-  convidado: string | null;
+  convidados: string[];
 }): Promise<ReuniaoMeet> {
   const acesso = await tokenDoGoogle();
   const agenda = encodeURIComponent(env("GOOGLE_MEET_AGENDA") || "primary");
-  const convidar = Boolean(p.convidado);
+  const convidar = p.convidados.length > 0;
   const r = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${agenda}/events?conferenceDataVersion=1&sendUpdates=${convidar ? "all" : "none"}`,
     {
@@ -84,7 +84,7 @@ export async function criarReuniaoMeet(p: {
         description: p.descricao.slice(0, 4000),
         start: { dateTime: `${p.inicio}:00`, timeZone: "America/Sao_Paulo" },
         end: { dateTime: somarMinutos(p.inicio, p.minutos), timeZone: "America/Sao_Paulo" },
-        ...(convidar ? { attendees: [{ email: p.convidado }] } : {}),
+        ...(convidar ? { attendees: p.convidados.map((email) => ({ email })) } : {}),
         conferenceData: { createRequest: { requestId: randomUUID(), conferenceSolutionKey: { type: "hangoutsMeet" } } },
       }),
       cache: "no-store",

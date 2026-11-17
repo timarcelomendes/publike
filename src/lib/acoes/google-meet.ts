@@ -8,13 +8,17 @@ import { ehAdminLocal } from "@/lib/supabase/admin";
 
 const QUANDO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
-/** Admin › E-mails › Agendar conversa: cria o evento com o Google Meet e, se pedido, convida o prospect. */
+/** Até quantas pessoas o convite da conversa leva. */
+const MAXIMO_DE_CONVIDADOS = 20;
+
+/** Admin › E-mails › Agendar conversa: cria o evento com o Google Meet e, se pedido, convida as pessoas. */
 export async function criarReuniaoDaConversa(p: {
   titulo: string;
   inicio: string;
   minutos: number;
   descricao: string;
-  convidado: string | null;
+  /** os e-mails que o Google convida (vazio: só o evento na agenda) */
+  convidados: string[];
 }): Promise<{ ok: true; reuniao: ReuniaoMeet } | { ok: false; erro: string }> {
   if (!(await ehAdminLocal()) && !(await possoVerTela("/admin/emails")))
     return { ok: false, erro: "Só a equipe do Publike cria reuniões." };
@@ -26,11 +30,17 @@ export async function criarReuniaoDaConversa(p: {
     !Number.isInteger(p.minutos) ||
     p.minutos < 10 ||
     p.minutos > 240 ||
-    (p.convidado !== null && (typeof p.convidado !== "string" || !emailValido(p.convidado)))
+    !Array.isArray(p.convidados) ||
+    p.convidados.length > MAXIMO_DE_CONVIDADOS ||
+    p.convidados.some((e) => typeof e !== "string" || !emailValido(e))
   )
-    return { ok: false, erro: "Confira o dia, a hora, a duração e o e-mail." };
+    return { ok: false, erro: "Confira o dia, a hora, a duração e os e-mails." };
+  // o mesmo e-mail uma vez só (sem ligar para maiúsculas)
+  const convidados = p.convidados
+    .map((e) => e.trim())
+    .filter((e, i, todos) => todos.findIndex((x) => x.toLowerCase() === e.toLowerCase()) === i);
   try {
-    const reuniao = await criarReuniaoMeet({ ...p, convidado: p.convidado?.trim() || null });
+    const reuniao = await criarReuniaoMeet({ ...p, convidados });
     // a lista "Conversas na agenda" já mostra a nova
     refresh();
     return { ok: true, reuniao };

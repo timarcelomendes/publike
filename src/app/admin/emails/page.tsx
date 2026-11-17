@@ -309,7 +309,7 @@ async function Conteudo({ aba, filtros }: { aba: Aba; filtros: FiltrosEnviados }
       {aba === "conversa" && (
         <Secao
           titulo="Agendar conversa com um prospect"
-          descricao="Preencha o nome, o e-mail e o horário. Com o Google Meet, um toque cria o evento na sua Google Agenda com a sala e o Google manda o convite, com Aceitar e Recusar. Sem ele, copie o título e a descrição para o evento da sua agenda."
+          descricao="Preencha o nome, o e-mail e o horário (dá para pôr mais pessoas). Com o Google Meet, um toque cria o evento na sua Google Agenda com a sala e o Google manda o convite, com Aceitar e Recusar. Sem ele, copie o título e a descrição para o evento da sua agenda."
         >
           <ConviteDeConversa meet={meetLigado()} />
         </Secao>

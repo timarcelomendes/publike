@@ -1,7 +1,7 @@
 "use client";
 
-import { LoaderCircle, Mail, Video } from "lucide-react";
-import { useEffect, useId, useState, useTransition } from "react";
+import { LoaderCircle, Mail, UserPlus, Video, X } from "lucide-react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { criarReuniaoDaConversa } from "@/lib/acoes/google-meet";
 import { emailValido } from "@/lib/email-valido";
 import { BotaoCopiar } from "@/components/painel/pagina-de-vagas";
@@ -60,10 +60,23 @@ function linhasDaReuniao(r: ReturnType<typeof lerReuniao>) {
 
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? "";
 
+/** "Ana", "Ana e Bruno", "Ana, Bruno e Carla" */
+function juntar(itens: string[]) {
+  return itens.length <= 1 ? (itens[0] ?? "") : `${itens.slice(0, -1).join(", ")} e ${itens[itens.length - 1]}`;
+}
+
+/** Até quantas pessoas a mais o convite leva (o servidor aceita 20 no total). */
+const MAIS_NO_MAXIMO = 10;
+
+type Pessoa = { chave: number; nome: string; email: string };
+
 export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
   const id = useId();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
+  // mais pessoas na conversa (17/11/2026, Marcelo: "quero adicionar mais pessoas, ter um botao adicionar mais")
+  const [mais, setMais] = useState<Pessoa[]>([]);
+  const proximaChave = useRef(1);
   const [empresa, setEmpresa] = useState("");
   // o dia de amanhã só depois de abrir (a data do servidor não vale para a tela)
   const [{ data, hora }, setQuando] = useState({ data: "", hora: "10:00" });
@@ -72,7 +85,14 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
   const [pauta, setPauta] = useState(PAUTA_PADRAO);
   const [assina, setAssina] = useState("Marcelo, do Publike");
   // a reunião criada agora no Google: só desta conversa (não fica guardada para o próximo convite)
-  const [criada, setCriada] = useState<{ url: string; evento: string; convidou: boolean; para: string } | null>(null);
+  const [criada, setCriada] = useState<{
+    url: string;
+    evento: string;
+    convidou: boolean;
+    para: string;
+    /** os e-mails convidados ao criar (mudou depois: o evento não sabe) */
+    pessoas: string;
+  } | null>(null);
   const [erroMeet, setErroMeet] = useState<string | null>(null);
   // o Google manda o convite ao prospect (do e-mail da conta Google de quem atende)
   const [convidar, setConvidar] = useState(true);
@@ -99,7 +119,17 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
     } catch {}
   }, [link, pauta, assina, duracao, criada]);
 
-  const pronto = nome.trim().length >= 2 && emailValido(email) && Boolean(data && hora);
+  // a linha a mais toda vazia não conta; com algo escrito, precisa do e-mail
+  const extras = mais.filter((x) => x.nome.trim() || x.email.trim());
+  const extrasOk = extras.every((x) => emailValido(x.email));
+  // os e-mails do convite, cada um uma vez (o do prospect primeiro)
+  const todos = [email, ...extras.map((x) => x.email)].map((e) => e.trim()).filter((e) => emailValido(e));
+  const emails = todos.filter((e, i) => todos.findIndex((x) => x.toLowerCase() === e.toLowerCase()) === i);
+  const pronto = nome.trim().length >= 2 && emailValido(email) && extrasOk && Boolean(data && hora);
+  // "Oi, Ana!", "Oi, Ana e Bruno!"; sem o nome de alguém (ou com 4 ou mais), "Oi, pessoal!"
+  const nomes = [nome, ...extras.map((x) => x.nome)].map(primeiroNome);
+  const saudacao = nomes.length <= 3 && nomes.every(Boolean) ? juntar(nomes) : "pessoal";
+  const paraQuem = emails.length <= 3 ? juntar(emails) : `${emails.length} pessoas`;
   const quem = empresa.trim() || nome.trim();
   const dia = diaPorExtenso(data);
   const as = horaCurta(hora);
@@ -113,7 +143,7 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
 
   const titulo = `Publike + ${quem}: conversa de ${duracao} min`;
   const descricaoDe = (salas: string[]) => [
-    `Oi, ${primeiroNome(nome)}!`,
+    `Oi, ${saudacao}!`,
     "",
     // sem o nome da empresa na frase: "a Grupo…" ou "o Loja…" saem errados (o nome já está no título)
     "Uma conversa rápida para ver como o Publike pode ajudar vocês a contratar.",
@@ -128,7 +158,7 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
 
   const assunto = `Nossa conversa sobre o Publike: ${dia}, às ${as}`;
   const corpo = [
-    `Oi, ${primeiroNome(nome)}, tudo bem?`,
+    `Oi, ${saudacao}, tudo bem?`,
     "",
     `Obrigado pelo interesse no Publike. Mandei o convite para a nossa conversa de ${duracao} minutos na ${dia}, às ${as} (horário de Brasília).`,
     ...(daReuniao.length ? ["", ...daReuniao] : []),
@@ -148,15 +178,25 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
         minutos: Number(duracao),
         // a sala do Meet o próprio Google põe no evento
         descricao: descricaoDe([]),
-        convidado: convidar && emailValido(email) ? email.trim() : null,
+        convidados: convidar ? emails : [],
       });
       if (!r.ok) return setErroMeet(r.erro);
-      setCriada({ url: r.reuniao.url, evento: r.reuniao.evento, convidou: r.reuniao.convidou, para: horario });
+      setCriada({
+        url: r.reuniao.url,
+        evento: r.reuniao.evento,
+        convidou: r.reuniao.convidou,
+        para: horario,
+        pessoas: convidar ? emails.join(",") : "",
+      });
       setLink(r.reuniao.url);
     });
   }
 
-  const mailto = `mailto:${encodeURIComponent(email.trim())}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  const mailto = `mailto:${emails.map((e) => encodeURIComponent(e)).join(",")}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+
+  function mudarPessoa(chave: number, campo: "nome" | "email", valor: string) {
+    setMais((lista) => lista.map((x) => (x.chave === chave ? { ...x, [campo]: valor } : x)));
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
@@ -180,6 +220,67 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
             className={classesEntrada}
           />
         </Campo>
+        {mais.map((x, i) => (
+          <div
+            key={x.chave}
+            role="group"
+            aria-labelledby={`${id}-mais-${x.chave}`}
+            className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span id={`${id}-mais-${x.chave}`} className="text-label">
+                Pessoa {i + 2}
+              </span>
+              <button
+                type="button"
+                onClick={() => setMais((lista) => lista.filter((y) => y.chave !== x.chave))}
+                aria-label={`Tirar a pessoa ${i + 2}${x.nome.trim() ? ` (${x.nome.trim()})` : ""}`}
+                title="Tirar"
+                className="inline-flex size-9 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+              >
+                <X aria-hidden className="size-4" />
+              </button>
+            </div>
+            <input
+              aria-label={`Nome da pessoa ${i + 2}`}
+              placeholder="Nome (opcional)"
+              value={x.nome}
+              onChange={(e) => mudarPessoa(x.chave, "nome", e.target.value)}
+              autoComplete="off"
+              className={classesEntrada}
+            />
+            <input
+              aria-label={`E-mail da pessoa ${i + 2}`}
+              type="email"
+              placeholder="E-mail"
+              value={x.email}
+              onChange={(e) => mudarPessoa(x.chave, "email", e.target.value)}
+              autoComplete="off"
+              aria-invalid={(x.nome.trim() || x.email.trim()) && !emailValido(x.email) ? true : undefined}
+              className={classesEntrada}
+            />
+            {x.email.trim() && !emailValido(x.email) && <MensagemErro>Confira o e-mail.</MensagemErro>}
+            {x.nome.trim() && !x.email.trim() && <MensagemErro>Falta o e-mail.</MensagemErro>}
+          </div>
+        ))}
+        {mais.length < MAIS_NO_MAXIMO && (
+          <Botao
+            tamanho="sm"
+            variante="fantasma"
+            className="self-start"
+            onClick={() => {
+              const chave = proximaChave.current++;
+              setMais((lista) => [...lista, { chave, nome: "", email: "" }]);
+              // o cursor no nome da pessoa nova
+              requestAnimationFrame(() =>
+                document.querySelector<HTMLInputElement>(`[aria-label="Nome da pessoa ${mais.length + 2}"]`)?.focus(),
+              );
+            }}
+          >
+            <UserPlus aria-hidden />
+            Adicionar mais uma pessoa
+          </Botao>
+        )}
         <Campo rotulo="Empresa" nome={`${id}-empresa`} opcional>
           <input
             id={`${id}-empresa`}
@@ -236,14 +337,19 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
                 Você mudou o dia, a hora ou a duração: mude também o evento na Google Agenda, ou crie outro.
               </MensagemErro>
             )}
+            {criada.convidou && criada.pessoas !== emails.join(",") && (
+              <MensagemErro>
+                Você mudou as pessoas: ponha também no evento da Google Agenda (em Convidados), ou crie outro.
+              </MensagemErro>
+            )}
             <div className="flex flex-wrap gap-2">
               {criada.evento && (
                 <a href={criada.evento} target="_blank" rel="noopener noreferrer" className={classesBotao("secundario", "sm")}>
                   Abrir na Google Agenda
                 </a>
               )}
-              {criada.para !== horario && (
-                <Botao tamanho="sm" variante="secundario" onClick={criarNoMeet} disabled={criando}>
+              {(criada.para !== horario || (criada.convidou && criada.pessoas !== emails.join(","))) && (
+                <Botao tamanho="sm" variante="secundario" onClick={criarNoMeet} disabled={criando || !pronto}>
                   {criando ? <LoaderCircle aria-hidden className="animate-spin" /> : <Video aria-hidden />}
                   Criar outro
                 </Botao>
@@ -271,7 +377,7 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
                     onChange={(e) => setConvidar(e.target.checked)}
                     className="size-5 accent-[var(--pk-ink)]"
                   />
-                  O Google manda o convite para {emailValido(email) ? email.trim() : "o e-mail do prospect"}
+                  O Google manda o convite para {emails.length ? paraQuem : "o e-mail do prospect"}
                 </label>
                 <Botao variante="secundario" onClick={criarNoMeet} disabled={criando || !pronto}>
                   {criando ? <LoaderCircle aria-hidden className="animate-spin" /> : <Video aria-hidden />}
@@ -340,7 +446,8 @@ export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
               <li>Na sua agenda, crie o evento na {dia}, às {as}, com {duracao} minutos.</li>
               <li>Cole o título e a descrição abaixo.</li>
               <li>
-                Em Convidados, ponha <b className="font-semibold text-ink">{email.trim()}</b> e salve enviando o convite.
+                Em Convidados, ponha <b className="font-semibold text-ink">{juntar(emails)}</b> e salve enviando o
+                convite.
               </li>
             </ol>
             )}
