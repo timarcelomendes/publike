@@ -332,7 +332,8 @@
   "20270715120000_planos_a_partir_de_20_vagas",
   "20270716120000_pedidos_nao_pagos",
   "20270717120000_convite_do_pacote",
-  "20270718120000_whatsapp_mais_alcance"
+  "20270718120000_whatsapp_mais_alcance",
+  "20270719120000_whatsapp_na_linha_do_tempo"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2921,6 +2922,7 @@
   "f|public.admin_verificar(p_usuario uuid, p_verificado boolean)": "6676b2b7b8",
   "f|public.admin_whatsapp()": "8fc442a299",
   "f|public.admin_whatsapp_cobradas_por_modelo(p_dias integer)": "27583880b7",
+  "f|public.admin_whatsapp_das_curtidas(p_anuncios uuid[])": "b050f5ff8e",
   "f|public.admin_whatsapp_resultados(p_dias integer)": "44e2fbb12a",
   "f|public.admin_whatsapp_salvar_modelos(p_modelos jsonb)": "ed8fd3c2e0",
   "f|public.agendar_remocao(p_anuncio uuid, p_horas integer, p_nota text, p_so_sem_resposta boolean)": "d833edd36c",
@@ -3733,6 +3735,7 @@
   "i|privado.fila_push_conta_idx": "8f0acbff25",
   "i|privado.fila_push_pendentes_idx": "75306d3ec8",
   "i|privado.fila_push_pkey": "5667909a41",
+  "i|privado.fila_whatsapp_anuncio_idx": "533b66242b",
   "i|privado.fila_whatsapp_conta_idx": "ba8f761210",
   "i|privado.fila_whatsapp_criado_idx": "c1200bf5bf",
   "i|privado.fila_whatsapp_pendentes_idx": "8ee5b0615f",

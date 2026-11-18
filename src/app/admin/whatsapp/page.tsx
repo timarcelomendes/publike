@@ -29,6 +29,9 @@ import {
   horarioWhatsapp,
   nomeDoAvisoWhatsapp,
   parametrosWhatsapp,
+  porqueNaoSaiu,
+  quemRecebeuWhatsapp,
+  RESPOSTAS_WHATSAPP,
   TARIFA_MARKETING_USD,
   TARIFA_WHATSAPP_USD,
   type ParametrosWhatsapp,
@@ -162,28 +165,8 @@ const SITUACAO: Record<string, { nome: string; variante: VarianteSelo }> = {
   descartada: { nome: "Não saiu", variante: "contorno" },
 };
 
-const RESPOSTAS: Record<string, string> = {
-  sim: "Sim",
-  ainda_nao: "Ainda não",
-  desisti: "Desisti",
-  comecei: "Comecei",
-  nao_deu: "Não deu certo",
-  nao: "Não",
-};
-
 /** Os avisos com botões de resposta (a coluna Respostas só vale neles). */
 const COM_BOTOES = new Set(MODELOS.filter((m) => m.botoes.some((b) => b.tipo === "resposta")).map((m) => m.aviso));
-
-/** Por que o aviso não saiu, em palavras (os motivos que o robô grava). */
-const PORQUE: Record<string, string> = {
-  "já viu no Publike": "a pessoa viu no Publike antes (a mensagem não fez falta)",
-  "limite do dia da conta": "a conta já tinha recebido o limite do dia",
-  "modo de teste": "o envio estava só para os números de teste",
-  "parou de receber": "a pessoa parou de receber pelo WhatsApp",
-  "desligou este aviso": "a pessoa desligou este aviso no WhatsApp (Preferências)",
-  "limite do mês do grátis": "a empresa ou agência usou os avisos do mês do grátis",
-  "limite do mês do plano": "a empresa ou agência usou os avisos do mês do plano",
-};
 
 export default function WhatsappAdmin({ searchParams }: PageProps<"/admin/whatsapp">) {
   return (
@@ -213,11 +196,18 @@ const horaCurta = (iso: string) =>
     .format(new Date(iso))
     .replace(",", "");
 
-/** "14:05" no mesmo dia de `base`; "18/11 08:00" em outro dia. */
-const horaDoDia = (iso: string, base: string) => {
+/** "hoje às 08:01", "ontem às 20:15" ou "16/11 às 09:30", no horário de Brasília. */
+const quandoFoi = (iso: string, agora: number) => {
   const h = horaCurta(iso);
-  return h.slice(0, 5) === horaCurta(base).slice(0, 5) ? h.slice(-5) : h;
+  const dia = diaDe(new Date(iso).getTime());
+  if (dia === diaDe(agora)) return `hoje às ${h.slice(-5)}`;
+  if (dia === diaDe(agora - 86_400_000)) return `ontem às ${h.slice(-5)}`;
+  return `${h.slice(0, 5)} às ${h.slice(-5)}`;
 };
+
+/** A hora de Brasília agora (0 a 23). */
+const horaDeAgora = (agora: number) =>
+  Number(new Intl.DateTimeFormat("en-GB", { timeZone: FUSO, hour: "2-digit", hourCycle: "h23" }).format(agora));
 
 /** O motivo da Meta explicado ("131026: …" vira a frase em português com o código entre parênteses). */
 const explicado = (motivo: string) => (/^\d+:/.test(motivo) ? explicarErro(motivo) : motivo);
@@ -723,7 +713,7 @@ function AbaResultados({
                     <span className="flex flex-wrap gap-x-4 gap-y-0.5 text-ink-muted">
                       {lista.map((x) => (
                         <span key={x.resposta}>
-                          {RESPOSTAS[x.resposta] ?? x.resposta}:{" "}
+                          {RESPOSTAS_WHATSAPP[x.resposta] ?? x.resposta}:{" "}
                           <span className="text-ink tabular-nums">{formatarNumero(x.quantas)}</span>
                         </span>
                       ))}
@@ -739,7 +729,7 @@ function AbaResultados({
                 {res.descartes.map((x) => (
                   <li key={x.motivo} className="grid grid-cols-[1fr_auto] gap-x-3">
                     <span className="text-ink">
-                      {PORQUE[x.motivo] ?? (x.motivo.startsWith("venceu") ? `esperou demais na fila: ${x.motivo}` : x.motivo)}
+                      {porqueNaoSaiu(x.motivo)}
                     </span>
                     <span className="text-ink-muted tabular-nums">{formatarNumero(x.quantas)}</span>
                   </li>
@@ -750,68 +740,94 @@ function AbaResultados({
         </div>
       )}
 
+      {/* para quem foi (a empresa ou o candidato) e quando chegou no celular (18/11/2026, Marcelo: "Quero saber aqui
+          quando a empresa ou o candidato recebeu WhatsApp pela a api"); uma linha por mensagem, que cabe no celular */}
       <Secao
         titulo="As últimas mensagens"
-        descricao={`As ${formatarNumero(res.ultimas.length)} mais recentes do período, com o nome da conta (nunca o número).`}
+        descricao={`As ${formatarNumero(res.ultimas.length)} mais recentes do período: para quem foi (a empresa ou o candidato, pelo nome, nunca o número) e quando chegou no celular.`}
       >
         {res.ultimas.length === 0 ? (
           <Vazio icone={MessageCircle} titulo="Nada neste período">
             Quando um aviso entra na fila do WhatsApp, ele aparece aqui.
           </Vazio>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[48rem] text-left text-body-sm">
-              <thead className="text-ink-muted">
-                <tr>
-                  <th className="py-2 pr-3 font-normal">Quando</th>
-                  <th className="py-2 pr-3 font-normal">Para</th>
-                  <th className="py-2 pr-3 font-normal">Aviso</th>
-                  <th className="py-2 pr-3 font-normal">Situação</th>
-                  <th className="py-2 font-normal">Detalhe</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {res.ultimas.map((m) => {
-                  const st = SITUACAO[m.situacao] ?? { nome: m.situacao, variante: "contorno" as const };
-                  return (
-                    <tr key={m.id} className="align-top">
-                      <td className="py-2 pr-3 whitespace-nowrap text-ink-muted tabular-nums">{horaCurta(m.criado_em)}</td>
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        <Link href={`/admin/usuarios/${m.conta_id}`} className="text-ink underline-offset-2 hover:underline">
-                          {m.conta ?? "Conta apagada"}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-3 whitespace-nowrap text-ink">
-                        {nomeDoAvisoWhatsapp(m.tipo, true)}
-                        {m.quantos > 1 && <span className="text-ink-muted"> · {formatarNumero(m.quantos)} juntas</span>}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Selo variante={st.variante}>{st.nome}</Selo>
-                      </td>
-                      <td className={`py-2 ${m.situacao === "falhou" ? "text-danger" : "text-ink-muted"}`}>
-                        {m.resposta
-                          ? `Respondeu: ${RESPOSTAS[m.resposta] ?? m.resposta}`
-                          : m.motivo
-                            ? m.situacao === "descartada"
-                              ? (PORQUE[m.motivo] ?? m.motivo)
-                              : explicado(m.motivo)
-                            : m.lida_em
-                              ? `Lida às ${horaDoDia(m.lida_em, m.criado_em)}`
-                              : m.enviada_em
-                                ? `Saiu às ${horaDoDia(m.enviada_em, m.criado_em)}`
-                                : m.situacao === "pendente" && m.enviar_depois_de
-                                  ? `Sai a partir das ${horaDoDia(m.enviar_depois_de, m.criado_em)}`
-                                  : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ul className="flex flex-col divide-y divide-line">
+            {res.ultimas.map((m) => (
+              <MensagemDaLista key={m.id} m={m} agora={agora} p={p} />
+            ))}
+          </ul>
         )}
       </Secao>
     </div>
+  );
+}
+
+/**
+ * Uma das últimas mensagens: o nome de quem recebeu e se é a empresa ou o candidato, o aviso, a situação e a hora que
+ * conta (quando chegou no celular e quando leu; antes disso, quando saiu ou quando vai sair).
+ */
+function MensagemDaLista({ m, agora, p }: { m: Resultados["ultimas"][number]; agora: number; p: ParametrosWhatsapp }) {
+  const st = SITUACAO[m.situacao] ?? { nome: m.situacao, variante: "contorno" as const };
+  // a Meta manda a entrega e a leitura; quem desligou a confirmação de leitura só manda a entrega
+  const recebeu = m.entregue_em ?? m.lida_em;
+  const naFila = m.situacao === "pendente" || m.situacao === "enviando";
+  const foraDoHorario = horaDeAgora(agora) < p.hora_inicio || horaDeAgora(agora) >= p.hora_fim;
+  const [hora, depois] = recebeu
+    ? [
+        `Recebeu ${quandoFoi(recebeu, agora)}`,
+        m.lida_em
+          ? diaDe(new Date(m.lida_em).getTime()) === diaDe(new Date(recebeu).getTime())
+            ? `leu às ${horaCurta(m.lida_em).slice(-5)}`
+            : `leu ${quandoFoi(m.lida_em, agora)}`
+          : null,
+      ]
+    : m.situacao === "enviada" && m.enviada_em
+      ? [`Saiu ${quandoFoi(m.enviada_em, agora)}`, "a Meta ainda não confirmou a entrega"]
+      : m.situacao === "falhou"
+        ? [`Falhou ${quandoFoi(m.enviada_em ?? m.criado_em, agora)}`, null]
+        : naFila
+          ? [
+              m.enviar_depois_de && new Date(m.enviar_depois_de).getTime() > agora
+                ? `Sai a partir de ${quandoFoi(m.enviar_depois_de, agora)}`
+                : foraDoHorario
+                  ? `Sai às ${p.hora_inicio}h`
+                  : "Sai na próxima rodada",
+              `entrou na fila ${quandoFoi(m.criado_em, agora)}`,
+            ]
+          : [`Entrou na fila ${quandoFoi(m.criado_em, agora)}`, null];
+  const detalhe = m.resposta
+    ? `Respondeu: ${RESPOSTAS_WHATSAPP[m.resposta] ?? m.resposta}`
+    : m.motivo
+      ? m.situacao === "descartada"
+        ? porqueNaoSaiu(m.motivo)
+        : explicado(m.motivo)
+      : null;
+
+  // no celular, uma coluna (quem, o aviso, a situação com a hora, o detalhe); no computador, a situação e a hora à direita
+  return (
+    <li className="grid gap-x-4 gap-y-1 py-2.5 text-body-sm sm:grid-cols-[minmax(0,1fr)_auto]">
+      <span className="min-w-0 break-words">
+        <Link href={`/admin/usuarios/${m.conta_id}`} className="text-label text-ink underline-offset-2 hover:underline">
+          {m.conta ?? "Conta apagada"}
+        </Link>
+        <span className="text-ink-muted"> · {quemRecebeuWhatsapp(m.tipo, m.conta_tipo)}</span>
+      </span>
+      <span className="text-ink">
+        {nomeDoAvisoWhatsapp(m.tipo, true)}
+        {m.quantos > 1 && <span className="text-ink-muted"> · {formatarNumero(m.quantos)} juntas</span>}
+      </span>
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-2 sm:row-span-3 sm:row-start-1 sm:flex-col sm:items-end sm:text-right">
+        <Selo variante={st.variante}>{st.nome}</Selo>
+        <span className="text-ink tabular-nums">
+          {hora}
+          {depois && <span className="sm:hidden">,</span>}
+        </span>
+        {depois && <span className="text-ink-muted tabular-nums">{depois}</span>}
+      </span>
+      {detalhe && (
+        <span className={`sm:col-start-1 ${m.situacao === "falhou" ? "text-danger" : "text-ink-muted"}`}>{detalhe}</span>
+      )}
+    </li>
   );
 }
 

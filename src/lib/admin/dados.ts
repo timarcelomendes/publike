@@ -1161,7 +1161,69 @@ export type CurtidaAdmin = {
    * perguntas do match e as mensagens das automações são automáticas)
    */
   chat?: ChatDoMatch | null;
+  /** os avisos do WhatsApp desta curtida, para quem publicou e para quem curtiu (migração 20270719120000) */
+  whatsapp?: WhatsappDaCurtida[];
 };
+
+/**
+ * Um aviso do WhatsApp de uma curtida (admin_whatsapp_das_curtidas): `lado` empresa é quem publicou, pessoa é quem
+ * curtiu. `junto`: a curtida entrou na candidatura nova de outra, que ainda esperava para sair (a mensagem saiu depois
+ * dela, com `quantos` candidaturas).
+ */
+export type WhatsappDaCurtida = {
+  id: number;
+  lado: "empresa" | "pessoa";
+  tipo: string;
+  situacao: string;
+  quantos: number;
+  junto: boolean;
+  criado_em: string;
+  enviar_depois_de: string | null;
+  enviando_em: string | null;
+  enviada_em: string | null;
+  entregue_em: string | null;
+  lida_em: string | null;
+  resposta: string | null;
+  respondida_em: string | null;
+  motivo: string | null;
+};
+
+/**
+ * Os avisos do WhatsApp de cada curtida dos anúncios ("anuncio:perfil" → avisos, do mais antigo ao mais novo). Só a
+ * equipe do Publike vê, como em Admin › WhatsApp: a moderação de fora fica sem. Sem a migração 20270719120000: vazio.
+ */
+async function whatsappDasCurtidas(c: ClienteBanco, idsAnuncios: string[]): Promise<Map<string, WhatsappDaCurtida[]>> {
+  const mapa = new Map<string, WhatsappDaCurtida[]>();
+  if (!idsAnuncios.length) return mapa;
+  const { data, error } = await c.rpc("admin_whatsapp_das_curtidas", { p_anuncios: idsAnuncios.slice(0, 1000) });
+  if (error) {
+    if (error.code !== "PGRST202" && error.code !== "42501")
+      console.error(`Publike: falha ao ler o WhatsApp das curtidas: ${error.message}`);
+    return mapa;
+  }
+  for (const x of data ?? []) {
+    const chave = `${x.anuncio_id}:${x.perfil_id}`;
+    const aviso: WhatsappDaCurtida = {
+      id: Number(x.id),
+      lado: x.lado === "empresa" ? "empresa" : "pessoa",
+      tipo: x.tipo,
+      situacao: x.situacao,
+      quantos: Number(x.quantos) || 1,
+      junto: Boolean(x.junto),
+      criado_em: x.criado_em,
+      enviar_depois_de: x.enviar_depois_de,
+      enviando_em: x.enviando_em,
+      enviada_em: x.enviada_em,
+      entregue_em: x.entregue_em,
+      lida_em: x.lida_em,
+      resposta: x.resposta,
+      respondida_em: x.respondida_em,
+      motivo: x.motivo,
+    };
+    mapa.set(chave, [...(mapa.get(chave) ?? []), aviso]);
+  }
+  return mapa;
+}
 
 /** O chat de um match: a primeira mensagem de gente de cada lado e se cada um respondeu ao outro. */
 export type ChatDoMatch = {
@@ -1253,10 +1315,11 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
   for (const t of toques ?? [])
     toqueDe.set(`${t.anuncio_id}:${t.perfil_id}:${t.lado}`, { canal: t.canal as ToqueDeContato["canal"], em: t.em });
   // os indicadores dos cartões: o total de curtidas de cada anúncio e como quem publicou responde
-  const [totais, respostas, chats] = await Promise.all([
+  const [totais, respostas, chats, whatsapps] = await Promise.all([
     curtidasPorAnuncio(c, idsAnuncios),
     respostaDosAutores(c, [...new Set((anuncios ?? []).map((a) => a.autor_id))]),
     chatDasCurtidas(c, idsAnuncios),
+    whatsappDasCurtidas(c, idsAnuncios),
   ]);
   return linhas.map((l) => {
     const a = porAnuncio.get(l.anuncio_id) ?? null;
@@ -1295,6 +1358,7 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
         pessoa: toqueDe.get(`${l.anuncio_id}:${l.perfil_id}:pessoa`) ?? null,
       },
       chat: chats.get(`${l.anuncio_id}:${l.perfil_id}`) ?? null,
+      whatsapp: whatsapps.get(`${l.anuncio_id}:${l.perfil_id}`) ?? [],
     };
   });
 }
@@ -1324,9 +1388,11 @@ export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null)
     falha("as curtidas (moderação)", error);
   }
   const linhas = (Array.isArray(data) ? data : []) as unknown as LinhaDaModeracao[];
-  const [respostas, chats] = await Promise.all([
+  const idsAnuncios = [...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.id] : [])))];
+  const [respostas, chats, whatsapps] = await Promise.all([
     respostaDosAutores(c, [...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.autor_id] : [])))]),
-    chatDasCurtidas(c, [...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.id] : [])))]),
+    chatDasCurtidas(c, idsAnuncios),
+    whatsappDasCurtidas(c, idsAnuncios),
   ]);
   return linhas.map((l) => ({
     quando: l.criado_em,
@@ -1350,6 +1416,7 @@ export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null)
     publicou: l.publicou ? { ...l.publicou, resposta: respostas.get(l.publicou.id) ?? null } : null,
     contatos: { empresa: l.contato_empresa, pessoa: l.contato_pessoa },
     chat: l.curtiu && l.anuncio ? (chats.get(`${l.anuncio.id}:${l.curtiu.id}`) ?? null) : null,
+    whatsapp: l.curtiu && l.anuncio ? (whatsapps.get(`${l.anuncio.id}:${l.curtiu.id}`) ?? []) : [],
   }));
 }
 

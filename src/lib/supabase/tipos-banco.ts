@@ -4191,6 +4191,29 @@ export type Database = {
       convites_do_meu_pacote: { Args: { p_anuncio: string }; Returns: Json };
       // o custo do WhatsApp pela categoria de cada modelo (migração 20270718120000)
       admin_whatsapp_cobradas_por_modelo: { Args: { p_dias: number }; Returns: Json };
+      // o WhatsApp na linha do tempo das curtidas (migração 20270719120000)
+      admin_whatsapp_das_curtidas: {
+        Args: { p_anuncios: string[] };
+        Returns: {
+          id: number;
+          anuncio_id: string;
+          perfil_id: string;
+          lado: string;
+          tipo: string;
+          situacao: string;
+          quantos: number;
+          junto: boolean;
+          criado_em: string;
+          enviar_depois_de: string | null;
+          enviando_em: string | null;
+          enviada_em: string | null;
+          entregue_em: string | null;
+          lida_em: string | null;
+          resposta: string | null;
+          respondida_em: string | null;
+          motivo: string | null;
+        }[];
+      };
       // os pedidos de assinatura não pagos (migração 20270716120000)
       servidor_pedidos_nao_pagos: { Args: { p_chave: string }; Returns: Json };
       servidor_pedido_nao_pago_cancelado: {

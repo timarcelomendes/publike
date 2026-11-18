@@ -1,3 +1,5 @@
+import { rotuloConta } from "./formato";
+
 // Os avisos que saem pelo WhatsApp oficial (migrações 20270619120000 e 20270620120000), com o nome para o
 // Admin › WhatsApp. Os mesmos tipos do gatilho notificacoes_para_whatsapp. `economico`: o que fica ligado no envio
 // econômico (o que destrava a contratação e as perguntas com botões); o resto fica no sino, no e-mail e no celular.
@@ -131,6 +133,45 @@ export function nomeDoAvisoWhatsapp(tipo: string, curto = false) {
   const t = TIPOS_WHATSAPP.find((x) => x.tipo === tipo);
   return (curto ? t?.curto : t?.nome) ?? tipo;
 }
+
+/**
+ * Quem recebeu o aviso, para o Admin (18/11/2026, Marcelo: "quando a empresa ou o candidato recebeu WhatsApp"): o
+ * candidato ou quem contrata, pelo tipo da conta (empresa, comércio, agência; a pessoa que publicou a vaga ou o
+ * serviço). A mensagem do chat vai para os dois lados: fica só o tipo da conta.
+ */
+export function quemRecebeuWhatsapp(tipo: string, contaTipo: string | null) {
+  const para = TIPOS_WHATSAPP.find((x) => x.tipo === tipo)?.para;
+  if (para === "Candidato") return "candidato";
+  if (!contaTipo) return para === "Quem contrata" ? "quem contrata" : "conta apagada";
+  if (contaTipo === "pessoa") return para === "Quem contrata" ? "quem publicou" : "pessoa";
+  return rotuloConta(contaTipo);
+}
+
+/** Por que o aviso não saiu, em palavras (os motivos que o robô grava; não são erros). */
+export const PORQUE_NAO_SAIU: Record<string, string> = {
+  "já viu no Publike": "a pessoa viu no Publike antes (a mensagem não fez falta)",
+  "limite do dia da conta": "a conta já tinha recebido o limite do dia",
+  "modo de teste": "o envio estava só para os números de teste",
+  "parou de receber": "a pessoa parou de receber pelo WhatsApp",
+  "desligou este aviso": "a pessoa desligou este aviso no WhatsApp (Preferências)",
+  "limite do mês do grátis": "a empresa ou agência usou os avisos do mês do grátis",
+  "limite do mês do plano": "a empresa ou agência usou os avisos do mês do plano",
+};
+
+/** O motivo de o aviso não ter saído, explicado (o "venceu" é o que esperou demais na fila). */
+export function porqueNaoSaiu(motivo: string) {
+  return PORQUE_NAO_SAIU[motivo] ?? (motivo.startsWith("venceu") ? `esperou demais na fila: ${motivo}` : motivo);
+}
+
+/** As respostas dos botões, como a pessoa tocou. */
+export const RESPOSTAS_WHATSAPP: Record<string, string> = {
+  sim: "Sim",
+  ainda_nao: "Ainda não",
+  desisti: "Desisti",
+  comecei: "Comecei",
+  nao_deu: "Não deu certo",
+  nao: "Não",
+};
 
 /**
  * Os parâmetros do envio (Admin › WhatsApp › Parâmetros; migração 20270710120000), com os valores de antes, que eram

@@ -11,6 +11,7 @@ import {
   curtidasRecentes,
   inicioDeHoje,
   type CurtidaAdmin,
+  type WhatsappDaCurtida,
 } from "@/lib/admin/dados";
 import {
   ateQuando,
@@ -23,16 +24,20 @@ import {
 } from "@/lib/formato";
 import { comoResponde } from "@/lib/resposta";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import { explicarErro } from "@/lib/servidor/whatsapp";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { nomeDoAvisoWhatsapp, porqueNaoSaiu, RESPOSTAS_WHATSAPP } from "@/lib/whatsapp-tipos";
 
 export const metadata: Metadata = { title: "Curtidas" };
 
 // Admin › Curtidas (05/11/2026): quem curtiu o quê, de quem, e como ficou (esperando o aceite, aceita e falta o
 // currículo, deu match, não foi dessa vez, match desfeito). Só no admin, no computador do dono. Cada nome leva à
 // ficha da conta ou do anúncio no admin. No site no ar, a moderação (com login) vê a mesma lista pela função
-// moderacao_curtidas (migração 20270304120000); ali os nomes levam ao perfil público.
+// moderacao_curtidas (migração 20270304120000); ali os nomes levam ao perfil público. Desde 18/11/2026, a linha do
+// tempo mostra também os avisos do WhatsApp que quem publicou e a pessoa receberam (migração 20270719120000; só a
+// equipe do Publike vê, como em Admin › WhatsApp).
 
 const PERIODOS = [
   { valor: "hoje", nome: "Hoje" },
@@ -568,60 +573,174 @@ function Tabela({ linhas, agora, admin }: { linhas: CurtidaAdmin[]; agora: numbe
 type Passo = { cor: string; titulo: string; detalhe?: string | null; em?: string | null; depois?: string | null; aberto?: boolean };
 
 /**
- * A linha do tempo de uma curtida: curtiu → respondida (humano ou automático) → o contato → o fim do anúncio
- * (preenchida, encerrada, saiu do ar no prazo, pausada, removida) ou "no ar". Com o tempo entre os passos.
+ * Um passo com data, para pôr na ordem em que aconteceu: `ordem` desempata os da mesma hora (a curtida, a resposta,
+ * o contato e o chat, o WhatsApp); `daCurtida`: o tempo conta da curtida, e não do passo de cima.
+ */
+type PassoDatado = Passo & { em: string; ordem: number; daCurtida?: boolean };
+
+const ms = (iso: string) => new Date(iso).getTime();
+
+const diaEmBrasilia = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+
+/** "às 08:15" no mesmo dia de `base`; "em 19 de nov., 09:00" em outro dia. */
+function horaDepois(iso: string, base: string) {
+  if (diaEmBrasilia(iso) !== diaEmBrasilia(base)) return `em ${quandoCurto(iso)}`;
+  const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+  return `às ${hora.format(new Date(iso))}`;
+}
+
+/**
+ * Um aviso do WhatsApp na linha do tempo (18/11/2026, Marcelo: "quando a empresa ou o candidato recebeu WhatsApp" e
+ * "exibir também na tela de curtidas, na linha do tempo"): quem recebeu e quando chegou no celular, se leu e se tocou
+ * num botão; antes de chegar, se saiu, se está na fila, se não saiu (as regras do envio) ou se falhou.
+ */
+function passoDoWhatsapp(w: WhatsappDaCurtida, curtiuEm: string, agora: number): { datado?: PassoDatado; aberto?: Passo } {
+  const quem = w.lado === "empresa" ? "quem publicou" : "a pessoa";
+  const aviso = `${nomeDoAvisoWhatsapp(w.tipo, true)}${w.quantos > 1 ? ` (${w.quantos} juntas)` : ""}`;
+  // a candidatura que entrou junto na mensagem de outra: a mensagem saiu depois dela
+  const desde = (iso: string) => (w.junto && ms(iso) < ms(curtiuEm) ? curtiuEm : iso);
+  const com = (...partes: (string | null | false)[]) => partes.filter(Boolean).join(" · ");
+  // a Meta manda a entrega e a leitura; quem desligou a confirmação de leitura só manda a entrega
+  const recebeu = w.entregue_em ?? w.lida_em;
+  if (recebeu)
+    return {
+      datado: {
+        cor: "bg-cerrado",
+        titulo: `${w.lado === "empresa" ? "Quem publicou" : "A pessoa"} recebeu no WhatsApp`,
+        detalhe: com(
+          aviso,
+          w.lida_em && `leu ${horaDepois(w.lida_em, recebeu)}`,
+          w.resposta && `tocou em “${RESPOSTAS_WHATSAPP[w.resposta] ?? w.resposta}”`,
+        ),
+        em: desde(recebeu),
+        ordem: 3,
+      },
+    };
+  if (w.situacao === "enviada")
+    return {
+      datado: {
+        cor: "bg-line-strong",
+        titulo: `WhatsApp para ${quem} saiu`,
+        detalhe: com(aviso, "a Meta ainda não confirmou a entrega"),
+        em: desde(w.enviada_em ?? w.criado_em),
+        ordem: 3,
+      },
+    };
+  if (w.situacao === "falhou")
+    return {
+      datado: {
+        cor: "bg-danger",
+        titulo: `WhatsApp para ${quem} falhou`,
+        detalhe: com(aviso, w.motivo && (/^\d+:/.test(w.motivo) ? explicarErro(w.motivo) : w.motivo)),
+        em: desde(w.enviada_em ?? w.enviando_em ?? w.criado_em),
+        ordem: 3,
+      },
+    };
+  if (w.situacao === "descartada")
+    return {
+      datado: {
+        cor: "bg-line-strong",
+        titulo: `WhatsApp para ${quem} não saiu`,
+        detalhe: com(aviso, w.motivo && porqueNaoSaiu(w.motivo)),
+        // a regra decide na hora de sair
+        em: desde(w.enviar_depois_de ?? w.criado_em),
+        ordem: 3,
+      },
+    };
+  // na fila: esperando juntar, o horário, o intervalo da vaga ou o modelo na Meta
+  const espera = w.enviar_depois_de && ms(w.enviar_depois_de) > agora ? w.enviar_depois_de : null;
+  return {
+    aberto: {
+      cor: "bg-line-strong",
+      titulo: `WhatsApp para ${quem} na fila`,
+      detalhe: com(
+        aviso,
+        w.motivo
+          ? /^\d+:/.test(w.motivo)
+            ? explicarErro(w.motivo)
+            : w.motivo
+          : espera
+            ? `sai a partir de ${quandoCurto(espera)}`
+            : "sai na próxima rodada",
+      ),
+      aberto: true,
+    },
+  };
+}
+
+/**
+ * A linha do tempo de uma curtida: curtiu → respondida (humano ou automático) → o contato e o chat → o fim do anúncio
+ * (preenchida, encerrada, saiu do ar no prazo, pausada, removida) ou "no ar". Com o tempo entre os passos e, desde
+ * 18/11/2026, os avisos do WhatsApp para quem publicou e para a pessoa, na hora em que chegaram (o convite do pacote
+ * vem antes da curtida). Os passos com data vão na ordem em que aconteceram; depois, o que ainda falta.
  */
 function LinhaDoTempo({ m, agora }: { m: CurtidaAdmin; agora: number }) {
-  const passos: Passo[] = [{ cor: "bg-like", titulo: "Curtiu", em: m.quando }];
-  let antes = m.quando;
+  const datados: PassoDatado[] = [{ cor: "bg-like", titulo: "Curtiu", em: m.quando, ordem: 0 }];
+  const abertos: Passo[] = [];
 
   if (m.situacao === "pendente" || !m.respondida_em) {
-    passos.push({
+    abertos.push({
       cor: COR.pendente,
       titulo: SITUACOES[m.situacao].nome,
-      detalhe: `há ${duracao(Math.max(0, agora - new Date(m.quando).getTime()))}, sem resposta`,
+      detalhe: `há ${duracao(Math.max(0, agora - ms(m.quando)))}, sem resposta`,
       aberto: true,
     });
   } else {
     const por = m.respondida_por ? POR[m.respondida_por] : null;
-    passos.push({
+    datados.push({
       cor: COR[m.situacao],
       titulo: `${SITUACOES[m.situacao].nome}${por ? ` · ${por.humano ? "humano" : "automático"}` : ""}`,
       detalhe: por?.texto ?? null,
       em: m.respondida_em,
-      depois: duracao(Math.max(0, entre(antes, m.respondida_em))),
+      ordem: 1,
+      // o tempo até a resposta conta da curtida, mesmo com o WhatsApp no meio
+      daCurtida: true,
     });
-    antes = m.respondida_em;
   }
 
-  // os toques nos botões de contato e as mensagens de gente no chat, na ordem em que aconteceram
-  const eventos: { em: string; titulo: string; detalhe: string | null }[] = (["empresa", "pessoa"] as const).flatMap(
-    (lado) => {
-      const t = m.contatos[lado];
-      if (!t) return [];
-      return [
-        {
-          em: t.em,
-          titulo:
-            t.canal === "descartou"
-              ? "A pessoa disse “agora não” ao WhatsApp"
-              : `${lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} ${CANAL[t.canal]}`,
-          detalhe: t.canal === "descartou" ? "o chat abriu com as perguntas" : null,
-        },
-      ];
-    },
-  );
-  const chat = m.chat;
-  if (chat?.empresaEscreveuEm) eventos.push({ em: chat.empresaEscreveuEm, titulo: "Quem publicou escreveu no chat", detalhe: null });
-  if (chat?.pessoaEscreveuEm && chat.pessoaEscreveuEm !== chat.pessoaRespondeuEm)
-    eventos.push({ em: chat.pessoaEscreveuEm, titulo: "A pessoa escreveu no chat", detalhe: null });
-  if (chat?.pessoaRespondeuEm) eventos.push({ em: chat.pessoaRespondeuEm, titulo: "A pessoa respondeu no chat", detalhe: null });
-  if (chat?.empresaRespondeuEm && chat.empresaRespondeuEm !== chat.empresaEscreveuEm)
-    eventos.push({ em: chat.empresaRespondeuEm, titulo: "Quem publicou respondeu no chat", detalhe: null });
-  for (const e of eventos.sort((a, b) => a.em.localeCompare(b.em))) {
-    passos.push({ cor: "bg-cerrado", titulo: e.titulo, detalhe: e.detalhe, em: e.em, depois: duracao(Math.max(0, entre(antes, e.em))) });
-    antes = e.em;
+  // os toques nos botões de contato e as mensagens de gente no chat
+  for (const lado of ["empresa", "pessoa"] as const) {
+    const t = m.contatos[lado];
+    if (!t) continue;
+    datados.push({
+      cor: "bg-cerrado",
+      titulo:
+        t.canal === "descartou"
+          ? "A pessoa disse “agora não” ao WhatsApp"
+          : `${lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} ${CANAL[t.canal]}`,
+      detalhe: t.canal === "descartou" ? "o chat abriu com as perguntas" : null,
+      em: t.em,
+      ordem: 2,
+    });
   }
+  const chat = m.chat;
+  const noChat = (em: string | null | undefined, titulo: string) => {
+    if (em) datados.push({ cor: "bg-cerrado", titulo, em, ordem: 2 });
+  };
+  noChat(chat?.empresaEscreveuEm, "Quem publicou escreveu no chat");
+  if (chat?.pessoaEscreveuEm !== chat?.pessoaRespondeuEm) noChat(chat?.pessoaEscreveuEm, "A pessoa escreveu no chat");
+  noChat(chat?.pessoaRespondeuEm, "A pessoa respondeu no chat");
+  if (chat?.empresaRespondeuEm !== chat?.empresaEscreveuEm) noChat(chat?.empresaRespondeuEm, "Quem publicou respondeu no chat");
+
+  // os avisos do WhatsApp (migração 20270719120000; só a equipe do Publike vê)
+  const naFila: Passo[] = [];
+  for (const w of m.whatsapp ?? []) {
+    const p = passoDoWhatsapp(w, m.quando, agora);
+    if (p.datado) datados.push(p.datado);
+    if (p.aberto) naFila.push(p.aberto);
+  }
+
+  datados.sort((a, b) => ms(a.em) - ms(b.em) || a.ordem - b.ordem);
+  const passos: Passo[] = datados.map((p, i) => ({
+    ...p,
+    depois: p.daCurtida
+      ? `${duracao(Math.max(0, entre(m.quando, p.em)))} depois da curtida`
+      : i > 0
+        ? duracao(Math.max(0, entre(datados[i - 1].em, p.em)))
+        : null,
+  }));
+  // o que ainda falta: o WhatsApp na fila e a resposta
+  passos.push(...naFila, ...abertos);
   // o match sem conversa de gente: quem ainda não escreveu (as automáticas não contam)
   if (m.situacao === "match") {
     const auto = chat?.automaticas ? ` (só ${plural(chat.automaticas, "mensagem automática", "mensagens automáticas")})` : "";
