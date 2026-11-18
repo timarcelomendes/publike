@@ -265,9 +265,10 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
 }
 
 // Fora do proxy: os arquivos e os dois avisos que o navegador manda a cada página (/api/tempo e /api/velocidade, por
-// sendBeacon), que não usam a sessão: sem o getClaims e a conta de acesso em cada aviso (17/11/2026).
+// sendBeacon), que não usam a sessão: sem o getClaims e a conta de acesso em cada aviso (17/11/2026). A API pública
+// (/api/v1) também: ela entra pela chave da API, não pela sessão.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|versao$|api/tempo$|api/velocidade$|favicon.ico|icon.svg|apple-icon.png|opengraph-image|manifest.webmanifest|sw.js|offline.html|googleb0f816f2a734c818.html|robots.txt|sitemap.xml|logo/|icons/|vendor/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mjs|woff2)$).*)",
+    "/((?!_next/static|_next/image|versao$|api/tempo$|api/velocidade$|api/v1$|api/v1/|favicon.ico|icon.svg|apple-icon.png|opengraph-image|manifest.webmanifest|sw.js|offline.html|googleb0f816f2a734c818.html|robots.txt|sitemap.xml|logo/|icons/|vendor/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mjs|woff2)$).*)",
   ],
 };

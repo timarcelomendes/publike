@@ -6,6 +6,7 @@ import {
   CreditCard,
   FileSignature,
   Globe,
+  KeyRound,
   MessageSquareText,
   RotateCcw,
   Route,
@@ -16,6 +17,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CaixaConfig } from "@/components/configuracoes/comum";
+import { ChavesDaApi, type ChaveDaApi } from "@/components/configuracoes/chaves-da-api";
 import { FormularioCandidatura } from "@/components/configuracoes/formulario-candidatura";
 import { FormularioContratacao } from "@/components/configuracoes/formulario-contratacao";
 import { FormularioProcesso } from "@/components/configuracoes/formulario-processo";
@@ -35,6 +37,10 @@ import { padroesDaConta, processoDaConta } from "@/lib/servidor/processo";
 import { modelosDaConta } from "@/lib/servidor/quadro";
 import { retornoDaConta } from "@/lib/servidor/retorno";
 import { exigirUsuario } from "@/lib/sessao";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { agoraDaRequisicao } from "@/lib/tempo";
+import { CAMINHO_DOCUMENTACAO } from "@/lib/api-publica";
+import { formatarNumero } from "@/lib/formato";
 import { lerPerguntas } from "@/lib/vaga-extra";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -48,6 +54,8 @@ const ABAS = [
   { valor: "candidatura", nome: "Candidatura" },
   { valor: "entrevistas", nome: "Entrevistas e mensagens" },
   { valor: "contratacao", nome: "Contratação" },
+  // a API para o sistema da empresa (migração 20270713120000)
+  { valor: "api", nome: "API" },
 ] as const;
 type Aba = (typeof ABAS)[number]["valor"];
 
@@ -108,6 +116,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
           {aba === "candidatura" && <AbaCandidatura />}
           {aba === "entrevistas" && <AbaEntrevistas />}
           {aba === "contratacao" && <AbaContratacao agencia={agencia} />}
+          {aba === "api" && <AbaApi />}
         </div>
 
         <section
@@ -246,6 +255,69 @@ async function AbaContratacao({ agencia }: { agencia: boolean }) {
       texto="Cada proposta nova começa assim, e você ajusta antes de mandar."
     >
       {padroes ? <FormularioContratacao inicial={padroes} agencia={agencia} /> : indisponivel}
+    </CaixaConfig>
+  );
+}
+
+type MinhaApi = {
+  quem_contrata: boolean;
+  pode_gerir?: boolean;
+  ligada?: boolean;
+  com_plano?: boolean;
+  limite?: number;
+  limite_plano?: number;
+  chaves_por_conta?: number;
+  usadas_hoje?: number;
+  chaves?: ChaveDaApi[];
+};
+
+/**
+ * A API para o sistema da empresa (17/11/2026, Marcelo: "preciso criar api publica para vagas, uma agencia pediu, tem
+ * CRM e quer integrar"): o que ela faz, o uso de hoje e o limite, e as chaves (só o dono e os admins da equipe mexem).
+ */
+async function AbaApi() {
+  const supabase = await criarClienteServidor();
+  const [{ data, error }, agora] = await Promise.all([supabase.rpc("minha_api"), agoraDaRequisicao()]);
+  if (error || !data) return indisponivel;
+  const api = data as MinhaApi;
+  if (!api.quem_contrata) return <Aviso tipo="info" titulo="A API é para quem contrata" />;
+  return (
+    <CaixaConfig
+      id="api"
+      icone={<KeyRound aria-hidden className="size-5 text-ink-muted" />}
+      titulo="API para o seu sistema"
+      texto="Com a API, o CRM ou o sistema de recrutamento da sua empresa recebe os candidatos das suas vagas e muda a etapa deles (aceitar, dispensar, Em análise, Entrevista, Contratado), sem digitar no Publike. O candidato recebe os mesmos avisos de quando você faz pelo site."
+    >
+      {api.ligada === false && (
+        <Aviso tipo="alerta" titulo="A API está desligada agora">
+          As chaves continuam guardadas e voltam a funcionar quando ela for ligada de novo.
+        </Aviso>
+      )}
+      <div className="flex flex-col gap-1 text-body-sm">
+        <p>
+          Hoje: <strong>{formatarNumero(api.usadas_hoje ?? 0)}</strong> de {formatarNumero(api.limite ?? 0)} chamadas
+          {api.com_plano ? ", o limite do seu plano." : ", o limite grátis."} O limite volta à meia-noite.
+        </p>
+        {!api.com_plano && api.limite_plano ? (
+          <p className="text-ink-muted">
+            Nos planos, são {formatarNumero(api.limite_plano)} chamadas por dia.{" "}
+            <Link href="/painel/planos" className="text-ink underline underline-offset-2">
+              Ver os planos
+            </Link>
+          </p>
+        ) : null}
+        <p>
+          <Link href={CAMINHO_DOCUMENTACAO} className="text-ink underline underline-offset-2">
+            Ver a documentação da API
+          </Link>
+          <span className="text-ink-muted">: como mandar a chave, os endereços e exemplos para quem cuida do seu sistema.</span>
+        </p>
+      </div>
+      {api.pode_gerir ? (
+        <ChavesDaApi chaves={api.chaves ?? []} maximo={api.chaves_por_conta ?? 5} agora={agora} />
+      ) : (
+        <p className="text-body-sm">Só o dono da conta ou um admin da equipe cria e apaga as chaves da API.</p>
+      )}
     </CaixaConfig>
   );
 }

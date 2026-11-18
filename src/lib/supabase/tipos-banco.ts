@@ -2544,6 +2544,41 @@ export type Database = {
         Args: { p_anuncio: string; p_perfil: string; p_etapa: string; p_nota: string | null };
         Returns: undefined;
       };
+      // a API pública (migração 20270713120000)
+      minha_api: { Args: Record<PropertyKey, never>; Returns: Json };
+      criar_chave_api: { Args: { p_nome: string }; Returns: string };
+      apagar_chave_api: { Args: { p_id: string }; Returns: undefined };
+      limites_da_api: { Args: Record<PropertyKey, never>; Returns: Json };
+      servidor_api_conta: { Args: { p_chave: string; p_hash: string }; Returns: Json };
+      servidor_api_vagas: { Args: { p_chave: string; p_hash: string; p_status?: string | null }; Returns: Json };
+      servidor_api_candidaturas: {
+        Args: {
+          p_chave: string;
+          p_hash: string;
+          p_vaga?: string | null;
+          p_desde?: string | null;
+          p_depois?: string | null;
+          p_limite?: number;
+        };
+        Returns: Json;
+      };
+      servidor_api_candidato: {
+        Args: { p_chave: string; p_hash: string; p_vaga: string; p_perfil: string };
+        Returns: Json;
+      };
+      servidor_api_responder: {
+        Args: {
+          p_chave: string;
+          p_hash: string;
+          p_vaga: string;
+          p_perfil: string;
+          p_acao: string;
+          p_etapa?: string | null;
+          p_motivo?: string | null;
+          p_nota?: string | null;
+        };
+        Returns: Json;
+      };
       curriculos_dos_interessados: {
         Args: { p_anuncio: string };
         Returns: {
