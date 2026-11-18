@@ -2,7 +2,7 @@
 
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { mensagemDeErro } from "@/lib/erros";
-import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { criarClientePublico, criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { avisosParaEscolher, TIPOS_WHATSAPP } from "@/lib/whatsapp-tipos";
 
@@ -96,4 +96,25 @@ export async function mudarWhatsapp(aceito: boolean, origem: OrigemDoWhatsapp): 
     return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora.") };
   }
   return { ok: true };
+}
+
+/**
+ * O "Sim, quero receber" do pedido do WhatsApp (migração 20270726120000): o link do sino e do e-mail, sem entrar (o
+ * token do link diz de quem é). O aceite fica com a origem 'email'; quem já recebe continua como está.
+ */
+export type AceiteDoPedido = { ok: true; numero: string | null } | { ok: false; erro: string; ir?: string };
+
+export async function aceitarWhatsappPeloLink(token: string): Promise<AceiteDoPedido> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!/^[0-9a-f]{64}$/.test(token)) return { ok: false, erro: "Este link não vale mais." };
+  const { data, error } = await criarClientePublico().rpc("whatsapp_pedido_aceitar", { p_token: token });
+  if (error) {
+    if (error.hint === "sem_numero")
+      return { ok: false, erro: "A conta está sem WhatsApp no perfil. Entre e ponha o número primeiro.", ir: "/perfil" };
+    if (error.code === "22023") return { ok: false, erro: "Este link não vale mais." };
+    console.error(`Publike: o aceite do WhatsApp pelo link não gravou: ${error.message}`);
+    return { ok: false, erro: "Não deu para ligar agora. Tente de novo em instantes." };
+  }
+  const numero = (data as { numero?: unknown } | null)?.numero;
+  return { ok: true, numero: typeof numero === "string" ? numero : null };
 }

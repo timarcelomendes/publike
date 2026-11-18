@@ -7,6 +7,7 @@ import {
   conferirNumeroAgora,
   ligarWebhookAgora,
   mandarTesteWhatsapp,
+  pedirAceiteDoWhatsapp,
   registrarNumeroAgora,
   salvarWhatsapp,
   type NumeroDaMeta,
@@ -542,6 +543,67 @@ export function ConfigWhatsapp({
         <Resposta r={resposta} />
       </div>
     </form>
+  );
+}
+
+/**
+ * O "Pedir" do aceite a quem contrata (migração 20270726120000): pergunta antes, porque o sino e o e-mail saem na hora
+ * para as `quantas` contas e não dá para desfazer.
+ */
+export function PedirAceite({ quantas }: { quantas: number }) {
+  const [pendente, iniciar] = useTransition();
+  const [confirmar, setConfirmar] = useState(false);
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const contas = plural(quantas, "conta", "contas");
+  if (!quantas && !resposta) return null;
+  return (
+    <div className="flex flex-col items-start gap-2">
+      {quantas > 0 && !confirmar && (
+        <button
+          type="button"
+          className={classesBotao("primario")}
+          onClick={() => {
+            setResposta(null);
+            setConfirmar(true);
+          }}
+        >
+          <Send aria-hidden />
+          Mandar o pedido para {contas}
+        </button>
+      )}
+      {quantas > 0 && confirmar && (
+        <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-100 p-4">
+          <p className="text-body-sm">
+            Mandar agora o pedido para {contas}, no sino e por e-mail? Cada conta recebe uma vez só.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={pendente}
+              className={classesBotao("primario", "sm")}
+              onClick={() =>
+                iniciar(async () => {
+                  const r = await pedirAceiteDoWhatsapp();
+                  setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+                  setConfirmar(false);
+                })
+              }
+            >
+              {pendente ? "Mandando…" : "Sim, mandar"}
+            </button>
+            <button
+              type="button"
+              disabled={pendente}
+              className={classesBotao("fantasma", "sm")}
+              onClick={() => setConfirmar(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+      <Resposta r={resposta} />
+    </div>
   );
 }
 

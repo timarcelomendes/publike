@@ -6,8 +6,10 @@ import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Barras } from "@/components/admin/grafico";
 import { Filtros, linkCom, Numero, Secao, Situacao } from "@/components/admin/ui";
-import { ConferirModelos, ConferirNumero, ConfigWhatsapp, MandarTeste } from "@/components/admin/whatsapp";
+import { ConferirModelos, ConferirNumero, ConfigWhatsapp, MandarTeste, PedirAceite } from "@/components/admin/whatsapp";
 import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
+import { SITE_URL } from "@/lib/config";
+import { logoPadraoDoEmail, montarEmail } from "@/lib/email/montar";
 import { formatarData, formatarDataHora, formatarNumero, plural, primeiro } from "@/lib/formato";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import {
@@ -136,6 +138,7 @@ type Resultados = {
 
 const ABAS = [
   { valor: "resultados", nome: "Resultados" },
+  { valor: "aceite", nome: "Pedir o aceite" },
   { valor: "erros", nome: "Erros" },
   { valor: "parametros", nome: "Parâmetros" },
   { valor: "modelos", nome: "Modelos" },
@@ -429,7 +432,13 @@ async function Conteudo({ aba, vista }: { aba: Aba; vista: Vista }) {
       // as cobradas por modelo, para o custo pela categoria (migração 20270718120000; sem ela, tudo como utilidade)
       c.rpc("admin_whatsapp_cobradas_por_modelo", comFiltro ? { p_dias: dias, p_numeros: vista.numeros } : { p_dias: dias }),
     ]);
-  const [lidas, agora] = await Promise.all([ler(true), agoraDaRequisicao()]);
+  // o pedido do aceite a quem contrata (migração 20270726120000): só na aba dele
+  const [lidas, agora, dPedidos] = await Promise.all([
+    ler(true),
+    agoraDaRequisicao(),
+    aba === "aceite" ? c.rpc("admin_whatsapp_pedidos") : Promise.resolve(null),
+  ]);
+  const pedidos = dPedidos && !dPedidos.error && dPedidos.data ? (dPedidos.data as unknown as Pedidos) : null;
   // sem a migração 20270720120000 (o filtro dos números de teste), as funções de antes, com todos os números
   const semFiltro = lidas[0].error?.code === "PGRST202";
   const [resumo, resultados, porModelo] = semFiltro ? await ler(false) : lidas;
@@ -558,6 +567,7 @@ async function Conteudo({ aba, vista }: { aba: Aba; vista: Vista }) {
               cobradasPorModelo={cobradasPorModelo}
             />
           )}
+          {aba === "aceite" && r && <AbaAceite d={pedidos} agora={agora} />}
           {aba === "erros" && r && <AbaErros erros={erros} r={r} res={res} vista={vista} numeros={numeros} />}
           {aba === "parametros" && r && <AbaParametros r={r} p={p} />}
           {aba === "modelos" && r && <AbaModelos r={r} p={p} conferir={s.token && s.conta} />}
@@ -964,6 +974,159 @@ function QuemContrataNoMes({ uso, p }: { uso: NonNullable<Resumo["quem_contrata_
         </>
       )}
     </Secao>
+  );
+}
+
+/** O que Admin › WhatsApp › Pedir o aceite mostra (admin_whatsapp_pedidos, migração 20270726120000). */
+type Pedidos = {
+  contas: number;
+  aceitaram: number;
+  cancelaram: number;
+  sem_numero: number;
+  para_pedir: number;
+  para_pedir_por_tipo: Record<string, number>;
+  pedidos: number;
+  abriram: number;
+  aceitaram_pelo_pedido: number;
+  ultimo_pedido: string | null;
+  texto_sino: string;
+  email: { grupo: string; assunto: string; corpo: string; botao: string | null } | null;
+  ultimos: { nome: string; tipo: string; pedido_em: string; abriu_em: string | null; aceitou_em: string | null }[];
+};
+
+const TIPO_DE_CONTA: Record<string, [string, string]> = {
+  empresa: ["empresa", "empresas"],
+  comercio: ["comércio", "comércios"],
+  agencia: ["agência", "agências"],
+};
+
+/**
+ * O pedido do aceite (18/11/2026, Marcelo: "pedir"): a Meta só deixa mandar para quem aceitou, então cada conta que
+ * contrata e ainda não respondeu recebe uma vez, no sino e por e-mail, o "Receber os candidatos no WhatsApp?" com o
+ * link de um toque.
+ */
+function AbaAceite({ d, agora }: { d: Pedidos | null; agora: number }) {
+  if (!d) {
+    return (
+      <Aviso tipo="alerta" titulo="Rode a migração do pedido do aceite">
+        Falta a migração 20270726120000_whatsapp_pedido_e_match_direto.sql neste banco.
+      </Aviso>
+    );
+  }
+  const porTipo = Object.entries(d.para_pedir_por_tipo ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([t, n]) => {
+      const [um, varios] = TIPO_DE_CONTA[t] ?? [t, t];
+      return plural(n, um, varios);
+    })
+    .join(", ");
+  const email = d.email
+    ? montarEmail(
+        { modelo: "whatsapp_pedido", grupo: d.email.grupo, assunto: d.email.assunto, corpo: d.email.corpo, botao: d.email.botao },
+        { nome: "Padaria Exemplo", empresa: "Padaria Exemplo", numero: "(62) 9••••-1234", caminho: `/avisos/whatsapp/${"0".repeat(64)}` },
+        SITE_URL,
+        logoPadraoDoEmail(SITE_URL),
+      )
+    : null;
+  return (
+    <div className="flex flex-col gap-6">
+      <Secao
+        titulo="Quem contrata e o WhatsApp"
+        descricao="A Meta só deixa o Publike mandar para quem aceitou antes. O pedido sai uma vez para cada conta que ainda não respondeu: no sino e por e-mail, com o botão que liga num toque, sem precisar entrar."
+      >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Numero rotulo="Contas que contratam" valor={d.contas} detalhe="empresas, comércios e agências" />
+          <Numero
+            rotulo="Recebem pelo WhatsApp"
+            valor={d.aceitaram}
+            detalhe={`${pct(d.aceitaram, d.contas)} das contas`}
+          />
+          <Numero rotulo="Para pedir" valor={d.para_pedir} detalhe={porTipo || "ninguém por enquanto"} />
+          <Numero
+            rotulo="Sem WhatsApp no perfil"
+            valor={d.sem_numero}
+            detalhe={d.cancelaram ? `não recebem o pedido; ${plural(d.cancelaram, "desligou", "desligaram")}` : "não recebem o pedido"}
+          />
+        </div>
+        <div className="mt-4">
+          {d.para_pedir > 0 ? (
+            <PedirAceite quantas={d.para_pedir} />
+          ) : (
+            <p className="text-body-sm text-ink-muted">
+              Todas as contas com WhatsApp no perfil já receberam o pedido ou já responderam. As contas novas aparecem aqui.
+            </p>
+          )}
+        </div>
+      </Secao>
+
+      <Secao
+        titulo="Como chega"
+        descricao="No sino e no e-mail, o mesmo convite. Os dois abrem a página do “Sim, quero receber”, que diz que é pelo WhatsApp e que quem manda é o Publike, como a Meta pede."
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-label">No sino</h3>
+            <p className="rounded-md border border-line bg-surface-100 p-3 text-body-sm">{d.texto_sino}</p>
+          </div>
+          {email && (
+            <div className="flex flex-col gap-1">
+              <h3 className="text-label">No e-mail (para a Padaria Exemplo)</h3>
+              <p className="text-body-sm">
+                <span className="text-ink-muted">Assunto:</span> {email.assunto}
+              </p>
+              <iframe
+                title="Prévia do e-mail do pedido"
+                srcDoc={email.html}
+                sandbox=""
+                className="h-[28rem] w-full rounded-md border border-line bg-white"
+              />
+              <p className="text-body-sm text-ink-muted">
+                O texto do e-mail muda em Admin › E-mails › Textos, no computador (“Receber os candidatos no WhatsApp”).
+              </p>
+            </div>
+          )}
+        </div>
+      </Secao>
+
+      <Secao titulo="Os pedidos" descricao="Quantas contas receberam, abriram o link e ligaram o WhatsApp.">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Numero
+            rotulo="Receberam"
+            valor={d.pedidos}
+            detalhe={d.ultimo_pedido ? `o último ${quandoFoi(d.ultimo_pedido, agora)}` : "nenhum ainda"}
+          />
+          <Numero rotulo="Abriram o link" valor={d.abriram} detalhe={`${pct(d.abriram, d.pedidos)} dos pedidos`} />
+          <Numero rotulo="Ligaram" valor={d.aceitaram_pelo_pedido} detalhe={`${pct(d.aceitaram_pelo_pedido, d.pedidos)} dos pedidos`} />
+        </div>
+        {d.ultimos.length > 0 && (
+          <ul className="mt-4 flex flex-col divide-y divide-line">
+            {d.ultimos.map((u) => (
+              <li key={`${u.nome}-${u.pedido_em}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
+                <span className="min-w-0 text-body-sm">
+                  <span className="text-label">{u.nome}</span>
+                  <span className="text-ink-muted"> · {(TIPO_DE_CONTA[u.tipo] ?? [u.tipo])[0]}</span>
+                </span>
+                <span className="flex items-center gap-2 text-body-sm text-ink-muted">
+                  {u.aceitou_em ? (
+                    <>
+                      <Selo variante="match">Ligou</Selo> {quandoFoi(u.aceitou_em, agora)}
+                    </>
+                  ) : u.abriu_em ? (
+                    <>
+                      <Selo variante="contorno">Abriu</Selo> {quandoFoi(u.abriu_em, agora)}
+                    </>
+                  ) : (
+                    <>
+                      <Selo variante="neutro">Recebeu</Selo> {quandoFoi(u.pedido_em, agora)}
+                    </>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Secao>
+    </div>
   );
 }
 

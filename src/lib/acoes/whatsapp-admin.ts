@@ -208,3 +208,26 @@ export async function mandarTesteWhatsapp(numero: string): Promise<Resultado> {
           : `Mandamos o aviso ${r.modelo} com dados de exemplo. Confira no WhatsApp desse número.`,
   };
 }
+
+/**
+ * O pedido do aceite a quem contrata (migração 20270726120000): o sino e o e-mail "Receber os candidatos no
+ * WhatsApp?", uma vez para cada conta que ainda não respondeu. Tocar de novo só pede às contas novas.
+ */
+export async function pedirAceiteDoWhatsapp(): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const { data, error } = await c.rpc("admin_whatsapp_pedir_aceite");
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Falta a migração 20270726120000 no banco." };
+    console.error(`Publike: o pedido do aceite do WhatsApp não saiu: ${error.message}`);
+    return { ok: false, erro: "Não deu para pedir agora. Tente de novo em instantes." };
+  }
+  const n = Number(data ?? 0);
+  refresh();
+  return {
+    ok: true,
+    mensagem: n
+      ? `Pedido feito para ${n === 1 ? "1 conta" : `${n.toLocaleString("pt-BR")} contas`}, no sino e por e-mail.`
+      : "Nenhuma conta nova para pedir: todas já receberam o pedido ou já responderam.",
+  };
+}
