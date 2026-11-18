@@ -8,6 +8,7 @@ import { PreferenciaConviteAutomatico } from "@/components/convite-automatico/pr
 import { EscolherAparencia } from "@/components/preferencias/aparencia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
+import { RolarParaAncora } from "@/components/ui/rolar-para-ancora";
 import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
 import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 import { MODO_DEMO } from "@/lib/config";
@@ -166,6 +167,8 @@ async function Conteudo() {
       <Parte id="aparencia" titulo="Aparência">
         <EscolherAparencia />
       </Parte>
+      {/* os links com âncora (o sino: #avisos e #notificacoes) chegam antes destas partes */}
+      <RolarParaAncora />
     </div>
   );
 }
