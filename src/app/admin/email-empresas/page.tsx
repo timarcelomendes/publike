@@ -1,0 +1,264 @@
+import { MailCheck } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { ConfigEmailEmpresas, FilaDoPublico } from "@/components/admin/email-empresas";
+import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { Numero, Secao, Situacao } from "@/components/admin/ui";
+import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
+import { PUBLICOS_EMAIL_EMPRESAS, type PublicoEmailEmpresas } from "@/lib/email-empresas";
+import { formatarDataHora, formatarNumero, plural } from "@/lib/formato";
+import { situacaoSmtpCampanha } from "@/lib/servidor/email-empresas";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
+
+export const metadata: Metadata = { title: "E-mail às empresas" };
+
+// Admin › E-mail às empresas (18/11/2026; migração 20270722120000). Marcelo: levar as empresas a publicar no Publike
+// "com um botao de sim", do marcelo@publike.org, "na base do publike e nas empresas que temos na base da receita, com
+// esse controle máximo de quantidades". Liga e desliga, o limite por dia, o horário, o texto com a prévia, a fila por
+// público, os números e quem disse sim. Sai pela caixa do Marcelo (CAMPANHA_SMTP_*), nunca pelo serviço dos avisos.
+// No computador do dono e, no site no ar, para a equipe publike.org.
+
+type Resumo = {
+  config: {
+    ligado: boolean;
+    por_dia: number;
+    hora_inicio: number;
+    hora_fim: number;
+    remetente_nome: string;
+    remetente_email: string;
+    assunto: string;
+    texto: string;
+  };
+  numeros: {
+    na_fila: number;
+    enviados_hoje: number;
+    enviados: number;
+    abriram: number;
+    sim: number;
+    nao: number;
+    falharam: number;
+  };
+  por_publico: Partial<
+    Record<PublicoEmailEmpresas, { na_fila: number; enviados: number; sim: number; nao: number; disponiveis: number }>
+  >;
+  sim: {
+    id: number;
+    publico: PublicoEmailEmpresas;
+    conta_id: string | null;
+    cnpj: string | null;
+    nome: string;
+    email: string;
+    link_vagas: string | null;
+    telefone: string | null;
+    observacao: string | null;
+    respondeu_em: string;
+  }[];
+  ultimos: {
+    id: number;
+    publico: PublicoEmailEmpresas;
+    conta_id: string | null;
+    nome: string;
+    situacao: string;
+    erro: string | null;
+    enviado_em: string | null;
+    abriu_em: string | null;
+    respondeu_em: string | null;
+    quando: string;
+  }[];
+  proximos: { id: number; publico: PublicoEmailEmpresas; nome: string }[];
+};
+
+const SITUACAO: Record<string, { nome: string; variante: VarianteSelo }> = {
+  enviando: { nome: "Saindo", variante: "neutro" },
+  enviado: { nome: "Enviado", variante: "contorno" },
+  falhou: { nome: "Falhou", variante: "perigo" },
+  sim: { nome: "Disse sim", variante: "match" },
+  nao: { nome: "Não quer", variante: "contorno" },
+};
+
+const pct = (parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "—");
+
+export default function EmailEmpresas() {
+  return (
+    <Suspense fallback={<EsqueletoAdmin />}>
+      <Conteudo />
+    </Suspense>
+  );
+}
+
+async function Conteudo() {
+  const admin = await ehAdminLocal();
+  if (!admin && !(await possoVerTela("/admin/email-empresas"))) notFound();
+  const c = admin ? criarClienteAdmin() : await criarClienteServidor();
+  const { data, error } = await c.rpc("admin_email_empresas");
+  const caixa = situacaoSmtpCampanha();
+  const caixaPronta = Boolean(caixa.usuario && caixa.temSenha);
+
+  if (error || !data) {
+    return (
+      <Aviso tipo="alerta" titulo="Rode a migração do e-mail às empresas">
+        Falta a migração 20270722120000_email_as_empresas.sql neste banco.
+      </Aviso>
+    );
+  }
+  const r = data as unknown as Resumo;
+  const n = r.numeros;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-3">
+        <div>
+          <h1 className="text-h2">E-mail às empresas</h1>
+          <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+            O convite por e-mail para as empresas publicarem no Publike: um e-mail por empresa, com o botão “Sim, podem
+            publicar”. Sai da caixa de {r.config.remetente_email}, poucos por dia, e quem pede para sair não recebe mais.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          <Situacao ok={r.config.ligado}>
+            {r.config.ligado
+              ? `Ligado: até ${plural(r.config.por_dia, "e-mail", "e-mails")} por dia, das ${r.config.hora_inicio}h às ${r.config.hora_fim}h, de segunda a sexta`
+              : "Desligado: nada sai"}
+          </Situacao>
+          <Situacao ok={caixaPronta}>
+            {caixaPronta
+              ? `A caixa ${caixa.usuario} está ligada`
+              : "Falta ligar a caixa: CAMPANHA_SMTP_USUARIO e CAMPANHA_SMTP_SENHA na Vercel"}
+          </Situacao>
+          <Situacao ok={n.na_fila > 0}>{plural(n.na_fila, "empresa na fila", "empresas na fila")}</Situacao>
+        </div>
+      </header>
+
+      {!caixaPronta && (
+        <Aviso tipo="info" titulo="Para ligar a caixa do Marcelo">
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              No Zoho Mail, em Minha conta › Segurança › Senhas específicas de aplicativos, crie uma senha com o nome
+              “Publike”.
+            </li>
+            <li>
+              Na Vercel (Production), ponha CAMPANHA_SMTP_USUARIO = {r.config.remetente_email} e CAMPANHA_SMTP_SENHA =
+              essa senha, e faça Redeploy.
+            </li>
+            <li>O servidor padrão é smtp.zoho.com, porta 465 (CAMPANHA_SMTP_SERVIDOR e CAMPANHA_SMTP_PORTA mudam).</li>
+          </ol>
+        </Aviso>
+      )}
+
+      <Secao titulo="Os números">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+          <Numero rotulo="Na fila" valor={n.na_fila} />
+          <Numero rotulo="Enviados" valor={n.enviados} detalhe={`${formatarNumero(n.enviados_hoje)} hoje`} />
+          <Numero rotulo="Abriram o link" valor={n.abriram} detalhe={`${pct(n.abriram, n.enviados)} dos enviados`} />
+          <Numero rotulo="Disseram sim" valor={n.sim} detalhe={`${pct(n.sim, n.enviados)} dos enviados`} />
+          <Numero rotulo="Não querem" valor={n.nao} detalhe={`${pct(n.nao, n.enviados)} dos enviados`} />
+          <Numero rotulo="Falharam" valor={n.falharam} alerta={n.falharam > 0} />
+        </div>
+      </Secao>
+
+      <Secao
+        titulo="Quem disse sim"
+        descricao="A equipe recebe um e-mail a cada sim. Publique as vagas pela conta da empresa (Admin › Usuários) ou crie a conta e importe da Gupy, e responda o e-mail avisando."
+      >
+        {r.sim.length === 0 ? (
+          <Vazio icone={MailCheck} titulo="Ninguém ainda">
+            Quando uma empresa tocar em “Sim, podem publicar”, ela aparece aqui.
+          </Vazio>
+        ) : (
+          <ul className="flex flex-col divide-y divide-line">
+            {r.sim.map((s) => (
+              <li key={s.id} className="flex flex-col gap-0.5 py-3 text-body-sm">
+                <span>
+                  {s.conta_id ? (
+                    <Link href={`/admin/usuarios/${s.conta_id}`} className="text-label text-ink underline-offset-2 hover:underline">
+                      {s.nome}
+                    </Link>
+                  ) : (
+                    <span className="text-label text-ink">{s.nome}</span>
+                  )}
+                  <span className="text-ink-muted"> · {PUBLICOS_EMAIL_EMPRESAS[s.publico]?.nome ?? s.publico}</span>
+                </span>
+                <span className="break-all text-ink-muted">{s.email}</span>
+                {s.link_vagas && (
+                  <span className="break-all">
+                    Vagas:{" "}
+                    <a href={s.link_vagas} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                      {s.link_vagas}
+                    </a>
+                  </span>
+                )}
+                {s.telefone && <span>Telefone: {s.telefone}</span>}
+                {s.observacao && <span className="text-ink-muted">“{s.observacao}”</span>}
+                <span className="text-ink-muted">Disse sim em {formatarDataHora(s.respondeu_em)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Secao>
+
+      <Secao
+        titulo="A fila"
+        descricao="Escolha quantos de cada público entram na fila. Cada endereço recebe uma vez só; quem pediu para sair, nunca mais. Sai primeiro quem é do Publike, depois as agências e as que abriram perto."
+      >
+        <ul className="flex flex-col divide-y divide-line">
+          {(Object.keys(PUBLICOS_EMAIL_EMPRESAS) as PublicoEmailEmpresas[]).map((p) => {
+            const x = r.por_publico[p] ?? { na_fila: 0, enviados: 0, sim: 0, nao: 0, disponiveis: 0 };
+            return (
+              <li key={p} className="grid gap-x-6 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <span className="flex min-w-0 max-w-xl flex-col gap-0.5 text-body-sm">
+                  <span className="text-label">{PUBLICOS_EMAIL_EMPRESAS[p].nome}</span>
+                  <span className="text-ink-muted">{PUBLICOS_EMAIL_EMPRESAS[p].ajuda}</span>
+                  <span className="tabular-nums">
+                    {formatarNumero(x.disponiveis)} para pôr · {formatarNumero(x.na_fila)} na fila ·{" "}
+                    {formatarNumero(x.enviados)} enviados · {formatarNumero(x.sim)} sim · {formatarNumero(x.nao)} não
+                  </span>
+                </span>
+                <FilaDoPublico publico={p} disponiveis={x.disponiveis} naFila={x.na_fila} />
+              </li>
+            );
+          })}
+        </ul>
+        {r.proximos.length > 0 && (
+          <p className="text-body-sm text-ink-muted">
+            Os próximos: {r.proximos.map((x) => x.nome).join(", ")}
+            {n.na_fila > r.proximos.length ? "…" : "."}
+          </p>
+        )}
+      </Secao>
+
+      <Secao titulo="O e-mail" descricao="Nasce desligado: confira a prévia, salve o texto e ligue quando quiser começar.">
+        <ConfigEmailEmpresas inicial={r.config} caixaPronta={caixaPronta} />
+      </Secao>
+
+      <Secao titulo="Os últimos" descricao="Os que já saíram, do mais novo para o mais antigo.">
+        {r.ultimos.length === 0 ? (
+          <p className="text-body-sm text-ink-muted">Nenhum e-mail saiu ainda.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-line">
+            {r.ultimos.map((u) => {
+              const st = SITUACAO[u.situacao] ?? { nome: u.situacao, variante: "contorno" as const };
+              return (
+                <li key={u.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2.5 text-body-sm">
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-label">{u.nome}</span>
+                    <span className="text-ink-muted">{PUBLICOS_EMAIL_EMPRESAS[u.publico]?.nome ?? u.publico}</span>
+                    {u.erro && <span className="text-danger">{u.erro}</span>}
+                  </span>
+                  <span className="flex flex-col items-end gap-1 text-right">
+                    <Selo variante={st.variante}>{st.nome}</Selo>
+                    <span className="text-ink-muted tabular-nums">{formatarDataHora(u.quando)}</span>
+                    {u.abriu_em && u.situacao === "enviado" && <span className="text-ink-muted">abriu o link</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Secao>
+    </div>
+  );
+}

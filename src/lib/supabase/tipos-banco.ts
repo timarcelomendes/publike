@@ -4192,6 +4192,38 @@ export type Database = {
       // o custo do WhatsApp pela categoria de cada modelo (migração 20270718120000)
       admin_whatsapp_cobradas_por_modelo: { Args: { p_dias: number; p_numeros?: string }; Returns: Json };
       // o WhatsApp na linha do tempo das curtidas (migração 20270719120000)
+      // o e-mail às empresas (migração 20270722120000)
+      admin_email_empresas: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_email_empresas_salvar: {
+        Args: {
+          p_ligado: boolean;
+          p_por_dia: number;
+          p_hora_inicio: number;
+          p_hora_fim: number;
+          p_remetente_nome: string;
+          p_assunto: string;
+          p_texto: string;
+        };
+        Returns: undefined;
+      };
+      admin_email_empresas_por_na_fila: { Args: { p_publico: string; p_limite: number }; Returns: number };
+      admin_email_empresas_tirar_da_fila: { Args: { p_publico: string | null }; Returns: number };
+      servidor_email_empresas_pegar: { Args: { p_chave: string }; Returns: Json };
+      servidor_email_empresas_marcar: {
+        Args: { p_chave: string; p_id: number; p_ok: boolean; p_erro: string | null };
+        Returns: undefined;
+      };
+      email_empresas_ver: { Args: { p_token: string }; Returns: Json };
+      email_empresas_responder: {
+        Args: {
+          p_token: string;
+          p_resposta: string;
+          p_link?: string | null;
+          p_telefone?: string | null;
+          p_observacao?: string | null;
+        };
+        Returns: string;
+      };
       admin_whatsapp_das_curtidas: {
         Args: { p_anuncios: string[] };
         Returns: {

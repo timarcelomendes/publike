@@ -43,6 +43,7 @@ import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura"
 import { enviarWhatsappPendentes } from "@/lib/servidor/whatsapp";
 import { cancelarPedidosNaoPagos } from "@/lib/servidor/pagamentos";
 import { convidarPelosPacotes } from "@/lib/servidor/convite-do-pacote";
+import { enviarEmailAsEmpresas } from "@/lib/servidor/email-empresas";
 
 // A garantia das filas: o cron-job.org chama a cada minuto (Admin › Chaves) e a tarefa agendada do GitHub
 // (.github/workflows/filas.yml) fica de reserva, os dois com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém usando o site
@@ -135,6 +136,9 @@ export async function GET(request: Request) {
   const talentos = await comTempo(() => avisarTalentosQueCombinam());
   // o pacote de candidatos no ar: o Publike convida quem combina com a vaga (das 8h às 21h, a cada 15 minutos)
   const convitesDoPacote = await comTempo(() => convidarPelosPacotes());
+  // o e-mail às empresas (migração 20270722120000): um por vez, pela caixa do Marcelo; o erro dele não derruba a fila
+  // (fica no Admin › E-mail às empresas)
+  const emailEmpresas = await comTempo(() => enviarEmailAsEmpresas());
   // quem contrata: 2 consultas de salário a cada 5 vagas novas (o aviso sai junto com os e-mails abaixo)
   const consultasSalario = await comTempo(() => darConsultasDeSalario());
   // quem contrata: as buscas salvas de Talentos com o aviso ligado, uma vez por semana cada
@@ -245,6 +249,7 @@ export async function GET(request: Request) {
       garantias: garantias.perguntas,
       talentos: talentos.avisados,
       convites_do_pacote: convitesDoPacote.convidados,
+      email_empresas: { enviados: emailEmpresas.enviados, motivo: emailEmpresas.motivo ?? null },
       consultasSalario: consultasSalario.contas,
       buscasTalentos: buscasTalentos.avisadas,
       google: google.avisadas,
