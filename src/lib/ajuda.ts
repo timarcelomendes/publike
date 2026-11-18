@@ -268,7 +268,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é pago no Publike?",
-        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (as duas opções: gravada, com resumo da IA, e ao vivo, dentro do Publike, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático e o mapa de talentos. Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
+        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (as duas opções: gravada, com resumo da IA, e ao vivo, dentro do Publike, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático, o mapa de talentos e mais chamadas por dia na API (para o CRM da empresa). Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
       },
       {
         p: "Quais são os jeitos de ver as minhas vagas?",
@@ -314,6 +314,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       {
         p: "Sou agência de emprego ou RH. Posso usar?",
         r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. São até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça; para mais, até ${LIMITES_CONTA.comPlano.agencia}, com o Plano Agência. Depois que a equipe confere o CNPJ, a agência publica até ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
+      },
+      {
+        p: "Dá para ligar o Publike ao CRM ou ao sistema da minha empresa?",
+        r: "Dá, pela API do Publike. O sistema da empresa recebe os candidatos das suas vagas (com o currículo e as respostas às perguntas) e muda a etapa deles: aceitar, dispensar, Em análise, Entrevista, Contratado. O candidato recebe os mesmos avisos de quando você faz pelo site, e o contato dele só vai depois do aceite, como no painel. É grátis, com um limite de chamadas por dia, maior nos planos. Quem é dono da conta (ou admin da equipe) cria a chave em Configurações › API, e quem cuida do sistema acha os endereços e os exemplos em publike.org/desenvolvedores.",
       },
       {
         p: "Sou agência: como organizo as vagas por cliente?",

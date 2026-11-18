@@ -352,7 +352,7 @@ const REGRAS: Regra[] = [
     caminho: /^\/painel\/configuracoes/,
     ajuda: {
       titulo: "Configurações",
-      texto: "O jeito padrão das suas vagas e do processo: perguntas, avisos, mensagens e o que é obrigatório antes de contratar.",
+      texto: "O jeito padrão das suas vagas e do processo: perguntas, avisos, mensagens e o que é obrigatório antes de contratar. Em API, as chaves para o sistema da empresa (o CRM) receber os candidatos.",
       dicas: ["O que você escolher aqui vale para as próximas vagas. As que já estão no ar não mudam."],
     },
   },
@@ -366,6 +366,7 @@ const REGRAS: Regra[] = [
         "Por mês, a cada 3 meses ou por ano (9 meses pelo ano). Troque em cima da lista.",
         "Só precisa por um tempo? O plano por 30 dias não renova sozinho.",
         "Só quer um recurso? Ele aparece sozinho embaixo dos planos.",
+        "Tem um CRM? Ele recebe os candidatos pela API: grátis com um limite por dia, e com mais chamadas nos planos.",
       ],
     },
   },

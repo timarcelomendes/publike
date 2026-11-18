@@ -193,7 +193,7 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
         {separados !== null && mensal && (
           <li>
             {ehPlano(r)
-              ? `Os seis recursos separados: ${reais(separados)} por mês (o plano paga também as vagas no ar e o mutirão, o convite automático e o mapa de talentos)`
+              ? `Os seis recursos separados: ${reais(separados)} por mês (o plano paga também as vagas no ar e o mutirão, o convite automático, o mapa de talentos e mais chamadas na API)`
               : `Separados: ${reais(separados)} por mês · economia de ${economia}%`}
           </li>
         )}

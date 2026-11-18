@@ -11,6 +11,7 @@ import {
   MapPin,
   Megaphone,
   MessagesSquare,
+  Plug,
   Scale,
   Sparkles,
   Store,
@@ -25,9 +26,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { CAMINHO_DOCUMENTACAO } from "@/lib/api-publica";
 import { SITE_URL } from "@/lib/config";
 import { LIMITES_CONTA, REGIMES } from "@/lib/constantes";
+import { formatarNumero } from "@/lib/formato";
 import { CIDADES_ATENDIDAS, ONDE_FUNCIONA } from "@/lib/pracas";
+import { limitesDaApi, type LimitesDaApi } from "@/lib/servidor/limites-da-api";
 
 export const metadata: Metadata = {
   title: "Para empresas: publique sua vaga grátis",
@@ -228,6 +232,21 @@ const SO_NOS_PLANOS: Item[] = [
   },
 ];
 
+/**
+ * A API para o sistema da empresa (migração 20270713120000): de graça com um limite por dia; nos planos, o limite maior.
+ * Fica em "Só nos planos" pelo limite maior, e o texto diz o do grátis.
+ */
+function cartaoDaApi(api: LimitesDaApi | null): Item {
+  return {
+    icone: Plug,
+    titulo: "API para o seu sistema",
+    texto: api
+      ? `O CRM ou o sistema de recrutamento da empresa recebe os candidatos e muda a etapa deles, sem digitar no Publike. Nos planos, até ${formatarNumero(api.plano)} chamadas por dia; de graça, ${formatarNumero(api.gratis)}.`
+      : "O CRM ou o sistema de recrutamento da empresa recebe os candidatos e muda a etapa deles, sem digitar no Publike. De graça com um limite por dia, maior nos planos.",
+    link: { href: CAMINHO_DOCUMENTACAO, texto: "Ver a documentação" },
+  };
+}
+
 // os tipos de vaga que dá para publicar (menos "outro")
 const TIPOS_DE_VAGA = Object.entries(REGIMES)
   .filter(([chave]) => chave !== "outro")
@@ -267,7 +286,11 @@ const PERGUNTAS = [
   },
   {
     p: "O que é pago no Publike?",
-    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários). O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático e o mapa de talentos.",
+    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários). O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático, o mapa de talentos e mais chamadas por dia na API.",
+  },
+  {
+    p: "Dá para ligar o Publike ao CRM da minha empresa?",
+    r: "Dá. Pela API do Publike, o CRM ou o sistema de recrutamento recebe os candidatos das suas vagas e muda a etapa deles (aceitar, dispensar, entrevista, contratado), e o candidato recebe os mesmos avisos de quando você faz pelo site. É grátis, com um limite de chamadas por dia, maior nos planos. A chave fica em Configurações › API, no painel, e a documentação para quem cuida do sistema, em publike.org/desenvolvedores.",
   },
   {
     p: "Como funciona a nota de aderência dos candidatos?",
@@ -279,7 +302,8 @@ const PERGUNTAS = [
   },
 ];
 
-export default function Empresas() {
+export default async function Empresas() {
+  const api = await limitesDaApi();
   const dadosEstruturados = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -474,7 +498,7 @@ export default function Empresas() {
           </p>
           <h3 className="mt-8 text-h3">Só nos planos</h3>
           <ul className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {SO_NOS_PLANOS.map(({ icone: Icone, titulo, texto }) => (
+            {[...SO_NOS_PLANOS, cartaoDaApi(api)].map(({ icone: Icone, titulo, texto, link }) => (
               <li key={titulo} className="flex gap-4 rounded-lg border border-line bg-surface-200 p-5">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300">
                   <Icone aria-hidden className="size-5 text-terra-text" />
@@ -482,6 +506,14 @@ export default function Empresas() {
                 <div>
                   <h4 className="text-label">{titulo}</h4>
                   <p className="mt-1 text-body-sm text-ink-muted">{texto}</p>
+                  {link && (
+                    <Link
+                      href={link.href}
+                      className="mt-2 inline-block text-label text-ink underline underline-offset-2 hover:text-terra-text"
+                    >
+                      {link.texto}
+                    </Link>
+                  )}
                 </div>
               </li>
             ))}

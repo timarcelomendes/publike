@@ -2,7 +2,7 @@ import { Check, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { formatarMoeda } from "@/lib/formato";
+import { formatarMoeda, formatarNumero } from "@/lib/formato";
 import {
   ehPlanoPorFaixa,
   MESES,
@@ -18,6 +18,7 @@ import {
   type Produto,
 } from "@/lib/pagamentos";
 import type { RecursosPagos } from "@/lib/recursos-pagos";
+import type { LimitesDaApi } from "@/lib/servidor/limites-da-api";
 
 // Os cartões de /painel/planos lado a lado (11/11/2026): o Grátis e as faixas numa linha só no computador (4 colunas
 // com o Plano Empresa, 3 com o Plano Agência), sem o quarto cair para baixo. Cada cartão diz só o que muda de uma faixa
@@ -52,6 +53,19 @@ export const SO_DA_AGENCIA = [
   "Garantia acompanhada com o cliente",
   "Dossiê de cada finalista",
 ];
+
+/**
+ * A API para o sistema da empresa (o CRM; migração 20270713120000): de graça com um limite de chamadas por dia, maior
+ * nos planos. O número vem do banco (privado.config_api); sem ele, o texto sai sem o número.
+ */
+export const apiNoGratis = (api: LimitesDaApi | null) =>
+  api
+    ? `API para o seu sistema (CRM) com até ${formatarNumero(api.gratis)} chamadas por dia`
+    : "API para o seu sistema (CRM) com um limite de chamadas por dia";
+export const apiNosPlanos = (api: LimitesDaApi | null) =>
+  api
+    ? `API para o seu sistema (CRM) com até ${formatarNumero(api.plano)} chamadas por dia`
+    : "API para o seu sistema (CRM) com mais chamadas por dia";
 
 export const vagas = (n: number) => (n === 1 ? "1 vaga" : `${n} vagas`);
 
@@ -104,7 +118,17 @@ function LinhaDoSelo({ children }: { children?: React.ReactNode }) {
   return <div className={`items-center md:flex md:min-h-6 ${children ? "flex min-h-6" : "hidden"}`}>{children}</div>;
 }
 
-function CartaoGratis({ atual, agencia, compacto }: { atual: boolean; agencia: boolean; compacto: boolean }) {
+function CartaoGratis({
+  atual,
+  agencia,
+  compacto,
+  api,
+}: {
+  atual: boolean;
+  agencia: boolean;
+  compacto: boolean;
+  api: LimitesDaApi | null;
+}) {
   return (
     <article className={`flex h-full flex-col gap-4 rounded-lg border border-line bg-surface-200 ${compacto ? "p-5" : "p-5 sm:p-6"}`}>
       <LinhaDoSelo>{atual && <Selo variante="contorno">Seu plano</Selo>}</LinhaDoSelo>
@@ -116,7 +140,13 @@ function CartaoGratis({ atual, agencia, compacto }: { atual: boolean; agencia: b
         <span className={`${compacto ? "text-h2" : "text-h1"} tabular-nums`}>R$ 0</span>
         <span className="block text-body-sm text-ink-muted">para sempre</span>
       </p>
-      <Lista itens={agencia ? [...GRATIS.slice(1), "Clientes, pedidos e finalistas por link"] : GRATIS.slice(1)} />
+      <Lista
+        itens={[
+          ...GRATIS.slice(1),
+          ...(agencia ? ["Clientes, pedidos e finalistas por link"] : []),
+          apiNoGratis(api),
+        ]}
+      />
     </article>
   );
 }
@@ -284,6 +314,7 @@ export function GradeDePlanos({
   agencia,
   agenciaNoGratis,
   valendo,
+  api = null,
 }: {
   faixas: Produto[];
   pag: PagamentosDaConta;
@@ -296,6 +327,8 @@ export function GradeDePlanos({
   /** o Grátis com o que a agência tem de graça (clientes, pedidos e finalistas) */
   agenciaNoGratis: boolean;
   valendo: Assinatura[];
+  /** o limite de chamadas por dia da API, no grátis e nos planos (null: sem o número) */
+  api?: LimitesDaApi | null;
 }) {
   const cartoes = faixas.length + 1;
   // 4 cartões (o Grátis e as 3 faixas do Plano Empresa): 2 por linha no tablet, os 4 juntos a partir de 1280 px
@@ -306,7 +339,7 @@ export function GradeDePlanos({
     <div className="flex flex-col gap-4">
       <ul className={`grid gap-4 ${grade}`}>
         <li>
-          <CartaoGratis atual={!meuPlano} agencia={agenciaNoGratis} compacto={compacto} />
+          <CartaoGratis atual={!meuPlano} agencia={agenciaNoGratis} compacto={compacto} api={api} />
         </li>
         {faixas.map((p) => (
           <li key={p}>
@@ -338,7 +371,7 @@ export function GradeDePlanos({
           <h3 id="em-todos" className="text-label">
             Em todos os planos, além do Grátis
           </h3>
-          <Lista itens={DOS_PLANOS} colunas />
+          <Lista itens={[...DOS_PLANOS, apiNosPlanos(api)]} colunas />
           {agencia && <Lista titulo="Só no Plano Agência:" itens={SO_DA_AGENCIA} colunas />}
         </section>
       )}

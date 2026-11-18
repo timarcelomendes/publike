@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { cacheLife } from "next/cache";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Lista, Secao } from "@/components/documentos-legais";
 import { BotaoLink } from "@/components/ui/botao";
 import { Container } from "@/components/ui/basicos";
 import { CAMINHO_API, CAMINHO_CHAVES, ETAPAS_API, SITUACOES_API } from "@/lib/api-publica";
-import { MODO_DEMO, SITE_URL } from "@/lib/config";
+import { SITE_URL } from "@/lib/config";
 import { ETAPAS_CANDIDATO } from "@/lib/constantes";
 import { formatarNumero } from "@/lib/formato";
 import { MOTIVOS_SAIDA } from "@/lib/processo";
-import { criarClientePublico } from "@/lib/supabase/servidor";
+import { limitesDaApi } from "@/lib/servidor/limites-da-api";
 
 // A documentação da API pública (src/lib/servidor/api-publica.ts; migração 20270713120000_api_publica.sql), para quem
 // cuida do CRM ou do sistema de recrutamento de quem contrata pelo Publike (17/11/2026: uma agência pediu). Os limites
@@ -24,22 +23,6 @@ export const metadata: Metadata = {
 };
 
 const BASE = `${SITE_URL}${CAMINHO_API}`;
-
-async function limitesDaApi(): Promise<{ limite_gratis: number; limite_plano: number } | null> {
-  "use cache";
-  cacheLife("hours");
-  if (MODO_DEMO) return null;
-  try {
-    const { data, error } = await criarClientePublico().rpc("limites_da_api");
-    if (error || !data || typeof data !== "object") return null;
-    const d = data as { limite_gratis?: unknown; limite_plano?: unknown };
-    return typeof d.limite_gratis === "number" && typeof d.limite_plano === "number"
-      ? { limite_gratis: d.limite_gratis, limite_plano: d.limite_plano }
-      : null;
-  } catch {
-    return null;
-  }
-}
 
 function Codigo({ children, rotulo }: { children: string; rotulo?: string }) {
   return (
@@ -190,7 +173,7 @@ export default async function Desenvolvedores() {
     "nome": "Agência Exemplo",
     "tipo": "agencia",
     "com_plano": true,
-    "limite_por_dia": ${limites ? limites.limite_plano : 20000},
+    "limite_por_dia": ${limites ? limites.plano : 20000},
     "usadas_hoje": 1
   }
 }`}</Codigo>
@@ -205,11 +188,11 @@ export default async function Desenvolvedores() {
             itens={[
               limites ? (
                 <>
-                  De graça: <strong>{formatarNumero(limites.limite_gratis)} chamadas por dia</strong> para cada conta. Nos{" "}
+                  De graça: <strong>{formatarNumero(limites.gratis)} chamadas por dia</strong> para cada conta. Nos{" "}
                   <Link href="/painel/planos" className="underline underline-offset-2">
                     planos
                   </Link>
-                  : <strong>{formatarNumero(limites.limite_plano)} por dia</strong>.
+                  : <strong>{formatarNumero(limites.plano)} por dia</strong>.
                 </>
               ) : (
                 <>
