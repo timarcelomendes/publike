@@ -3,6 +3,7 @@ import {
   avisarNoticiasDoDia,
   enviarRetornos,
   guardarIndicadores,
+  guardarResumoDaReceita,
   lembrarEntrevistas,
   prazosDaEntrevistaVideo,
   lembrarParados,
@@ -114,6 +115,8 @@ export async function GET(request: Request) {
   const noticias = await comTempo(() => avisarNoticiasDoDia());
   // o Painel do admin: os números de ontem, uma vez por dia (depois das 00:15)
   const indicadores = await comTempo(() => guardarIndicadores());
+  // a Base da Receita: o resumo da tela, recontado a cada 6 horas e depois de uma carga
+  const resumoReceita = await comTempo(() => guardarResumoDaReceita());
   // segunda, a partir das 8h: os números da semana por e-mail para a equipe (ligado no Painel), uma vez
   const numerosSemana = await comTempo(() => mandarNumerosDaSemana());
   // os resultados dos testes de vagas fora do ar há 12 meses
@@ -250,6 +253,7 @@ export async function GET(request: Request) {
       talentos: talentos.avisados,
       convites_do_pacote: convitesDoPacote.convidados,
       email_empresas: { enviados: emailEmpresas.enviados, motivo: emailEmpresas.motivo ?? null },
+      resumo_receita: resumoReceita.recontado ?? false,
       consultasSalario: consultasSalario.contas,
       buscasTalentos: buscasTalentos.avisadas,
       google: google.avisadas,

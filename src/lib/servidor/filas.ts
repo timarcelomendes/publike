@@ -649,6 +649,22 @@ export async function guardarIndicadores(): Promise<{ guardados: number; motivo?
 }
 
 /**
+ * O resumo da Base da Receita (Admin › Base da Receita; migração 20270725120000): reconta a cada 6 horas e depois de
+ * uma carga terminar, para a tela ler o guardado (contar na hora passava dos 8 s do banco). Fora disso, uma linha só.
+ * Sem a migração, nada; uma falha também não vira problema (a tela mostra o último guardado e a próxima volta tenta).
+ */
+export async function guardarResumoDaReceita(): Promise<{ recontado: boolean }> {
+  const acesso = acessoFila();
+  if (!acesso) return { recontado: false };
+  const { data, error } = await acesso.cliente.rpc("servidor_resumo_receita", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: o resumo da Base da Receita não foi recontado:", error.message);
+    return { recontado: false };
+  }
+  return { recontado: data === true };
+}
+
+/**
  * O lembrete na véspera da entrevista, das 18h às 22h (Brasília), para o candidato e para quem marcou (migração
  * 20270102120000). Sem a migração, nada (e sem `motivo`).
  */

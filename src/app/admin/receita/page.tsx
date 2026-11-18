@@ -27,6 +27,8 @@ type Carga = {
   resumo: Record<string, number>;
 };
 type Resumo = {
+  /** quando o robô contou (migração 20270725120000; antes dela, a conta era na hora) */
+  calculado_em?: string | null;
   cargas: Carga[];
   ativas: number;
   na_praca: number;
@@ -92,6 +94,11 @@ async function Conteudo() {
           As empresas abertas nas cidades das praças e as agências de RH de Goiás, dos dados abertos do CNPJ. O robô
           carrega todo mês. O MEI entra marcado, sem rua nem número, e só aparece para a equipe.
         </p>
+        {r.calculado_em && (
+          <p className="mt-1 text-body-sm text-ink-muted">
+            Números contados em {formatarDataHora(r.calculado_em)}; o robô reconta a cada 6 horas e depois de cada carga.
+          </p>
+        )}
       </div>
 
       {!ultima ? (

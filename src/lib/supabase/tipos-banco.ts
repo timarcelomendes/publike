@@ -4282,6 +4282,7 @@ export type Database = {
         Returns: number;
       };
       servidor_guardar_indicadores: { Args: { p_chave: string }; Returns: number };
+      servidor_resumo_receita: { Args: { p_chave: string }; Returns: boolean };
       painel_no_site_indicadores: { Args: { p_dias?: number }; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
       meu_endereco_de_cobranca: { Args: Record<string, never>; Returns: Json };
