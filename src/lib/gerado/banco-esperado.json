@@ -334,7 +334,8 @@
   "20270717120000_convite_do_pacote",
   "20270718120000_whatsapp_mais_alcance",
   "20270719120000_whatsapp_na_linha_do_tempo",
-  "20270720120000_whatsapp_numeros_de_teste"
+  "20270720120000_whatsapp_numeros_de_teste",
+  "20270721120000_whatsapp_modo_de_teste_no_filtro"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2714,6 +2715,7 @@
   "f|privado.visoes_com_plano(p_conta uuid)": "d2aa38da7c",
   "f|privado.whatsapp_chaves_de_teste()": "ed3e1df878",
   "f|privado.whatsapp_com_plano(p_conta uuid)": "d2aa38da7c",
+  "f|privado.whatsapp_da_fila_no_filtro(p_numero text, p_motivo text, p_numeros text, p_teste text[])": "9057a428f5",
   "f|privado.whatsapp_inicio_do_mes()": "136912a1fc",
   "f|privado.whatsapp_no_filtro(p_numero text, p_numeros text, p_teste text[])": "bb992a45de",
   "f|privado.whatsapp_numero(p integer)": "7f2337b2a0",
@@ -2923,10 +2925,10 @@
   "f|public.admin_velocidade(p_dias integer)": "eb24d5ad67",
   "f|public.admin_ver_respostas_equipe(p_conta uuid)": "15f06ebec3",
   "f|public.admin_verificar(p_usuario uuid, p_verificado boolean)": "6676b2b7b8",
-  "f|public.admin_whatsapp(p_numeros text)": "248323f2bd",
-  "f|public.admin_whatsapp_cobradas_por_modelo(p_dias integer, p_numeros text)": "c7a991ba9d",
+  "f|public.admin_whatsapp(p_numeros text)": "ea29ea073c",
+  "f|public.admin_whatsapp_cobradas_por_modelo(p_dias integer, p_numeros text)": "5bfe41b2b0",
   "f|public.admin_whatsapp_das_curtidas(p_anuncios uuid[])": "b050f5ff8e",
-  "f|public.admin_whatsapp_resultados(p_dias integer, p_numeros text)": "2074fc11e0",
+  "f|public.admin_whatsapp_resultados(p_dias integer, p_numeros text)": "d9b577cef0",
   "f|public.admin_whatsapp_salvar_modelos(p_modelos jsonb)": "ed8fd3c2e0",
   "f|public.agendar_remocao(p_anuncio uuid, p_horas integer, p_nota text, p_so_sem_resposta boolean)": "d833edd36c",
   "f|public.anuncios_antes_de_salvar()": "47178bca11",

@@ -620,8 +620,8 @@ function FiltrosDaTela({
           {vista.periodo === "hoje" ? "Desde a meia-noite" : `Desde ${formatarData(desde.toISOString())}`}
           {" · "}
           {plural(res.na_fila, "aviso na fila agora", "avisos na fila agora")}
-          {comNumeros && numeros === "reais" && " · sem os números de teste"}
-          {numeros === "teste" && " · só os números de teste"}
+          {comNumeros && numeros === "reais" && " · sem os números de teste e o que o modo de teste segurou"}
+          {numeros === "teste" && " · só os números de teste e o que o modo de teste segurou"}
         </p>
       )}
     </div>
