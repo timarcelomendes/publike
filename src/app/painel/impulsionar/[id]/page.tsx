@@ -15,7 +15,7 @@ import { Aviso, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil } from "@/lib/dados";
-import { formatarMoeda, primeiro } from "@/lib/formato";
+import { formatarMoeda, plural, primeiro } from "@/lib/formato";
 import type { VagaDoImpulso } from "@/lib/impulso";
 import { meuEnderecoDeCobranca, pagamentosDaConta } from "@/lib/servidor/faturas";
 import { googleAdsLigado } from "@/lib/servidor/google-ads-api";
@@ -135,13 +135,21 @@ async function Conteudo({
   if (!UUID.test(id)) notFound();
   await exigirUsuario(`/painel/impulsionar/${id}`);
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("impulso_da_vaga", { p_anuncio: id });
+  const [{ data, error }, { data: dc }] = await Promise.all([
+    supabase.rpc("impulso_da_vaga", { p_anuncio: id }),
+    // o convite do pacote (migração 20270717120000): quantos o Publike convidou e quantos curtiram, por pacote
+    supabase.rpc("convites_do_meu_pacote", { p_anuncio: id }),
+  ]);
+  const convites = dc as { ligado?: boolean; pacotes?: Record<string, ConviteDoPacote> } | null;
+  const comConvite = Boolean(convites?.ligado);
   const cabecalho = (
     <CabecalhoDaPagina
       voltar={{ href: `/painel/anuncio/${id}`, nome: "Vaga" }}
       titulo="Impulsionar a vaga"
       selo={<Selo variante="novo">Novo</Selo>}
-      descricao="Sua vaga em destaque para quem procura emprego na região, no alto das páginas de vagas do Publike, até chegarem os candidatos que você quer. Só conta quem curtir a vaga depois de chegar pelo destaque."
+      descricao={`Sua vaga em destaque para quem procura emprego na região, no alto das páginas de vagas do Publike, até chegarem os candidatos que você quer. Só conta quem curtir a vaga depois de chegar pelo destaque${
+        comConvite ? " ou pelo convite do Publike" : ""
+      }.`}
     />
   );
   if (error) {
@@ -179,7 +187,7 @@ async function Conteudo({
         <div className="flex min-w-0 flex-col gap-6">
           {valendo ? (
             ehPacote(valendo) ? (
-              <PacoteValendo i={valendo} />
+              <PacoteValendo i={valendo} conviteLigado={comConvite} convite={convites?.pacotes?.[valendo.id] ?? null} />
             ) : (
               <ImpulsoValendo i={valendo} ajuste={Boolean(d.ajuste_ligado)} />
             )
@@ -503,7 +511,20 @@ async function FormularioDoImpulso({ d }: { d: DoImpulso }) {
   );
 }
 
-function PacoteValendo({ i }: { i: Impulso }) {
+/** O convite do pacote (migração 20270717120000): quantos o Publike convidou e quantos curtiram. */
+type ConviteDoPacote = { convidados: number; curtiram: number };
+
+function PacoteValendo({
+  i,
+  conviteLigado,
+  convite,
+}: {
+  i: Impulso;
+  conviteLigado: boolean;
+  convite: ConviteDoPacote | null;
+}) {
+  const convidados = Number(convite?.convidados ?? 0);
+  const curtiram = Number(convite?.curtiram ?? 0);
   const alvo = i.alvo ?? 0;
   const chegaram = Math.min(i.entregues ?? 0, alvo);
   const faltam = alvo - chegaram;
@@ -529,12 +550,22 @@ function PacoteValendo({ i }: { i: Impulso }) {
             A vaga está no quadro “Vagas impulsionadas na região”, no alto das páginas de vagas da cidade, até chegarem
             {alvo === 1 ? " o candidato" : ` os ${alvo} candidatos`}
             {i.ate ? `, no máximo até ${dataCurta(i.ate)}` : ""}. Conta quem curtir a vaga depois de chegar pelo
-            destaque.
+            destaque
+            {conviteLigado
+              ? " ou pelo convite do Publike, que chama para a vaga quem tem currículo, mora perto e combina com ela"
+              : ""}
+            .
           </p>
         </div>
         <SeloDaSituacao i={i} />
       </div>
       <BarraDoPacote alvo={alvo} chegaram={chegaram} />
+      {convidados > 0 && (
+        <p className="text-body-sm text-ink-muted">
+          O Publike convidou {plural(convidados, "pessoa que combina", "pessoas que combinam")} com a vaga;{" "}
+          {curtiram === 1 ? "1 curtiu" : `${curtiram} curtiram`}.
+        </p>
+      )}
       <NumerosDoPacote totais={i.totais} />
       <PararPacote id={i.id} origem={i.origem} faltam={faltam} />
     </section>

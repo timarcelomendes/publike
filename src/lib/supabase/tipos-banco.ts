@@ -4169,6 +4169,26 @@ export type Database = {
         Returns: Json;
       };
       servidor_pagamento_cancelada: { Args: { p_chave: string; p_asaas_id: string }; Returns: undefined };
+      // o convite do pacote (migração 20270717120000)
+      servidor_pacotes_para_convidar: { Args: { p_chave: string }; Returns: Json };
+      servidor_talentos_para_o_pacote: {
+        Args: { p_chave: string; p_impulso: string };
+        Returns: {
+          perfil_id: string;
+          nome: string;
+          cidade: string | null;
+          bairro: string | null;
+          curriculo: Json;
+          km: number | null;
+        }[];
+      };
+      servidor_convidar_pelo_pacote: {
+        Args: { p_chave: string; p_impulso: string; p_perfil: string };
+        Returns: boolean;
+      };
+      admin_convite_do_pacote: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_salvar_convite_do_pacote: { Args: { p_ligado: boolean; p_maximo: number }; Returns: undefined };
+      convites_do_meu_pacote: { Args: { p_anuncio: string }; Returns: Json };
       // os pedidos de assinatura não pagos (migração 20270716120000)
       servidor_pedidos_nao_pagos: { Args: { p_chave: string }; Returns: Json };
       servidor_pedido_nao_pago_cancelado: {

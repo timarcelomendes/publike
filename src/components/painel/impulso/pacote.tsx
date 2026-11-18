@@ -35,7 +35,7 @@ export function NumerosDoPacote({ totais }: { totais: TotaisDoImpulso }) {
   const itens: [string, number, string][] = [
     ["Visitas", totais.visitas, "na vaga, vindas do destaque"],
     ["No Publike", quadro, "das visitas, pelo quadro e pela lista do Publike"],
-    ["Curtiram", totais.curtidas, "a vaga depois de chegar pelo destaque"],
+    ["Curtiram", totais.curtidas, "a vaga depois de chegar pelo destaque ou pelo convite do Publike"],
   ];
   return (
     <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3">

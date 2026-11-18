@@ -735,3 +735,31 @@ export async function salvarRaiosAdmin(config: {
   refresh();
   return { ok: true, mensagem: config.ligados ? "Salvo. O robô acerta os raios em instantes." : "Salvo." };
 }
+
+/**
+ * O convite do pacote, no alto de Admin › Impulsos (migração 20270717120000; 18/11/2026, claude/plano-ritmo-do-pacote.md).
+ * Ligado, das 8h às 21h e a cada 15 minutos, o Publike convida para a vaga de cada pacote no ar quem combina com ela,
+ * até `maximo` pessoas por pacote. `maximo` vazio fica como está.
+ */
+export async function salvarConviteDoPacote(ligado: boolean, maximo: number | null): Promise<Resultado> {
+  if (typeof ligado !== "boolean") return { ok: false, erro: "Escolha ligar ou desligar." };
+  if (maximo !== null && !(Number.isInteger(maximo) && maximo >= 0 && maximo <= 200))
+    return { ok: false, erro: "O máximo por pacote vai de 0 a 200 pessoas." };
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  const { error } = await c.rpc("admin_salvar_convite_do_pacote", {
+    p_ligado: ligado,
+    p_maximo: maximo as number,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270717120000 primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: ligado
+      ? "Ligado. Os convites saem das 8h às 21h, na próxima rodada do robô."
+      : "Desligado. Os convites que já saíram continuam valendo.",
+  };
+}

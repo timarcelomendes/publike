@@ -18,6 +18,7 @@ import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
 import { ehCorrendo, quemPediu } from "@/components/admin/impulsos-nomes";
 import { NovoImpulso } from "@/components/admin/impulsos-novo";
 import { ChaveDaGeral } from "@/components/admin/impulsos-chave-da-geral";
+import { ChaveDoConvite, type PacoteComConvite } from "@/components/admin/impulsos-convite";
 import { ConfigDoPacote } from "@/components/admin/impulsos-pacote";
 import { GruposDaGeral, type LinhaDoGrupo } from "@/components/admin/impulsos-grupos";
 import { RaiosDaGeral, type LinhaDoRaio } from "@/components/admin/impulsos-raios";
@@ -156,7 +157,19 @@ async function Conteudo({
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/impulsos"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const { data, error } = await c.rpc("admin_impulsos");
+  const [{ data, error }, { data: dc }] = await Promise.all([
+    c.rpc("admin_impulsos"),
+    // o convite do pacote (migração 20270717120000; sem ela, a chave não aparece)
+    c.rpc("admin_convite_do_pacote"),
+  ]);
+  const convite = dc as {
+    ligado: boolean;
+    maximo: number;
+    hora_inicio: number;
+    hora_fim: number;
+    rodou_em: string | null;
+    pacotes: PacoteComConvite[];
+  } | null;
   if (error || !data) {
     return (
       <Aviso tipo="alerta" titulo="Rode a migração do impulso">
@@ -239,6 +252,22 @@ async function Conteudo({
               erro_em: d.config.geral_erro_em ?? null,
             }}
             voltando={Boolean(d.config.geral_voltar)}
+          />
+        )}
+        {d.pacotes && convite && (
+          <ChaveDoConvite
+            ligado={Boolean(convite.ligado)}
+            maximo={Number(convite.maximo ?? 30)}
+            horaInicio={Number(convite.hora_inicio ?? 8)}
+            horaFim={Number(convite.hora_fim ?? 21)}
+            rodouEm={convite.rodou_em ?? null}
+            pacotes={(convite.pacotes ?? []).map((p) => ({
+              ...p,
+              alvo: Number(p.alvo),
+              entregues: Number(p.entregues),
+              convidados: Number(p.convidados),
+              curtiram: Number(p.curtiram),
+            }))}
           />
         )}
         {!g.ligado && (
