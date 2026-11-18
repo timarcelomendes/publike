@@ -6,7 +6,12 @@ import type { Liberavel, RecursoPago, RecursosPagos } from "./recursos-pagos";
  * O que se assina: um recurso, o combo (a Triagem e o Teste Prático numa assinatura só) ou o Plano Completo (os
  * quatro recursos numa assinatura só; migração 20270116120000).
  */
-/** Os planos por faixa de vagas no ar (migração 20270407120000): liberam tudo, como o Plano Completo. */
+/**
+ * Os planos por faixa de vagas no ar (migração 20270407120000): liberam tudo, como o Plano Completo. As chaves são
+ * as de quando nasceram; a faixa de cada uma está em privado.planos.limite_vagas. Desde 17/11/2026 (migração
+ * 20270715120000, as faixas começam nas 20 vagas grátis): empresa_5 vale até 20 vagas, empresa_20 até 50,
+ * empresa_50 saiu de venda, agencia_15 vale até 20 e agencia_200 até 200.
+ */
 export type PlanoPorFaixa = "empresa_5" | "empresa_20" | "empresa_50" | "agencia_15" | "agencia_200";
 export const PLANOS_POR_FAIXA: PlanoPorFaixa[] = ["empresa_5", "empresa_20", "empresa_50", "agencia_15", "agencia_200"];
 export function ehPlanoPorFaixa(x: unknown): x is PlanoPorFaixa {
@@ -27,10 +32,10 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   automacoes: "Automações personalizadas",
   salarios: "Consulta de salários",
   carreiras: "Página de carreiras",
-  empresa_5: "Plano Empresa até 5 vagas",
-  empresa_20: "Plano Empresa até 20 vagas",
-  empresa_50: "Plano Empresa até 50 vagas",
-  agencia_15: "Plano Agência até 15 vagas",
+  empresa_5: "Plano Empresa até 20 vagas",
+  empresa_20: "Plano Empresa até 50 vagas",
+  empresa_50: "Plano Empresa até 50 vagas (faixa antiga)",
+  agencia_15: "Plano Agência até 20 vagas",
   agencia_200: "Plano Agência até 200 vagas",
 };
 
@@ -44,10 +49,10 @@ export const O_PRODUTO: Record<Produto, string> = {
   automacoes: "as Automações personalizadas",
   salarios: "a Consulta de salários",
   carreiras: "a Página de carreiras",
-  empresa_5: "o Plano Empresa até 5 vagas",
-  empresa_20: "o Plano Empresa até 20 vagas",
-  empresa_50: "o Plano Empresa até 50 vagas",
-  agencia_15: "o Plano Agência até 15 vagas",
+  empresa_5: "o Plano Empresa até 20 vagas",
+  empresa_20: "o Plano Empresa até 50 vagas",
+  empresa_50: "o Plano Empresa até 50 vagas (faixa antiga)",
+  agencia_15: "o Plano Agência até 20 vagas",
   agencia_200: "o Plano Agência até 200 vagas",
 };
 
@@ -61,10 +66,10 @@ export const DO_PRODUTO: Record<Produto, string> = {
   automacoes: "das Automações personalizadas",
   salarios: "da Consulta de salários",
   carreiras: "da Página de carreiras",
-  empresa_5: "do Plano Empresa até 5 vagas",
-  empresa_20: "do Plano Empresa até 20 vagas",
-  empresa_50: "do Plano Empresa até 50 vagas",
-  agencia_15: "do Plano Agência até 15 vagas",
+  empresa_5: "do Plano Empresa até 20 vagas",
+  empresa_20: "do Plano Empresa até 50 vagas",
+  empresa_50: "do Plano Empresa até 50 vagas (faixa antiga)",
+  agencia_15: "do Plano Agência até 20 vagas",
   agencia_200: "do Plano Agência até 200 vagas",
 };
 

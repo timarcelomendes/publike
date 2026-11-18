@@ -7,15 +7,17 @@ import type { MinhaFaixa } from "@/lib/servidor/pagina-de-carreiras";
  * O plano por faixa ficou pequeno (migração 20270412120000): as vagas no ar, o limite e até quando dá para mudar para a
  * faixa de cima (30 dias). Nada trava, nem depois do prazo (por enquanto). Na Assinatura e nos Planos.
  */
-/** As faixas de cada plano, da menor para a maior. */
+/**
+ * As faixas à venda de cada plano, da menor para a maior (desde 17/11/2026, migração 20270715120000: começam nas 20
+ * vagas grátis; a empresa_50 saiu de venda).
+ */
 const FAIXAS: Record<string, { recurso: string; limite: number }[]> = {
   empresa: [
-    { recurso: "empresa_5", limite: 5 },
-    { recurso: "empresa_20", limite: 20 },
-    { recurso: "empresa_50", limite: 50 },
+    { recurso: "empresa_5", limite: 20 },
+    { recurso: "empresa_20", limite: 50 },
   ],
   agencia: [
-    { recurso: "agencia_15", limite: 15 },
+    { recurso: "agencia_15", limite: 20 },
     { recurso: "agencia_200", limite: 200 },
   ],
 };

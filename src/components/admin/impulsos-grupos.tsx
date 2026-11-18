@@ -111,9 +111,16 @@ export function GruposDaGeral({
         impulsionada entra sempre, mesmo com menos.
       </p>
       <p className="max-w-3xl text-body-sm text-ink-muted" aria-live="polite">
-        Orçamento de agora: {reais(alvo)} por dia, com {reais(base)} de base. A diferença dos pacotes, {reais(diferenca)},
-        paga {cabem === 0 ? "nenhum grupo" : `até ${plural(cabem, "grupo", "grupos")}`} de {reais(c.verba)}.{" "}
-        {candidatas.length > 0 &&
+        {!c.ligados
+          ? `Desligados: nenhum grupo fica no ar, e a campanha geral fica com ${reais(alvo)} por dia.`
+          : diferenca === 0
+            ? `Orçamento de agora: ${reais(alvo)} por dia, a base. Os pacotes não somam verba, então nenhum grupo tem com o que ficar no ar.`
+            : `Orçamento de agora: ${reais(alvo)} por dia, com ${reais(base)} de base. A diferença dos pacotes, ${reais(diferenca)}, paga ${
+                cabem === 0 ? "nenhum grupo" : `até ${plural(cabem, "grupo", "grupos")}`
+              } de ${reais(c.verba)}.`}{" "}
+        {c.ligados &&
+          diferenca > 0 &&
+          candidatas.length > 0 &&
           `Há ${plural(candidatas.length, "função ou cidade", "funções e cidades")} que podem entrar${
             candidatas.length > cabem ? `; ficam de fora ${candidatas.length - cabem}` : ""
           }. Entram primeiro as com vaga impulsionada, depois as com mais vagas.`}

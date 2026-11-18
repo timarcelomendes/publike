@@ -292,7 +292,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Quantas entrevistas ao vivo pelo Publike posso fazer?",
-        r: "A entrevista gravada não tem limite. A ao vivo, a chamada dentro do Publike, conta por mês, pelo dia da entrevista: até 10 com a Entrevista em vídeo sozinha; no Plano Empresa, 10 na faixa até 5 vagas, 20 na até 20 e 30 na até 50; no Plano Agência, 20 na até 15 e 30 na até 200; nos 15 dias grátis, 3. Cancelada não conta. Acabou, a opção “pelo Publike” some até o mês virar, e dá para marcar por link de vídeo, telefone ou presencial. A sala abre 10 minutos antes e fecha 15 minutos depois do fim marcado.",
+        r: "A entrevista gravada não tem limite. A ao vivo, a chamada dentro do Publike, conta por mês, pelo dia da entrevista: até 10 com a Entrevista em vídeo sozinha; no Plano Empresa, 10 na faixa até 20 vagas e 20 na até 50; no Plano Agência, 20 na até 20 e 30 na até 200; nos 15 dias grátis, 3. Cancelada não conta. Acabou, a opção “pelo Publike” some até o mês virar, e dá para marcar por link de vídeo, telefone ou presencial. A sala abre 10 minutos antes e fecha 15 minutos depois do fim marcado.",
       },
       {
         p: "O que é o convite automático?",

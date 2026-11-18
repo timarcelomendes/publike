@@ -75,10 +75,11 @@ const CURTO: Record<Produto, string> = {
   automacoes: "Automações personalizadas",
   salarios: "Consulta de salários",
   carreiras: "Página de carreiras",
-  empresa_5: "Plano Empresa 5",
-  empresa_20: "Plano Empresa 20",
-  empresa_50: "Plano Empresa 50",
-  agencia_15: "Plano Agência 15",
+  // a faixa no nome (as chaves são as de quando os planos nasceram; migração 20270715120000)
+  empresa_5: "Plano Empresa 20",
+  empresa_20: "Plano Empresa 50",
+  empresa_50: "Plano Empresa antigo",
+  agencia_15: "Plano Agência 20",
   agencia_200: "Plano Agência 200",
 };
 

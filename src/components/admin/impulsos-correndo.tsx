@@ -223,11 +223,22 @@ function NumerosDoCliente({ c }: { c: Cliente }) {
     const chegaram = todas.reduce((t, i) => t + Math.min(Number(i.entregues ?? 0), Number(i.alvo ?? 0)), 0);
     const visitas = todas.reduce((t, i) => t + i.totais.visitas, 0);
     const quadro = todas.reduce((t, i) => t + (i.totais.visitas_quadro ?? 0), 0);
-    const pacote: { rotulo: string; valor: string }[] = [
+    // a curtida que não vira candidato: desfeita, da mesma pessoa de novo ou de alguém da equipe da empresa (17/11/2026:
+    // "3 curtidas" ao lado de "2 de 10 candidatos", sem dizer por quê)
+    const entregues = todas.reduce((t, i) => t + Number(i.entregues ?? 0), 0);
+    const naoContam = Math.max(0, soma.curtidas - entregues);
+    const pacote: { rotulo: string; valor: string; detalhe?: string }[] = [
       { rotulo: "Candidatos", valor: `${formatarNumero(chegaram)} de ${formatarNumero(alvo)}` },
       { rotulo: "Visitas", valor: formatarNumero(visitas) },
       { rotulo: "No Publike", valor: formatarNumero(quadro) },
-      { rotulo: "Curtidas", valor: formatarNumero(soma.curtidas) },
+      {
+        rotulo: "Curtidas",
+        valor: formatarNumero(soma.curtidas),
+        detalhe:
+          naoContam > 0
+            ? `${plural(naoContam, "não conta", "não contam")} como candidato (desfeita, repetida ou da equipe)`
+            : undefined,
+      },
     ];
     return (
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -235,6 +246,7 @@ function NumerosDoCliente({ c }: { c: Cliente }) {
           <div key={n.rotulo} className="min-w-0">
             <dt className="text-caption text-ink-muted">{n.rotulo}</dt>
             <dd className="text-label tabular-nums">{n.valor}</dd>
+            {n.detalhe && <dd className="text-caption text-ink-muted">{n.detalhe}</dd>}
           </div>
         ))}
       </dl>

@@ -116,7 +116,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
     <div className="flex flex-col gap-8">
       <CabecalhoDaPagina
         titulo="Planos"
-        descricao="Publicar vagas e receber candidatos é grátis, até 20 vagas no ar. O plano junta as ferramentas que adiantam a seleção, pelo número de vagas que você tem no ar."
+        descricao="Publicar vagas e receber candidatos é grátis, até 20 vagas no ar. O plano junta as ferramentas que adiantam a seleção, para as mesmas 20 vagas; para mais vagas no ar, é a faixa de cima."
         acoes={
           valendo.length > 0 ? (
             <BotaoLink href="/painel/assinatura" variante="secundario" tamanho="sm">
@@ -204,7 +204,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
         </h3>
         <ul className="grid gap-x-8 gap-y-2 text-body-sm text-ink-muted md:grid-cols-2">
           <li>Preço de lançamento: quem assina agora mantém o valor enquanto continuar assinando.</li>
-          <li>Até 20 vagas no ar, é grátis. Para mais, só com um plano. Passou da faixa do plano, você tem 30 dias para mudar.</li>
+          <li>Até 20 vagas no ar, é grátis, e o plano de entrada vale para as mesmas 20. Para mais, é a faixa de cima. Passou da faixa do plano, você tem 30 dias para mudar.</li>
           <li>Cartão ou Pix. Cancele quando quiser: o que já foi pago vale até o fim.</li>
           <li>Nada pago muda a ordem das vagas ou dos candidatos, e o candidato nunca paga.</li>
           {temAnual && <li>No anual, você paga 9 meses e usa 12.</li>}

@@ -328,7 +328,8 @@
   "20270711120000_whatsapp_avisos_escolhidos",
   "20270712120000_home_abas_vistas",
   "20270713120000_api_publica",
-  "20270714120000_whatsapp_limite_por_plano"
+  "20270714120000_whatsapp_limite_por_plano",
+  "20270715120000_planos_a_partir_de_20_vagas"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2588,7 +2589,7 @@
   "f|privado.na_conversa_dupla(p_conversa uuid)": "42e904fddf",
   "f|privado.nome_curto(p_nome text)": "496d20c2d9",
   "f|privado.nome_da_conquista(p_nome text)": "1127a57fd2",
-  "f|privado.nome_do_recurso(p_recurso text)": "9545f741e6",
+  "f|privado.nome_do_recurso(p_recurso text)": "1beed64686",
   "f|privado.nome_na_conexao(p_perfil uuid, p_aceita boolean)": "2009b1dc2c",
   "f|privado.nome_nas_conversas(p_conta uuid, p_nome text, p_tipo text)": "f0dc482745",
   "f|privado.nome_no_comentario(p_conta uuid)": "09fd75945c",
@@ -3471,7 +3472,7 @@
   "f|public.servidor_pagamento_nota_configurada(p_chave text, p_assinatura uuid)": "b3bb8391c8",
   "f|public.servidor_pagamento_pix(p_chave text, p_asaas_id text, p_payload text, p_expira timestamp with time zone)": "86159c555d",
   "f|public.servidor_pagamento_tentativa(p_chave text, p_conta uuid)": "33809ac9b0",
-  "f|public.servidor_pagamento_vincular(p_chave text, p_sub jsonb)": "566c1febef",
+  "f|public.servidor_pagamento_vincular(p_chave text, p_sub jsonb)": "20ca6bea0e",
   "f|public.servidor_parametros_email(p_chave text)": "9fc2d003b4",
   "f|public.servidor_pegar_avaliacoes_ia(p_chave text, p_limite integer)": "5ae77edcfd",
   "f|public.servidor_pegar_comentarios_ia(p_chave text, p_limite integer)": "8c5ef68476",

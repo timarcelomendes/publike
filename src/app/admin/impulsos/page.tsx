@@ -194,7 +194,11 @@ async function Conteudo({
             <h1 className="text-h2">Impulsos</h1>
             <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
               Desde 14/11, o pacote de candidatos: a vaga entra no quadro “Vagas impulsionadas na região” até chegarem os
-              candidatos, e cada pacote no ar soma verba à campanha geral.
+              candidatos
+              {Number(d.config.pacote_verba_dia ?? 0) > 0 &&
+              Number(d.config.geral_maximo ?? 0) > Number(d.config.geral_base ?? 0)
+                ? ", e cada pacote no ar soma verba à campanha geral."
+                : ". A campanha geral fica na base: os pacotes não somam verba."}
             </p>
           </div>
           {g.ligado && <TestarGoogleAds />}
@@ -566,7 +570,7 @@ function NumerosDosPacotes({
         valor={noAr.length}
         detalhe={
           noAr.length
-            ? `${formatarNumero(chegaram)} de ${formatarNumero(alvo)} candidatos, de ${plural(clientes, "cliente", "clientes")}`
+            ? `Agora: ${formatarNumero(chegaram)} de ${formatarNumero(alvo)} candidatos já chegaram, de ${plural(clientes, "cliente", "clientes")}`
             : "Nenhum pacote no ar"
         }
       />
@@ -582,14 +586,12 @@ function NumerosDosPacotes({
               : "Ainda sem a medida do Google: atualize"
         }
       />
+      {/* sem dividir o gasto da campanha geral pelos candidatos dos pacotes (17/11/2026): ela traz gente para todas as
+          vagas, e os candidatos dos pacotes chegam pelo destaque no Publike; a conta dava "R$ 254,96 por candidato" */}
       <Numero
         rotulo="Candidatos dos pacotes"
         valor={candidaturas}
-        detalhe={
-          candidaturas > 0 && custo > 0
-            ? `${quando}: ${reais(custo / candidaturas)} da campanha geral por candidato`
-            : `${quando}`
-        }
+        detalhe={`${quando}, com os pacotes que já acabaram: as curtidas de quem chegou pelo destaque`}
       />
       <Numero
         rotulo="Vendido"

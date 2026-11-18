@@ -87,10 +87,11 @@ const FAZ: Record<Produto, string> = {
     "Consultas sem limite: quanto o mercado paga para cada função, o que as vagas do Publike oferecem e quantos talentos combinam.",
   carreiras:
     "A sua página de vagas com a cara da empresa: a cor da marca, a capa, por que trabalhar aí, os benefícios e um endereço curto. Libera sozinha com 10 vagas publicadas.",
-  empresa_5: `Tudo numa assinatura só, para até 5 vagas no ar: ${TUDO}. ${E_MAIS}`,
-  empresa_20: `Tudo numa assinatura só, para até 20 vagas no ar: ${TUDO}. ${E_MAIS}`,
-  empresa_50: `Tudo numa assinatura só, para até 50 vagas no ar: ${TUDO}. ${E_MAIS}`,
-  agencia_15: `Tudo numa assinatura só, para até 15 vagas no ar e 3 recrutadores: ${TUDO}. ${E_MAIS}`,
+  // as faixas desde 17/11/2026 (migração 20270715120000): as chaves são as de quando os planos nasceram
+  empresa_5: `Tudo numa assinatura só, para até 20 vagas no ar: ${TUDO}. ${E_MAIS}`,
+  empresa_20: `Tudo numa assinatura só, para até 50 vagas no ar: ${TUDO}. ${E_MAIS}`,
+  empresa_50: `Tudo numa assinatura só, para até 50 vagas no ar (faixa antiga): ${TUDO}. ${E_MAIS}`,
+  agencia_15: `Tudo numa assinatura só, para até 20 vagas no ar e 3 recrutadores: ${TUDO}. ${E_MAIS}`,
   agencia_200: `Tudo numa assinatura só, para até 200 vagas no ar e 10 recrutadores: ${TUDO}. ${E_MAIS}`,
 };
 
@@ -438,11 +439,15 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "As suas vagas num endereço curto, com a cor, a capa e os benefícios da empresa.",
     botao: "Conhecer a Página de carreiras",
   },
-  empresa_5: { titulo: "Plano Empresa até 5 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
-  empresa_20: { titulo: "Plano Empresa até 20 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
-  empresa_50: { titulo: "Plano Empresa até 50 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
+  empresa_5: { titulo: "Plano Empresa até 20 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
+  empresa_20: { titulo: "Plano Empresa até 50 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
+  empresa_50: {
+    titulo: "Plano Empresa até 50 vagas (faixa antiga)",
+    texto: `Tudo junto: ${TUDO}. ${E_MAIS}`,
+    botao: "Conhecer o Plano Empresa",
+  },
   agencia_15: {
-    titulo: "Plano Agência até 15 vagas",
+    titulo: "Plano Agência até 20 vagas",
     texto: `Tudo junto, com 3 recrutadores: ${TUDO}. ${E_MAIS}`,
     botao: "Conhecer o Plano Agência",
   },
@@ -459,7 +464,7 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
  */
 const OUTRAS: Record<Produto, Produto[]> = {
   empresa_5: ["empresa_20", "copiloto", "testes", "video", "automacoes", "carreiras"],
-  empresa_20: ["empresa_50", "copiloto", "testes", "video", "automacoes", "carreiras"],
+  empresa_20: ["copiloto", "testes", "video", "automacoes", "carreiras"],
   empresa_50: ["copiloto", "testes", "video", "automacoes", "carreiras"],
   agencia_15: ["agencia_200", "copiloto", "testes", "video", "automacoes"],
   agencia_200: ["copiloto", "testes", "video", "automacoes"],

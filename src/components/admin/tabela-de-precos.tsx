@@ -22,7 +22,8 @@ export type PlanoDoAdmin = { id: string; recurso: Produto; ciclo: Ciclo; valor: 
 const GRUPOS: { titulo: string; texto: string; produtos: Produto[]; ciclos: Ciclo[] }[] = [
   {
     titulo: "Planos",
-    texto: "Pelo número de vagas no ar, com todos os recursos. O anual e os 30 dias só vendem com “À venda” marcado.",
+    texto:
+      "Pelo número de vagas no ar, com todos os recursos: a faixa de entrada vale para as 20 vagas grátis e a de cima, para mais. O anual e os 30 dias só vendem com “À venda” marcado.",
     produtos: ["empresa_5", "empresa_20", "empresa_50", "agencia_15", "agencia_200"],
     ciclos: ["MONTHLY", "QUARTERLY", "YEARLY", "AVULSO"],
   },
@@ -51,10 +52,11 @@ const SUGESTAO: Record<Produto, Partial<Record<Ciclo, number>>> = {
   salarios: { MONTHLY: 29.9, QUARTERLY: 76 },
   // a Página de carreiras sozinha (decisão de 10/11/2026: R$ 19,90 por mês)
   carreiras: { MONTHLY: 19.9, QUARTERLY: 51 },
-  // os planos por faixa (lançamento, 10/11/2026; o Plano Empresa subiu para R$ 79 e R$ 199, com 15% no trimestre)
+  // os planos por faixa (lançamento, 10/11/2026; o Plano Empresa subiu para R$ 79 e R$ 199, com 15% no trimestre).
+  // Desde 17/11/2026 (migração 20270715120000), a empresa_5 vale até 20 vagas e a empresa_20, até 50
   empresa_5: { MONTHLY: 79, QUARTERLY: 201, YEARLY: 711, AVULSO: 99 },
   empresa_20: { MONTHLY: 199, QUARTERLY: 507, YEARLY: 1791, AVULSO: 249 },
-  // acima das 20 vagas grátis (10/11/2026)
+  // fora de venda desde 17/11/2026: a empresa_20 passou a ir até 50 vagas
   empresa_50: { MONTHLY: 299, QUARTERLY: 762, YEARLY: 2691, AVULSO: 369 },
   agencia_15: { MONTHLY: 99, QUARTERLY: 252, YEARLY: 891, AVULSO: 125 },
   agencia_200: { MONTHLY: 399, QUARTERLY: 1017, YEARLY: 3591, AVULSO: 499 },

@@ -40,9 +40,16 @@ export function ChaveDaGeral({
 }) {
   const id = useId();
   const { rodar, pendente, mensagem } = useAcao();
-  const conta = `${reais(base)} de base mais ${reais(porPacote)} por pacote no destaque (${
-    noAr === 0 ? "nenhum agora" : plural(noAr, "pacote", "pacotes")
-  }), no máximo ${reais(maximo)}`;
+  // os pacotes só somam verba com a soma por pacote ligada e o máximo acima da base (17/11/2026: com o máximo igual à
+  // base, a tela dizia "R$ 30 de base mais R$ 10 por pacote, no máximo R$ 30", e nada somava)
+  const somam = porPacote > 0 && maximo > base;
+  const conta = somam
+    ? `${reais(base)} de base mais ${reais(porPacote)} por pacote no destaque (${
+        noAr === 0 ? "nenhum agora" : plural(noAr, "pacote", "pacotes")
+      }), no máximo ${reais(maximo)}`
+    : porPacote > 0
+      ? `a base: o máximo (${reais(maximo)}) é a própria base, e os pacotes não somam verba`
+      : "a base: os pacotes não somam verba";
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4">

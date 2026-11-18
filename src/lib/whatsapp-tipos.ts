@@ -133,7 +133,8 @@ export const PARAMETROS_WHATSAPP = {
   hora_inicio: { padrao: 8, faixa: [0, 23] },
   hora_fim: { padrao: 21, faixa: [1, 24] },
   por_conta_dia: { padrao: 4, faixa: [1, 20] },
-  por_conta_dia_empresa: { padrao: 8, faixa: [1, 40] },
+  // 10 por dia (era 8 até a migração 20270715120000): os avisos do mês do plano cabem no mês
+  por_conta_dia_empresa: { padrao: 10, faixa: [1, 40] },
   juntar_minutos: { padrao: 5, faixa: [0, 120] },
   intervalo_vaga_horas: { padrao: 3, faixa: [0, 48] },
   mensagem_minutos: { padrao: 10, faixa: [1, 240] },

@@ -36,7 +36,8 @@ export const GRATIS = [
 export const DOS_PLANOS = [
   "Triagem com IA",
   "Teste Prático",
-  "Entrevista em vídeo: a gravada sem limite e a ao vivo pelo Publike (10, 20 ou 30 por mês, pela faixa)",
+  // as entrevistas ao vivo de cada faixa entram na grade (aoVivoDasFaixas)
+  "Entrevista em vídeo: a gravada sem limite e a ao vivo pelo Publike",
   "Automações personalizadas",
   "Consulta de salários",
   "Página de carreiras, sem esperar as 10 vagas",
@@ -81,7 +82,10 @@ export function preco(pag: PagamentosDaConta | null, p: Produto, ciclo: Ciclo) {
   return pag?.planos.find((x) => x.recurso === p && x.ciclo === ciclo) ?? null;
 }
 
-/** As entrevistas ao vivo por mês de cada faixa (migração 20270420120000), para o cartão. */
+/**
+ * As entrevistas ao vivo por mês de cada faixa (migração 20270420120000), para o cartão. Seguem o preço: desde
+ * 17/11/2026 (migração 20270715120000), a empresa_5 é a faixa até 20 vagas e a empresa_20, a até 50.
+ */
 const AO_VIVO: Partial<Record<Produto, number>> = {
   empresa_5: 10,
   empresa_20: 20,
@@ -90,6 +94,17 @@ const AO_VIVO: Partial<Record<Produto, number>> = {
   agencia_200: 30,
   completo: 30,
 };
+
+/** "a ao vivo pelo Publike (10 ou 20 por mês, pela faixa)": as entrevistas ao vivo das faixas que a grade mostra. */
+function aoVivoDasFaixas(faixas: Produto[]) {
+  const n = [...new Set(faixas.map((f) => AO_VIVO[f]).filter((x): x is number => typeof x === "number"))].sort(
+    (a, b) => a - b,
+  );
+  const base = "Entrevista em vídeo: a gravada sem limite e a ao vivo pelo Publike";
+  if (!n.length) return base;
+  if (n.length === 1) return `${base} (${n[0]} por mês)`;
+  return `${base} (${n.slice(0, -1).join(", ")} ou ${n.at(-1)} por mês, pela faixa)`;
+}
 
 function Lista({ itens, titulo, colunas = false }: { itens: string[]; titulo?: string; colunas?: boolean }) {
   return (
@@ -385,7 +400,14 @@ export function GradeDePlanos({
           <h3 id="em-todos" className="text-label">
             Em todos os planos, além do Grátis
           </h3>
-          <Lista itens={[...DOS_PLANOS, ...(whatsapp ? [whatsappNosPlanos(whatsapp)] : []), apiNosPlanos(api)]} colunas />
+          <Lista
+            itens={[
+              ...DOS_PLANOS.map((t) => (t.startsWith("Entrevista em vídeo") ? aoVivoDasFaixas(faixas) : t)),
+              ...(whatsapp ? [whatsappNosPlanos(whatsapp)] : []),
+              apiNosPlanos(api),
+            ]}
+            colunas
+          />
           {agencia && <Lista titulo="Só no Plano Agência:" itens={SO_DA_AGENCIA} colunas />}
         </section>
       )}
