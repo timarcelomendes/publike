@@ -4190,7 +4190,7 @@ export type Database = {
       admin_salvar_convite_do_pacote: { Args: { p_ligado: boolean; p_maximo: number }; Returns: undefined };
       convites_do_meu_pacote: { Args: { p_anuncio: string }; Returns: Json };
       // o custo do WhatsApp pela categoria de cada modelo (migração 20270718120000)
-      admin_whatsapp_cobradas_por_modelo: { Args: { p_dias: number }; Returns: Json };
+      admin_whatsapp_cobradas_por_modelo: { Args: { p_dias: number; p_numeros?: string }; Returns: Json };
       // o WhatsApp na linha do tempo das curtidas (migração 20270719120000)
       admin_whatsapp_das_curtidas: {
         Args: { p_anuncios: string[] };
@@ -4348,8 +4348,9 @@ export type Database = {
         Args: { p_chave: string; p_wamid: string; p_numero: string; p_texto?: string | null; p_payload?: string | null };
         Returns: Json;
       };
-      admin_whatsapp: { Args: Record<PropertyKey, never>; Returns: Json };
-      admin_whatsapp_resultados: { Args: { p_dias?: number }; Returns: Json };
+      // p_numeros: o filtro dos números de teste, 'reais', 'teste' ou 'todos' (migração 20270720120000)
+      admin_whatsapp: { Args: { p_numeros?: string }; Returns: Json };
+      admin_whatsapp_resultados: { Args: { p_dias?: number; p_numeros?: string }; Returns: Json };
       mudar_whatsapp_avisos: { Args: { p_desligados: string[] }; Returns: undefined };
       admin_salvar_whatsapp: {
         Args: {

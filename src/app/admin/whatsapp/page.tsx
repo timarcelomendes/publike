@@ -48,6 +48,9 @@ export const metadata: Metadata = { title: "WhatsApp" };
 //   Parâmetros  ligar, para quem, os limites, o horário, os tempos de juntar e espaçar, a validade e os avisos
 //   Modelos     os modelos na Meta
 //   Ligação e teste  as chaves, o número, o webhook e a mensagem de teste
+// Os números de Resultados e Erros (e as contas do alto) vêm sem os números de teste (18/11/2026, Marcelo: "quero ver,
+// somente o real nos indicadores e filtrar é o caminho"): o filtro troca para os de teste ou todos (`?numeros=`). O
+// limite do mês e o do dia contam todas, como o robô.
 // No computador do dono e, no site no ar, para a equipe publike.org.
 
 type Resumo = {
@@ -63,7 +66,8 @@ type Resumo = {
     modelos_conferidos_em: string | null;
     atualizado_em?: string | null;
   } & Partial<Record<keyof ParametrosWhatsapp, number>>;
-  aceites: { pessoas: number; empresas: number; pararam_7_dias: number };
+  /** no filtro dos números; `de_teste`: as contas dos números de teste (migração 20270720120000) */
+  aceites: { pessoas: number; empresas: number; pararam_7_dias: number; de_teste?: number };
   pendentes: number;
   cobradas_30_dias: number;
   enviadas_no_mes: number;
@@ -99,6 +103,8 @@ type Contagem = {
 /** admin_whatsapp_resultados (migração 20270710120000) */
 type Resultados = {
   desde: string;
+  /** quantos avisos entraram no período de cada lado do filtro dos números (migração 20270720120000) */
+  numeros?: Record<"reais" | "teste" | "todos", number>;
   funil: Contagem & { esperando: number; cobradas: number };
   na_fila: number;
   enviadas_24h?: number;
@@ -144,6 +150,19 @@ const PERIODOS = [
 ] as const;
 type Periodo = (typeof PERIODOS)[number]["valor"];
 
+// Os números de teste (18/11/2026, Marcelo: "Números de teste precisa ter filtros, quero ver, somente o real nos
+// indicadores"; migração 20270720120000): os reais por padrão; os de teste são os de Parâmetros › Números de teste.
+// (nomes curtos: os três cabem numa linha do celular; a frase de baixo diz "sem os números de teste")
+const NUMEROS = [
+  { valor: "reais", nome: "Sem teste" },
+  { valor: "teste", nome: "Só teste" },
+  { valor: "todos", nome: "Todos" },
+] as const;
+type Numeros = (typeof NUMEROS)[number]["valor"];
+
+/** O que a tela mostra: o período e os números (o filtro vale nos números e na lista, não no limite do mês). */
+type Vista = { periodo: Periodo; numeros: Numeros };
+
 const STATUS: Record<string, { nome: string; variante: VarianteSelo; grave: boolean }> = {
   APPROVED: { nome: "Aprovado", variante: "match", grave: false },
   PENDING: { nome: "Em análise", variante: "aviso", grave: false },
@@ -176,7 +195,9 @@ export default function WhatsappAdmin({ searchParams }: PageProps<"/admin/whatsa
         const aba: Aba = ABAS.some((a) => a.valor === pedida) ? (pedida as Aba) : "resultados";
         const p = primeiro(sp.periodo);
         const periodo: Periodo = PERIODOS.some((x) => x.valor === p) ? (p as Periodo) : "7";
-        return <Conteudo aba={aba} periodo={periodo} />;
+        const n = primeiro(sp.numeros);
+        const numeros: Numeros = NUMEROS.some((x) => x.valor === n) ? (n as Numeros) : "reais";
+        return <Conteudo aba={aba} vista={{ periodo, numeros }} />;
       })}
     </Suspense>
   );
@@ -184,9 +205,17 @@ export default function WhatsappAdmin({ searchParams }: PageProps<"/admin/whatsa
 
 const pct = (parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "—");
 
-/** O link desta tela com a aba e o período (o padrão fica fora do endereço). */
-const enderecoDa = (aba: Aba, periodo: Periodo) =>
-  linkCom("/admin/whatsapp", {}, { aba: aba === "resultados" ? null : aba, periodo: periodo === "7" ? null : periodo });
+/** O link desta tela com a aba, o período e os números (o padrão fica fora do endereço). */
+const enderecoDa = (aba: Aba, v: Vista) =>
+  linkCom(
+    "/admin/whatsapp",
+    {},
+    {
+      aba: aba === "resultados" ? null : aba,
+      periodo: v.periodo === "7" ? null : v.periodo,
+      numeros: v.numeros === "reais" ? null : v.numeros,
+    },
+  );
 
 const FUSO = "America/Sao_Paulo";
 const diaDe = (ms: number) =>
@@ -388,18 +417,24 @@ function errosDoWhatsapp(
   return erros.sort((a, b) => Number(b.grave) - Number(a.grave));
 }
 
-async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
+async function Conteudo({ aba, vista }: { aba: Aba; vista: Vista }) {
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/whatsapp"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const dias = PERIODOS.find((x) => x.valor === periodo)?.dias ?? 7;
-  const [resumo, resultados, agora, porModelo] = await Promise.all([
-    c.rpc("admin_whatsapp"),
-    c.rpc("admin_whatsapp_resultados", { p_dias: dias }),
-    agoraDaRequisicao(),
-    // as cobradas por modelo, para o custo pela categoria (migração 20270718120000; sem ela, tudo como utilidade)
-    c.rpc("admin_whatsapp_cobradas_por_modelo", { p_dias: dias }),
-  ]);
+  const dias = PERIODOS.find((x) => x.valor === vista.periodo)?.dias ?? 7;
+  const ler = (comFiltro: boolean) =>
+    Promise.all([
+      c.rpc("admin_whatsapp", comFiltro ? { p_numeros: vista.numeros } : {}),
+      c.rpc("admin_whatsapp_resultados", comFiltro ? { p_dias: dias, p_numeros: vista.numeros } : { p_dias: dias }),
+      // as cobradas por modelo, para o custo pela categoria (migração 20270718120000; sem ela, tudo como utilidade)
+      c.rpc("admin_whatsapp_cobradas_por_modelo", comFiltro ? { p_dias: dias, p_numeros: vista.numeros } : { p_dias: dias }),
+    ]);
+  const [lidas, agora] = await Promise.all([ler(true), agoraDaRequisicao()]);
+  // sem a migração 20270720120000 (o filtro dos números de teste), as funções de antes, com todos os números
+  const semFiltro = lidas[0].error?.code === "PGRST202";
+  const [resumo, resultados, porModelo] = semFiltro ? await ler(false) : lidas;
+  // o filtro que vale na tela (null: sem a migração, todos os números e sem o filtro)
+  const numeros: Numeros | null = semFiltro ? null : vista.numeros;
   const cobradasPorModelo = porModelo.error || !porModelo.data ? null : (porModelo.data as Record<string, number>);
   // sem a migração 20270619120000, a ligação com a Meta (que não usa o banco) já funciona
   const r = resumo.error || !resumo.data ? null : (resumo.data as unknown as Resumo);
@@ -441,7 +476,15 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
                   : "Ligado só para os números de teste"}
             </Situacao>
             <Situacao ok={r.aceites.pessoas + r.aceites.empresas > 0}>
-              {plural(r.aceites.pessoas + r.aceites.empresas, "conta recebe", "contas recebem")} pelo WhatsApp
+              {numeros === "teste"
+                ? `${plural(r.aceites.pessoas + r.aceites.empresas, "conta dos números de teste recebe", "contas dos números de teste recebem")} pelo WhatsApp`
+                : `${plural(r.aceites.pessoas + r.aceites.empresas, "conta recebe", "contas recebem")} pelo WhatsApp`}
+              {numeros === "reais" && (r.aceites.de_teste ?? 0) > 0 && (
+                <span className="text-ink-muted">
+                  {" "}
+                  (fora {plural(r.aceites.de_teste ?? 0, "conta", "contas")} dos números de teste)
+                </span>
+              )}
             </Situacao>
             <Situacao ok={prontos === ligados.length}>
               {prontos === ligados.length
@@ -474,7 +517,7 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
           return (
             <Link
               key={a.valor}
-              href={enderecoDa(a.valor, periodo)}
+              href={enderecoDa(a.valor, vista)}
               scroll={false}
               aria-current={atual ? "page" : undefined}
               className={`-mb-px inline-flex min-h-12 shrink-0 items-center gap-1.5 border-b-2 px-3 text-label transition-colors ${
@@ -507,14 +550,15 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
             <AbaResultados
               r={r}
               res={res}
-              periodo={periodo}
+              vista={vista}
+              numeros={numeros}
               agora={agora}
               erros={erros}
               p={p}
               cobradasPorModelo={cobradasPorModelo}
             />
           )}
-          {aba === "erros" && r && <AbaErros erros={erros} res={res} periodo={periodo} />}
+          {aba === "erros" && r && <AbaErros erros={erros} r={r} res={res} vista={vista} numeros={numeros} />}
           {aba === "parametros" && r && <AbaParametros r={r} p={p} />}
           {aba === "modelos" && r && <AbaModelos r={r} p={p} conferir={s.token && s.conta} />}
           {aba === "ligacao" && <AbaLigacao s={s} local={local} />}
@@ -533,21 +577,51 @@ function SemResultados() {
   );
 }
 
-function FiltroDoPeriodo({ aba, periodo, res }: { aba: Aba; periodo: Periodo; res: Resultados }) {
+/**
+ * O período e os números das abas Resultados e Erros. O filtro dos números aparece quando há número de teste em
+ * Parâmetros, com quantos avisos entraram no período de cada lado.
+ */
+function FiltrosDaTela({
+  aba,
+  vista,
+  numeros,
+  r,
+  res,
+}: {
+  aba: Aba;
+  vista: Vista;
+  /** o filtro que vale (null: sem a migração 20270720120000) */
+  numeros: Numeros | null;
+  r: Resumo;
+  res: Resultados;
+}) {
   const desde = res.desde ? new Date(res.desde) : null;
+  const comNumeros = numeros !== null && (r.config.numeros_teste.length > 0 || numeros !== "reais");
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <Filtros
-        rotulo="Período"
-        opcoes={PERIODOS.map((x) => ({ valor: x.valor, nome: x.nome }))}
-        atual={periodo}
-        link={(v) => enderecoDa(aba, v as Periodo)}
-      />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <Filtros
+          rotulo="Período"
+          opcoes={PERIODOS.map((x) => ({ valor: x.valor, nome: x.nome }))}
+          atual={vista.periodo}
+          link={(v) => enderecoDa(aba, { ...vista, periodo: v as Periodo })}
+        />
+        {comNumeros && (
+          <Filtros
+            rotulo="Números"
+            opcoes={NUMEROS.map((x) => ({ valor: x.valor, nome: x.nome, numero: res.numeros?.[x.valor] }))}
+            atual={numeros}
+            link={(v) => enderecoDa(aba, { ...vista, numeros: v as Numeros })}
+          />
+        )}
+      </div>
       {desde && (
         <p className="text-body-sm text-ink-muted">
-          {periodo === "hoje" ? "Desde a meia-noite" : `Desde ${formatarData(desde.toISOString())}`}
+          {vista.periodo === "hoje" ? "Desde a meia-noite" : `Desde ${formatarData(desde.toISOString())}`}
           {" · "}
           {plural(res.na_fila, "aviso na fila agora", "avisos na fila agora")}
+          {comNumeros && numeros === "reais" && " · sem os números de teste"}
+          {numeros === "teste" && " · só os números de teste"}
         </p>
       )}
     </div>
@@ -557,7 +631,8 @@ function FiltroDoPeriodo({ aba, periodo, res }: { aba: Aba; periodo: Periodo; re
 function AbaResultados({
   r,
   res,
-  periodo,
+  vista,
+  numeros,
   agora,
   erros,
   p,
@@ -565,7 +640,8 @@ function AbaResultados({
 }: {
   r: Resumo;
   res: Resultados | null;
-  periodo: Periodo;
+  vista: Vista;
+  numeros: Numeros | null;
   agora: number;
   erros: ErroWhatsapp[];
   p: ParametrosWhatsapp;
@@ -578,7 +654,7 @@ function AbaResultados({
   const categorias = Object.fromEntries(Object.entries(r.config.modelos ?? {}).map(([nome, m]) => [nome, m?.categoria]));
   const custo = cobradasPorModelo ? custoDasCobradas(cobradasPorModelo, categorias) : null;
   const graves = erros.filter((e) => e.grave);
-  const n = PERIODOS.find((x) => x.valor === periodo)?.dias ?? 7;
+  const n = PERIODOS.find((x) => x.valor === vista.periodo)?.dias ?? 7;
   const dias = n > 1 ? Array.from({ length: n }, (_, i) => diaDe(agora - (n - 1 - i) * 86_400_000)) : [];
   const porDia = new Map(res.por_dia.map((d) => [d.dia, d]));
   const serie = (campo: "entraram" | "enviadas" | "lidas") => dias.map((d) => porDia.get(d)?.[campo] ?? 0);
@@ -587,7 +663,7 @@ function AbaResultados({
 
   return (
     <div className="flex flex-col gap-6">
-      <FiltroDoPeriodo aba="resultados" periodo={periodo} res={res} />
+      <FiltrosDaTela aba="resultados" vista={vista} numeros={numeros} r={r} res={res} />
 
       {!r.config.ativo && (
         <Aviso tipo="info" titulo="O envio está desligado">
@@ -598,7 +674,7 @@ function AbaResultados({
         <Aviso tipo="erro" titulo={graves.length === 1 ? graves[0].titulo : plural(graves.length, "erro", "erros")}>
           <p>
             {graves.length > 1 && `${graves[0].titulo}. `}
-            <Link href={enderecoDa("erros", periodo)} scroll={false} className="text-ink underline underline-offset-2">
+            <Link href={enderecoDa("erros", vista)} scroll={false} className="text-ink underline underline-offset-2">
               Ver tudo na aba Erros
             </Link>
           </p>
@@ -620,7 +696,7 @@ function AbaResultados({
             rotulo="Falharam"
             valor={f.falharam}
             alerta={f.falharam > 0}
-            href={f.falharam > 0 ? enderecoDa("erros", periodo) : undefined}
+            href={f.falharam > 0 ? enderecoDa("erros", vista) : undefined}
             detalhe={f.falharam > 0 ? "ver os erros" : undefined}
           />
           <Numero rotulo="Não saíram" valor={f.descartadas} detalhe="pelas regras (abaixo)" />
@@ -641,8 +717,10 @@ function AbaResultados({
         </div>
         <p className="text-body-sm text-ink-muted">
           No mês: {plural(r.enviadas_no_mes, "mensagem enviada", "mensagens enviadas")} de{" "}
-          {formatarNumero(r.config.limite_mes)} do limite. A conta oficial é a da Meta (Gerenciador do WhatsApp ›
-          Insights).
+          {formatarNumero(r.config.limite_mes)} do limite
+          {/* o limite do mês conta todas as que saíram, com as dos números de teste */}
+          {numeros && numeros !== "todos" ? " (o limite conta também as dos números de teste)" : ""}. A conta oficial é
+          a da Meta (Gerenciador do WhatsApp › Insights).
         </p>
       </Secao>
 
@@ -889,10 +967,22 @@ function QuemContrataNoMes({ uso, p }: { uso: NonNullable<Resumo["quem_contrata_
   );
 }
 
-function AbaErros({ erros, res, periodo }: { erros: ErroWhatsapp[]; res: Resultados | null; periodo: Periodo }) {
+function AbaErros({
+  erros,
+  r,
+  res,
+  vista,
+  numeros,
+}: {
+  erros: ErroWhatsapp[];
+  r: Resumo;
+  res: Resultados | null;
+  vista: Vista;
+  numeros: Numeros | null;
+}) {
   return (
     <div className="flex flex-col gap-6">
-      {res ? <FiltroDoPeriodo aba="erros" periodo={periodo} res={res} /> : <SemResultados />}
+      {res ? <FiltrosDaTela aba="erros" vista={vista} numeros={numeros} r={r} res={res} /> : <SemResultados />}
       {erros.length === 0 && !res ? null : erros.length === 0 ? (
         <Vazio icone={CircleCheck} titulo="Nenhum erro">
           Nada falhou neste período, nada está parado na fila e os modelos dos avisos ligados estão aprovados.
@@ -916,7 +1006,7 @@ function AbaErros({ erros, res, periodo }: { erros: ErroWhatsapp[]; res: Resulta
                   )}
                   {e.quando && <span>a última em {formatarDataHora(e.quando)}</span>}
                   {e.aba && (
-                    <Link href={enderecoDa(e.aba, periodo)} scroll={false} className="text-ink underline underline-offset-2">
+                    <Link href={enderecoDa(e.aba, vista)} scroll={false} className="text-ink underline underline-offset-2">
                       Ver em {ABAS.find((a) => a.valor === e.aba)?.nome}
                     </Link>
                   )}
