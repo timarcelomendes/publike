@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  avisarDoGratis,
   contaDeTestePagamentos,
   procurarContasParaTeste,
   salvarConfigPagamentos,
@@ -14,6 +15,64 @@ import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
 // Admin › Pagamentos: abrir para todos, as contas de teste e o serviço da nota (os preços: tabela-de-precos.tsx).
+
+/**
+ * O aviso do grátis de cada mês (migração 20270731120000): "Avisar N contas" e a confirmação antes de mandar, no sino e
+ * por e-mail. Cada conta recebe uma vez só.
+ */
+export function AvisarDoGratis({ quantas }: { quantas: number }) {
+  const [pendente, iniciar] = useTransition();
+  const [confirmar, setConfirmar] = useState(false);
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const contas = quantas === 1 ? "1 conta" : `${quantas.toLocaleString("pt-BR")} contas`;
+  return (
+    <div className="flex flex-col items-start gap-2">
+      {quantas > 0 && !confirmar && (
+        <Botao
+          variante="primario"
+          tamanho="sm"
+          onClick={() => {
+            setResposta(null);
+            setConfirmar(true);
+          }}
+        >
+          Avisar {contas}
+        </Botao>
+      )}
+      {quantas > 0 && confirmar && (
+        <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-100 p-4">
+          <p className="text-body-sm">
+            Mandar agora o aviso para {contas}, no sino e por e-mail? Cada conta recebe uma vez só.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Botao
+              variante="primario"
+              tamanho="sm"
+              disabled={pendente}
+              onClick={() =>
+                iniciar(async () => {
+                  const r = await avisarDoGratis();
+                  setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+                  setConfirmar(false);
+                })
+              }
+            >
+              {pendente ? "Mandando…" : "Sim, mandar"}
+            </Botao>
+            <Botao variante="fantasma" tamanho="sm" disabled={pendente} onClick={() => setConfirmar(false)}>
+              Cancelar
+            </Botao>
+          </div>
+        </div>
+      )}
+      {resposta && (
+        <p role="status" className={`text-body-sm ${resposta.ok ? "text-cerrado-text" : "text-danger"}`}>
+          {resposta.texto}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** O grátis de cada mês (migração 20270730120000): os três números, que valem já para o mês de agora. */
 export function GratisDoMes({ triagem, gravadas, aoVivo }: { triagem: number; gravadas: number; aoVivo: number }) {

@@ -4,6 +4,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import {
   ConfigPagamentos,
   ContaDeTeste,
+  AvisarDoGratis,
   Copiar,
   GerarToken,
   GratisDoMes,
@@ -18,6 +19,8 @@ import { NOME_CICLO, NOME_PRODUTO, type Ciclo, type Produto } from "@/lib/pagame
 import { tokenParaCopiar } from "@/lib/servidor/asaas";
 import { aoVivoDoMesNoAdmin, AVISO_DAILY, DOLAR_POR_MINUTO, FRANQUIA_DAILY } from "@/lib/admin/ao-vivo";
 import { itensPagamentos, situacaoPagamentos } from "@/lib/servidor/situacao-pagamentos";
+import { SITE_URL } from "@/lib/config";
+import { logoPadraoDoEmail, montarEmail } from "@/lib/email/montar";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 
@@ -25,6 +28,17 @@ export const metadata: Metadata = { title: "Pagamentos" };
 
 // Os pagamentos pelo Asaas (claude/plano-checkout-asaas.md, migração 20261218120000): os preços, abrir para
 // todos (fechado até você testar), as contas de teste, a nota fiscal e o que deu erro.
+
+/** O aviso do grátis de cada mês (`admin_aviso_gratis`, migração 20270731120000). */
+type AvisoGratis = {
+  contas: number;
+  para_avisar: number;
+  avisadas: number;
+  ultimo: string | null;
+  texto_sino: string;
+  numeros: { triagem: number; gravadas: number; ao_vivo: number };
+  email: { grupo: string; assunto: string; corpo: string; botao: string | null } | null;
+};
 
 type Dados = {
   config: {
@@ -76,7 +90,34 @@ async function Conteudo() {
     );
   }
   const d = data as unknown as Dados;
-  const [sit, agora] = await Promise.all([situacaoPagamentos(c), agoraDaRequisicao()]);
+  const [sit, agora, { data: avisoGratis }] = await Promise.all([
+    situacaoPagamentos(c),
+    agoraDaRequisicao(),
+    // o aviso do grátis de cada mês (sem a migração 20270731120000, null)
+    c.rpc("admin_aviso_gratis"),
+  ]);
+  const aviso = avisoGratis as unknown as AvisoGratis | null;
+  const emailDoAviso = aviso?.email
+    ? montarEmail(
+        {
+          modelo: "gratis_do_mes",
+          grupo: aviso.email.grupo,
+          assunto: aviso.email.assunto,
+          corpo: aviso.email.corpo,
+          botao: aviso.email.botao,
+        },
+        {
+          nome: "Padaria Exemplo",
+          empresa: "Padaria Exemplo",
+          triagem: String(aviso.numeros.triagem),
+          gravadas: String(aviso.numeros.gravadas),
+          ao_vivo: String(aviso.numeros.ao_vivo),
+          caminho: "/painel/copiloto",
+        },
+        SITE_URL,
+        logoPadraoDoEmail(SITE_URL),
+      )
+    : null;
   const aoVivo = await aoVivoDoMesNoAdmin(c, agora);
   const noAr = sit.noAr;
   const token = tokenParaCopiar();
@@ -289,6 +330,44 @@ async function Conteudo() {
             gravadas={d.config.gratis_gravadas_mes ?? 0}
             aoVivo={d.config.gratis_ao_vivo_mes ?? 0}
           />
+        </Secao>
+      )}
+
+      {aviso && (
+        <Secao
+          titulo="Avisar as empresas do grátis"
+          descricao="Uma vez para cada conta que contrata (comércio, empresa e agência), no sino e por e-mail. O link leva à aba Avaliar da vaga mais nova no ar, ou à Triagem com IA. O e-mail não vai para quem pediu para não receber e-mails do Publike."
+        >
+          <p className="text-body">
+            {aviso.para_avisar > 0
+              ? `${aviso.para_avisar} de ${aviso.contas} ${aviso.contas === 1 ? "conta" : "contas"} ainda não ${aviso.para_avisar === 1 ? "recebeu" : "receberam"} o aviso.`
+              : `As ${aviso.contas} contas já receberam o aviso.`}
+            {aviso.ultimo && ` O último saiu ${tempoRelativo(aviso.ultimo, agora)}.`}
+          </p>
+          <div className="mt-3 flex flex-col gap-1">
+            <h3 className="text-label">No sino</h3>
+            <p className="rounded-md border border-line bg-surface-100 p-3 text-body-sm">{aviso.texto_sino}</p>
+          </div>
+          {emailDoAviso && (
+            <div className="mt-3 flex flex-col gap-1">
+              <h3 className="text-label">No e-mail (para a Padaria Exemplo)</h3>
+              <p className="text-body-sm">
+                <span className="text-ink-muted">Assunto:</span> {emailDoAviso.assunto}
+              </p>
+              <iframe
+                title="Prévia do e-mail do aviso do grátis"
+                srcDoc={emailDoAviso.html}
+                sandbox=""
+                className="h-[30rem] w-full rounded-md border border-line bg-white"
+              />
+              <p className="text-body-sm text-ink-muted">
+                O texto do e-mail muda em Admin › E-mails › Textos (“O grátis de cada mês”).
+              </p>
+            </div>
+          )}
+          <div className="mt-4">
+            <AvisarDoGratis quantas={aviso.para_avisar} />
+          </div>
         </Secao>
       )}
 

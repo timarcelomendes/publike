@@ -4285,6 +4285,9 @@ export type Database = {
       servidor_resumo_receita: { Args: { p_chave: string }; Returns: boolean };
       admin_whatsapp_pedidos: { Args: Record<string, never>; Returns: Json };
       admin_whatsapp_pedir_aceite: { Args: Record<string, never>; Returns: number };
+      /** o aviso do grátis de cada mês (migração 20270731120000) */
+      admin_aviso_gratis: { Args: Record<string, never>; Returns: Json };
+      admin_avisar_gratis: { Args: Record<string, never>; Returns: number };
       whatsapp_pedido_ver: { Args: { p_token: string }; Returns: Json };
       whatsapp_pedido_aceitar: { Args: { p_token: string }; Returns: Json };
       servidor_email_empresas_devolver: {

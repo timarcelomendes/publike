@@ -87,6 +87,29 @@ export async function salvarGratisDoMes(d: { triagem: number; gravadas: number; 
 }
 
 /**
+ * O aviso do grátis de cada mês (migração 20270731120000): o sino e o e-mail para cada conta que contrata e ainda não
+ * recebeu (uma vez por conta). Só quando a equipe toca em "Avisar".
+ */
+export async function avisarDoGratis(): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { data, error } = await c.rpc("admin_avisar_gratis");
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270731120000_aviso_do_gratis_de_cada_mes.sql primeiro." };
+    return falha(error);
+  }
+  const n = Number(data ?? 0);
+  refresh();
+  return {
+    ok: true,
+    mensagem: n
+      ? `Aviso mandado para ${n === 1 ? "1 conta" : `${n.toLocaleString("pt-BR")} contas`}, no sino e por e-mail.`
+      : "Nenhuma conta nova para avisar: todas já receberam.",
+  };
+}
+
+/**
  * A conta que testa os pagamentos antes de abrir para todos (pelo código da conta, que vem da busca, ou pelo
  * e-mail de login). `sandbox`: com o site em produção, paga na conta sandbox do Asaas (nada é cobrado).
  */
