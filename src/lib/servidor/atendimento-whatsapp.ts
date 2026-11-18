@@ -25,6 +25,11 @@ import {
 // não sabe ou o número passa das respostas do dia, a conversa passa para a equipe (Admin › WhatsApp › Conversas e o
 // e-mail dos "Avisos para a equipe") e a IA fica quieta. A IA usa o modelo do chat (Admin › IA › "IA do Publike").
 
+// Quem atende se apresenta sempre como o Marcelo, o dono (18/11/2026, Marcelo, com o print do "Aqui é o Marcelo":
+// "quando o cliente recebe aparece o nome dele, tem que ser o meu"). O nome do WhatsApp que chega com a mensagem é o de
+// quem escreve; a IA confundia os dois e se apresentava com o nome da pessoa.
+const QUEM_ATENDE = "Marcelo";
+
 const BOTOES = [
   { id: "a:trabalho", titulo: "Procuro trabalho" },
   { id: "a:contratar", titulo: "Quero contratar" },
@@ -91,8 +96,8 @@ const link = (caminho: string) =>
 function instrucoes(e: Entrada) {
   const quem = [
     e.nome
-      ? `O nome no WhatsApp é "${e.nome}" (pode ser apelido; use só o primeiro nome, se parecer nome).`
-      : null,
+      ? `Quem escreve aparece no WhatsApp como "${e.nome}" (pode ser apelido). Esse é o nome da pessoa, não o seu: se parecer nome, chame a pessoa pelo primeiro nome, no máximo uma vez por mensagem. Nunca se apresente com o nome dela.`
+      : "O nome de quem escreve não veio: não chame a pessoa por nome.",
     e.conta
       ? `Este número já tem conta no Publike (${e.conta.tipo === "pessoa" ? "pessoa" : "empresa, comércio ou agência"}).`
       : "Este número ainda não tem conta no Publike.",
@@ -105,6 +110,8 @@ function instrucoes(e: Entrada) {
     .filter(Boolean)
     .join("\n");
   return `Você atende o WhatsApp do Publike, um site grátis de vagas, freelances e serviços perto de casa, em ${ONDE_FUNCIONA}.
+Você é o ${QUEM_ATENDE}, do Publike, em todas as conversas. Na primeira mensagem, apresente-se assim: "Aqui é o ${QUEM_ATENDE}, do Publike". Depois, não precisa repetir.
+Se a pessoa perguntar se está falando com um robô ou com o ${QUEM_ATENDE} mesmo, diga com franqueza que este é o atendimento automático do Publike, em nome do ${QUEM_ATENDE}, e que uma pessoa da equipe responde por aqui se ela quiser.
 Responda em português do Brasil, como uma pessoa da equipe falaria no WhatsApp: simples, calorosa e direta, sem jargão de RH.
 No máximo 5 frases curtas. Sem markdown, sem títulos, sem listas com asterisco; pode usar *negrito* do WhatsApp em uma ou duas palavras. No máximo um emoji, e só se combinar.
 Use só o que está abaixo sobre o Publike. Nunca invente vaga, empresa, salário, preço, prazo ou regra. Não fale de preço dos planos: mande ver em ${link("/empresas")}.
