@@ -336,7 +336,8 @@
   "20270719120000_whatsapp_na_linha_do_tempo",
   "20270720120000_whatsapp_numeros_de_teste",
   "20270721120000_whatsapp_modo_de_teste_no_filtro",
-  "20270722120000_email_as_empresas"
+  "20270722120000_email_as_empresas",
+  "20270723120000_resumo_da_receita_rapido"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3761,8 +3762,10 @@
   "i|privado.empresas_receita_basico_idx": "f9bd07699b",
   "i|privado.empresas_receita_busca_idx": "9e28fae2fe",
   "i|privado.empresas_receita_cnae_idx": "d0a8c9c3da",
+  "i|privado.empresas_receita_com_ponto_idx": "4e5bbe86c7",
   "i|privado.empresas_receita_local_idx": "3de9711c69",
   "i|privado.empresas_receita_mei_idx": "9ac34cfb60",
+  "i|privado.empresas_receita_na_praca_cidade_idx": "79bb919696",
   "i|privado.empresas_receita_pkey": "101c4c3f4d",
   "i|privado.empresas_receita_ramo_local_idx": "e5e8702bab",
   "i|privado.empresas_vistas_pkey": "3efb3d7749",

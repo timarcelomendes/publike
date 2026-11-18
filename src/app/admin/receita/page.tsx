@@ -58,9 +58,20 @@ async function Conteudo() {
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
   const { data, error } = await c.rpc("admin_empresas_receita");
   if (error) {
+    // só a função que não existe é migração faltando; o resto (o tempo do banco, por exemplo) diz o que foi
+    if (error.code === "PGRST202") {
+      return (
+        <Aviso tipo="alerta" titulo="Rode a migração da base da Receita">
+          Falta a migração 20270602120000_empresas_da_receita.sql neste banco.
+        </Aviso>
+      );
+    }
+    console.error(`Publike: o resumo da Base da Receita não abriu: ${error.code} ${error.message}`);
     return (
-      <Aviso tipo="alerta" titulo="Rode a migração da base da Receita">
-        Falta a migração 20270602120000_empresas_da_receita.sql neste banco.
+      <Aviso tipo="alerta" titulo="O resumo da Base da Receita não abriu">
+        {error.code === "57014"
+          ? "O banco demorou demais para contar a base. Tente de novo em alguns segundos."
+          : `O banco respondeu: ${error.message}`}
       </Aviso>
     );
   }
