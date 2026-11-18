@@ -4287,6 +4287,11 @@ export type Database = {
       admin_whatsapp_pedir_aceite: { Args: Record<string, never>; Returns: number };
       whatsapp_pedido_ver: { Args: { p_token: string }; Returns: Json };
       whatsapp_pedido_aceitar: { Args: { p_token: string }; Returns: Json };
+      servidor_email_empresas_devolver: {
+        Args: { p_chave: string; p_id: number; p_motivo: string; p_desligar: boolean };
+        Returns: undefined;
+      };
+      admin_email_empresas_parada: { Args: Record<string, never>; Returns: Json };
       painel_no_site_indicadores: { Args: { p_dias?: number }; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
       meu_endereco_de_cobranca: { Args: Record<string, never>; Returns: Json };

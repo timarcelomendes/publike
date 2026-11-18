@@ -19,7 +19,8 @@ export const metadata: Metadata = { title: "E-mail às empresas" };
 // Admin › E-mail às empresas (18/11/2026; migração 20270722120000). Marcelo: levar as empresas a publicar no Publike
 // "com um botao de sim", do marcelo@publike.org, "na base do publike e nas empresas que temos na base da receita, com
 // esse controle máximo de quantidades". Liga e desliga, o limite por dia, o horário, o texto com a prévia, a fila por
-// público, os números e quem disse sim. Sai pela caixa do Marcelo (CAMPANHA_SMTP_*), nunca pelo serviço dos avisos.
+// público, os números e quem disse sim. Sai pela caixa do Marcelo no Email Profissional da GoDaddy (Titan;
+// CAMPANHA_SMTP_*), nunca pelo serviço dos avisos. Quando a caixa recusa, o motivo aparece no alto (20270727120000).
 // No computador do dono e, no site no ar, para a equipe publike.org.
 
 type Resumo = {
@@ -94,7 +95,12 @@ async function Conteudo() {
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/email-empresas"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const { data, error } = await c.rpc("admin_email_empresas");
+  const [{ data, error }, { data: dParada }] = await Promise.all([
+    c.rpc("admin_email_empresas"),
+    // por que o envio parou (migração 20270727120000; sem ela, nada)
+    c.rpc("admin_email_empresas_parada"),
+  ]);
+  const parada = (dParada ?? null) as { motivo: string; em: string | null; ate: string | null; desligado: boolean } | null;
   const caixa = situacaoSmtpCampanha();
   const caixaPronta = Boolean(caixa.usuario && caixa.temSenha);
 
@@ -124,27 +130,46 @@ async function Conteudo() {
               ? `Ligado: até ${plural(r.config.por_dia, "e-mail", "e-mails")} por dia, das ${r.config.hora_inicio}h às ${r.config.hora_fim}h, de segunda a sexta`
               : "Desligado: nada sai"}
           </Situacao>
-          <Situacao ok={caixaPronta}>
-            {caixaPronta
-              ? `A caixa ${caixa.usuario} está ligada`
-              : "Falta ligar a caixa: CAMPANHA_SMTP_USUARIO e CAMPANHA_SMTP_SENHA na Vercel"}
+          <Situacao ok={caixaPronta && !parada}>
+            {!caixaPronta
+              ? "Falta ligar a caixa: CAMPANHA_SMTP_USUARIO e CAMPANHA_SMTP_SENHA na Vercel"
+              : parada
+                ? `A caixa ${caixa.usuario} recusou o envio`
+                : `A caixa ${caixa.usuario} está ligada (${caixa.servidor})`}
           </Situacao>
           <Situacao ok={n.na_fila > 0}>{plural(n.na_fila, "empresa na fila", "empresas na fila")}</Situacao>
         </div>
       </header>
 
-      {!caixaPronta && (
-        <Aviso tipo="info" titulo="Para ligar a caixa do Marcelo">
+      {parada && (
+        <Aviso
+          tipo="alerta"
+          titulo={parada.desligado ? "O envio parou sozinho" : "O envio espera a caixa voltar"}
+        >
+          <p>
+            {parada.motivo}
+            {parada.em ? ` (${formatarDataHora(parada.em)})` : ""}
+          </p>
+          <p className="mt-1">
+            {parada.ate
+              ? `Tenta de novo em ${formatarDataHora(parada.ate)}. Nenhuma empresa ficou marcada como falha.`
+              : "Nenhuma empresa ficou marcada como falha: elas continuam na fila. Conserte a caixa e marque “Mandar os e-mails da fila” de novo."}
+          </p>
+        </Aviso>
+      )}
+
+      {(!caixaPronta || parada?.desligado) && (
+        <Aviso tipo="info" titulo="Para ligar a caixa">
           <ol className="list-decimal space-y-1 pl-5">
             <li>
-              No Zoho Mail, em Minha conta › Segurança › Senhas específicas de aplicativos, crie uma senha com o nome
-              “Publike”.
+              Na Vercel (Production), ponha CAMPANHA_SMTP_USUARIO = {r.config.remetente_email} e CAMPANHA_SMTP_SENHA = a
+              senha dessa caixa (a mesma do webmail do Email Profissional da GoDaddy), e faça Redeploy.
             </li>
             <li>
-              Na Vercel (Production), ponha CAMPANHA_SMTP_USUARIO = {r.config.remetente_email} e CAMPANHA_SMTP_SENHA =
-              essa senha, e faça Redeploy.
+              O servidor é o da GoDaddy para o Email Profissional (Titan): smtpout.secureserver.net, porta 465, com SSL.
+              CAMPANHA_SMTP_SERVIDOR e CAMPANHA_SMTP_PORTA mudam, se precisar.
             </li>
-            <li>O servidor padrão é smtp.zoho.com, porta 465 (CAMPANHA_SMTP_SERVIDOR e CAMPANHA_SMTP_PORTA mudam).</li>
+            <li>Depois, marque “Mandar os e-mails da fila” e salve.</li>
           </ol>
         </Aviso>
       )}
