@@ -3531,7 +3531,7 @@
   "f|public.servidor_saude_do_banco(p_chave text)": "855dbc3a31",
   "f|public.servidor_talentos_lidos_ate(p_chave text, p_ate timestamp with time zone)": "4bdefef573",
   "f|public.servidor_talentos_mudados(p_chave text, p_limite integer)": "8884bb6018",
-  "f|public.servidor_talentos_para_o_pacote(p_chave text, p_impulso uuid)": "9372eb9a15",
+  "f|public.servidor_talentos_para_o_pacote(p_chave text, p_impulso uuid)": "8364e56abf",
   "f|public.servidor_teto_aplicado(p_chave text, p_tipo text, p_id uuid)": "bbcb98938b",
   "f|public.servidor_teto_do_impulso(p_chave text)": "1062f15d64",
   "f|public.servidor_usar_assistente(p_chave text, p_quem text, p_limite integer)": "9af26c68b5",

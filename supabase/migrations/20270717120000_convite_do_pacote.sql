@@ -90,7 +90,8 @@ $$;
 create or replace function public.servidor_talentos_para_o_pacote(p_chave text, p_impulso uuid)
 returns table (perfil_id uuid, nome text, cidade text, bairro text, curriculo jsonb, km numeric)
 language plpgsql
-stable
+-- volatile: privado.exigir_servidor grava, e o PostgREST roda as stable só para leitura
+volatile
 security definer
 set search_path = ''
 as $$
