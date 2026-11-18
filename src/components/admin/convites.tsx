@@ -3,6 +3,7 @@
 import {
   Copy,
   Download,
+  ExternalLink,
   FileUp,
   ImageIcon,
   Mail,
@@ -20,9 +21,11 @@ import {
   anotarConvite,
   apagarConvite,
   enviarConviteEmail,
+  escolherMensagemDoConvite,
   importarConvites,
   lerConviteDaImagem,
   mudarConvite,
+  salvarLinkDasVagas,
 } from "@/lib/acoes/admin-convites";
 import {
   ESTADOS_CONVITE,
@@ -33,7 +36,12 @@ import {
   linhasParaConvites,
   mensagemConviteAgrupada,
   mensagemConvite,
+  mensagemDoConvite,
+  mensagensDoConvite,
+  nomeDaMensagem,
+  vagasNaGupy,
   type Convite,
+  type MensagemConvite,
   type NovoConvite,
   type StatusConvite,
 } from "@/lib/convites";
@@ -112,7 +120,15 @@ export function ImportarConvites() {
           ou serviços separados por vírgula; mais de um telefone separado por barra.
         </li>
         <li>2. Na coluna “tipo”, escreva empresa, agencia ou prestador. Apague as linhas de exemplo.</li>
-        <li>3. Salve como CSV e escolha o arquivo aqui. Quem já está na lista não entra de novo.</li>
+        <li>
+          3. Vagas na Gupy ou no site da empresa? Ponha a página de vagas em “link_vagas” (https://empresa.gupy.io): o
+          convite já sugere a mensagem “Vagas da Gupy”. Quem já foi chamado pode vir com as colunas “situacao” (Enviei)
+          e “enviado_em” (o dia, como 25/11/2026).
+        </li>
+        <li>
+          4. Salve como CSV e escolha o arquivo aqui. Quem já está na lista não entra de novo (só ganha o link das
+          vagas, se não tinha).
+        </li>
       </ol>
       <div className="flex flex-wrap gap-2">
         <a href="/admin/convites/modelo" className={classesBotao("secundario", "sm")}>
@@ -496,6 +512,8 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
         ...m[c.id],
         status,
         ...(status === "enviada" && !c.enviada_em ? { enviada_em: new Date().toISOString() } : {}),
+        // como no servidor: a mensagem escolhida era para a situação de antes (Enviei sugere retomar a conversa)
+        ...(c.mensagem ? { mensagem: null } : {}),
       },
     }));
     iniciar(async () => {
@@ -504,6 +522,17 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
         setErro(r.erro);
         setMudancas((m) => ({ ...m, [c.id]: antes ?? {} }));
       }
+    });
+  }
+
+  // a mensagem do cartão: a escolha fica na tela na hora (sem a migração, fica só nesta visita, com o aviso)
+  function escolherMensagem(c: Convite, qual: MensagemConvite) {
+    if (mensagemDoConvite(c) === qual && c.mensagem === qual) return;
+    setErro(null);
+    setMudancas((m) => ({ ...m, [c.id]: { ...m[c.id], mensagem: qual } }));
+    iniciar(async () => {
+      const r = await escolherMensagemDoConvite(c.id, qual);
+      if (!r.ok) setErro(r.erro);
     });
   }
 
@@ -636,6 +665,7 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
               lembrar={tocou.has(c.id) && c.status === "a_enviar"}
               aoAbrirWhats={() => setTocou((t) => new Set(t).add(c.id))}
               aoMarcar={(s) => marcar(c, s)}
+              aoEscolherMensagem={(q) => escolherMensagem(c, q)}
               grupo={grupoDe(c)}
               aoAbrirGrupo={(l) => setTocou((t) => new Set([...t, ...l.map((x) => x.id)]))}
               aoMarcarGrupo={(l) => l.forEach((x) => marcar(x, "enviada"))}
@@ -653,6 +683,8 @@ const MARCAS = {
   agencia: { nome: "Agência", tem: (c: Convite) => c.tipo === "agencia" },
   prestador: { nome: "Prestador", tem: (c: Convite) => c.tipo === "prestador" },
   so_telefone: { nome: "Só telefone", tem: (c: Convite) => !c.whatsapp.length && !c.email },
+  // a página de vagas na Gupy ou no site da empresa (a mensagem "Vagas da Gupy")
+  site: { nome: "Com link das vagas", tem: (c: Convite) => Boolean(c.link_vagas) },
   // depende das outras empresas da lista (calculado na lista)
   mesmo_whatsapp: { nome: "Mesmo WhatsApp", tem: () => false },
 } as const;
@@ -664,6 +696,7 @@ function PreviaEmail({
   c,
   site,
   assinatura,
+  qual,
   enviando,
   aoFechar,
   aoEnviar,
@@ -671,11 +704,13 @@ function PreviaEmail({
   c: Convite;
   site: string;
   assinatura: string;
+  /** a mensagem escolhida no cartão */
+  qual: MensagemConvite;
   enviando: boolean;
   aoFechar: () => void;
   aoEnviar: () => void;
 }) {
-  const e = emailDoConvite(c, assinatura, site);
+  const e = emailDoConvite(c, assinatura, site, qual);
   return (
     <section
       aria-label={`Prévia do e-mail para ${c.nome}`}
@@ -738,6 +773,7 @@ function CartaoConvite({
   lembrar,
   aoAbrirWhats,
   aoMarcar,
+  aoEscolherMensagem,
   grupo,
   aoAbrirGrupo,
   aoMarcarGrupo,
@@ -749,6 +785,7 @@ function CartaoConvite({
   lembrar: boolean;
   aoAbrirWhats: () => void;
   aoMarcar: (s: StatusConvite) => void;
+  aoEscolherMensagem: (q: MensagemConvite) => void;
   /** outras empresas da lista com o mesmo WhatsApp (a convidar): enviar numa mensagem só */
   grupo: { numero: string; convites: Convite[] } | null;
   aoAbrirGrupo: (l: Convite[]) => void;
@@ -757,12 +794,17 @@ function CartaoConvite({
   const nota = useAcao();
   const apagar = useAcao();
   const email = useAcao();
+  const link = useAcao();
   const [previaEmail, setPreviaEmail] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
   const podeCompartilhar = useCompartilhar();
   const [confirmar, setConfirmar] = useState(false);
-  const msg = mensagemConvite(c, assinatura, linkDoConvite(site, c.token, c.tipo), Boolean(c.rascunho));
+  // a mensagem escolhida (ou a sugerida): a de sempre, a das vagas na Gupy ou a de retomar a conversa
+  const qual = mensagemDoConvite(c);
+  const opcoes = mensagensDoConvite(c);
+  const gupy = vagasNaGupy(c);
+  const msg = mensagemConvite(c, assinatura, linkDoConvite(site, c.token, c.tipo), Boolean(c.rascunho), qual);
   const texto = encodeURIComponent(msg);
   const apagado = c.status === "recusou" || c.status === "sem_contato";
 
@@ -813,16 +855,52 @@ function CartaoConvite({
         <div className="min-w-0">
           <h3 className="text-h3">{c.nome}</h3>
           {c.vagas.length > 0 && <p className="text-body-sm">{c.vagas.join(" · ")}</p>}
-          {c.observacao && <p className="text-body-sm text-ink-muted">{c.observacao}</p>}
+          {c.observacao && <p className="text-body-sm break-words text-ink-muted">{c.observacao}</p>}
+          {c.link_vagas && (
+            <a
+              href={c.link_vagas}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-9 items-center gap-1.5 text-body-sm underline underline-offset-2"
+            >
+              <ExternalLink aria-hidden className="size-4" />
+              {gupy ? "Vagas na Gupy" : "Página de vagas"}
+            </a>
+          )}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {c.tipo === "agencia" && <Selo variante="aviso">Agência</Selo>}
           {c.tipo === "prestador" && <Selo variante="aviso">Prestador</Selo>}
           {c.status === "autorizou" && <Selo variante="match">Autorizou</Selo>}
           {c.origem === "imagem" && <Selo variante="contorno">Lida da imagem</Selo>}
+          {gupy && <Selo variante="contorno">Gupy</Selo>}
           {!c.whatsapp.length && !c.email && <Selo variante="contorno">Só telefone</Selo>}
         </div>
       </div>
+
+      {opcoes.length > 1 && (
+        <div role="group" aria-label={`Mensagem para ${c.nome}`} className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-label text-ink-muted">Mensagem</span>
+          {opcoes.map((q) => {
+            const ativa = qual === q;
+            return (
+              <button
+                key={q}
+                type="button"
+                aria-pressed={ativa}
+                onClick={() => aoEscolherMensagem(q)}
+                className={`inline-flex min-h-9 items-center rounded-pill border px-3 text-body-sm transition-colors ${
+                  ativa
+                    ? "border-ink bg-ink text-surface-100"
+                    : "border-line bg-surface-300 text-ink hover:border-line-strong"
+                }`}
+              >
+                {nomeDaMensagem(q, c)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {c.whatsapp.map((n) => (
@@ -871,11 +949,12 @@ function CartaoConvite({
           c={c}
           site={site}
           assinatura={assinatura}
+          qual={qual}
           enviando={email.pendente}
           aoFechar={() => setPreviaEmail(false)}
           aoEnviar={() =>
             email.rodar(
-              () => enviarConviteEmail(c.id, assinatura),
+              () => enviarConviteEmail(c.id, assinatura, qual),
               (r) => {
                 if (!r.ok) return;
                 setPreviaEmail(false);
@@ -1024,6 +1103,16 @@ function CartaoConvite({
         </p>
       )}
 
+      {!c.anuncio_id && (c.status === "enviada" || c.status === "autorizou") && gupy && c.tipo !== "prestador" && (
+        // as vagas da Gupy: a empresa só responde "sim", e a equipe publica todas pelo "Puxar do link da Gupy"
+        <Link
+          href={`/admin/convites/${c.id}/gupy`}
+          className={`${classesBotao(c.status === "autorizou" ? "primario" : "secundario", "sm")} self-start`}
+        >
+          <UserPlus aria-hidden />
+          Disse sim? Publicar as vagas da Gupy por ela
+        </Link>
+      )}
       {!c.anuncio_id && (c.status === "enviada" || c.status === "autorizou") && (
         // o foco é a própria empresa publicar pelo link; só se ela pedir, o admin publica por ela
         <Link
@@ -1033,7 +1122,9 @@ function CartaoConvite({
           <UserPlus aria-hidden className="size-4" />
           {c.tipo === "prestador"
             ? "Pediu para a gente montar? Montar a vitrine por ele"
-            : "Pediu para a gente publicar? Publicar por ela"}
+            : gupy
+              ? "Ou publicar uma vaga por ela, à mão"
+              : "Pediu para a gente publicar? Publicar por ela"}
         </Link>
       )}
 
@@ -1061,6 +1152,43 @@ function CartaoConvite({
         />
         {nota.mensagem}
       </div>
+
+      {c.tipo !== "prestador" && (
+        // a página de vagas da empresa: com ela, o convite sugere a mensagem das vagas na Gupy (ou no site)
+        <details className="rounded-md border border-dashed border-line-strong px-3">
+          <summary className="flex min-h-10 cursor-pointer items-center text-label">
+            {c.link_vagas ? "Trocar o link das vagas" : "Tem as vagas na Gupy ou no site? Pôr o link"}
+          </summary>
+          <form
+            className="flex flex-col gap-2 pb-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const valor = String(new FormData(e.currentTarget).get("link") ?? "");
+              link.rodar(() => salvarLinkDasVagas(c.id, valor));
+            }}
+          >
+            <label htmlFor={`link-${c.id}`} className="text-body-sm text-ink-muted">
+              A página de vagas da empresa, como https://empresa.gupy.io. Vazio tira o link.
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <input
+                id={`link-${c.id}`}
+                name="link"
+                defaultValue={c.link_vagas ?? ""}
+                inputMode="url"
+                spellCheck={false}
+                maxLength={300}
+                placeholder="https://empresa.gupy.io"
+                className={`${classesEntrada} min-w-0 flex-1`}
+              />
+              <Botao type="submit" tamanho="sm" disabled={link.pendente}>
+                {link.pendente ? "Salvando…" : "Salvar o link"}
+              </Botao>
+            </div>
+            {link.mensagem}
+          </form>
+        </details>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {confirmar ? (

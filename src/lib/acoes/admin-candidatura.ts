@@ -109,6 +109,24 @@ export async function importarVagasDaGupyEmNomeDe(
     equipe: true,
     maximo: MAX_NA_LISTA,
   });
-  if (r.ok && r.publicadas) revalidatePath("/");
+  if (r.ok && r.publicadas) {
+    revalidatePath("/");
+    // o convite que trouxe a empresa (Admin › Convites › Publicar as vagas da Gupy por ela): a vaga e a hora do aceite
+    const { data: vaga } = await c
+      .from("anuncios")
+      .select("id")
+      .eq("autor_id", contaId)
+      .eq("tipo", "vaga")
+      .order("criado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (vaga)
+      await c
+        .from("convites")
+        .update({ anuncio_id: vaga.id, aceite_em: new Date().toISOString() })
+        .eq("usuario_id", contaId)
+        .eq("status", "autorizou")
+        .is("anuncio_id", null);
+  }
   return r;
 }

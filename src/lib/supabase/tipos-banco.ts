@@ -975,6 +975,9 @@ export type Database = {
           aceite_em: string | null;
           anuncio_id: string | null;
           cnpj_receita: string | null;
+          /** a página de vagas da empresa e a mensagem escolhida (migração 20270724120000) */
+          link_vagas: string | null;
+          mensagem: string | null;
         };
         Insert: {
           nome: string;
@@ -987,6 +990,9 @@ export type Database = {
           rascunho?: Json | null;
           origem?: string | null;
           cnpj_receita?: string | null;
+          status?: string;
+          enviada_em?: string | null;
+          link_vagas?: string | null;
         };
         Update: {
           status?: string;
@@ -995,6 +1001,8 @@ export type Database = {
           usuario_id?: string | null;
           anuncio_id?: string | null;
           aceite_em?: string | null;
+          link_vagas?: string | null;
+          mensagem?: string | null;
         };
         Relationships: [];
       };

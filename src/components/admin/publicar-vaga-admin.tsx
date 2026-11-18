@@ -93,6 +93,7 @@ export function PublicarVagaAdmin({
   copiada,
   vagasDaConta,
   ia,
+  linkGupyInicial = null,
   ...form
 }: {
   contaId: string;
@@ -101,6 +102,8 @@ export function PublicarVagaAdmin({
   copiada: { titulo: string; de: string } | null;
   vagasDaConta: VagaDaConta[];
   ia: boolean;
+  /** a página de vagas da Gupy que veio do convite: o "Puxar do link" começa com ela e já busca a lista */
+  linkGupyInicial?: string | null;
 } & Omit<ComponentProps<typeof FormAnuncio>, "inicial" | "ia">) {
   const agencia = Boolean(form.agencia);
   const chave = `publike_admin_importadas_${contaId}`;
@@ -116,7 +119,7 @@ export function PublicarVagaAdmin({
   const campoFoto = useRef<HTMLInputElement>(null);
   const idTexto = useId();
   // "Puxar do link": a vaga lida da Gupy (o que conferir) ou o erro
-  const [linkGupy, setLinkGupy] = useState("");
+  const [linkGupy, setLinkGupy] = useState(linkGupyInicial ?? "");
   const [puxando, iniciarPuxar] = useTransition();
   const [puxada, setPuxada] = useState<VagaPuxada | null>(null);
   const [erroPuxar, setErroPuxar] = useState<string | null>(null);
@@ -153,6 +156,15 @@ export function PublicarVagaAdmin({
       requestAnimationFrame(() => document.getElementById("formulario-vaga")?.scrollIntoView({ behavior: "smooth" }));
     });
   }
+
+  // veio do convite com a página de vagas da Gupy: a lista é buscada uma vez, ao abrir
+  const buscouDoConvite = useRef(false);
+  useEffect(() => {
+    if (!linkGupyInicial || buscouDoConvite.current) return;
+    buscouDoConvite.current = true;
+    puxar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao abrir, com o link que veio do convite
+  }, [linkGupyInicial]);
 
   // as vagas que sobraram de uma foto com várias (depois de publicar uma, a página volta aqui)
   useEffect(() => {

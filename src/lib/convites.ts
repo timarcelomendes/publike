@@ -2,6 +2,7 @@
 
 import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, SLUGS_OFICIOS, VALORES_BENEFICIO } from "./constantes";
 import { escaparHtml } from "./email/montar";
+import { paginaDeVagasDaGupy } from "./gupy";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
 import { emailValido } from "@/lib/email-valido";
 
@@ -17,6 +18,13 @@ export const STATUS_CONVITE = ESTADOS_CONVITE.map((e) => e.id) as StatusConvite[
 
 /** prestador: profissional que oferece serviço (eletricista, diarista...): o convite é para a vitrine */
 export type TipoConvite = "empresa" | "agencia" | "prestador";
+
+/**
+ * A mensagem do convite (migração 20270724120000): publicar pelo Publike (a de sempre), divulgar as vagas que a
+ * empresa já tem na Gupy ou no site dela, com a candidatura lá (`site`), ou retomar a conversa com quem já foi chamado.
+ */
+export const MENSAGENS_CONVITE = ["publike", "site", "retomar"] as const;
+export type MensagemConvite = (typeof MENSAGENS_CONVITE)[number];
 
 export type Convite = {
   id: string;
@@ -40,6 +48,10 @@ export type Convite = {
   /** quando a empresa publicou pela página do convite */
   aceite_em: string | null;
   anuncio_id: string | null;
+  /** a página de vagas da empresa (a Gupy ou outro site); sem a migração 20270724120000, não vem */
+  link_vagas?: string | null;
+  /** a mensagem escolhida no cartão; vazia, vale a sugerida (`mensagemDoConvite`) */
+  mensagem?: MensagemConvite | null;
 };
 
 /** A vaga lida do anúncio (imagem), para vir pronta no formulário de publicar. */
@@ -63,7 +75,62 @@ export type RascunhoConvite = {
 export type NovoConvite = Pick<
   Convite,
   "nome" | "tipo" | "vagas" | "whatsapp" | "telefones" | "email" | "observacao"
-> & { rascunho?: RascunhoConvite | null; origem?: "arquivo" | "imagem" };
+> & {
+  rascunho?: RascunhoConvite | null;
+  origem?: "arquivo" | "imagem";
+  /** a página de vagas da empresa (coluna link_vagas do arquivo) */
+  link_vagas?: string | null;
+  /** quem já foi chamado (colunas situacao e enviado_em do arquivo) */
+  status?: StatusConvite;
+  enviada_em?: string | null;
+};
+
+/**
+ * A página de vagas da empresa, limpa: a da Gupy vira https://empresa.gupy.io/ (mesmo vindo o link de uma vaga);
+ * de outro site, o endereço como veio (só http e https, com ponto no nome, até 300 letras).
+ */
+export function linkDasVagas(link: string | null | undefined): string | null {
+  const bruto = (link ?? "").trim();
+  if (!bruto) return null;
+  const gupy = paginaDeVagasDaGupy(bruto);
+  if (gupy) return gupy;
+  try {
+    const u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(bruto) ? bruto : `https://${bruto}`);
+    if ((u.protocol !== "https:" && u.protocol !== "http:") || !u.hostname.includes(".")) return null;
+    const limpo = u.toString();
+    return limpo.length <= 300 && !/\s/.test(limpo) ? limpo : null;
+  } catch {
+    return null;
+  }
+}
+
+/** As vagas da empresa estão na Gupy: o "Puxar do link da Gupy" lê a página e publica todas de uma vez. */
+export const vagasNaGupy = (c: Pick<Convite, "link_vagas">) => Boolean(paginaDeVagasDaGupy(c.link_vagas));
+
+/** As mensagens que o convite pode usar: a das vagas no site só com o link (e nunca para o prestador). */
+export function mensagensDoConvite(c: Pick<Convite, "tipo" | "link_vagas">): MensagemConvite[] {
+  return c.tipo !== "prestador" && c.link_vagas ? ["publike", "site", "retomar"] : ["publike", "retomar"];
+}
+
+/** O nome da mensagem na escolha do cartão. */
+export function nomeDaMensagem(qual: MensagemConvite, c: Pick<Convite, "tipo" | "link_vagas">) {
+  if (qual === "site") return vagasNaGupy(c) ? "Vagas da Gupy" : "Vagas no site da empresa";
+  if (qual === "retomar") return "Retomar a conversa";
+  return c.tipo === "prestador" ? "Vitrine no Publike" : "Pelo Publike";
+}
+
+/**
+ * A mensagem que vale: a escolhida no cartão ou a sugerida. Já chamado (Enviei): retomar a conversa; com o link das
+ * vagas: divulgar as vagas que estão lá; senão, a de sempre.
+ */
+export function mensagemDoConvite(
+  c: Pick<Convite, "tipo" | "status"> & { link_vagas?: string | null; mensagem?: MensagemConvite | null },
+): MensagemConvite {
+  const opcoes = mensagensDoConvite(c);
+  if (c.mensagem && opcoes.includes(c.mensagem)) return c.mensagem;
+  if (c.status === "enviada") return "retomar";
+  return opcoes.includes("site") ? "site" : "publike";
+}
 
 /**
  * Confere o rascunho da vaga (vem da IA ou do navegador do admin): só valores que o formulário
@@ -119,7 +186,18 @@ export function linkDoConvite(site: string, token: string, tipo: TipoConvite = "
 // ---------------------------------------------------------------------------
 // Arquivo modelo (CSV, abre no Excel e no Google Planilhas)
 
-export const COLUNAS_MODELO = ["empresa", "tipo", "vagas", "whatsapp", "telefones", "email", "observacao"] as const;
+export const COLUNAS_MODELO = [
+  "empresa",
+  "tipo",
+  "vagas",
+  "whatsapp",
+  "telefones",
+  "email",
+  "observacao",
+  "link_vagas",
+] as const;
+// colunas que também valem, fora do modelo: quem já foi chamado (a situação e o dia)
+type Coluna = (typeof COLUNAS_MODELO)[number] | "situacao" | "enviado_em";
 
 const EXEMPLOS = [
   [
@@ -130,13 +208,25 @@ const EXEMPLOS = [
     "(62) 3333-0000",
     "contato@padariaexemplo.com.br",
     "Vaga vista no Instagram",
+    "",
   ],
-  ["Agência Exemplo RH (apague esta linha)", "agencia", "Auxiliar de limpeza", "(62) 98888-0000", "", "", ""],
+  [
+    "Indústria Exemplo (apague esta linha)",
+    "empresa",
+    "Auxiliar de produção",
+    "(62) 99999-1111",
+    "",
+    "",
+    "Vagas na Gupy",
+    "https://industriaexemplo.gupy.io",
+  ],
+  ["Agência Exemplo RH (apague esta linha)", "agencia", "Auxiliar de limpeza", "(62) 98888-0000", "", "", "", ""],
   [
     "João Eletricista (apague esta linha)",
     "prestador",
     "Eletricista, Instalação de chuveiro",
     "(62) 97777-0000",
+    "",
     "",
     "",
     "",
@@ -191,7 +281,19 @@ export function lerCsv(texto: string): string[][] {
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 // nomes de coluna que também valem (planilhas feitas à mão)
-const SINONIMOS: Record<string, (typeof COLUNAS_MODELO)[number]> = {
+const SINONIMOS: Record<string, Coluna> = {
+  link_vagas: "link_vagas",
+  "link das vagas": "link_vagas",
+  "pagina de vagas": "link_vagas",
+  "site de vagas": "link_vagas",
+  gupy: "link_vagas",
+  situacao: "situacao",
+  status: "situacao",
+  andamento: "situacao",
+  enviado_em: "enviado_em",
+  enviada_em: "enviado_em",
+  "enviado em": "enviado_em",
+  "contatado em": "enviado_em",
   empresa: "empresa",
   nome: "empresa",
   tipo: "tipo",
@@ -239,7 +341,7 @@ export function linhasParaConvites(linhas: string[][]): {
   if (!linhas.length) return { convites: [], ignoradas: [], semCabecalho: true };
   const cab = linhas[0].map((c) => SINONIMOS[semAcento(c)] ?? null);
   if (!cab.includes("empresa")) return { convites: [], ignoradas: [], semCabecalho: true };
-  const col = (l: string[], nome: (typeof COLUNAS_MODELO)[number]) => (l[cab.indexOf(nome)] ?? "").trim();
+  const col = (l: string[], nome: Coluna) => (cab.includes(nome) ? (l[cab.indexOf(nome)] ?? "").trim() : "");
 
   const convites: NovoConvite[] = [];
   const ignoradas: { linha: number; motivo: string }[] = [];
@@ -276,9 +378,48 @@ export function linhasParaConvites(linhas: string[][]): {
       telefones,
       email: emailOk,
       observacao: col(l, "observacao").slice(0, 500) || null,
+      link_vagas: linkDasVagas(col(l, "link_vagas")),
+      ...situacaoDoArquivo(col(l, "situacao"), col(l, "enviado_em")),
     });
   });
   return { convites, ignoradas, semCabecalho: false };
+}
+
+/**
+ * A situação de quem já foi chamado, das colunas situacao ("Enviei", "Contatado"...) e enviado_em (25/11/2026 ou
+ * 2026-11-25). Sem a coluna, ou com um texto que não diz nada, o convite entra como A enviar.
+ */
+function situacaoDoArquivo(situacao: string, dia: string): { status?: StatusConvite; enviada_em?: string | null } {
+  const t = semAcento(situacao);
+  let status: StatusConvite | null = null;
+  if (!t) status = null;
+  else if (/^a (enviar|contatar)/.test(t)) status = "a_enviar";
+  else if (/contato nao serve|sem contato|numero errado/.test(t)) status = "sem_contato";
+  else if (/nao quis|recus|sem interesse/.test(t)) status = "recusou";
+  else if (/autoriz|publicou/.test(t)) status = "autorizou";
+  else if (/envi|contatad|chamad|mandei/.test(t)) status = "enviada";
+  if (!status) return {};
+  return { status, enviada_em: status === "a_enviar" ? null : diaDoArquivo(dia) };
+}
+
+/** O dia do arquivo (25/11/2026, 25/11/26 ou 2026-11-25) como data e hora, ao meio-dia de Brasília; nunca no futuro. */
+function diaDoArquivo(dia: string): string | null {
+  const t = dia.trim();
+  const br = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const partes = br
+    ? [br[3].length === 2 ? `20${br[3]}` : br[3], br[2], br[1]]
+    : iso
+      ? [iso[1], iso[2], iso[3]]
+      : null;
+  if (!partes) return null;
+  const [a, m, d] = partes;
+  const quando = new Date(`${a}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T12:00:00-03:00`);
+  const ms = quando.getTime();
+  if (!Number.isFinite(ms) || ms > Date.now() + 864e5 || quando.getUTCFullYear() < 2020) return null;
+  // 31/02 vira 03/03 no Date: confere se o dia é o mesmo
+  if (quando.getUTCDate() !== Number(d)) return null;
+  return quando.toISOString();
 }
 
 // ---------------------------------------------------------------------------
@@ -331,6 +472,27 @@ const DESPEDIDAS = [
 
 const ENTRAR = "(entra com o e-mail, sem senha)";
 
+// o pedido das vagas no site: a empresa só responde, e a equipe publica (Admin › Convites › Publicar as vagas por ela)
+const PEDIR_SIM = [
+  `Podemos divulgar? É só responder "sim" que a gente cuida do resto.`,
+  `Topam? Respondam "sim" por aqui que a gente publica as vagas de vocês.`,
+  `Querem que a gente divulgue? Basta responder "sim".`,
+] as const;
+
+/** Até duas vagas no meio da frase, em minúsculas; com mais, "e outras". */
+function vagasDoTexto(vagas: string[]) {
+  const l = vagas.map(minusculo);
+  return l.length <= 2 ? juntar(l) : `${l.slice(0, 2).join(", ")} e outras`;
+}
+
+/** 04/11, no horário de Brasília (o dia em que o convite foi enviado). */
+function diaEMes(iso: string | null | undefined) {
+  const ms = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(ms)
+    ? new Date(ms).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" })
+    : null;
+}
+
 /** O fim do convite da base da Receita: de onde veio o contato e o link para não receber mais. */
 export function rodapeDaReceita(link: string, token: string) {
   let raiz = "https://publike.org";
@@ -343,12 +505,19 @@ export function rodapeDaReceita(link: string, token: string) {
 }
 
 export function mensagemConvite(
-  c: Pick<Convite, "nome" | "tipo" | "vagas"> & { token?: string; origem?: Convite["origem"] },
+  c: Pick<Convite, "nome" | "tipo" | "vagas"> & {
+    token?: string;
+    origem?: Convite["origem"];
+    link_vagas?: string | null;
+    enviada_em?: string | null;
+  },
   assinatura: string,
   /** o convite sempre leva o link: a própria empresa publica (o admin publicar por ela é o último recurso) */
   link: string,
   /** a vaga lida do anúncio já vem pronta no link */
   pronta = false,
+  /** qual mensagem (`mensagemDoConvite`): a de sempre, a das vagas no site da empresa ou a de retomar */
+  qual: MensagemConvite = "publike",
 ) {
   const s = c.token || c.nome;
   const pedido = pronta
@@ -382,6 +551,72 @@ export function mensagemConvite(
       "pontos",
       lista.map((opcoes, i) => `• ${escolher(s, `ponto${i}`, opcoes)}`),
     ).join("\n");
+  const gupy = vagasNaGupy(c);
+  // as vagas que a empresa já tem na Gupy (ou no site dela): a candidatura continua lá, e a equipe publica
+  if (qual === "site" && c.tipo !== "prestador" && c.link_vagas) {
+    const pela = gupy ? "pela Gupy" : "pelo site de vocês";
+    const la = gupy ? "na Gupy de vocês" : "no site de vocês";
+    const lista = vagasDoTexto(c.vagas);
+    return [
+      abre,
+      lista
+        ? escolher(s, "site", [
+            `Vi que vocês estão contratando ${lista} ${pela}. Dá para divulgar ${essa} no Publike também, de graça, sem mudar nada no processo de vocês.`,
+            `Vi que vocês estão com vaga de ${lista} ${pela}. Que tal divulgar no Publike também? É de graça, e o processo de vocês continua o mesmo.`,
+          ])
+        : `Vi que vocês estão com vagas abertas ${pela}. Dá para divulgar no Publike também, de graça, sem mudar nada no processo de vocês.`,
+      pontos([
+        [
+          `Quem se candidatar pelo Publike cai direto ${la}: o botão da vaga leva para a página dela lá.`,
+          `O botão de candidatura leva direto para a vaga ${la}, então os candidatos chegam no processo que vocês já usam.`,
+        ],
+        [
+          "Vocês não precisam criar conta nem cadastrar nada: a gente publica por vocês.",
+          "Não precisa criar conta nem publicar de novo: a gente cuida disso.",
+        ],
+        ...(gupy
+          ? [["Quando a vaga fecha na Gupy, ela sai do Publike sozinha.", "A vaga que fecha na Gupy sai do Publike sozinha."]]
+          : []),
+        [
+          "A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus até a empresa.",
+          "Quem mora perto vê a vaga primeiro, com a distância e o tempo de ônibus até a empresa.",
+        ],
+      ]),
+      escolher(s, "sim", PEDIR_SIM),
+      fecha,
+    ].join("\n\n");
+  }
+  // quem já foi chamado e não respondeu: mais curta, com o dia do primeiro convite e a novidade das vagas no site
+  if (qual === "retomar") {
+    const dia = diaEMes(c.enviada_em);
+    const quando = dia ? `no dia ${dia}` : "há uns dias";
+    const tudoCurto = escolher(s, "tudo", ["Tudo bem?", "Tudo certo?"]);
+    if (c.tipo === "prestador") {
+      return [
+        `${ola}, ${c.nome}! ${tudoCurto} ${quem}.`,
+        `Mandei uma mensagem ${quando} sobre a sua vitrine de serviços no Publike, de graça. Conseguiu ver? O link continua valendo ${ENTRAR}:\n${link}`,
+        fecha,
+      ].join("\n\n");
+    }
+    const oi = `${ola}, ${escolher(s, "pessoal", ["pessoal", "equipe"])} da ${c.nome}! ${tudoCurto} ${quem}.`;
+    if (c.link_vagas) {
+      return [
+        oi,
+        `Falei com vocês ${quando} sobre as vagas. Uma novidade: agora dá para divulgar no Publike as vagas que vocês já têm ${gupy ? "na Gupy" : "no site de vocês"}, com o botão de candidatura levando direto ${gupy ? "para a Gupy de vocês" : "para o site de vocês"}. O processo continua o mesmo, é de graça e vocês não precisam criar conta.`,
+        escolher(s, "sim", PEDIR_SIM),
+        fecha,
+      ].join("\n\n");
+    }
+    return [
+      oi,
+      escolher(s, "retoma", [
+        `Mandei uma mensagem ${quando} sobre publicar as vagas de vocês no Publike, de graça. Conseguiram ver?`,
+        `Escrevi para vocês ${quando} sobre divulgar as vagas no Publike, sem custo. Deu para ver?`,
+      ]),
+      pedido,
+      fecha,
+    ].join("\n\n");
+  }
   if (c.tipo === "prestador") {
     // profissional: a vitrine de serviços, que ele mesmo salva pelo link
     const servicos = juntar(c.vagas.map(minusculo));
@@ -504,12 +739,18 @@ export function mensagemConviteAgrupada(
  * HTML, com o link da vaga como botão "Conferir e publicar a vaga".
  */
 export function emailDoConvite(
-  c: Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho"> & { origem?: Convite["origem"] },
+  c: Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho"> & {
+    origem?: Convite["origem"];
+    link_vagas?: string | null;
+    enviada_em?: string | null;
+  },
   assinatura: string,
   site: string,
+  /** a mensagem escolhida no cartão (`mensagemDoConvite`); a das vagas no site não leva o link nem o botão */
+  qual: MensagemConvite = "publike",
 ) {
   const link = linkDoConvite(site, c.token, c.tipo);
-  const texto = mensagemConvite(c, assinatura.slice(0, 40), link, Boolean(c.rascunho));
+  const texto = mensagemConvite(c, assinatura.slice(0, 40), link, Boolean(c.rascunho), qual);
   const botao = c.tipo === "prestador" ? "Conferir e salvar a vitrine" : "Conferir e publicar a vaga";
   const paragrafo = (t: string) =>
     `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(t).replace(/\n/g, "<br>")}</p>`;

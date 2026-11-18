@@ -84,7 +84,7 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
       {aba === "lista" && (
         <Secao
           titulo="Convites"
-          descricao="Empresas anunciando vagas e prestadores anunciando serviços em outros lugares. Mande o convite pelo WhatsApp ou e-mail: o link leva a vaga (ou a vitrine de serviços) pronta e, quando a pessoa publica por ele, o convite vira Autorizou sozinho. Respondeu “sim” sem abrir o link? Publique por ela daqui."
+          descricao="Empresas anunciando vagas e prestadores anunciando serviços em outros lugares. Mande o convite pelo WhatsApp ou e-mail: o link leva a vaga (ou a vitrine de serviços) pronta e, quando a pessoa publica por ele, o convite vira Autorizou sozinho. Respondeu “sim” sem abrir o link? Publique por ela daqui. Em cada convite, escolha a mensagem: “Pelo Publike”, “Vagas da Gupy” (para quem já recebe os candidatos lá: a candidatura continua na Gupy, e a equipe publica) ou “Retomar a conversa”, que vem sugerida para quem já está como Enviei."
         >
           {error ? (
             <Aviso tipo="erro" titulo="Não deu para ler os convites">

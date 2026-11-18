@@ -337,7 +337,8 @@
   "20270720120000_whatsapp_numeros_de_teste",
   "20270721120000_whatsapp_modo_de_teste_no_filtro",
   "20270722120000_email_as_empresas",
-  "20270723120000_resumo_da_receita_rapido"
+  "20270723120000_resumo_da_receita_rapido",
+  "20270724120000_convites_vagas_no_site"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -1867,6 +1868,8 @@
   "c|public.convites.email": "00bdf2fb04",
   "c|public.convites.enviada_em": "de599dc94b",
   "c|public.convites.id": "80d056fc62",
+  "c|public.convites.link_vagas": "00bdf2fb04",
+  "c|public.convites.mensagem": "00bdf2fb04",
   "c|public.convites.nome": "0d83f26402",
   "c|public.convites.nota": "00bdf2fb04",
   "c|public.convites.observacao": "00bdf2fb04",

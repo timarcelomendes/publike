@@ -13,6 +13,7 @@ import { fichaUsuario } from "@/lib/admin/dados";
 import { iaConfigurada } from "@/lib/ia/openai";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { primeiro } from "@/lib/formato";
+import { paginaDeVagasDaGupy } from "@/lib/gupy";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
@@ -106,6 +107,8 @@ async function Conteudo({ params, searchParams }: { params: Props["params"]; sea
       .limit(8),
   ]);
   const copiavel = origem && origem.tipo === "vaga" ? origem : null;
+  // a página de vagas da Gupy que o convite mandou (?gupy=): o "Puxar do link" já começa com ela
+  const gupy = paginaDeVagasDaGupy(primeiro(sp.gupy));
   let inicial = vazio;
   if (copiavel) {
     const copia = valoresDoAnuncio(copiavel, { copiar: true, triagem: await obterTriagem(copiavel.id, c) });
@@ -129,10 +132,20 @@ async function Conteudo({ params, searchParams }: { params: Props["params"]; sea
           Confira o link ou o código. Dá para copiar só vagas (serviços, não).
         </Aviso>
       )}
+      {gupy && (
+        // veio do convite (Admin › Convites › Publicar as vagas da Gupy por ela): a lista abre sozinha
+        <Aviso tipo="sucesso" titulo={`${p.nome} autorizou.`}>
+          As vagas de {gupy.replace(/^https:\/\/|\/$/g, "")} aparecem logo abaixo, em “Puxar do link da Gupy”. Escolha
+          as que vão para o Publike e publique de uma vez.
+          {primeiro(sp.sem_email) === "1" &&
+            " A conta ficou sem e-mail: a empresa só consegue entrar depois que tiver um (ou pelo link de acesso no WhatsApp)."}
+        </Aviso>
+      )}
       <PublicarVagaAdmin
         // outra cópia: o formulário começa de novo
         key={copiavel?.id ?? "nova"}
         contaId={id}
+        linkGupyInicial={gupy}
         inicial={inicial}
         copiada={copiavel ? { titulo: copiavel.titulo, de: copiavel.autor_nome ?? "outra conta" } : null}
         vagasDaConta={(daConta ?? []).map((v) => ({
