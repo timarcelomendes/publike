@@ -7,8 +7,11 @@ import {
   conferirNumeroAgora,
   ligarWebhookAgora,
   mandarTesteWhatsapp,
+  mudarConversaWhatsapp,
   pedirAceiteDoWhatsapp,
   registrarNumeroAgora,
+  responderConversaWhatsapp,
+  salvarAtendimentoWhatsapp,
   salvarWhatsapp,
   type NumeroDaMeta,
 } from "@/lib/acoes/whatsapp-admin";
@@ -793,6 +796,131 @@ export function MandarTeste() {
         <Send aria-hidden />
         {pendente ? "Mandando…" : "Mandar a mensagem de teste"}
       </button>
+      <Resposta r={resposta} />
+    </form>
+  );
+}
+
+// --- O atendimento (Admin › WhatsApp › Conversas; migração 20270801120000) -----------------------------------------
+
+/** Ligar a IA nas conversas e quantas respostas ela dá a cada número por dia. */
+export function AtendimentoWhatsapp({ ligado, porDia }: { ligado: boolean; porDia: number }) {
+  const [pendente, iniciar] = useTransition();
+  const [liga, setLiga] = useState(ligado);
+  const [n, setN] = useState(String(porDia));
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  return (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(ev) => {
+        ev.preventDefault();
+        iniciar(async () => {
+          const r = await salvarAtendimentoWhatsapp(liga, n);
+          setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Salvo." } : { ok: false, texto: r.erro });
+        });
+      }}
+    >
+      <label className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          className="mt-1 size-5 accent-ink"
+          checked={liga}
+          onChange={(ev) => setLiga(ev.target.checked)}
+        />
+        <span className="text-body-sm">
+          <span className="text-label">A IA responde quem escreve para o número do Publike</span>
+          <br />
+          <span className="text-ink-muted">
+            Desligado, o número responde uma vez por dia que só manda avisos, como antes.
+          </span>
+        </span>
+      </label>
+      <label className="flex max-w-xs flex-col gap-1 text-body-sm">
+        <span className="text-label">Respostas da IA por número a cada 24 horas</span>
+        <input
+          inputMode="numeric"
+          className={classesEntrada}
+          value={n}
+          onChange={(ev) => setN(ev.target.value)}
+        />
+        <span className="text-caption text-ink-muted">Depois disso, a conversa passa para a equipe.</span>
+      </label>
+      <div>
+        <button type="submit" disabled={pendente} className={classesBotao("secundario", "sm")}>
+          {pendente ? "Salvando…" : "Salvar"}
+        </button>
+      </div>
+      <Resposta r={resposta} />
+    </form>
+  );
+}
+
+/** Pegar a conversa (a IA fica quieta) ou devolver para a IA. */
+export function SituacaoDaConversa({ conversa, situacao }: { conversa: string; situacao: "robo" | "equipe" }) {
+  const [pendente, iniciar] = useTransition();
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const para = situacao === "equipe" ? "robo" : "equipe";
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <button
+        type="button"
+        disabled={pendente}
+        className={classesBotao("secundario", "sm")}
+        onClick={() =>
+          iniciar(async () => {
+            const r = await mudarConversaWhatsapp(conversa, para);
+            setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+          })
+        }
+      >
+        {pendente ? "Mudando…" : para === "robo" ? "Devolver para a IA" : "Pegar a conversa"}
+      </button>
+      <Resposta r={resposta} />
+    </div>
+  );
+}
+
+/** A equipe responde pelo número do Publike (texto livre, na janela de 24 horas). */
+export function ResponderConversa({ conversa, aberta }: { conversa: string; aberta: boolean }) {
+  const [pendente, iniciar] = useTransition();
+  const [texto, setTexto] = useState("");
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  if (!aberta)
+    return (
+      <p className="text-body-sm text-ink-muted">
+        Passaram 24 horas desde a última mensagem da pessoa: a Meta só deixa responder com um modelo aprovado. Quando ela
+        escrever de novo, a caixa de resposta volta.
+      </p>
+    );
+  return (
+    <form
+      className="flex flex-col gap-2"
+      onSubmit={(ev) => {
+        ev.preventDefault();
+        iniciar(async () => {
+          const r = await responderConversaWhatsapp(conversa, texto);
+          setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Enviada." } : { ok: false, texto: r.erro });
+          if (r.ok) setTexto("");
+        });
+      }}
+    >
+      <label className="flex flex-col gap-1 text-body-sm">
+        <span className="text-label">Responder como equipe do Publike</span>
+        <textarea
+          rows={3}
+          maxLength={4000}
+          className={classesEntrada}
+          value={texto}
+          onChange={(ev) => setTexto(ev.target.value)}
+          placeholder="Escreva a resposta…"
+        />
+      </label>
+      <div>
+        <button type="submit" disabled={pendente || !texto.trim()} className={classesBotao("primario", "sm")}>
+          <Send aria-hidden />
+          {pendente ? "Enviando…" : "Enviar pelo WhatsApp"}
+        </button>
+      </div>
       <Resposta r={resposta} />
     </form>
   );

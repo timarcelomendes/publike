@@ -8,6 +8,7 @@ import {
   conferirNumero,
   configMeta,
   enviarTeste,
+  enviarTexto,
   ligarWebhookDaConta,
   registrarNumero,
   type SituacaoModelos,
@@ -230,4 +231,65 @@ export async function pedirAceiteDoWhatsapp(): Promise<Resultado> {
       ? `Pedido feito para ${n === 1 ? "1 conta" : `${n.toLocaleString("pt-BR")} contas`}, no sino e por e-mail.`
       : "Nenhuma conta nova para pedir: todas já receberam o pedido ou já responderam.",
   };
+}
+
+// --- O atendimento pelo WhatsApp (migração 20270801120000; claude/plano-whatsapp-atendimento.md) -------------------
+
+/** Liga ou desliga a IA nas conversas e quantas respostas ela dá a cada número por dia. */
+export async function salvarAtendimentoWhatsapp(ligado: boolean, porDia: number | string): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const n = inteiro(porDia, "As respostas por dia", 1, 200);
+  if (typeof n === "string") return { ok: false, erro: n };
+  const { error } = await c.rpc("admin_salvar_atendimento_whatsapp", { p_ligado: Boolean(ligado), p_por_dia: n });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Falta rodar a migração 20270801120000 no banco." };
+    return { ok: false, erro: error.message || "Não deu para salvar agora." };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: ligado
+      ? "Atendimento ligado: a IA responde as próximas mensagens."
+      : "Atendimento desligado: o número volta a dizer que só manda avisos.",
+  };
+}
+
+/** A equipe pega a conversa (a IA fica quieta) ou devolve para a IA. */
+export async function mudarConversaWhatsapp(conversa: string, situacao: "robo" | "equipe"): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const { error } = await c.rpc("admin_whatsapp_conversa_situacao", { p_conversa: conversa, p_situacao: situacao });
+  if (error) return { ok: false, erro: error.message || "Não deu para mudar agora." };
+  refresh();
+  return { ok: true, mensagem: situacao === "robo" ? "A IA volta a responder." : "A IA fica quieta nesta conversa." };
+}
+
+/** A equipe responde pelo número do Publike (só na janela de 24 horas depois da última mensagem da pessoa). */
+export async function responderConversaWhatsapp(conversa: string, texto: string): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const t = String(texto ?? "").trim();
+  if (!t) return { ok: false, erro: "Escreva a resposta." };
+  if (t.length > 4000) return { ok: false, erro: "A resposta passa de 4.000 letras." };
+  const cfg = configMeta();
+  if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
+  const { data, error } = await c.rpc("admin_whatsapp_conversa_numero", { p_conversa: conversa });
+  if (error || !data) return { ok: false, erro: error?.message || "Não achamos essa conversa." };
+  const d = data as { numero: string; janela_aberta: boolean };
+  if (!d.janela_aberta)
+    return {
+      ok: false,
+      erro: "Passaram 24 horas desde a última mensagem da pessoa: a Meta só deixa responder com modelo aprovado.",
+    };
+  const r = await enviarTexto(cfg, d.numero, t);
+  if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
+  const { error: erroGravar } = await c.rpc("admin_whatsapp_conversa_registrar", {
+    p_conversa: conversa,
+    p_texto: t,
+    p_wamid: r.wamid ?? "",
+  });
+  if (erroGravar) return { ok: false, erro: `Saiu, mas não ficou na conversa: ${erroGravar.message}` };
+  refresh();
+  return { ok: true, mensagem: "Enviada. A IA fica quieta nesta conversa até você devolver." };
 }

@@ -24,6 +24,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Sim. Publicar, curtir e conversar é de graça para quem procura trabalho, para quem presta serviço e para empresas de qualquer tamanho. Ninguém pode cobrar para você conseguir trabalho, nem pelo Publike nem fora dele. A página “É grátis”, no rodapé, explica os limites e como o Publike se mantém.",
       },
       {
+        p: "Posso falar com o Publike pelo WhatsApp?",
+        r: "Pode. Escreva para o WhatsApp oficial do Publike, (62) 8477-1907: a IA do Publike responde na hora o que é o Publike, como se candidatar, como publicar uma vaga e mostra vagas do que você faz. Para falar com uma pessoa da equipe, toque em “Falar com a equipe” ou peça na conversa: alguém responde por ali, no horário comercial. O Publike nunca pede documento, senha, código de SMS nem dinheiro pelo WhatsApp.",
+      },
+      {
         p: "Funciona em quais cidades?",
         r: `Em ${ONDE_FUNCIONA}: ${emLista(CIDADES)}.`,
       },

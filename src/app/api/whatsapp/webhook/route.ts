@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { assinaturaValida, tokenDoWebhookValido, tratarAvisoDaMeta, type AvisoDaMeta } from "@/lib/servidor/whatsapp";
 
 // O webhook do WhatsApp oficial (claude/plano-whatsapp-oficial.md; cadastrado no app da Meta com o endereço
@@ -5,7 +6,8 @@ import { assinaturaValida, tokenDoWebhookValido, tratarAvisoDaMeta, type AvisoDa
 //   GET: a Meta confere o endereço (hub.verify_token) e espera o hub.challenge de volta.
 //   POST: a entrega e a leitura dos avisos, os botões de resposta rápida e o PARAR. Só com a assinatura certa
 //   (X-Hub-Signature-256, com WHATSAPP_APP_SECRET). Erro: 500, e a Meta manda de novo (o banco não repete nada).
-export const maxDuration = 30;
+//   Com o atendimento ligado (migração 20270801120000), a conversa com a IA roda em after(), dentro do maxDuration.
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const u = new URL(request.url);
@@ -44,6 +46,15 @@ export async function POST(request: Request) {
   if (aviso?.object !== "whatsapp_business_account") return Response.json({ ok: true, ignorado: true });
   try {
     const r = await tratarAvisoDaMeta(aviso);
+    // o atendimento (a IA responde a conversa) roda depois do 200: a Meta espera a resposta rápida
+    if (r.depois.length)
+      after(async () => {
+        for (const atender of r.depois) {
+          await atender().catch((e) =>
+            console.error("Publike: o atendimento do WhatsApp falhou:", e instanceof Error ? e.message.slice(0, 300) : e),
+          );
+        }
+      });
     return Response.json({ ok: true, tratados: r.tratados });
   } catch (e) {
     console.error("Publike: aviso do WhatsApp sem tratar:", e instanceof Error ? e.message.slice(0, 300) : e);

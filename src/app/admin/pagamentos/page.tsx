@@ -29,7 +29,7 @@ export const metadata: Metadata = { title: "Pagamentos" };
 // Os pagamentos pelo Asaas (claude/plano-checkout-asaas.md, migração 20261218120000): os preços, abrir para
 // todos (fechado até você testar), as contas de teste, a nota fiscal e o que deu erro.
 
-/** O aviso do grátis de cada mês (`admin_aviso_gratis`, migração 20270731120000). */
+/** O aviso do grátis de cada mês (`admin_aviso_gratis`, migração 20270801120000). */
 type AvisoGratis = {
   contas: number;
   para_avisar: number;
@@ -93,7 +93,7 @@ async function Conteudo() {
   const [sit, agora, { data: avisoGratis }] = await Promise.all([
     situacaoPagamentos(c),
     agoraDaRequisicao(),
-    // o aviso do grátis de cada mês (sem a migração 20270731120000, null)
+    // o aviso do grátis de cada mês (sem a migração 20270801120000, null)
     c.rpc("admin_aviso_gratis"),
   ]);
   const aviso = avisoGratis as unknown as AvisoGratis | null;

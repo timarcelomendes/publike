@@ -6,7 +6,16 @@ import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Barras } from "@/components/admin/grafico";
 import { Filtros, linkCom, Numero, Secao, Situacao } from "@/components/admin/ui";
-import { ConferirModelos, ConferirNumero, ConfigWhatsapp, MandarTeste, PedirAceite } from "@/components/admin/whatsapp";
+import {
+  AtendimentoWhatsapp,
+  ConferirModelos,
+  ConferirNumero,
+  ConfigWhatsapp,
+  MandarTeste,
+  PedirAceite,
+  ResponderConversa,
+  SituacaoDaConversa,
+} from "@/components/admin/whatsapp";
 import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail, montarEmail } from "@/lib/email/montar";
@@ -138,6 +147,7 @@ type Resultados = {
 
 const ABAS = [
   { valor: "resultados", nome: "Resultados" },
+  { valor: "conversas", nome: "Conversas" },
   { valor: "aceite", nome: "Pedir o aceite" },
   { valor: "erros", nome: "Erros" },
   { valor: "parametros", nome: "Parâmetros" },
@@ -165,6 +175,17 @@ type Numeros = (typeof NUMEROS)[number]["valor"];
 
 /** O que a tela mostra: o período e os números (o filtro vale nos números e na lista, não no limite do mês). */
 type Vista = { periodo: Periodo; numeros: Numeros };
+
+// As conversas do atendimento (migração 20270801120000): o filtro da lista e a conversa aberta (`?c=`)
+const FILTROS_CONVERSA = [
+  { valor: "todas", nome: "Todas" },
+  { valor: "equipe", nome: "Com a equipe" },
+  { valor: "anuncio", nome: "Vieram do anúncio" },
+  { valor: "trabalho", nome: "Procuram trabalho" },
+  { valor: "contratar", nome: "Querem contratar" },
+] as const;
+type FiltroConversa = (typeof FILTROS_CONVERSA)[number]["valor"];
+type NaConversa = { filtro: FiltroConversa; aberta: string | null };
 
 const STATUS: Record<string, { nome: string; variante: VarianteSelo; grave: boolean }> = {
   APPROVED: { nome: "Aprovado", variante: "match", grave: false },
@@ -200,7 +221,11 @@ export default function WhatsappAdmin({ searchParams }: PageProps<"/admin/whatsa
         const periodo: Periodo = PERIODOS.some((x) => x.valor === p) ? (p as Periodo) : "7";
         const n = primeiro(sp.numeros);
         const numeros: Numeros = NUMEROS.some((x) => x.valor === n) ? (n as Numeros) : "reais";
-        return <Conteudo aba={aba} vista={{ periodo, numeros }} />;
+        const f = primeiro(sp.filtro);
+        const filtro: FiltroConversa = FILTROS_CONVERSA.some((x) => x.valor === f) ? (f as FiltroConversa) : "todas";
+        const c = primeiro(sp.c);
+        const aberta = c && /^[0-9]{8,15}$/.test(c) ? c : null;
+        return <Conteudo aba={aba} vista={{ periodo, numeros }} conversa={{ filtro, aberta }} />;
       })}
     </Suspense>
   );
@@ -420,7 +445,7 @@ function errosDoWhatsapp(
   return erros.sort((a, b) => Number(b.grave) - Number(a.grave));
 }
 
-async function Conteudo({ aba, vista }: { aba: Aba; vista: Vista }) {
+async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conversa: NaConversa }) {
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/whatsapp"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
@@ -433,11 +458,18 @@ async function Conteudo({ aba, vista }: { aba: Aba; vista: Vista }) {
       c.rpc("admin_whatsapp_cobradas_por_modelo", comFiltro ? { p_dias: dias, p_numeros: vista.numeros } : { p_dias: dias }),
     ]);
   // o pedido do aceite a quem contrata (migração 20270726120000): só na aba dele
-  const [lidas, agora, dPedidos] = await Promise.all([
+  const [lidas, agora, dPedidos, dConversas, dAberta] = await Promise.all([
     ler(true),
     agoraDaRequisicao(),
     aba === "aceite" ? c.rpc("admin_whatsapp_pedidos") : Promise.resolve(null),
+    // as conversas (migração 20270801120000): a lista na aba e, nas outras, só para o número da aba
+    c.rpc("admin_whatsapp_conversas", { p_filtro: aba === "conversas" ? conversa.filtro : "equipe" }),
+    aba === "conversas" && conversa.aberta
+      ? c.rpc("admin_whatsapp_conversa", { p_conversa: conversa.aberta })
+      : Promise.resolve(null),
   ]);
+  const conversas = dConversas.error || !dConversas.data ? null : (dConversas.data as unknown as Conversas);
+  const aberta = dAberta && !dAberta.error && dAberta.data ? (dAberta.data as unknown as ConversaAberta) : null;
   const pedidos = dPedidos && !dPedidos.error && dPedidos.data ? (dPedidos.data as unknown as Pedidos) : null;
   // sem a migração 20270720120000 (o filtro dos números de teste), as funções de antes, com todos os números
   const semFiltro = lidas[0].error?.code === "PGRST202";
@@ -534,6 +566,11 @@ async function Conteudo({ aba, vista }: { aba: Aba; vista: Vista }) {
               }`}
             >
               {a.nome}
+              {a.valor === "conversas" && (conversas?.resumo.com_a_equipe ?? 0) > 0 && (
+                <span className="min-w-6 rounded-pill border border-ink px-1.5 text-center text-caption leading-6 tabular-nums">
+                  {conversas?.resumo.com_a_equipe}
+                </span>
+              )}
               {a.valor === "erros" && erros.length > 0 && (
                 <span
                   className={`min-w-6 rounded-pill px-1.5 text-center text-caption leading-6 tabular-nums ${
@@ -566,6 +603,9 @@ async function Conteudo({ aba, vista }: { aba: Aba; vista: Vista }) {
               p={p}
               cobradasPorModelo={cobradasPorModelo}
             />
+          )}
+          {aba === "conversas" && r && (
+            <AbaConversas d={conversas} aberta={aberta} na={conversa} agora={agora} />
           )}
           {aba === "aceite" && r && <AbaAceite d={pedidos} agora={agora} />}
           {aba === "erros" && r && <AbaErros erros={erros} r={r} res={res} vista={vista} numeros={numeros} />}
@@ -1315,5 +1355,238 @@ function AbaLigacao({ s, local }: { s: ReturnType<typeof situacaoWhatsapp>; loca
         </Secao>
       )}
     </div>
+  );
+}
+
+// --- Conversas (o atendimento pelo WhatsApp; migração 20270801120000, claude/plano-whatsapp-atendimento.md) ----------
+
+type OrigemDaConversa = { tipo?: string | null; link?: string | null; titulo?: string | null; texto?: string | null } | null;
+type ContaDaConversa = { id: string; nome: string | null; tipo: string } | null;
+
+type Conversas = {
+  ligado: boolean;
+  por_dia: number;
+  resumo: {
+    conversas_7_dias: number;
+    de_anuncio_7_dias: number;
+    com_a_equipe: number;
+    trabalho: number;
+    contratar: number;
+    respostas_robo_7_dias: number;
+    gratis_agora: number;
+  };
+  lista: {
+    chave: string;
+    nome: string | null;
+    final: string;
+    perfil: "trabalho" | "contratar" | null;
+    situacao: "robo" | "equipe";
+    origem: OrigemDaConversa;
+    gratis_ate: string | null;
+    janela_aberta: boolean;
+    ultima_em: string;
+    nao_vista: boolean;
+    conta: ContaDaConversa;
+    ultima: { de: "pessoa" | "robo" | "equipe"; texto: string } | null;
+  }[];
+};
+
+type ConversaAberta = {
+  chave: string;
+  nome: string | null;
+  final: string;
+  perfil: "trabalho" | "contratar" | null;
+  situacao: "robo" | "equipe";
+  equipe_desde: string | null;
+  origem: OrigemDaConversa;
+  origem_em: string | null;
+  gratis_ate: string | null;
+  janela_ate: string | null;
+  criado_em: string;
+  conta: ContaDaConversa;
+  mensagens: { de: "pessoa" | "robo" | "equipe"; texto: string; em: string }[];
+};
+
+const PERFIL_DA_CONVERSA = { trabalho: "Procura trabalho", contratar: "Quer contratar" } as const;
+const QUEM_FALOU = { pessoa: "Pessoa", robo: "IA do Publike", equipe: "Equipe" } as const;
+
+const linkDaConversa = (na: NaConversa, mudanca: Record<string, string | null>) =>
+  linkCom(
+    "/admin/whatsapp",
+    { aba: "conversas", filtro: na.filtro === "todas" ? null : na.filtro, c: na.aberta },
+    mudanca,
+  );
+
+function AbaConversas({
+  d,
+  aberta,
+  na,
+  agora,
+}: {
+  d: Conversas | null;
+  aberta: ConversaAberta | null;
+  na: NaConversa;
+  agora: number;
+}) {
+  if (!d)
+    return (
+      <Aviso tipo="alerta" titulo="Rode a migração do atendimento">
+        Falta a migração 20270801120000_whatsapp_atendimento.sql neste banco. Sem ela, o número continua respondendo uma
+        vez por dia que só manda avisos.
+      </Aviso>
+    );
+  const r = d.resumo;
+  return (
+    <div className="flex flex-col gap-6">
+      <Secao
+        titulo="Atendimento pela IA"
+        descricao={
+          <>
+            Quem escreve para o número do Publike (quase sempre vindo de um anúncio de clique para o WhatsApp) recebe a
+            resposta da IA, com o que está na Ajuda e as vagas no ar. A primeira resposta pergunta se a pessoa procura
+            trabalho ou quer contratar. Quando ela pede alguém, a IA não sabe ou o número passa das respostas do dia, a
+            conversa vem para a equipe e chega o e-mail dos Avisos para a equipe. A conversa que começa num anúncio não
+            paga nada à Meta por até 7 dias depois da primeira resposta.
+          </>
+        }
+      >
+        <AtendimentoWhatsapp ligado={d.ligado} porDia={d.por_dia} />
+      </Secao>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Numero rotulo="Conversas em 7 dias" valor={r.conversas_7_dias} />
+        <Numero rotulo="Vieram do anúncio" valor={r.de_anuncio_7_dias} detalhe="em 7 dias" />
+        <Numero rotulo="Com a equipe" valor={r.com_a_equipe} alerta={r.com_a_equipe > 0} />
+        <Numero rotulo="Respostas da IA" valor={r.respostas_robo_7_dias} detalhe={`em 7 dias · ${plural(r.gratis_agora, "na janela grátis", "na janela grátis")}`} />
+      </div>
+
+      <Filtros
+        rotulo="Conversas"
+        opcoes={FILTROS_CONVERSA.map((f) => ({
+          valor: f.valor,
+          nome: f.nome,
+          numero: f.valor === "equipe" ? r.com_a_equipe : f.valor === "trabalho" ? r.trabalho : f.valor === "contratar" ? r.contratar : undefined,
+        }))}
+        atual={na.filtro}
+        link={(v) => linkDaConversa(na, { filtro: v === "todas" ? null : v, c: null })}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-2">
+          {d.lista.length === 0 ? (
+            <Vazio titulo="Nenhuma conversa ainda" icone={MessageCircle}>
+              Quando alguém escrever para o número do Publike, a conversa aparece aqui.
+            </Vazio>
+          ) : (
+            <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+              {d.lista.map((x) => {
+                const atual = x.chave === na.aberta;
+                return (
+                  <li key={x.chave}>
+                    <Link
+                      href={linkDaConversa(na, { c: x.chave })}
+                      scroll={false}
+                      aria-current={atual ? "true" : undefined}
+                      className={`flex flex-col gap-1 p-3 ${atual ? "bg-surface-300" : "hover:bg-surface-100"}`}
+                    >
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className={`text-label ${x.nao_vista ? "" : "text-ink-muted"}`}>
+                          {x.nome ?? "Sem nome"} <span className="text-caption text-ink-muted">· final {x.final}</span>
+                        </span>
+                        {x.situacao === "equipe" && <Selo variante="aviso">Com a equipe</Selo>}
+                        {x.perfil && <Selo variante="contorno">{PERFIL_DA_CONVERSA[x.perfil]}</Selo>}
+                        {x.origem && <Selo variante="neutro">Anúncio</Selo>}
+                      </span>
+                      {x.ultima && (
+                        <span className="line-clamp-2 text-body-sm text-ink-muted">
+                          {QUEM_FALOU[x.ultima.de]}: {x.ultima.texto}
+                        </span>
+                      )}
+                      <span className="text-caption text-ink-muted">{quandoFoi(x.ultima_em, agora)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div>
+          {aberta ? (
+            <ConversaDoWhatsapp c={aberta} agora={agora} />
+          ) : (
+            d.lista.length > 0 && <p className="text-body-sm text-ink-muted">Escolha uma conversa para ler e responder.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConversaDoWhatsapp({ c, agora }: { c: ConversaAberta; agora: number }) {
+  const janelaAberta = Boolean(c.janela_ate && new Date(c.janela_ate).getTime() > agora);
+  const gratis = c.gratis_ate && new Date(c.gratis_ate).getTime() > agora;
+  return (
+    <section aria-label={`Conversa com ${c.nome ?? "a pessoa"}`} className="flex flex-col gap-4 rounded-md border border-line p-4">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-h3">
+            {c.nome ?? "Sem nome"} <span className="text-body-sm text-ink-muted">· final {c.final}</span>
+          </h2>
+          <p className="text-body-sm text-ink-muted">
+            {[
+              c.perfil ? PERFIL_DA_CONVERSA[c.perfil] : "Ainda não disse o que quer",
+              c.conta ? `Tem conta: ${c.conta.nome ?? "sem nome"}` : "Sem conta no Publike",
+              `Desde ${quandoFoi(c.criado_em, agora)}`,
+              gratis ? `Grátis até ${quandoFoi(c.gratis_ate as string, agora)}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          {c.conta && (
+            <Link href={`/admin/usuarios/${c.conta.id}`} className="text-body-sm underline">
+              Abrir a conta no admin
+            </Link>
+          )}
+          {c.origem && (
+            <p className="text-body-sm">
+              Veio do anúncio{c.origem.titulo ? ` “${c.origem.titulo}”` : ""}
+              {c.origem.link && (
+                <>
+                  {" · "}
+                  <a href={c.origem.link} target="_blank" rel="noreferrer" className="underline">
+                    ver o post
+                  </a>
+                </>
+              )}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <Selo variante={c.situacao === "equipe" ? "aviso" : "match"}>
+            {c.situacao === "equipe" ? "A equipe responde" : "A IA responde"}
+          </Selo>
+          <SituacaoDaConversa conversa={c.chave} situacao={c.situacao} />
+        </div>
+      </header>
+
+      <ol className="flex flex-col gap-2">
+        {c.mensagens.map((m, i) => (
+          <li
+            key={i}
+            className={`max-w-[85%] rounded-md px-3 py-2 text-body-sm whitespace-pre-line ${
+              m.de === "pessoa" ? "self-start bg-surface-300" : m.de === "equipe" ? "self-end border border-ink" : "self-end border border-line bg-surface-100"
+            }`}
+          >
+            <span className="block text-caption text-ink-muted">
+              {QUEM_FALOU[m.de]} · {quandoFoi(m.em, agora)}
+            </span>
+            {m.texto}
+          </li>
+        ))}
+      </ol>
+
+      <ResponderConversa conversa={c.chave} aberta={janelaAberta} />
+    </section>
   );
 }

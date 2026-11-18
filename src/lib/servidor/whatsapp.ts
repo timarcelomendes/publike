@@ -5,6 +5,7 @@ import { destinoDoAviso } from "@/lib/destino-aviso";
 import { comOrigem } from "@/lib/origem";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { fraseDaEntrevista } from "@/lib/whatsapp";
+import { atenderConversa } from "./atendimento-whatsapp";
 import { acessoFila } from "./filas";
 
 // O WhatsApp oficial (a API de nuvem da Meta; claude/plano-whatsapp-oficial.md, migração 20270619120000). O banco põe
@@ -406,7 +407,44 @@ export async function enviarTexto(cfg: ConfigMeta, numero: string, texto: string
       text: { body: texto.slice(0, 4000), preview_url: false },
     },
   });
-  return r.ok ? { ok: true as const } : { ok: false as const, erro: r.texto };
+  return r.ok ? { ok: true as const, wamid: r.dados.messages?.[0]?.id ?? null } : { ok: false as const, erro: r.texto };
+}
+
+/**
+ * Texto com até 3 botões de resposta (só na janela de 24 horas): o atendimento usa na primeira resposta ("Procuro
+ * trabalho", "Quero contratar", "Falar com a equipe"). O toque volta no webhook como `interactive.button_reply`.
+ */
+export async function enviarComBotoes(
+  cfg: ConfigMeta,
+  numero: string,
+  texto: string,
+  botoes: { id: string; titulo: string }[],
+) {
+  const r = await graph<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
+    metodo: "POST",
+    corpo: {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: numero.replace(/\D/g, ""),
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: texto.slice(0, 1024) },
+        action: {
+          buttons: botoes.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id.slice(0, 256), title: b.titulo.slice(0, 20) } })),
+        },
+      },
+    },
+  });
+  return r.ok ? { ok: true as const, wamid: r.dados.messages?.[0]?.id ?? null } : { ok: false as const, erro: r.texto };
+}
+
+/** Marca a mensagem como lida e mostra "digitando…" para a pessoa até a resposta sair (no máximo 25 segundos). */
+export async function marcarLidaDigitando(cfg: ConfigMeta, wamid: string) {
+  await graph(cfg, `${cfg.phoneId}/messages`, {
+    metodo: "POST",
+    corpo: { messaging_product: "whatsapp", status: "read", message_id: wamid, typing_indicator: { type: "text" } },
+  });
 }
 
 /** O modelo de teste da Meta (hello_world, em inglês, que toda conta nova já tem aprovado). */
@@ -866,8 +904,11 @@ type MensagemRecebida = {
   type?: string;
   text?: { body?: string };
   button?: { payload?: string; text?: string };
-  interactive?: { button_reply?: { id?: string }; list_reply?: { id?: string } };
+  interactive?: { button_reply?: { id?: string; title?: string }; list_reply?: { id?: string; title?: string } };
+  /** de onde veio: o anúncio de clique para o WhatsApp (Instagram ou Facebook) */
+  referral?: Record<string, unknown>;
 };
+type ContatoRecebido = { wa_id?: string; profile?: { name?: string } };
 type StatusRecebido = {
   id?: string;
   status?: string;
@@ -876,13 +917,36 @@ type StatusRecebido = {
 };
 export type AvisoDaMeta = {
   object?: string;
-  entry?: { changes?: { field?: string; value?: { messages?: MensagemRecebida[]; statuses?: StatusRecebido[] } }[] }[];
+  entry?: {
+    changes?: {
+      field?: string;
+      value?: { messages?: MensagemRecebida[]; statuses?: StatusRecebido[]; contacts?: ContatoRecebido[] };
+    }[];
+  }[];
 };
 
-/** O que a Meta mandou: a entrega e a leitura, os botões, o PARAR e o resto. Responde pelo WhatsApp quando é o caso. */
+/** O anúncio de onde a pessoa veio, só o que serve (sem a imagem nem o id do clique). */
+function origemDoAnuncio(r: Record<string, unknown> | undefined) {
+  if (!r) return null;
+  const texto = (k: string, max: number) => (typeof r[k] === "string" ? String(r[k]).slice(0, max) : null);
+  const o = {
+    tipo: texto("source_type", 20),
+    link: texto("source_url", 300),
+    titulo: texto("headline", 200),
+    texto: texto("body", 500),
+  };
+  return o.tipo || o.link || o.titulo ? o : null;
+}
+
+/**
+ * O que a Meta mandou: a entrega e a leitura, os botões, o PARAR e o resto. Responde pelo WhatsApp quando é o caso.
+ * A conversa com a IA (o atendimento, migração 20270801120000) volta em `depois`: o webhook responde 200 à Meta na hora
+ * e roda depois (`after()`), porque a IA pode levar alguns segundos.
+ */
 export async function tratarAvisoDaMeta(aviso: AvisoDaMeta, cliente?: ClienteBanco) {
+  const depois: (() => Promise<void>)[] = [];
   const acesso = acessoFila();
-  if (!acesso) return { tratados: 0 };
+  if (!acesso) return { tratados: 0, depois };
   const banco = cliente ?? acesso.cliente;
   const chave = acesso.chave;
   const cfg = configMeta();
@@ -905,7 +969,8 @@ export async function tratarAvisoDaMeta(aviso: AvisoDaMeta, cliente?: ClienteBan
       for (const m of mudanca.value.messages ?? []) {
         if (!m.id || !m.from) continue;
         const payload = m.button?.payload ?? m.interactive?.button_reply?.id ?? m.interactive?.list_reply?.id ?? null;
-        const texto = m.text?.body ?? m.button?.text ?? null;
+        const texto =
+          m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? m.interactive?.list_reply?.title ?? null;
         const { data } = await banco.rpc("servidor_whatsapp_recebida", {
           p_chave: chave,
           p_wamid: m.id,
@@ -914,6 +979,22 @@ export async function tratarAvisoDaMeta(aviso: AvisoDaMeta, cliente?: ClienteBan
           p_payload: payload ? payload.slice(0, 256) : null,
         });
         tratados++;
+        if ((data as { acao?: string } | null)?.acao === "conversa" && cfg) {
+          // a reação (o joinha numa mensagem) e o que a Meta não sabe mostrar não pedem resposta
+          if (m.type === "reaction" || m.type === "unsupported" || m.type === "system") continue;
+          const nome = mudanca.value.contacts?.find((c) => c.wa_id === m.from)?.profile?.name ?? null;
+          const recebida = {
+            wamid: m.id,
+            numero: m.from,
+            // áudio, foto e figurinha chegam sem texto: a IA pede para escrever
+            texto: texto ?? (m.type && m.type !== "text" ? `[a pessoa mandou ${m.type === "audio" ? "um áudio" : m.type === "image" ? "uma foto" : "um arquivo"}]` : ""),
+            payload,
+            nome,
+            origem: origemDoAnuncio(m.referral),
+          };
+          depois.push(() => atenderConversa(cfg, banco, chave, recebida));
+          continue;
+        }
         const volta = (data as { texto?: string } | null)?.texto;
         if (volta && cfg) {
           const r = await enviarTexto(cfg, m.from, volta);
@@ -922,5 +1003,5 @@ export async function tratarAvisoDaMeta(aviso: AvisoDaMeta, cliente?: ClienteBan
       }
     }
   }
-  return { tratados };
+  return { tratados, depois };
 }

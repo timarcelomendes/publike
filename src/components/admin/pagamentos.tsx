@@ -17,7 +17,7 @@ import { useAcao } from "../ui/usar-acao";
 // Admin › Pagamentos: abrir para todos, as contas de teste e o serviço da nota (os preços: tabela-de-precos.tsx).
 
 /**
- * O aviso do grátis de cada mês (migração 20270731120000): "Avisar N contas" e a confirmação antes de mandar, no sino e
+ * O aviso do grátis de cada mês (migração 20270801120000): "Avisar N contas" e a confirmação antes de mandar, no sino e
  * por e-mail. Cada conta recebe uma vez só.
  */
 export function AvisarDoGratis({ quantas }: { quantas: number }) {

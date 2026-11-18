@@ -4284,8 +4284,42 @@ export type Database = {
       servidor_guardar_indicadores: { Args: { p_chave: string }; Returns: number };
       servidor_resumo_receita: { Args: { p_chave: string }; Returns: boolean };
       admin_whatsapp_pedidos: { Args: Record<string, never>; Returns: Json };
+      // o atendimento pelo WhatsApp (migração 20270801120000)
+      servidor_whatsapp_conversa_entrada: {
+        Args: {
+          p_chave: string;
+          p_numero: string;
+          p_texto: string;
+          p_nome?: string | null;
+          p_origem?: Json | null;
+          p_payload?: string | null;
+          p_wamid?: string | null;
+        };
+        Returns: Json;
+      };
+      servidor_whatsapp_conversa_saida: {
+        Args: {
+          p_chave: string;
+          p_conversa: string;
+          p_texto: string;
+          p_wamid?: string | null;
+          p_perfil?: string | null;
+          p_equipe?: boolean;
+          p_motivo?: string | null;
+        };
+        Returns: undefined;
+      };
+      admin_whatsapp_conversas: { Args: { p_filtro?: string }; Returns: Json };
+      admin_whatsapp_conversa: { Args: { p_conversa: string }; Returns: Json };
+      admin_whatsapp_conversa_situacao: { Args: { p_conversa: string; p_situacao: string }; Returns: undefined };
+      admin_whatsapp_conversa_numero: { Args: { p_conversa: string }; Returns: Json };
+      admin_whatsapp_conversa_registrar: {
+        Args: { p_conversa: string; p_texto: string; p_wamid: string };
+        Returns: undefined;
+      };
+      admin_salvar_atendimento_whatsapp: { Args: { p_ligado: boolean; p_por_dia: number }; Returns: undefined };
       admin_whatsapp_pedir_aceite: { Args: Record<string, never>; Returns: number };
-      /** o aviso do grátis de cada mês (migração 20270731120000) */
+      /** o aviso do grátis de cada mês (migração 20270801120000) */
       admin_aviso_gratis: { Args: Record<string, never>; Returns: Json };
       admin_avisar_gratis: { Args: Record<string, never>; Returns: number };
       whatsapp_pedido_ver: { Args: { p_token: string }; Returns: Json };

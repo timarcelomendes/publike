@@ -87,7 +87,7 @@ export async function salvarGratisDoMes(d: { triagem: number; gravadas: number; 
 }
 
 /**
- * O aviso do grátis de cada mês (migração 20270731120000): o sino e o e-mail para cada conta que contrata e ainda não
+ * O aviso do grátis de cada mês (migração 20270801120000): o sino e o e-mail para cada conta que contrata e ainda não
  * recebeu (uma vez por conta). Só quando a equipe toca em "Avisar".
  */
 export async function avisarDoGratis(): Promise<Resultado> {
@@ -96,7 +96,7 @@ export async function avisarDoGratis(): Promise<Resultado> {
   const { data, error } = await c.rpc("admin_avisar_gratis");
   if (error) {
     if (error.code === "PGRST202")
-      return { ok: false, erro: "Rode a migração 20270731120000_aviso_do_gratis_de_cada_mes.sql primeiro." };
+      return { ok: false, erro: "Rode a migração 20270801120000_aviso_do_gratis_de_cada_mes.sql primeiro." };
     return falha(error);
   }
   const n = Number(data ?? 0);
