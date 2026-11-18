@@ -13,7 +13,7 @@ import { caminhoSeguro, primeiro } from "@/lib/formato";
 import { contexto, type Contexto } from "@/lib/contexto-de-entrar";
 import { REDES_ATIVAS } from "@/lib/login-social";
 import { redesParaEntrar } from "@/lib/login-social-servidor";
-import { COOKIE_ORIGEM, origemValida } from "@/lib/origem";
+import { COOKIE_CHEGADA, COOKIE_ENTRADA, COOKIE_ORIGEM, FORMATO_DA_ENTRADA, origemValida } from "@/lib/origem";
 import { emailValido } from "@/lib/email-valido";
 
 /** Mensagens para ?erro= (vem de /auth/callback). */
@@ -73,8 +73,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
       : "Não foi possível entrar. Tente de novo."
     : undefined;
   const redes = await redesParaEntrar();
-  // chegou por uma campanha: ela vai no link de entrar (quem abre o e-mail em outro navegador não perde)
-  const origem = (await cookies()).get(COOKIE_ORIGEM)?.value;
+  // chegou por uma campanha (ou, sem ela, de onde chegou e por qual página): vai no link de entrar (quem abre o
+  // e-mail em outro navegador não perde)
+  const jar = await cookies();
+  const origem = jar.get(COOKIE_ORIGEM)?.value;
+  const chegada = jar.get(COOKIE_CHEGADA)?.value;
+  const entrada = jar.get(COOKIE_ENTRADA)?.value;
   // veio do link de acesso (/acesso/<token>): o e-mail já ficou ligado à conta
   const emailPedido = primeiro(sp.email)?.trim().slice(0, 200);
   const emailInicial = emailValido(emailPedido) ? emailPedido : undefined;
@@ -89,6 +93,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
       <FormEntrar
         proximo={proximo}
         origem={origemValida(origem) ? origem : undefined}
+        chegada={origemValida(chegada) ? chegada : undefined}
+        entrada={entrada && FORMATO_DA_ENTRADA.test(entrada) ? entrada : undefined}
         erroInicial={erro}
         redes={redes}
         celular={LOGIN_CELULAR}

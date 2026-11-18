@@ -2450,7 +2450,10 @@ export type Database = {
       recusar_convite: { Args: { p_token: string }; Returns: boolean };
       /** conta nova que veio pela página de serviços: as boas-vindas viram as de prestador */
       quero_oferecer_servicos: { Args: Record<string, never>; Returns: undefined };
-      registrar_origem: { Args: { p_origem: string }; Returns: undefined };
+      registrar_origem: {
+        Args: { p_origem?: string | null; p_chegada?: string | null; p_entrada?: string | null };
+        Returns: undefined;
+      };
       ponto_conhecido: {
         Args: { p_cep: string; p_numero: string };
         Returns: { lat: number; lng: number; vezes: number }[];
@@ -2459,6 +2462,8 @@ export type Database = {
         Args: { p_desde?: string };
         Returns: {
           origem: string;
+          /** a origem é a campanha do link (false: a chegada sem campanha ou "sem-registro"), desde 20270802120000 */
+          campanha?: boolean;
           contas: number;
           publicaram_vaga: number;
           publicaram_servico: number;
@@ -2466,6 +2471,10 @@ export type Database = {
           primeira: string;
           ultima: string;
         }[];
+      };
+      admin_entradas: {
+        Args: { p_desde?: string };
+        Returns: { origem: string; entrada: string; contas: number; publicaram_vaga: number }[];
       };
       autorizar_contratacao_publica: {
         Args: { p_anuncio: string; p_perfil: string; p_sim: boolean };

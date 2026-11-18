@@ -27,6 +27,7 @@ export type ItemRegistro = Linha<"admin_registro">;
 export type Moderador = Linha<"admin_listar_moderadores">;
 export type ChaveServidor = Linha<"admin_listar_chaves_servidor">;
 export type OrigemContas = Linha<"admin_origens">;
+export type EntradaContas = Linha<"admin_entradas">;
 export type ConfigSite = Database["public"]["Tables"]["config_site"]["Row"];
 export type ResumoIA = Linha<"admin_ultimo_resumo">;
 
@@ -1070,11 +1071,40 @@ export async function listarChavesServidor(c: ClienteBanco) {
   return data ?? [];
 }
 
-/** Contas novas por campanha (o utm do link do anúncio) e quantas publicaram; "direto" são as sem campanha. */
+/**
+ * Contas novas por origem e quantas publicaram: a campanha (o utm do link, `campanha`); sem ela, de onde chegou
+ * ("busca:google", "direto"); sem as duas, "sem-registro". Antes da migração 20270802120000, as sem campanha vinham
+ * todas como "direto".
+ */
 export async function origensDasContas(c: ClienteBanco, desde: string | null) {
   const { data, error } = await c.rpc("admin_origens", desde ? { p_desde: desde } : {});
   if (error) falha("as campanhas", error);
   return data ?? [];
+}
+
+/**
+ * Por onde entraram as contas novas: a página de entrada e a origem (null: sem a migração 20270802120000). A página de
+ * uma vaga vem com o título, para a tabela não mostrar só o código.
+ */
+export async function entradasDasContas(
+  c: ClienteBanco,
+  desde: string | null,
+): Promise<(EntradaContas & { titulo?: string })[] | null> {
+  const { data, error } = await c.rpc("admin_entradas", desde ? { p_desde: desde } : {});
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha nas páginas de entrada: ${error.message}`);
+    return null;
+  }
+  const linhas = data ?? [];
+  const idDaVaga = (caminho: string) => /^\/anuncio\/([0-9a-f-]{36})$/i.exec(caminho)?.[1];
+  const ids = [...new Set(linhas.map((l) => idDaVaga(l.entrada)).filter((id): id is string => Boolean(id)))].slice(0, 200);
+  if (ids.length === 0) return linhas;
+  const { data: anuncios } = await c.from("anuncios").select("id, titulo").in("id", ids);
+  const titulos = new Map((anuncios ?? []).map((a) => [a.id, a.titulo]));
+  return linhas.map((l) => {
+    const titulo = titulos.get(idDaVaga(l.entrada) ?? "");
+    return titulo ? { ...l, titulo } : l;
+  });
 }
 
 /** Um match para o admin: quem curtiu, o anúncio, quem publicou e quando. */

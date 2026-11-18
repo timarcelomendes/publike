@@ -2,16 +2,18 @@ import type { Conteudo } from "../tipos";
 
 export const conteudo: Conteudo = {
   slug: "curriculo-simples-que-funciona",
-  titulo: "Currículo simples que funciona: modelo para quem procura vaga em Goiânia",
+  // 18/11/2026 (claude/plano-organico.md, item 4): o artigo fica com o "como fazer"; a busca por "currículo simples" e
+  // "modelo" é da ferramenta, /curriculo-simples, que o primeiro parágrafo aponta com esse texto
+  titulo: "Como fazer um currículo simples: o que colocar e o que deixar de fora",
   descricao:
-    "Um currículo curto, claro e fácil de ler no celular já abre portas. Veja o que colocar, o que deixar de fora e como montar o seu de graça no Publike.",
+    "O que colocar, o que deixar de fora e como contar bico e primeiro emprego num currículo curto e fácil de ler no celular. Para montar o seu, use o currículo simples para preencher, grátis.",
   tema: "procurar",
   publicado: "2026-10-12",
   blocos: [
     {
       t: "p",
       texto:
-        "Muita gente deixa de procurar vaga porque acha que não tem um currículo bonito. Pode ficar tranquilo: quem contrata em Goiânia quer saber poucas coisas, e rápido. Quem você é, onde mora, o que sabe fazer e como falar com você. Um currículo simples, de uma página, resolve.",
+        "Muita gente deixa de procurar vaga porque acha que não tem um currículo bonito. Pode ficar tranquilo: quem contrata em Goiânia quer saber poucas coisas, e rápido. Quem você é, onde mora, o que sabe fazer e como falar com você. Um currículo simples, de uma página, resolve. Se quiser ir direto ao ponto, use o [currículo simples para preencher](/curriculo-simples) do Publike: fica pronto em PDF em poucos minutos, sem cadastro.",
     },
     {
       t: "p",
@@ -26,7 +28,7 @@ export const conteudo: Conteudo = {
       href: "/curriculo-simples",
     },
     { t: "numero", valor: "50.529", rotulo: "empregos com carteira criados em Goiás de janeiro a agosto de 2026", fonte: 1 },
-    { t: "h2", texto: "O modelo: cinco partes e pronto" },
+    { t: "h2", texto: "As cinco partes de um currículo simples" },
     {
       t: "p",
       texto:

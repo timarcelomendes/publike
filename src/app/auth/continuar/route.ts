@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { obterMeuPerfil, obterUsuario, perfilParaEntrar } from "@/lib/dados";
 import { caminhoSeguro } from "@/lib/formato";
-import { COOKIE_ORIGEM } from "@/lib/origem";
+import { COOKIE_CHEGADA, COOKIE_ENTRADA, COOKIE_ORIGEM } from "@/lib/origem";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
 import { criarPerfilSozinho } from "@/lib/servidor/perfil-sozinho";
 
@@ -15,10 +15,15 @@ export async function GET(request: NextRequest) {
   const usuario = await obterUsuario();
   if (!usuario) return NextResponse.redirect(`${base}/entrar?next=${encodeURIComponent(proximo)}`);
 
-  // Chegou por uma campanha: se a conta acabou de nascer, o banco anota de qual (só conta nova conta).
-  // o cookie deste navegador ou, sem ele (link do e-mail aberto em outro navegador), a que veio no link
-  const origem = request.cookies.get(COOKIE_ORIGEM)?.value;
-  await registrarOrigemDaConta(origem ?? url.searchParams.get("origem"));
+  // De onde a conta veio (a campanha do link; sem ela, também o canal da chegada e a página de entrada): se a conta
+  // acabou de nascer, o banco anota (só conta nova conta). O cookie deste navegador ou, sem ele (o link do e-mail
+  // aberto em outro navegador), o que veio no link.
+  const cookie = (nome: string) => request.cookies.get(nome)?.value;
+  await registrarOrigemDaConta({
+    origem: cookie(COOKIE_ORIGEM) ?? url.searchParams.get("origem"),
+    chegada: cookie(COOKIE_CHEGADA) ?? url.searchParams.get("chegada"),
+    entrada: cookie(COOKIE_ENTRADA) ?? url.searchParams.get("entrada"),
+  });
 
   const perfil = await obterMeuPerfil();
   // conta nova pela rede (Google, LinkedIn), procurando trabalho: o perfil nasce sozinho, sem a tela do cadastro
@@ -28,7 +33,9 @@ export async function GET(request: NextRequest) {
       ? `${base}${proximo}`
       : `${base}/perfil?completar=1&next=${encodeURIComponent(proximo)}`,
   );
-  // já serviu: quem entra de novo depois não conta outra vez
-  if (origem !== undefined) resposta.cookies.delete(COOKIE_ORIGEM);
+  // já serviram: quem entra de novo depois não conta outra vez
+  for (const nome of [COOKIE_ORIGEM, COOKIE_CHEGADA, COOKIE_ENTRADA]) {
+    if (cookie(nome) !== undefined) resposta.cookies.delete(nome);
+  }
   return resposta;
 }

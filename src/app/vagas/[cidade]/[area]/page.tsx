@@ -1,22 +1,34 @@
 import { notFound } from "next/navigation";
 import { lerBusca, metadadosDaBusca, PaginaDeBusca } from "@/components/pagina-busca";
 import { lerFuncao, metadadosDaFuncao, PaginaDeFuncao } from "@/components/pagina-funcao";
+import { lerHoje, metadadosDeHoje, PaginaDeHoje } from "@/components/pagina-hoje";
 import { metadadosDosProgramas, PaginaDosProgramas } from "@/components/pagina-programas";
 import { lerRecentes, metadadosDasRecentes, PaginaDasRecentes } from "@/components/pagina-recentes";
 import { CATEGORIAS } from "@/lib/constantes";
-import { areaDoSlug, CIDADES_PRINCIPAIS, SLUG_PROGRAMAS, SLUG_RECENTES, slugDaCidade } from "@/lib/paginas-busca";
+import {
+  areaDoSlug,
+  CIDADES_PRINCIPAIS,
+  SLUG_HOJE,
+  SLUG_PROGRAMAS,
+  SLUG_RECENTES,
+  slugDaCidade,
+} from "@/lib/paginas-busca";
 import { paginasDeFuncao } from "@/lib/servidor/paginas-funcao";
 
 // Página para o Google: uma área numa cidade (ex.: /vagas/goiania/limpeza) ou, no mesmo lugar, uma função
 // (/vagas/goiania/frentista; claude/plano-vagas-por-funcao.md), ou as vagas novas (/vagas/goiania/ultimos-3-dias;
-// claude/plano-vagas-dos-ultimos-3-dias.md), ou estágio e aprendiz (claude/plano-estagio-e-jovem-aprendiz.md). O nome
-// decide: os dois nomes fixos, área, depois função.
+// claude/plano-vagas-dos-ultimos-3-dias.md), ou estágio e aprendiz (claude/plano-estagio-e-jovem-aprendiz.md), ou os
+// números do dia (/vagas/goiania/hoje; claude/plano-organico.md). O nome decide: os três nomes fixos, área, depois
+// função.
 // As páginas já montadas no build (17/11/2026, "deixe a performance invejável"): as áreas, as vagas novas e o estágio
 // das cidades principais e as funções do sitemap (são a entrada do Google e dos anúncios). Montadas, saem prontas do
 // cache, com o título e o texto no começo do HTML; as outras continuam abrindo na hora.
 export async function generateStaticParams() {
   const fixas = CIDADES_PRINCIPAIS.flatMap((c) =>
-    [...CATEGORIAS.map((a) => a.slug), SLUG_RECENTES, SLUG_PROGRAMAS].map((area) => ({ cidade: slugDaCidade(c), area })),
+    [...CATEGORIAS.map((a) => a.slug), SLUG_RECENTES, SLUG_PROGRAMAS, SLUG_HOJE].map((area) => ({
+      cidade: slugDaCidade(c),
+      area,
+    })),
   );
   const funcoes = (await paginasDeFuncao().catch(() => [])).map((f) => ({
     cidade: slugDaCidade(f.cidade),
@@ -35,6 +47,7 @@ export async function generateMetadata({ params }: PageProps<"/vagas/[cidade]/[a
   const { cidade, area } = await params;
   if (area === SLUG_RECENTES) return metadadosDasRecentes(lerRecentes(cidade));
   if (area === SLUG_PROGRAMAS) return metadadosDosProgramas(lerRecentes(cidade));
+  if (area === SLUG_HOJE) return metadadosDeHoje(lerHoje(cidade));
   if (areaDoSlug(area)) return metadadosDaBusca(lerBusca("vaga", cidade, area));
   const funcao = await lerFuncao(cidade, area);
   if (!funcao) notFound();
@@ -50,6 +63,7 @@ async function AreaOuFuncao({ params }: { params: PageProps<"/vagas/[cidade]/[ar
   const { cidade, area } = await params;
   if (area === SLUG_RECENTES) return <PaginaDasRecentes cidade={lerRecentes(cidade)} />;
   if (area === SLUG_PROGRAMAS) return <PaginaDosProgramas cidade={lerRecentes(cidade)} />;
+  if (area === SLUG_HOJE) return <PaginaDeHoje cidade={lerHoje(cidade)} />;
   if (areaDoSlug(area)) return <PaginaDeBusca {...lerBusca("vaga", cidade, area)} />;
   const funcao = await lerFuncao(cidade, area);
   if (!funcao) notFound();

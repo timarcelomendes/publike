@@ -14,7 +14,7 @@ import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_SAIU, DURACAO_SAIU } from "@/lib/entrar-sozinho";
 import { COOKIE_INTENCAO } from "@/lib/intencao";
 import { lerModos, modosDoTipo } from "@/lib/modo-painel";
-import { COOKIE_ORIGEM } from "@/lib/origem";
+import { COOKIE_CHEGADA, COOKIE_ENTRADA, COOKIE_ORIGEM } from "@/lib/origem";
 import { COOKIE_LOCAL } from "@/lib/local";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
@@ -232,14 +232,18 @@ export async function irDepoisDoLogin(proximo: string) {
   const destino = caminhoSeguro(proximo, "/");
   const usuario = await obterUsuario();
   if (!usuario) redirect(`/entrar?next=${encodeURIComponent(destino)}`);
-  // entrou pelo celular (código por SMS): se chegou por uma campanha e a conta é nova, anota de qual
-  // (os outros jeitos de entrar passam por /auth/continuar, que faz o mesmo)
+  // entrou pelo celular (código por SMS) ou pelo Google num toque: se a conta é nova, anota de onde veio (a campanha,
+  // a chegada e a página de entrada; os outros jeitos de entrar passam por /auth/continuar, que faz o mesmo)
   const jar = await cookies();
-  const origem = jar.get(COOKIE_ORIGEM)?.value;
-  if (origem !== undefined) {
-    await registrarOrigemDaConta(origem);
-    // já serviu: quem entra de novo depois não conta outra vez
-    jar.delete(COOKIE_ORIGEM);
+  const guardados = [COOKIE_ORIGEM, COOKIE_CHEGADA, COOKIE_ENTRADA].filter((nome) => jar.has(nome));
+  if (guardados.length > 0) {
+    await registrarOrigemDaConta({
+      origem: jar.get(COOKIE_ORIGEM)?.value,
+      chegada: jar.get(COOKIE_CHEGADA)?.value,
+      entrada: jar.get(COOKIE_ENTRADA)?.value,
+    });
+    // já serviram: quem entra de novo depois não conta outra vez
+    for (const nome of guardados) jar.delete(nome);
   }
   const perfil = await obterMeuPerfil();
   atualizarCabecalho();

@@ -7,6 +7,7 @@ import { noticiasPublicadas } from "@/lib/servidor/noticias";
 import {
   caminhoDaBusca,
   caminhoDasRecentes,
+  caminhoDeHoje,
   caminhoDosProgramas,
   caminhoDoBairro,
   cidadeDoSlug,
@@ -61,6 +62,15 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
           url: `${SITE_URL}${caminhoDasRecentes(cidade)}`,
           lastModified: maisNova(daCidade),
           changeFrequency: "daily",
+          priority: 0.7,
+        });
+      }
+      // os números do dia (/vagas/goiania/hoje; claude/plano-organico.md), com pelo menos 3 vagas (com menos, noindex)
+      if (tipo === "vaga" && CIDADES_PRINCIPAIS.includes(cidade) && daCidade.length >= 3) {
+        lista.push({
+          url: `${SITE_URL}${caminhoDeHoje(cidade)}`,
+          lastModified: maisNova(daCidade),
+          changeFrequency: "hourly",
           priority: 0.7,
         });
       }

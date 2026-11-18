@@ -36,6 +36,7 @@ export default function Privacidade() {
             "Quando você usa “Perto de mim”, a localização serve só para a busca e não fica salva no seu perfil.",
             "Quantas vezes cada anúncio foi aberto, para a ordem “Mais relevantes”: uma vez por pessoa por dia, sem guardar quem. O endereço de internet e o navegador viram um código que muda todo dia, e nem o Publike consegue saber de quem era. Fica 30 dias.",
             "Quanto tempo as páginas do site ficam na tela, para melhorar o que as pessoas mais usam: só a soma do dia por tipo de página (por exemplo, “página de vaga”), sem guardar quem, o endereço da página, o endereço de internet nem o aparelho. Nada fica guardado no seu navegador para isso.",
+            "Ao criar a conta: de onde você chegou ao Publike (a campanha do anúncio, como google:servicos, ou o site que mandou você, como a busca do Google, uma IA ou o Instagram) e a primeira página que abriu. Serve para saber quais canais e quais páginas trazem gente, e a equipe vê só os números somados. Veja os cookies publike_origem, publike_chegada e publike_entrada em Cookies.",
           ]}
         />
       </Secao>

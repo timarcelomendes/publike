@@ -3,6 +3,7 @@ import { cache } from "react";
 import {
   acessosDoSite,
   curriculosPorSemana,
+  entradasDasContas,
   funilDoPublicar,
   funilDoVisitante,
   metricasDeProduto,
@@ -15,6 +16,7 @@ import {
   presencaNoSite,
   tempoNasPaginas,
   type AcessosSite,
+  type EntradaContas,
   type MetricasProduto,
   type NumerosPainel,
   type OrigemContas,
@@ -166,9 +168,15 @@ async function custosDoPeriodo(c: ClienteBanco, f: FiltroDoPainel, d: Dinheiro |
         origensDasContas(c, ini).catch(() => []),
         fim.getTime() < agora ? origensDasContas(c, fim.toISOString()).catch(() => []) : Promise.resolve([]),
       ]);
-      for (const o of desde) {
-        const tirar = depois.find((x) => x.origem === o.origem)?.contas ?? 0;
-        contasPorOrigemNoMes[`${mes}|${o.origem}`] = Number(o.contas) - Number(tirar);
+      // a mesma origem pode vir em duas linhas (a campanha e a chegada com o mesmo nome): soma
+      const somar = (linhas: OrigemContas[]) => {
+        const m = new Map<string, number>();
+        for (const o of linhas) m.set(o.origem, (m.get(o.origem) ?? 0) + Number(o.contas));
+        return m;
+      };
+      const tirar = somar(depois);
+      for (const [origem, contas] of somar(desde)) {
+        contasPorOrigemNoMes[`${mes}|${origem}`] = contas - (tirar.get(origem) ?? 0);
       }
     }),
   );
@@ -238,6 +246,8 @@ export type DadosDoPainel = {
   /** de cada semana de contas novas de quem procura, quantas fizeram o currículo (migração 20270503120000) */
   curriculos?: SemanaDoCurriculo[] | null;
   origens?: OrigemContas[] | null;
+  /** por onde entraram as contas novas (migração 20270802120000), com o título das vagas */
+  entradas?: (EntradaContas & { titulo?: string })[] | null;
   receita?: Receita | null;
   testeApp?: Awaited<ReturnType<typeof numerosDoTesteApp>> | null;
 };
@@ -291,14 +301,16 @@ export async function dadosDaAba(aba: AbaDoPainel, agora: number, filtro: Filtro
       };
     }
     case "chegada": {
-      const [acessos, presenca, portas, funilVisitante, origens] = await Promise.all([
+      const desde = new Date(agora - dias * DIA).toISOString();
+      const [acessos, presenca, portas, funilVisitante, origens, entradas] = await Promise.all([
         acessosDoSite(c),
         presencaNoSite(c),
         portasDeEntrada(c, dias),
         funilDoVisitante(c, dias),
-        origensDasContas(c, new Date(agora - dias * DIA).toISOString()).catch(() => null),
+        origensDasContas(c, desde).catch(() => null),
+        entradasDasContas(c, desde).catch(() => null),
       ]);
-      return { filtro, acessos, presenca, portas, funilVisitante, origens };
+      return { filtro, acessos, presenca, portas, funilVisitante, origens, entradas };
     }
     case "cadastro": {
       const [n, metricas, funilPublicar, curriculos] = await Promise.all([
@@ -333,7 +345,9 @@ export async function dadosDaAba(aba: AbaDoPainel, agora: number, filtro: Filtro
         origensDasContas(c, null).catch(() => []),
       ]);
       const custos = await custosDoPeriodo(c, filtro, dinheiro, agora);
-      return { filtro, receita, dinheiro, custos, canais: origens.map((o) => o.origem) };
+      // o canal do gasto é uma campanha (o utm do link): a chegada sem campanha não tem gasto
+      const canais = [...new Set(origens.filter((o) => o.campanha ?? o.origem !== "direto").map((o) => o.origem))];
+      return { filtro, receita, dinheiro, custos, canais };
     }
     case "site": {
       const [n, tempo, metricas] = await Promise.all([resumoDoAdmin(), tempoNasPaginas(c), metricasDeProduto(c)]);

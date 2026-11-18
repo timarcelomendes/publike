@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { AbaDoPainel } from "./abas";
 import { CurriculosPorSemana } from "../curriculos-por-semana";
 import { FormGasto, TabelaGastos } from "./form-gasto";
+import { EntradasDasContas, OrigensDasContas } from "./origens-das-contas";
 import { VisaoGeral } from "./visao-geral";
 import { FunilDoPublicar } from "@/components/admin/funil-publicar";
 import { FunilDoVisitante, PortasDeEntrada } from "@/components/admin/funil-visitante";
@@ -32,8 +33,6 @@ import { categoria } from "@/lib/constantes";
 
 // O conteúdo de cada aba do Painel, só de leitura: o admin e Equipe › Números passam os dados (o que não veio, não
 // aparece). `admin` liga os links para as listas; `extra` é o que só o admin tem (as contas no app).
-
-const NOMES_DAS_ORIGENS: Record<string, string> = { direto: "Direto (sem campanha)" };
 
 export function ConteudoDaAba({
   aba,
@@ -68,45 +67,8 @@ export function ConteudoDaAba({
           {d.presenca && <SecaoPresenca presenca={d.presenca} />}
           <SecaoAcessos acessos={d.acessos ?? null} />
           {d.portas && <PortasDeEntrada portas={d.portas} dias={dias} />}
-          {d.origens && d.origens.length > 0 && (
-            <Secao
-              titulo={`De onde vêm as contas (${dias} dias)`}
-              descricao={`As contas criadas nos últimos ${dias} dias, pela origem do primeiro acesso. O detalhe fica em Admin › Campanhas.`}
-            >
-              <div className="-mx-1 overflow-x-auto px-1">
-                <table className="w-full min-w-[30rem] text-body-sm tabular-nums">
-                  <thead>
-                    <tr className="border-b border-line text-left text-ink-muted">
-                      <th scope="col" className="py-2 pr-2 font-normal">
-                        Origem
-                      </th>
-                      <th scope="col" className="py-2 text-right font-normal">
-                        Contas
-                      </th>
-                      <th scope="col" className="py-2 text-right font-normal">
-                        Publicaram vaga
-                      </th>
-                      <th scope="col" className="py-2 text-right font-normal">
-                        Anúncios no ar
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.origens.map((o) => (
-                      <tr key={o.origem} className="border-b border-line last:border-0">
-                        <th scope="row" className="py-2 pr-2 text-left font-normal">
-                          {NOMES_DAS_ORIGENS[o.origem] ?? o.origem}
-                        </th>
-                        <td className="py-2 text-right">{formatarNumero(o.contas)}</td>
-                        <td className="py-2 text-right">{formatarNumero(o.publicaram_vaga)}</td>
-                        <td className="py-2 text-right">{formatarNumero(o.anuncios_no_ar)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Secao>
-          )}
+          {d.origens && d.origens.length > 0 && <OrigensDasContas origens={d.origens} dias={dias} />}
+          {d.entradas !== undefined && <EntradasDasContas entradas={d.entradas} dias={dias} />}
           {d.funilVisitante && <FunilDoVisitante funil={d.funilVisitante} dias={dias} />}
         </>
       );

@@ -56,6 +56,15 @@ export function caminhoDosProgramas(cidade: string) {
   return `/vagas/${slugDaCidade(cidade)}/${SLUG_PROGRAMAS}`;
 }
 
+/**
+ * As vagas de hoje na cidade, com os números do dia (claude/plano-organico.md, item 2): /vagas/goiania/hoje. É a
+ * página que as IAs e a busca "vagas de emprego em Goiânia hoje" citam.
+ */
+export const SLUG_HOJE = "hoje";
+export function caminhoDeHoje(cidade: string) {
+  return `/vagas/${slugDaCidade(cidade)}/${SLUG_HOJE}`;
+}
+
 /** "em Goiânia", "em Aparecida de Goiânia". */
 export function emCidade(cidade: string) {
   return `em ${cidade}`;

@@ -18,7 +18,8 @@ export default function Cookies() {
       <Secao id="necessarios" titulo="Os necessários">
         <p>
           O Publike usa os cookies necessários para funcionar. Os de propaganda (do Google Ads) só entram se você tocar
-          em “Aceitar” no aviso de cookies ou ligar mais abaixo, nesta página. Não usamos cookies de análise de audiência.
+          em “Aceitar” no aviso de cookies ou ligar mais abaixo, nesta página. Não usamos ferramentas de análise de
+          audiência de fora, como o Google Analytics.
         </p>
         <Lista
           itens={[
@@ -29,6 +30,7 @@ export default function Cookies() {
             "publike_pediu_link: marca, por uma hora, que este navegador pediu um link de entrar por e-mail. Com ela, o link entra sozinho aqui; em outro aparelho, a página pergunta antes.",
             "publike_impulso: quando você chega pelo anúncio de uma vaga impulsionada, guarda o código desse anúncio e um número sorteado do seu navegador por até 7 dias. Serve para contar, sem repetir, quantas pessoas o anúncio trouxe, até onde foram no caminho de curtir (tocar em Curtir, entrar, responder) e quantas curtiram a vaga, no relatório de quem contratou e da equipe do Publike. Não guarda seu nome e não vai para o Google.",
             "publike_origem: quando você chega por um anúncio do Publike (no Google ou no Instagram, por exemplo), guarda só o nome da campanha, como google:servicos, por até 7 dias. Se você criar a conta nesse tempo, anotamos de qual campanha veio, para saber se o anúncio funciona. Não vai para o Google nem para ninguém.",
+            "publike_chegada e publike_entrada: quando você chega sem conta, guardam por até 7 dias só de onde veio, pelo site que mandou você (por exemplo, busca:google, ia:gemini, rede:instagram ou direto, quando o navegador não diz), e a primeira página que abriu (como /vagas/goiania/frentista; nos links com código, só o começo do endereço). Se você criar a conta nesse tempo, anotamos os dois junto da conta, para saber quais páginas e quais canais trazem gente ao Publike. A equipe vê só os números somados. Não vai para o Google nem para ninguém, e some depois que você entra.",
             "No próprio navegador, fora dos cookies: que você já viu o aviso de cookies e o que escolheu nele, se prefere a lista ou o mapa, se dispensou o convite para instalar o app e, até fechar a aba, a conversa do assistente, a sua última busca, se deixou para depois a pergunta de onde mora e se fechou o aviso de versão nova do site.",
             "Na tela de entrar: a verificação contra robôs da Cloudflare e o botão do Google (se você usar) podem gravar cookies desses serviços.",
             "publike_conversao: dura no máximo 10 minutos e guarda só o nome de um momento, como cadastro, currículo salvo, candidatura ou vaga publicada. Com o aceite, o navegador conta esse momento ao Google Ads; sem o aceite, só apaga.",

@@ -22,6 +22,7 @@ import {
   vagasDaFuncao,
 } from "@/lib/servidor/paginas-funcao";
 import { agoraDaPaginaPublica } from "@/lib/tempo";
+import { textoDaFuncao } from "@/lib/textos-das-funcoes";
 import { CardAnuncio } from "./card-anuncio";
 import { CARTOES_INTEIROS, ListaLeveDeAnuncios } from "./lista-leve-de-anuncios";
 import { DadosEstruturados } from "./dados-estruturados";
@@ -68,7 +69,7 @@ export async function metadadosDaFuncao({ cidade, funcao }: PaginaFuncao): Promi
   const quantas = vagas.length === 0 ? "Vagas" : vagas.length === 1 ? "1 vaga" : `${vagas.length} vagas`;
   const descricao = `${quantas} de ${funcao.nome} em ${cidade} (GO)${
     faixa ? ` e quanto se paga na região: ${faixaEmTexto(faixa)} por mês, pelo Novo Caged` : ""
-  }. Candidate-se grátis pelo Publike, perto de casa.`;
+  }.${textoDaFuncao(funcao.slug) ? " O que faz e o que as vagas pedem." : ""} Candidate-se grátis pelo Publike, perto de casa.`;
   return {
     title: titulo,
     description: descricao,
@@ -122,6 +123,8 @@ async function Conteudo({ cidade, funcao }: PaginaFuncao) {
   const caminho = caminhoDaFuncao(cidade, funcao.slug);
   const avisar = `/?tipo=vaga&q=${encodeURIComponent(nome)}`;
   const media = mediaDasVagas(vagas);
+  // o texto próprio das funções mais buscadas (claude/plano-organico.md, item 6); as outras ficam sem
+  const texto = textoDaFuncao(funcao.slug);
 
   // os bairros com vaga da função
   const porBairro = new Map<string, { nome: string; total: number }>();
@@ -170,6 +173,7 @@ async function Conteudo({ cidade, funcao }: PaginaFuncao) {
           ? `Sim: ${vagas.length === 1 ? "1 vaga está" : `${vagas.length} vagas estão`} no ar no Publike, com a distância e o tempo de ônibus de casa. Novas vagas entram todo dia.`
           : `Agora não há vaga de ${nome} no ar em ${cidade} no Publike. Ative o aviso nesta página e você fica sabendo quando abrir.`,
     },
+    ...(texto?.perguntas ?? []),
     {
       p: "Como me candidato?",
       r: "Toque em Curtir na vaga: curtir é se candidatar, de graça. Quando quem contrata aceita, dá match e vocês conversam pelo chat do Publike.",
@@ -270,6 +274,24 @@ async function Conteudo({ cidade, funcao }: PaginaFuncao) {
             </p>
             <p className="mt-3 text-caption text-ink-muted">Fonte: {fonteDaFaixa(faixa)}.</p>
           </div>
+        </section>
+      )}
+
+      {texto && (
+        <section aria-labelledby="o-que-faz" className="mt-10 max-w-3xl">
+          <h2 id="o-que-faz" className="text-h3">
+            O que faz um {nome}
+          </h2>
+          <p className="mt-2 text-body">{texto.faz}</p>
+          <h3 className="mt-5 text-label">O que as vagas costumam pedir</h3>
+          <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 text-body">
+            {texto.pedem.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="mt-4 rounded-lg border border-line bg-surface-200 p-4 text-body">
+            <strong className="font-semibold">Dica:</strong> {texto.dica}
+          </p>
         </section>
       )}
 

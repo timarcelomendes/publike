@@ -107,6 +107,23 @@ const EXEMPLO: Dados = {
   cnh: "B",
 };
 
+/** O exemplo de quem procura o primeiro emprego: sem carteira, com bico, voluntariado e curso (a página mostra). */
+const EXEMPLO_PRIMEIRO_EMPREGO: Dados = {
+  ...VAZIO,
+  nome: "João Pedro Alves",
+  whatsapp: "(62) 98888-0000",
+  email: "",
+  onde: "Jardim Nova Esperança, Goiânia",
+  objetivo: "Jovem aprendiz, repositor ou auxiliar de loja",
+  experiencias: [
+    { chave: "p1", cargo: "Ajudante (bico)", onde: "Lanchonete do tio, nos fins de semana", inicio: "2025-06", fim: "", atual: true, fazia: "Atendia no balcão, recebia no Pix e ajudava na limpeza." },
+    { chave: "p2", cargo: "Voluntário", onde: "Campanha do agasalho da escola", inicio: "2025-05", fim: "2025-07", atual: false, fazia: "Separava as doações e organizava a entrega." },
+  ],
+  escolaridade: "medio_incompleto",
+  cursos: "Informática básica (curso grátis on-line)\nAtendimento ao cliente on-line (Sebrae)",
+  sabe: "Atender bem, mexer no computador e no celular, organizar estoque",
+};
+
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 /** "2024-03" → "mar/2024" */
 function mes(valor: string) {
@@ -195,6 +212,96 @@ const linhas = (t: string) =>
     .map((x) => x.trim())
     .filter(Boolean);
 
+/** Leva o currículo para o formulário do site (o rascunho sem conta de /perfil/curriculo): volta preenchido depois de entrar. */
+function levarParaOSite(d: Dados) {
+  const comCurso = ["tecnico", "superior_incompleto", "superior", "pos"].includes(d.escolaridade);
+  const experiencias = d.experiencias.filter((e) => e.cargo.trim() || e.onde.trim());
+  try {
+    localStorage.setItem(
+      CHAVE_DO_SITE,
+      JSON.stringify({
+        salvo_em: Date.now(),
+        retrato: {
+          titulo: d.objetivo.trim(),
+          habilidades: linhas(d.sabe).slice(0, 20),
+          escolaridade: d.escolaridade,
+          curso: comCurso ? d.curso.trim() : "",
+          estudos: [],
+          experiencias: experiencias.map((e) => ({
+            chave: e.chave,
+            cargo: e.cargo.trim(),
+            onde: e.onde.trim(),
+            inicio: e.inicio,
+            fim: e.atual ? "" : e.fim,
+            atual: e.atual,
+            descricao: e.fazia.trim(),
+          })),
+          cursos: linhas(d.cursos).slice(0, 12),
+          cnh: d.cnh,
+          disponibilidade: [],
+          arquivo: null,
+          nomePdf: null,
+        },
+      }),
+    );
+  } catch {}
+}
+
+/**
+ * O convite do fim da página (claude/plano-organico.md): salvar no Publike para as empresas da região acharem. Leva o
+ * que a pessoa preencheu neste aparelho, se preencheu; sem nada, abre o currículo do site em branco.
+ */
+export function SalvarNoPublike({ className = "" }: { className?: string }) {
+  function levar() {
+    try {
+      const guardado = localStorage.getItem(CHAVE);
+      if (guardado) levarParaOSite({ ...VAZIO, ...(JSON.parse(guardado) as Partial<Dados>) });
+    } catch {}
+  }
+  return (
+    <Link
+      href="/perfil/curriculo"
+      onClick={levar}
+      className={`inline-flex min-h-11 items-center rounded-pill bg-ink px-5 text-label text-surface-100 hover:opacity-90 ${className}`}
+    >
+      Salvar meu currículo no Publike
+    </Link>
+  );
+}
+
+/** Os dois exemplos da página, em miniatura de leitura (o texto de verdade da folha, no modelo Simples). */
+export function ExemplosDeCurriculo() {
+  const exemplos = [
+    {
+      d: EXEMPLO,
+      titulo: "Com experiência",
+      texto: "Quem já trabalhou, de carteira ou não, conta o lugar, o tempo e duas ou três tarefas de cada trabalho.",
+    },
+    {
+      d: EXEMPLO_PRIMEIRO_EMPREGO,
+      titulo: "Primeiro emprego",
+      texto: "Sem carteira assinada, entram o bico, o voluntariado, os cursos (os grátis também) e o que você sabe fazer.",
+    },
+  ];
+  return (
+    <div className="mt-4 grid gap-6 sm:grid-cols-2">
+      {exemplos.map((e) => (
+        <figure key={e.titulo} className="flex min-w-0 flex-col gap-2">
+          {/* a folha (A4: 600 × 848) pela metade, sem rolar: as letras são as do currículo de verdade */}
+          <div className="relative mx-auto h-[424px] w-[300px] overflow-hidden rounded-md border border-line bg-white shadow-raised">
+            <div className="pointer-events-none absolute top-0 left-0 w-[600px] origin-top-left scale-50">
+              <Folha d={e.d} exemplo />
+            </div>
+          </div>
+          <figcaption className="mx-auto max-w-[300px] text-body-sm">
+            <strong className="font-semibold">{e.titulo}.</strong> <span className="text-ink-muted">{e.texto}</span>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 export function CurriculoSimples() {
   const id = useId();
   const [d, setD] = useState<Dados>(VAZIO);
@@ -219,45 +326,13 @@ export function CurriculoSimples() {
     setD((x) => ({ ...x, experiencias: x.experiencias.map((e) => (e.chave === chave ? { ...e, ...mudanca } : e)) }));
 
   const comCurso = ["tecnico", "superior_incompleto", "superior", "pos"].includes(d.escolaridade);
-  const experiencias = d.experiencias.filter((e) => e.cargo.trim() || e.onde.trim());
 
   function baixar() {
     window.print();
     setBaixou(true);
   }
 
-  // leva para o formulário do site: volta preenchido depois de entrar
-  function salvarNoPublike() {
-    try {
-      localStorage.setItem(
-        CHAVE_DO_SITE,
-        JSON.stringify({
-          salvo_em: Date.now(),
-          retrato: {
-            titulo: d.objetivo.trim(),
-            habilidades: linhas(d.sabe).slice(0, 20),
-            escolaridade: d.escolaridade,
-            curso: comCurso ? d.curso.trim() : "",
-            estudos: [],
-            experiencias: experiencias.map((e) => ({
-              chave: e.chave,
-              cargo: e.cargo.trim(),
-              onde: e.onde.trim(),
-              inicio: e.inicio,
-              fim: e.atual ? "" : e.fim,
-              atual: e.atual,
-              descricao: e.fazia.trim(),
-            })),
-            cursos: linhas(d.cursos).slice(0, 12),
-            cnh: d.cnh,
-            disponibilidade: [],
-            arquivo: null,
-            nomePdf: null,
-          },
-        }),
-      );
-    } catch {}
-  }
+  const salvarNoPublike = () => levarParaOSite(d);
 
   const rotulo = "text-label";
   return (
@@ -552,7 +627,7 @@ function EscolherModelo({ d, muda }: { d: Dados; muda: <K extends keyof Dados>(c
               {/* a folha de verdade, em tamanho pequeno (A4: 600 × 848) */}
               <span aria-hidden className="relative mx-auto block h-[170px] w-[120px] overflow-hidden rounded-sm border border-line bg-white">
                 <span className="pointer-events-none absolute top-0 left-0 block w-[600px] origin-top-left scale-[0.2]">
-                  <Folha d={{ ...amostra, modelo: m.valor }} />
+                  <Folha d={{ ...amostra, modelo: m.valor }} exemplo />
                 </span>
               </span>
               <span className="flex items-center justify-between gap-1">
@@ -591,7 +666,19 @@ function EscolherModelo({ d, muda }: { d: Dados; muda: <K extends keyof Dados>(c
  * A folha do currículo no modelo escolhido. `principal`: a da prévia, que vai para o PDF (o id que a impressão usa);
  * sem ela, a miniatura do seletor (largura fixa, escalada).
  */
-function Folha({ d, idNome, principal = false }: { d: Dados; idNome?: string; principal?: boolean }) {
+function Folha({
+  d,
+  idNome,
+  principal = false,
+  exemplo = false,
+}: {
+  d: Dados;
+  idNome?: string;
+  principal?: boolean;
+  /** um exemplo na página ou a miniatura do modelo: o nome e as partes sem virar títulos da página */
+  exemplo?: boolean;
+}) {
+  const Nome = exemplo ? "p" : "h2";
   const escolaridade = ESCOLARIDADES.find((e) => e.valor === d.escolaridade)?.nome ?? "";
   const comCurso = ["tecnico", "superior_incompleto", "superior", "pos"].includes(d.escolaridade);
   const experiencias = d.experiencias.filter((e) => e.cargo.trim() || e.onde.trim());
@@ -601,7 +688,7 @@ function Folha({ d, idNome, principal = false }: { d: Dados; idNome?: string; pr
   const cor = modelo === "moderno" || modelo === "coluna" ? d.cor : "#222";
   const nome = d.nome.trim() || "Seu nome completo";
   const contatos = [d.whatsapp && `WhatsApp ${d.whatsapp}`, d.email, d.onde].filter(Boolean) as string[];
-  const s = { modelo, cor };
+  const s = { modelo, cor, exemplo };
 
   const objetivo = d.objetivo.trim() && (
     <Secao titulo="Objetivo" {...s}>
@@ -662,16 +749,16 @@ function Folha({ d, idNome, principal = false }: { d: Dados; idNome?: string; pr
     principal
       ? "min-h-[34rem] rounded-md border border-line p-[7%] text-[13px] sm:text-[14px] print:min-h-0 print:rounded-none print:border-0 print:p-0"
       : "min-h-[848px] p-[42px] text-[14px]"
-  } ${modelo === "classico" ? "[&_h2]:[font-family:inherit] [&_h3]:[font-family:inherit]" : ""}`;
+  } ${modelo === "classico" ? "[&_.font-display]:[font-family:inherit]" : ""}`;
   // o Clássico: letra de livro (as do sistema, que saem iguais no PDF)
   const estiloFolha = modelo === "classico" ? { fontFamily: "Georgia, 'Times New Roman', serif" } : undefined;
 
   if (modelo === "coluna") {
     return (
       <article id={principal ? "folha-curriculo" : undefined} aria-labelledby={idNome} className={classeFolha} style={estiloFolha}>
-        <h2 id={idNome} className="text-[1.7em] leading-tight font-bold" style={{ color: cor }}>
+        <Nome id={idNome} className="font-display text-[1.7em] leading-tight font-bold" style={{ color: cor }}>
           {nome}
-        </h2>
+        </Nome>
         {d.objetivo.trim() && <p className="mt-0.5 text-[1em] text-[#444]">{d.objetivo}</p>}
         <div className="mt-[1.2em] grid grid-cols-[34%_1fr] gap-[1.4em]">
           <aside className="rounded-[6px] px-[0.9em] pt-[0.2em] pb-[1em]" style={{ background: `${cor}14` }}>
@@ -707,13 +794,13 @@ function Folha({ d, idNome, principal = false }: { d: Dados; idNome?: string; pr
         }
         style={modelo === "moderno" ? { borderColor: cor } : undefined}
       >
-        <h2
+        <Nome
           id={idNome}
-          className={`leading-tight font-bold ${modelo === "classico" ? "text-[1.7em] font-normal tracking-[0.02em]" : "text-[1.6em]"}`}
+          className={`font-display leading-tight font-bold ${modelo === "classico" ? "text-[1.7em] font-normal tracking-[0.02em]" : "text-[1.6em]"}`}
           style={modelo === "moderno" ? { color: cor } : undefined}
         >
           {nome}
-        </h2>
+        </Nome>
         <p className="mt-1 text-[0.8em] text-[#444]">
           {contatos.join("  ·  ") || "WhatsApp  ·  e-mail  ·  bairro e cidade"}
         </p>
@@ -727,7 +814,20 @@ function Folha({ d, idNome, principal = false }: { d: Dados; idNome?: string; pr
 }
 
 /** Uma parte da folha; o título muda com o modelo. */
-function Secao({ titulo, children, modelo, cor }: { titulo: string; children: ReactNode; modelo: Modelo; cor: string }) {
+function Secao({
+  titulo,
+  children,
+  modelo,
+  cor,
+  exemplo = false,
+}: {
+  titulo: string;
+  children: ReactNode;
+  modelo: Modelo;
+  cor: string;
+  exemplo?: boolean;
+}) {
+  const Titulo = exemplo ? "p" : "h3";
   const titulos: Record<Modelo, string> = {
     simples: "mb-1 border-b border-[#ccc] pb-0.5 text-[0.95em] font-bold text-[#222]",
     classico: "mb-1.5 text-center text-[0.95em] font-bold tracking-[0.12em] [font-variant:small-caps] text-[#222]",
@@ -736,12 +836,15 @@ function Secao({ titulo, children, modelo, cor }: { titulo: string; children: Re
   };
   return (
     <section className="mt-[1.2em] text-[0.9em] leading-snug">
-      <h3 className={titulos[modelo]} style={modelo === "moderno" || modelo === "coluna" ? { color: cor } : undefined}>
+      <Titulo
+        className={`font-display ${titulos[modelo]}`}
+        style={modelo === "moderno" || modelo === "coluna" ? { color: cor } : undefined}
+      >
         {modelo === "moderno" && (
           <span aria-hidden className="inline-block h-[0.9em] w-[4px] rounded-[2px]" style={{ background: cor }} />
         )}
         {titulo}
-      </h3>
+      </Titulo>
       {children}
     </section>
   );

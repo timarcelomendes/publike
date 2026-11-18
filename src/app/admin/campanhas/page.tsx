@@ -35,8 +35,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/camp
   const agora = await agoraDaRequisicao();
   const desde = periodo === "tudo" ? null : new Date(agora - Number(periodo) * DIA).toISOString();
   const linhas = await origensDasContas(c, desde);
-  const campanhas = linhas.filter((l) => l.origem !== "direto");
-  const direto = linhas.find((l) => l.origem === "direto");
+  // a campanha do link; o resto (a chegada sem campanha, desde 18/11/2026, e as sem registro) fica no resumo de baixo
+  const ehCampanha = (l: OrigemContas) => l.campanha ?? l.origem !== "direto";
+  const campanhas = linhas.filter(ehCampanha);
+  const resto = linhas.filter((l) => !ehCampanha(l));
+  const semCampanha = resto.length
+    ? {
+        contas: resto.reduce((s, l) => s + Number(l.contas), 0),
+        publicaram_servico: resto.reduce((s, l) => s + Number(l.publicaram_servico), 0),
+        publicaram_vaga: resto.reduce((s, l) => s + Number(l.publicaram_vaga), 0),
+      }
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,8 +56,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/camp
             Conta nova que chegou pelo link de um anúncio com <code>?utm_source=google&amp;utm_campaign=servicos</code>{" "}
             aparece aqui como <strong>google:servicos</strong>. Anúncio do Google sem utm (só a marcação automática do
             Google Ads) aparece como <strong>google-ads</strong>, com o número da campanha. Divida o gasto da campanha
-            pelas contas que publicaram e você tem o custo de cada vaga ou vitrine. Quem abriu o link do e-mail em outro
-            navegador entra como “direto”.
+            pelas contas que publicaram e você tem o custo de cada vaga ou vitrine. As contas sem campanha (a busca, as
+            IAs, as redes sem utm, o direto) ficam no Painel › Quem chega, em “De onde vêm as contas”.
           </>
         }
       >
@@ -65,10 +74,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/camp
         ) : (
           <Tabela linhas={campanhas} />
         )}
-        {direto && (
+        {semCampanha && (
           <p className="text-body-sm text-ink-muted">
-            Sem campanha no período: {formatarNumero(direto.contas)} {direto.contas === 1 ? "conta" : "contas"},{" "}
-            {formatarNumero(direto.publicaram_servico)} com serviço e {formatarNumero(direto.publicaram_vaga)} com vaga.
+            Sem campanha no período: {formatarNumero(semCampanha.contas)}{" "}
+            {semCampanha.contas === 1 ? "conta" : "contas"}, {formatarNumero(semCampanha.publicaram_servico)} com
+            serviço e {formatarNumero(semCampanha.publicaram_vaga)} com vaga.
           </p>
         )}
       </Secao>

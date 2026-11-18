@@ -3,7 +3,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_PEDIU_LINK, linkDeEntradaValido } from "@/lib/link-entrada";
 import { ehRedeSocial } from "@/lib/login-social";
-import { origemValida } from "@/lib/origem";
+import { origemDoLinkDeVolta } from "@/lib/origem";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 // Volta do login com Google, Facebook, LinkedIn e do link de entrar por e-mail.
@@ -27,15 +27,18 @@ function ehSuspensa(erro: { code?: string; message: string }) {
   return erro.code === "user_banned" || erro.message.toLowerCase().includes("banned");
 }
 
-/** A campanha que veio no link de volta ("google:servicos"), para /auth/continuar anotar na conta nova. */
-function comOrigem(caminho: string, origem: string | null | undefined) {
-  return origemValida(origem) ? `${caminho}&origem=${encodeURIComponent(origem)}` : caminho;
+/**
+ * A campanha ("google:servicos"), a chegada e a página de entrada que vieram no link de volta, para /auth/continuar
+ * anotar na conta nova.
+ */
+function comOrigem(caminho: string, pares: [string, string][]) {
+  return pares.reduce((c, [nome, valor]) => `${c}&${nome}=${encodeURIComponent(valor)}`, caminho);
 }
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const proximo = caminhoSeguro(url.searchParams.get("next"), "/");
-  const origem = url.searchParams.get("origem");
+  const origem = origemDoLinkDeVolta((nome) => url.searchParams.get(nome));
   const codigo = url.searchParams.get("code");
   const viaRede = ehRedeSocial(url.searchParams.get("via"));
   const base = enderecoBase(request);
@@ -59,7 +62,7 @@ export async function GET(request: NextRequest) {
     const tipo = url.searchParams.get("type") ?? "email";
     if (!linkDeEntradaValido(tokenHash, tipo)) return voltarComErro("link");
     const params = new URLSearchParams({ token_hash: tokenHash, type: tipo, next: proximo });
-    if (origemValida(origem)) params.set("origem", origem);
+    for (const [nome, valor] of origem) params.set(nome, valor);
     return NextResponse.redirect(`${base}/auth/confirmar?${params}`);
   }
 
@@ -85,7 +88,7 @@ export async function POST(request: NextRequest) {
     return typeof v === "string" ? v : null;
   };
   const proximo = caminhoSeguro(campo("next"), "/");
-  const origemDaCampanha = campo("origem");
+  const origemDaCampanha = origemDoLinkDeVolta(campo);
   const tokenHash = campo("token_hash") ?? "";
   const tipo = campo("type") ?? "";
   // 303: depois do envio do formulário, o navegador segue com GET.

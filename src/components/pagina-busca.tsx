@@ -9,6 +9,7 @@ import {
   areaDoSlug,
   caminhoDaBusca,
   caminhoDasRecentes,
+  caminhoDeHoje,
   caminhoDosProgramas,
   caminhoDoBairro,
   cidadeDoSlug,
@@ -271,6 +272,9 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
           {botoes}
           {vaga && !area && (
             <p className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-body">
+              <Link href={caminhoDeHoje(cidade)} className="font-semibold underline underline-offset-2">
+                As vagas de hoje em números
+              </Link>
               <Link href={caminhoDasRecentes(cidade)} className="font-semibold underline underline-offset-2">
                 Só as dos últimos {DIAS_RECENTES} dias
               </Link>

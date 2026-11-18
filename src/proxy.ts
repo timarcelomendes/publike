@@ -3,9 +3,16 @@ import { COOKIE_SAIU } from "@/lib/entrar-sozinho";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { PACOTE_ANDROID } from "@/lib/android";
 import { COOKIES_DA_SESSAO } from "@/lib/config";
-import { COOKIE_ORIGEM, DURACAO_ORIGEM, origemDoLink } from "@/lib/origem";
+import {
+  chegadaDaPagina,
+  COOKIE_CHEGADA,
+  COOKIE_ENTRADA,
+  COOKIE_ORIGEM,
+  DURACAO_ORIGEM,
+  origemDoLink,
+} from "@/lib/origem";
 import { codigoValido, COOKIE_INDICACAO, DURACAO_INDICACAO, valorDoCookie } from "@/lib/indicacao";
-import { areaDoSlug, cidadeDoSlug, SLUG_PROGRAMAS, SLUG_RECENTES } from "@/lib/paginas-busca";
+import { areaDoSlug, cidadeDoSlug, SLUG_HOJE, SLUG_PROGRAMAS, SLUG_RECENTES } from "@/lib/paginas-busca";
 import { funcaoDaListaPeloSlug } from "@/lib/funcoes-das-paginas";
 
 // Roda antes de cada página: renova a sessão do Supabase (cookies) e
@@ -36,7 +43,7 @@ function buscaInexistente(pathname: string) {
   // nas vagas, o nome também pode ser de uma função (/vagas/goiania/frentista: claude/plano-vagas-por-funcao.md)
   const funcao = m[2] && pathname.startsWith("/vagas/") ? funcaoDaListaPeloSlug(m[2]) : null;
   // e as vagas novas da cidade (/vagas/goiania/ultimos-3-dias: claude/plano-vagas-dos-ultimos-3-dias.md)
-  const recentes = (m[2] === SLUG_RECENTES || m[2] === SLUG_PROGRAMAS) && pathname.startsWith("/vagas/");
+  const recentes = [SLUG_RECENTES, SLUG_PROGRAMAS, SLUG_HOJE].includes(m[2] ?? "") && pathname.startsWith("/vagas/");
   return !cidadeDoSlug(m[1]) || (m[2] !== undefined && !funcao && !recentes && (!area || area.slug === "outros"));
 }
 
@@ -87,6 +94,31 @@ function abriuPagina(request: NextRequest) {
   // não passa: ela não se separa do pré-carregamento, e a pessoa já foi contada na entrada.
   const pagina = h.get("sec-fetch-mode") === "navigate" || (h.get("accept") ?? "").includes("text/html");
   return pagina && !ROBO.test(h.get("user-agent") ?? "");
+}
+
+// De onde chegou quem ainda não tem conta (claude/plano-organico.md): na página aberta inteira, o canal pelo referer
+// ("busca:google", "ia:gemini", "direto"...) e o caminho da página de entrada, por 7 dias; a conta nova grava os dois
+// (registrarOrigemDaConta). Quem já entrou na conta não precisa: não vai criar outra.
+function marcarChegada(request: NextRequest, resposta: NextResponse, logado: boolean) {
+  if (logado || !abriuPagina(request) || request.headers.has("next-url")) return;
+  const guardar = chegadaDaPagina({
+    campanha: origemDoLink(request.nextUrl.searchParams),
+    temCampanha: request.cookies.has(COOKIE_ORIGEM),
+    chegada: request.cookies.get(COOKIE_CHEGADA)?.value,
+    temEntrada: request.cookies.has(COOKIE_ENTRADA),
+    referer: request.headers.get("referer"),
+    host: request.headers.get("host"),
+    caminho: request.nextUrl.pathname,
+  });
+  const opcoes = {
+    maxAge: DURACAO_ORIGEM,
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: COOKIES_DA_SESSAO.secure,
+    path: "/",
+  };
+  if (guardar.chegada) resposta.cookies.set(COOKIE_CHEGADA, guardar.chegada, opcoes);
+  if (guardar.entrada) resposta.cookies.set(COOKIE_ENTRADA, guardar.entrada, opcoes);
 }
 
 // A troca de página dentro do site: o roteador do Next pede a página com o cabeçalho next-url (o proxy não
@@ -179,6 +211,7 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   const logado = Boolean(data?.claims?.sub);
 
   marcarOrigem(request, resposta);
+  marcarChegada(request, resposta, logado);
   marcarIndicacao(request, resposta);
   // entrou de novo (por qualquer jeito): o login automático do Google volta a valer
   if (logado && request.cookies.has(COOKIE_SAIU)) resposta.cookies.delete(COOKIE_SAIU);
