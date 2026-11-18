@@ -96,12 +96,15 @@ async function Conteudo() {
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/email-empresas"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const [{ data, error }, { data: dParada }] = await Promise.all([
+  const [{ data, error }, { data: dParada }, { data: dCopia }] = await Promise.all([
     c.rpc("admin_email_empresas"),
     // por que o envio parou (migração 20270727120000; sem ela, nada)
     c.rpc("admin_email_empresas_parada"),
+    // a última cópia em "Enviados" (migração 20270729120000; sem ela, nada)
+    c.rpc("admin_email_empresas_copia"),
   ]);
   const parada = (dParada ?? null) as { motivo: string; em: string | null; ate: string | null; desligado: boolean } | null;
+  const copia = (dCopia ?? null) as { erro: string | null; em: string } | null;
   const caixa = situacaoSmtpCampanha();
   const caixaPronta = Boolean(caixa.usuario && caixa.temSenha);
 
@@ -139,6 +142,13 @@ async function Conteudo() {
                 : `A caixa ${caixa.usuario} está ligada (${caixa.servidor})`}
           </Situacao>
           <Situacao ok={n.na_fila > 0}>{plural(n.na_fila, "empresa na fila", "empresas na fila")}</Situacao>
+          {copia && (
+            <Situacao ok={!copia.erro}>
+              {copia.erro
+                ? "A cópia em Enviados não foi guardada"
+                : `Cópia em Enviados de ${r.config.remetente_email}: a última em ${formatarDataHora(copia.em)}`}
+            </Situacao>
+          )}
         </div>
       </header>
 
@@ -155,6 +165,19 @@ async function Conteudo() {
             {parada.ate
               ? `Tenta de novo em ${formatarDataHora(parada.ate)}. Nenhuma empresa ficou marcada como falha.`
               : "Nenhuma empresa ficou marcada como falha: elas continuam na fila. Conserte a caixa e marque “Mandar os e-mails da fila” de novo."}
+          </p>
+        </Aviso>
+      )}
+
+      {copia?.erro && (
+        <Aviso tipo="alerta" titulo="A cópia em Enviados não foi guardada">
+          <p>
+            O e-mail saiu para a empresa; só a cópia na pasta de enviados de {r.config.remetente_email} falhou (
+            {formatarDataHora(copia.em)}): {copia.erro}
+          </p>
+          <p className="mt-1">
+            A cópia entra pelo IMAP da GoDaddy (imap.secureserver.net, porta 993), com o mesmo usuário e a mesma senha do
+            envio. CAMPANHA_IMAP_SERVIDOR e CAMPANHA_IMAP_PORTA mudam, e CAMPANHA_IMAP_SERVIDOR = nao desliga a cópia.
           </p>
         </Aviso>
       )}

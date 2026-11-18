@@ -342,7 +342,8 @@
   "20270725120000_resumo_da_receita_guardado",
   "20270726120000_whatsapp_pedido_e_match_direto",
   "20270727120000_email_empresas_caixa_recusada",
-  "20270728120000_email_empresas_quem_mais_acessa"
+  "20270728120000_email_empresas_quem_mais_acessa",
+  "20270729120000_email_empresas_copia_em_enviados"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -794,6 +795,8 @@
   "c|privado.email_empresas.assunto": "0d83f26402",
   "c|privado.email_empresas.atualizado_em": "0d502ae88a",
   "c|privado.email_empresas.atualizado_por": "4516c61a19",
+  "c|privado.email_empresas.copia_em": "de599dc94b",
+  "c|privado.email_empresas.copia_erro": "00bdf2fb04",
   "c|privado.email_empresas.hora_fim": "a7ea0bef69",
   "c|privado.email_empresas.hora_inicio": "a7ea0bef69",
   "c|privado.email_empresas.id": "8966ae6046",
@@ -2840,6 +2843,7 @@
   "f|public.admin_decisoes_ia(p_limite integer)": "fdd780a590",
   "f|public.admin_dinheiro(p_dias integer)": "2c7b1270fe",
   "f|public.admin_email_empresas()": "4e8ef667c9",
+  "f|public.admin_email_empresas_copia()": "2ef2a67d65",
   "f|public.admin_email_empresas_parada()": "9accfcd071",
   "f|public.admin_email_empresas_por_na_fila(p_publico text, p_limite integer)": "736e1047c6",
   "f|public.admin_email_empresas_salvar(p_ligado boolean, p_por_dia integer, p_hora_inicio integer, p_hora_fim integer, p_remetente_nome text, p_assunto text, p_texto text)": "706f3e6e1f",
@@ -3493,6 +3497,7 @@
   "f|public.servidor_devolvida(p_chave text, p_cobranca uuid)": "9a23a8763c",
   "f|public.servidor_documentos_apagados(p_chave text, p_propostas uuid[])": "0609a67ca8",
   "f|public.servidor_documentos_vencidos(p_chave text, p_limite integer)": "c728e1521a",
+  "f|public.servidor_email_empresas_copia(p_chave text, p_erro text)": "51537a0c0f",
   "f|public.servidor_email_empresas_devolver(p_chave text, p_id bigint, p_motivo text, p_desligar boolean)": "4d28cebe04",
   "f|public.servidor_email_empresas_marcar(p_chave text, p_id bigint, p_ok boolean, p_erro text)": "66663baa62",
   "f|public.servidor_email_empresas_pegar(p_chave text)": "a83483892e",

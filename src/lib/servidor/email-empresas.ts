@@ -1,5 +1,8 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
+import { ImapFlow } from "imapflow";
 import nodemailer from "nodemailer";
+import MailComposer from "nodemailer/lib/mail-composer";
 import { SITE_URL } from "@/lib/config";
 import { emailValido } from "@/lib/email-valido";
 import { linkDeSairUmToque, montarEmailEmpresas } from "@/lib/email-empresas";
@@ -82,6 +85,47 @@ function problemaDaCaixa(e: unknown): { motivo: string; desligar: boolean } | nu
   return null;
 }
 
+/**
+ * A cópia em "Enviados" (18/11/2026, Marcelo: "sim" para guardar a cópia; migração 20270729120000): o SMTP não guarda
+ * o que sai, então o robô entra na caixa pelo IMAP (o da GoDaddy para o Email Profissional: imap.secureserver.net,
+ * porta 993, com SSL, o mesmo usuário e senha) e põe a mesma mensagem na pasta de enviados, como lida.
+ * CAMPANHA_IMAP_SERVIDOR e CAMPANHA_IMAP_PORTA trocam; CAMPANHA_IMAP_SERVIDOR = "nao" desliga a cópia.
+ * Devolve o erro (ou null): a cópia que falha não desfaz o envio.
+ */
+async function guardarEmEnviados(smtp: ConfigCampanha, mensagem: Buffer): Promise<string | null> {
+  const servidor = (process.env.CAMPANHA_IMAP_SERVIDOR || "").trim() || "imap.secureserver.net";
+  if (servidor.toLowerCase() === "nao") return null;
+  const porta = Number(process.env.CAMPANHA_IMAP_PORTA || 993) || 993;
+  const caixa = new ImapFlow({
+    host: servidor,
+    port: porta,
+    // a 993 é com SSL; noutra porta, o IMAP começa sem e passa para TLS (STARTTLS) quando o servidor oferece
+    secure: porta === 993,
+    auth: { user: smtp.usuario, pass: smtp.senha },
+    logger: false,
+    disableAutoIdle: true,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
+  // sem isto, um erro da conexão depois do connect derruba o processo
+  caixa.on("error", () => {});
+  try {
+    await caixa.connect();
+    const pastas = await caixa.list();
+    const enviados =
+      pastas.find((x) => x.specialUse === "\\Sent") ??
+      pastas.find((x) => /^(sent|sent items|sent messages|enviados|itens enviados|mensagens enviadas)$/i.test(x.name));
+    if (!enviados) return "a caixa não tem a pasta de enviados";
+    await caixa.append(enviados.path, mensagem, ["\\Seen"], new Date());
+    return null;
+  } catch (e) {
+    return textoDoErro(e);
+  } finally {
+    await caixa.logout().catch(() => {});
+  }
+}
+
 type Proximo = {
   id: number;
   token: string;
@@ -93,7 +137,7 @@ type Proximo = {
   remetente_email: string;
 };
 
-export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motivo?: string }> {
+export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motivo?: string; copia?: boolean }> {
   const smtp = configSmtpCampanha();
   const acesso = acessoFila();
   if (!smtp || !acesso) return { enviados: 0 };
@@ -137,19 +181,35 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
   });
   // o remetente é o do Admin (marcelo@publike.org, a própria caixa do login); sem remetente válido, o login
   const de = emailValido(p.remetente_email) ? p.remetente_email : smtp.usuario;
+  // a mensagem montada uma vez: a mesma sai pelo SMTP e vai para "Enviados" (com o mesmo Message-ID, a resposta da
+  // empresa cai na mesma conversa)
+  let mensagem: Buffer;
   try {
-    await transporte.sendMail({
+    mensagem = await new MailComposer({
       from: { name: p.remetente_nome, address: de },
       replyTo: emailValido(p.remetente_email) ? p.remetente_email : undefined,
       to: p.email,
       subject: email.assunto,
       text: email.texto,
       html: email.html,
+      date: new Date(),
+      messageId: `<${randomUUID()}@publike.org>`,
       headers: {
         "List-Unsubscribe": `<${linkDeSairUmToque(SITE_URL, p.token)}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
-    });
+    })
+      .compile()
+      .build();
+  } catch (e) {
+    const erro = textoDoErro(e);
+    console.error(`Publike: o e-mail às empresas ${p.id} não foi montado:`, erro);
+    await marcar(false, erro);
+    transporte.close();
+    return { enviados: 0, motivo: `E-mail às empresas: ${erro}`.slice(0, 300) };
+  }
+  try {
+    await transporte.sendMail({ envelope: { from: de, to: [p.email] }, raw: mensagem });
   } catch (e) {
     const erro = textoDoErro(e);
     console.error(`Publike: o e-mail às empresas ${p.id} não saiu:`, erro);
@@ -172,5 +232,10 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
     transporte.close();
   }
   await marcar(true);
-  return { enviados: 1 };
+  // a cópia em "Enviados": o resultado fica no banco para o Admin mostrar (sem a migração, só no registro)
+  const erroDaCopia = await guardarEmEnviados(smtp, mensagem);
+  if (erroDaCopia) console.error(`Publike: a cópia do e-mail às empresas ${p.id} não foi para Enviados:`, erroDaCopia);
+  const { error: e3 } = await cliente.rpc("servidor_email_empresas_copia", { p_chave: chave, p_erro: erroDaCopia });
+  if (e3 && e3.code !== "PGRST202") console.error("Publike: não deu para guardar o resultado da cópia:", e3.message);
+  return { enviados: 1, copia: !erroDaCopia };
 }

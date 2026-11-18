@@ -4292,6 +4292,8 @@ export type Database = {
         Returns: undefined;
       };
       admin_email_empresas_parada: { Args: Record<string, never>; Returns: Json };
+      servidor_email_empresas_copia: { Args: { p_chave: string; p_erro: string | null }; Returns: undefined };
+      admin_email_empresas_copia: { Args: Record<string, never>; Returns: Json };
       painel_no_site_indicadores: { Args: { p_dias?: number }; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
       meu_endereco_de_cobranca: { Args: Record<string, never>; Returns: Json };
