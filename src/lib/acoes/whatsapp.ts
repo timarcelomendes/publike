@@ -81,11 +81,13 @@ export async function mudarAvisosDoWhatsapp(desligados: string[]): Promise<Resul
 }
 
 /** De onde veio o aceite: Preferências, o Curtir, o quadro, o cadastro e a vaga recém-publicada (migração 20270711120000). */
-export type OrigemDoWhatsapp = "avisos" | "curtir" | "quadro" | "cadastro" | "publicar";
+// "curriculo" e "painel": a página do currículo e o Hoje de quem contrata (migração 20270718120000)
+export type OrigemDoWhatsapp = "avisos" | "curtir" | "quadro" | "cadastro" | "publicar" | "curriculo" | "painel";
 
 export async function mudarWhatsapp(aceito: boolean, origem: OrigemDoWhatsapp): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!["avisos", "curtir", "quadro", "cadastro", "publicar"].includes(origem)) return { ok: false, erro: "Pedido inválido." };
+  if (!["avisos", "curtir", "quadro", "cadastro", "publicar", "curriculo", "painel"].includes(origem))
+    return { ok: false, erro: "Pedido inválido." };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("mudar_whatsapp", { p_aceito: Boolean(aceito), p_origem: origem });
   if (error) {

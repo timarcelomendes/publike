@@ -39,6 +39,8 @@ import { ConviteNotificacoes } from "@/components/convite-notificacoes";
 import { vapidPublica } from "@/lib/servidor/ambiente";
 import { TabelaDasVagas, type GrupoDeVagas, type LinhaDaVaga } from "./tabela-vagas";
 import { DicaDeNovidade } from "@/components/ui/dica-de-novidade";
+import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
+import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 
 /** As perguntas sem resposta de quem publicou, por vaga (migração 20270318120000; sem ela, nada). */
 async function perguntasSemResposta(ids: string[]) {
@@ -137,7 +139,17 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, pedidosAg, perguntas, paraConfirmar] = await Promise.all([
+  const [
+    { visitas, entrevistas, passadas },
+    respostas,
+    colocacoes,
+    caminho,
+    documentos,
+    pedidosAg,
+    perguntas,
+    paraConfirmar,
+    whatsapp,
+  ] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -155,6 +167,8 @@ export async function PainelRecrutador({
     perguntasSemResposta(noAr.map((v) => v.id)).catch(() => new Map<string, number>()),
     // as conquistas: quem disse que começou a trabalhar, esperando a confirmação (sem a migração, nada)
     conquistasParaConfirmar(),
+    // o WhatsApp dos candidatos novos (18/11/2026, Marcelo: "precisamos alcancar mais pessoas"): só com vaga no ar
+    noAr.length > 0 ? meuWhatsapp().catch(() => null) : Promise.resolve(null),
   ]);
   const noPrazo = pedidosAg?.noPrazo ?? null;
   // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
@@ -838,6 +852,19 @@ export async function PainelRecrutador({
                   itens={cartoes}
                   vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
                 />
+                {/* o pedido do WhatsApp para quem tem vaga no ar e ainda não aceitou (migração 20270718120000, origem
+                    "painel"); quem aceitou não vê */}
+                {whatsapp?.pode && !whatsapp.aceito && (
+                  <div className="rounded-lg border border-line bg-surface-200 p-4">
+                    <AceiteWhatsapp
+                      inicial={whatsapp}
+                      origem="painel"
+                      rotulo="Receber os candidatos novos pelo WhatsApp"
+                      explicacao="Quando alguém se candidatar, o aviso chega no seu WhatsApp, juntando os candidatos de cada vaga."
+                      esconderSeAceito
+                    />
+                  </div>
+                )}
                 {/* no celular, o convite das notificações vem aqui; no computador, é uma linha no fim do menu */}
                 <div className="lg:hidden">
                   <ConviteNotificacoes

@@ -267,6 +267,8 @@ async function Conteudo({
               entregues: Number(p.entregues),
               convidados: Number(p.convidados),
               curtiram: Number(p.curtiram),
+              whatsapp: Number(p.whatsapp ?? 0),
+              whatsapp_curtiram: Number(p.whatsapp_curtiram ?? 0),
             }))}
           />
         )}

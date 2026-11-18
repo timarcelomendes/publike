@@ -72,6 +72,12 @@ export type Modelo = {
   corpo: string;
   exemplo: Record<string, string>;
   botoes: Botao[];
+  /**
+   * Marketing (o convite do pacote, 18/11/2026; Marcelo: "Boa ideia, se converter.. o custo compensa"): cadastra assim
+   * na Meta e manda mesmo nessa categoria, que custa umas 9 vezes a de utilidade. Sem ela, é utilidade, e o modelo que
+   * a Meta mudar para marketing não sai.
+   */
+  categoria?: "MARKETING";
 };
 
 export const RODAPE_WHATSAPP = "Responda PARAR para não receber mais";
@@ -231,6 +237,17 @@ export const MODELOS: Modelo[] = [
     exemplo: { nome: "Ana", quem: "Padaria Pão de Ouro" },
     botoes: [{ tipo: "link", texto: "Ver a mensagem", exemplo: "painel/conversas" }],
   },
+  {
+    nome: "publike_vaga_que_combina",
+    aviso: "convite",
+    para: "Candidato",
+    quando: "O pacote de candidatos convida quem combina com a vaga (marketing: claude/plano-ritmo-do-pacote.md)",
+    corpo:
+      "Oi, {{nome}}! Tem uma vaga perto de você que combina com o seu currículo: {{vaga}}. Veja os detalhes no Publike e, se tiver interesse, curta a vaga.",
+    exemplo: { nome: "Ana", vaga: "Atendente de padaria" },
+    botoes: [{ tipo: "link", texto: "Ver a vaga", exemplo: "anuncio/123" }],
+    categoria: "MARKETING",
+  },
 ];
 
 const POR_NOME = new Map(MODELOS.map((m) => [m.nome, m]));
@@ -240,7 +257,7 @@ export function variaveisDoModelo(m: Modelo) {
   return [...m.corpo.matchAll(/\{\{([a-z_]+)\}\}/g)].map((x) => x[1]);
 }
 
-/** O corpo do cadastro na Meta (categoria utilidade, português, parâmetros com nome). */
+/** O corpo do cadastro na Meta (utilidade ou, no convite do pacote, marketing; português, parâmetros com nome). */
 export function cadastroDoModelo(m: Modelo) {
   const botoes = m.botoes.map((b) =>
     b.tipo === "link"
@@ -250,7 +267,7 @@ export function cadastroDoModelo(m: Modelo) {
   return {
     name: m.nome,
     language: "pt_BR",
-    category: "UTILITY",
+    category: m.categoria ?? "UTILITY",
     parameter_format: "NAMED",
     components: [
       {
@@ -686,6 +703,11 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
       return { modelo: "publike_interesse_v2", params: { nome, candidato: d.ator ?? "Uma pessoa" } };
     case "mensagem":
       return { modelo: "publike_mensagem", params: { nome, quem: d.ator ?? "Uma pessoa" } };
+    case "convite":
+      // só o convite do pacote entra na fila (o gatilho confere); o botão leva à vaga
+      if (!pessoa) return { pular: "convite para quem não é candidato" };
+      if (!vaga) return { pular: "a vaga não existe mais" };
+      return { modelo: "publike_vaga_que_combina", params: { nome, vaga } };
     default:
       return { pular: `sem modelo para ${item.tipo}` };
   }
@@ -778,7 +800,7 @@ export async function enviarWhatsappPendentes(limite = 30): Promise<ResultadoWha
       });
       continue;
     }
-    if (situacao.categoria && situacao.categoria !== "UTILITY") {
+    if (situacao.categoria && situacao.categoria !== "UTILITY" && situacao.categoria !== def.categoria) {
       // a Meta mudou o modelo para marketing (umas 9 vezes mais caro e com limite por pessoa): não manda
       await marcar(item.id, "pendente", {
         modelo: m.modelo,

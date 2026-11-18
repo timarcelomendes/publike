@@ -8,6 +8,8 @@ import { CaminhoDaCurtida } from "@/components/caminho-curtida";
 import { CurriculoNoMercado } from "@/components/curriculo-no-mercado";
 import { AvisarBusca } from "@/components/explorar/avisar-busca";
 import { FormCurriculo } from "@/components/form-curriculo";
+import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
+import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { esperaCurriculo } from "@/lib/constantes";
@@ -154,7 +156,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
       </Aviso>
     );
   }
-  const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite, jeito, contatoNoConvite] = await Promise.all([
+  const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite, jeito, contatoNoConvite, whatsapp] = await Promise.all([
     obterMeuCurriculo(),
     listarMinhasCurtidas().catch(() => []),
     meuCurriculoVisivel(),
@@ -164,6 +166,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
     meuJeitoDeTrabalhar(usuario.id),
     // o contato no convite (migração 20270626120000): o terceiro interruptor de "Quem vê seu currículo"
     meuContatoNoConvite(),
+    // o WhatsApp (18/11/2026, Marcelo: "precisamos alcancar mais pessoas"): quem tem currículo e ainda não aceitou vê o
+    // pedido aqui, no alto do formulário (migração 20270718120000, origem "curriculo")
+    meuWhatsapp().catch(() => null),
   ]);
   const agora = await agoraDaRequisicao();
   // "Seu currículo no mercado" começa já e vem junto com o formulário (17/11/2026, "deixe a performance invejável"):
@@ -297,6 +302,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
             </Link>
           </p>
         </Aviso>
+      )}
+      {curriculo && whatsapp?.pode && !whatsapp.aceito && (
+        <div className="rounded-lg border border-line bg-surface-200 p-4">
+          <AceiteWhatsapp
+            inicial={whatsapp}
+            origem="curriculo"
+            rotulo="Receber pelo WhatsApp as vagas que combinam com você e as respostas das empresas"
+            esconderSeAceito
+          />
+        </div>
       )}
       {primeiro(sp.apagado) === "1" && (
         <Aviso tipo="info" titulo="Currículo apagado">

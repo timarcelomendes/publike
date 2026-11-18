@@ -22,10 +22,13 @@ import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import {
+  custoDasCobradas,
   dolares,
+  emDolares,
   horarioWhatsapp,
   nomeDoAvisoWhatsapp,
   parametrosWhatsapp,
+  TARIFA_MARKETING_USD,
   TARIFA_WHATSAPP_USD,
   type ParametrosWhatsapp,
 } from "@/lib/whatsapp-tipos";
@@ -399,11 +402,14 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
   if (!admin && !(await possoVerTela("/admin/whatsapp"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
   const dias = PERIODOS.find((x) => x.valor === periodo)?.dias ?? 7;
-  const [resumo, resultados, agora] = await Promise.all([
+  const [resumo, resultados, agora, porModelo] = await Promise.all([
     c.rpc("admin_whatsapp"),
     c.rpc("admin_whatsapp_resultados", { p_dias: dias }),
     agoraDaRequisicao(),
+    // as cobradas por modelo, para o custo pela categoria (migração 20270718120000; sem ela, tudo como utilidade)
+    c.rpc("admin_whatsapp_cobradas_por_modelo", { p_dias: dias }),
   ]);
+  const cobradasPorModelo = porModelo.error || !porModelo.data ? null : (porModelo.data as Record<string, number>);
   // sem a migração 20270619120000, a ligação com a Meta (que não usa o banco) já funciona
   const r = resumo.error || !resumo.data ? null : (resumo.data as unknown as Resumo);
   // sem a migração 20270710120000, os resultados e os erros do período não vêm
@@ -507,7 +513,15 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
       ) : (
         <>
           {aba === "resultados" && r && (
-            <AbaResultados r={r} res={res} periodo={periodo} agora={agora} erros={erros} p={p} />
+            <AbaResultados
+              r={r}
+              res={res}
+              periodo={periodo}
+              agora={agora}
+              erros={erros}
+              p={p}
+              cobradasPorModelo={cobradasPorModelo}
+            />
           )}
           {aba === "erros" && r && <AbaErros erros={erros} res={res} periodo={periodo} />}
           {aba === "parametros" && r && <AbaParametros r={r} p={p} />}
@@ -556,6 +570,7 @@ function AbaResultados({
   agora,
   erros,
   p,
+  cobradasPorModelo,
 }: {
   r: Resumo;
   res: Resultados | null;
@@ -563,9 +578,14 @@ function AbaResultados({
   agora: number;
   erros: ErroWhatsapp[];
   p: ParametrosWhatsapp;
+  /** as cobradas no período por modelo (null: sem a migração 20270718120000) */
+  cobradasPorModelo: Record<string, number> | null;
 }) {
   if (!res) return <SemResultados />;
   const f = res.funil;
+  // o custo pela categoria de cada modelo: o convite do pacote é de marketing (umas 9 vezes a utilidade)
+  const categorias = Object.fromEntries(Object.entries(r.config.modelos ?? {}).map(([nome, m]) => [nome, m?.categoria]));
+  const custo = cobradasPorModelo ? custoDasCobradas(cobradasPorModelo, categorias) : null;
   const graves = erros.filter((e) => e.grave);
   const n = PERIODOS.find((x) => x.valor === periodo)?.dias ?? 7;
   const dias = n > 1 ? Array.from({ length: n }, (_, i) => diaDe(agora - (n - 1 - i) * 86_400_000)) : [];
@@ -615,10 +635,16 @@ function AbaResultados({
           <Numero rotulo="Não saíram" valor={f.descartadas} detalhe="pelas regras (abaixo)" />
           <div className="flex flex-col gap-1 rounded-lg border border-line bg-surface-200 p-4">
             <span className="text-label text-ink-muted">Custo estimado</span>
-            <span className="font-display text-h1 text-ink">{dolares(f.cobradas)}</span>
+            <span className="font-display text-h1 text-ink">
+              {custo ? emDolares(custo.usd) : dolares(f.cobradas)}
+            </span>
             <span className="text-body-sm text-ink-muted">
-              {plural(f.cobradas, "mensagem cobrada", "mensagens cobradas")} (US${" "}
-              {TARIFA_WHATSAPP_USD.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} cada)
+              {plural(f.cobradas, "mensagem cobrada", "mensagens cobradas")}
+              {custo && custo.marketing > 0
+                ? ` (${formatarNumero(custo.marketing)} de marketing a US$ ${TARIFA_MARKETING_USD.toLocaleString("pt-BR", {
+                    maximumFractionDigits: 4,
+                  })}; o resto a US$ ${TARIFA_WHATSAPP_USD.toLocaleString("pt-BR", { maximumFractionDigits: 4 })})`
+                : ` (US$ ${TARIFA_WHATSAPP_USD.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} cada)`}
             </span>
           </div>
         </div>

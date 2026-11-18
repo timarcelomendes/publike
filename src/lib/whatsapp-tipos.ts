@@ -76,6 +76,14 @@ export const TIPOS_WHATSAPP: { tipo: string; nome: string; curto: string; para: 
     para: "Todos",
     economico: false,
   },
+  // o convite do pacote (migração 20270718120000): só o que o pacote de candidatos fez; modelo de marketing
+  {
+    tipo: "convite",
+    nome: "Vaga perto que combina (convite do pacote)",
+    curto: "Vaga que combina",
+    para: "Candidato",
+    economico: true,
+  },
 ];
 
 /**
@@ -96,6 +104,7 @@ const ROTULO_PARA_QUEM_RECEBE: Record<string, string> = {
   conquista_confirmar: "“Começou a trabalhar?”, para confirmar com um toque",
   interesse_local: "“Quero trabalhar aqui”: currículo enviado para a sua empresa",
   mensagem: "Mensagem nova no chat",
+  convite: "Vagas perto de você que combinam com o seu currículo",
 };
 
 export function avisosParaEscolher(conta: {
@@ -164,6 +173,27 @@ export function horarioWhatsapp(inicio: number, fim: number) {
 
 /** A tarifa de utilidade da Meta no Brasil (US$ 0,0068 por mensagem entregue, desde julho de 2026). */
 export const TARIFA_WHATSAPP_USD = 0.0068;
+/** A de marketing (US$ 0,0625 desde 1/10/2026): o modelo do convite do pacote. */
+export const TARIFA_MARKETING_USD = 0.0625;
+
+/**
+ * O custo das mensagens cobradas pela categoria do modelo de cada uma (`categorias`: a que a Meta deu, em
+ * Admin › WhatsApp › Modelos). Sem a categoria, conta como utilidade.
+ */
+export function custoDasCobradas(porModelo: Record<string, number>, categorias: Record<string, string | undefined>) {
+  let marketing = 0;
+  let utilidade = 0;
+  for (const [modelo, n] of Object.entries(porModelo)) {
+    if (categorias[modelo] === "MARKETING") marketing += Number(n) || 0;
+    else utilidade += Number(n) || 0;
+  }
+  return { marketing, utilidade, usd: marketing * TARIFA_MARKETING_USD + utilidade * TARIFA_WHATSAPP_USD };
+}
+
+/** "US$ 0,07" de um valor em dólares. */
+export function emDolares(usd: number) {
+  return `US$ ${usd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export function dolares(mensagens: number) {
   return `US$ ${(mensagens * TARIFA_WHATSAPP_USD).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

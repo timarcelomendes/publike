@@ -4189,6 +4189,8 @@ export type Database = {
       admin_convite_do_pacote: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_salvar_convite_do_pacote: { Args: { p_ligado: boolean; p_maximo: number }; Returns: undefined };
       convites_do_meu_pacote: { Args: { p_anuncio: string }; Returns: Json };
+      // o custo do WhatsApp pela categoria de cada modelo (migração 20270718120000)
+      admin_whatsapp_cobradas_por_modelo: { Args: { p_dias: number }; Returns: Json };
       // os pedidos de assinatura não pagos (migração 20270716120000)
       servidor_pedidos_nao_pagos: { Args: { p_chave: string }; Returns: Json };
       servidor_pedido_nao_pago_cancelado: {

@@ -145,7 +145,7 @@ async function Conteudo() {
               rotulo={
                 empresa
                   ? "Receber os candidatos novos pelo WhatsApp"
-                  : "Receber o andamento das candidaturas pelo WhatsApp"
+                  : "Receber pelo WhatsApp o andamento das candidaturas e as vagas que combinam com você"
               }
             />
           </section>

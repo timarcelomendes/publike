@@ -439,7 +439,11 @@ export function PainelCurtir({
         {aviso && <LinhaDoAvisoLigado aviso={aviso} />}
         {!servico && <NuncaPague />}
         {!servico && (
-          <AceiteWhatsapp origem="curtir" rotulo="Quero receber o andamento pelo WhatsApp" esconderSeAceito />
+          <AceiteWhatsapp
+            origem="curtir"
+            rotulo="Quero receber pelo WhatsApp o andamento e as vagas que combinam comigo"
+            esconderSeAceito
+          />
         )}
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
         {perguntas.length > 0 && (

@@ -722,8 +722,10 @@ export function FormPerfil({
               <input type="checkbox" name="receber_whatsapp" className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]" />
               <span>
                 <span className="block text-label">
+                  {/* pessoa: o texto diz das vagas que combinam, porque o convite do pacote sai pelo WhatsApp
+                      (migração 20270718120000, modelo de marketing) */}
                   {tipo === "pessoa"
-                    ? "Receber o andamento das candidaturas pelo WhatsApp"
+                    ? "Receber pelo WhatsApp o andamento das candidaturas e as vagas que combinam com você"
                     : "Receber os candidatos novos pelo WhatsApp"}
                 </span>
                 <span className="block text-body-sm text-ink-muted">

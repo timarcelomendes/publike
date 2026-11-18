@@ -19,6 +19,9 @@ export type PacoteComConvite = {
   entregues: number;
   convidados: number;
   curtiram: number;
+  /** o convite pelo WhatsApp (migração 20270718120000): quantos saíram e, desses, quantos curtiram */
+  whatsapp?: number;
+  whatsapp_curtiram?: number;
 };
 
 export function ChaveDoConvite({
@@ -132,8 +135,9 @@ export function ChaveDoConvite({
                 {!p.no_ar && <span className="text-ink-muted"> · terminou</span>}
               </span>
               <span className="text-body-sm tabular-nums text-ink-muted">
-                {plural(p.convidados, "convidado", "convidados")}, {p.curtiram === 1 ? "1 curtiu" : `${p.curtiram} curtiram`}{" "}
-                · {Math.min(p.entregues, p.alvo)} de {p.alvo} no pacote
+                {plural(p.convidados, "convidado", "convidados")}, {p.curtiram === 1 ? "1 curtiu" : `${p.curtiram} curtiram`}
+                {p.whatsapp ? ` · ${p.whatsapp} pelo WhatsApp, ${p.whatsapp_curtiram ?? 0} curtiram` : ""} ·{" "}
+                {Math.min(p.entregues, p.alvo)} de {p.alvo} no pacote
               </span>
             </li>
           ))}
