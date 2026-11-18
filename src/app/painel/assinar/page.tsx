@@ -72,13 +72,14 @@ const ICONE: Record<Produto, typeof Sparkles> = {
 
 const TUDO =
   "Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras";
-// os planos que liberam tudo também dão o limite maior da API (migração 20270713120000)
-const E_A_API = "E mais chamadas por dia na API, para o CRM da empresa.";
+// os planos que liberam tudo também dão os limites maiores dos avisos no WhatsApp (migração 20270714120000) e da API
+// (migração 20270713120000)
+const E_MAIS = "E mais avisos no WhatsApp por mês e mais chamadas por dia na API, para o CRM da empresa.";
 const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
   combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
-  completo: `Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras, por menos que separados. ${E_A_API}`,
+  completo: `Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras, por menos que separados. ${E_MAIS}`,
   video: "O candidato grava as respostas pelo celular e a IA resume; e a entrevista ao vivo, sem instalar nada.",
   automacoes:
     "As suas regras: quando algo acontece, se a pessoa atende o que você escolher, o Publike faz o que você mandar.",
@@ -86,11 +87,11 @@ const FAZ: Record<Produto, string> = {
     "Consultas sem limite: quanto o mercado paga para cada função, o que as vagas do Publike oferecem e quantos talentos combinam.",
   carreiras:
     "A sua página de vagas com a cara da empresa: a cor da marca, a capa, por que trabalhar aí, os benefícios e um endereço curto. Libera sozinha com 10 vagas publicadas.",
-  empresa_5: `Tudo numa assinatura só, para até 5 vagas no ar: ${TUDO}. ${E_A_API}`,
-  empresa_20: `Tudo numa assinatura só, para até 20 vagas no ar: ${TUDO}. ${E_A_API}`,
-  empresa_50: `Tudo numa assinatura só, para até 50 vagas no ar: ${TUDO}. ${E_A_API}`,
-  agencia_15: `Tudo numa assinatura só, para até 15 vagas no ar e 3 recrutadores: ${TUDO}. ${E_A_API}`,
-  agencia_200: `Tudo numa assinatura só, para até 200 vagas no ar e 10 recrutadores: ${TUDO}. ${E_A_API}`,
+  empresa_5: `Tudo numa assinatura só, para até 5 vagas no ar: ${TUDO}. ${E_MAIS}`,
+  empresa_20: `Tudo numa assinatura só, para até 20 vagas no ar: ${TUDO}. ${E_MAIS}`,
+  empresa_50: `Tudo numa assinatura só, para até 50 vagas no ar: ${TUDO}. ${E_MAIS}`,
+  agencia_15: `Tudo numa assinatura só, para até 15 vagas no ar e 3 recrutadores: ${TUDO}. ${E_MAIS}`,
+  agencia_200: `Tudo numa assinatura só, para até 200 vagas no ar e 10 recrutadores: ${TUDO}. ${E_MAIS}`,
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -414,7 +415,7 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
   },
   completo: {
     titulo: "Plano Completo",
-    texto: `Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras, por menos que separados. ${E_A_API}`,
+    texto: `Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras, por menos que separados. ${E_MAIS}`,
     botao: "Ver o Plano Completo",
   },
   video: {
@@ -437,17 +438,17 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "As suas vagas num endereço curto, com a cor, a capa e os benefícios da empresa.",
     botao: "Conhecer a Página de carreiras",
   },
-  empresa_5: { titulo: "Plano Empresa até 5 vagas", texto: `Tudo junto: ${TUDO}. ${E_A_API}`, botao: "Conhecer o Plano Empresa" },
-  empresa_20: { titulo: "Plano Empresa até 20 vagas", texto: `Tudo junto: ${TUDO}. ${E_A_API}`, botao: "Conhecer o Plano Empresa" },
-  empresa_50: { titulo: "Plano Empresa até 50 vagas", texto: `Tudo junto: ${TUDO}. ${E_A_API}`, botao: "Conhecer o Plano Empresa" },
+  empresa_5: { titulo: "Plano Empresa até 5 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
+  empresa_20: { titulo: "Plano Empresa até 20 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
+  empresa_50: { titulo: "Plano Empresa até 50 vagas", texto: `Tudo junto: ${TUDO}. ${E_MAIS}`, botao: "Conhecer o Plano Empresa" },
   agencia_15: {
     titulo: "Plano Agência até 15 vagas",
-    texto: `Tudo junto, com 3 recrutadores: ${TUDO}. ${E_A_API}`,
+    texto: `Tudo junto, com 3 recrutadores: ${TUDO}. ${E_MAIS}`,
     botao: "Conhecer o Plano Agência",
   },
   agencia_200: {
     titulo: "Plano Agência até 200 vagas",
-    texto: `Tudo junto, com 10 recrutadores: ${TUDO}. ${E_A_API}`,
+    texto: `Tudo junto, com 10 recrutadores: ${TUDO}. ${E_MAIS}`,
     botao: "Conhecer o Plano Agência",
   },
 };

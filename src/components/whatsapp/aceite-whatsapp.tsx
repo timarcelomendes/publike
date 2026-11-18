@@ -10,8 +10,9 @@ import {
   mudarWhatsapp,
   type MeuWhatsapp,
   type OrigemDoWhatsapp,
+  type UsoDoWhatsapp,
 } from "@/lib/acoes/whatsapp";
-import { formatarTelefone } from "@/lib/formato";
+import { formatarNumero, formatarTelefone } from "@/lib/formato";
 import { Selo } from "../ui/basicos";
 
 /**
@@ -37,7 +38,10 @@ export function AceiteWhatsapp({
   esconderSeAceito?: boolean;
   /** só a linha (no quadro): a explicação vai no title */
   compacto?: boolean;
-  /** Preferências: com o WhatsApp ligado, a lista dos avisos para escolher (migração 20270711120000) */
+  /**
+   * Preferências: com o WhatsApp ligado, a lista dos avisos para escolher (migração 20270711120000) e, para quem
+   * contrata, os avisos do mês contra o limite (migração 20270714120000)
+   */
   escolher?: boolean;
 }) {
   const [estado, setEstado] = useState<MeuWhatsapp | null | undefined>(inicial);
@@ -144,6 +148,7 @@ export function AceiteWhatsapp({
           )}
         </fieldset>
       )}
+      {escolher && estado.aceito && estado.ligado && estado.uso && <UsoDoMes uso={estado.uso} />}
       {erro && (
         <p className="pl-7 text-body-sm text-danger">
           {erro.texto}{" "}
@@ -154,6 +159,48 @@ export function AceiteWhatsapp({
           )}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Quem contrata, em Preferências: os avisos do mês contra o limite (migração 20270714120000). No grátis, a oferta do
+ * plano. Acabou, os avisos seguem no sino e no e-mail até o dia 1º.
+ */
+function UsoDoMes({ uso }: { uso: UsoDoWhatsapp }) {
+  const usadas = Math.min(uso.usadas, uso.limite);
+  const cheio = uso.usadas >= uso.limite;
+  const parte = uso.limite > 0 ? usadas / uso.limite : 1;
+  return (
+    <div className="mt-3 flex flex-col gap-1.5 pl-7">
+      <p className="text-label text-ink">
+        Neste mês: {formatarNumero(usadas)} de {formatarNumero(uso.limite)} avisos
+        {uso.plano ? " do seu plano" : " do grátis"}
+      </p>
+      <div
+        role="meter"
+        aria-label="Avisos pelo WhatsApp usados neste mês"
+        aria-valuemin={0}
+        aria-valuemax={uso.limite}
+        aria-valuenow={usadas}
+        className="h-1.5 w-full max-w-xs overflow-hidden rounded-pill bg-surface-300"
+      >
+        <div className={`h-full rounded-pill ${cheio ? "bg-terra" : "bg-cerrado"}`} style={{ width: `${parte * 100}%` }} />
+      </div>
+      <p className="text-body-sm text-ink-muted">
+        {cheio
+          ? "Acabaram os avisos do mês: até o dia 1º, eles chegam pelo sino e pelo e-mail."
+          : "O mês recomeça no dia 1º."}
+        {!uso.plano && uso.limitePlano > uso.limite && (
+          <>
+            {" "}
+            Com um plano, são até {formatarNumero(uso.limitePlano)} por mês.{" "}
+            <Link href="/painel/planos" className="font-semibold text-ink underline underline-offset-2">
+              Ver os planos
+            </Link>
+          </>
+        )}
+      </p>
     </div>
   );
 }

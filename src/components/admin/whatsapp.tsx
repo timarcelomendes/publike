@@ -13,7 +13,7 @@ import {
 } from "@/lib/acoes/whatsapp-admin";
 import { classesBotao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
-import { formatarNumero } from "@/lib/formato";
+import { formatarNumero, plural } from "@/lib/formato";
 import {
   dolares,
   PARAMETROS_WHATSAPP,
@@ -133,6 +133,7 @@ export function ConfigWhatsapp({
   estimativa,
   enviadasNoMes,
   desligadosPorTipo = {},
+  quemContrata = null,
 }: {
   inicial: ConfigInicial;
   /** quantos de cada aviso o Publike gerou em 30 dias (de quem já aceitou e de todos) */
@@ -140,6 +141,8 @@ export function ConfigWhatsapp({
   enviadasNoMes: number;
   /** quantas pessoas com o WhatsApp ligado desligaram cada aviso em Preferências */
   desligadosPorTipo?: Record<string, number>;
+  /** as contas de quem contrata que receberam avisos neste mês e as que chegaram no limite (migração 20270714120000) */
+  quemContrata?: { contas: number; no_limite: number } | null;
 }) {
   const [ativo, setAtivo] = useState(inicial.ativo);
   const [paraTodos, setParaTodos] = useState(inicial.para_todos);
@@ -172,6 +175,8 @@ export function ConfigWhatsapp({
   const validade = Number(p.validade_horas);
   const venceAntes = !horarioRuim && Number.isFinite(validade) && validade > 0 && validade < fechado;
   const tempoNoPadrao = TEMPOS.every((k) => Number(p[k]) === PARAMETROS_WHATSAPP[k].padrao);
+  const mesGratis = Math.max(0, Math.round(Number(p.limite_mes_gratis) || 0));
+  const mesPlano = Math.max(0, Math.round(Number(p.limite_mes_plano) || 0));
 
   function predefinir(qual: "economico" | "tudo") {
     setLigados(new Set(TIPOS_WHATSAPP.filter((t) => qual === "tudo" || t.economico).map((t) => t.tipo)));
@@ -331,6 +336,57 @@ export function ConfigWhatsapp({
           {formatarNumero(enviadasNoMes)}. Chegando no teto, o envio para até o dia 1º. O limite do dia conta as últimas
           24 horas. Quem contrata tem o próprio limite por conta (os candidatos de várias vagas).
         </p>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-label text-ink">Por mês, para cada empresa ou agência</legend>
+        <div className="grid grid-cols-2 items-end gap-4 sm:flex sm:flex-wrap">
+          <label className="flex flex-col gap-1.5 sm:w-40">
+            <span className="text-body-sm text-ink">No grátis</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              required
+              min={PARAMETROS_WHATSAPP.limite_mes_gratis.faixa[0]}
+              max={PARAMETROS_WHATSAPP.limite_mes_gratis.faixa[1]}
+              value={p.limite_mes_gratis}
+              onChange={(e) => mudar("limite_mes_gratis")(e.target.value)}
+              className={classesEntrada}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 sm:w-40">
+            <span className="text-body-sm text-ink">Com plano</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              required
+              min={PARAMETROS_WHATSAPP.limite_mes_plano.faixa[0]}
+              max={PARAMETROS_WHATSAPP.limite_mes_plano.faixa[1]}
+              value={p.limite_mes_plano}
+              onChange={(e) => mudar("limite_mes_plano")(e.target.value)}
+              className={classesEntrada}
+            />
+          </label>
+        </div>
+        <p className="max-w-2xl text-body-sm text-ink-muted">
+          Contam os avisos que a conta de comércio, empresa ou agência recebe (candidatura nova, candidatos esperando,
+          mensagem do chat…), do dia 1º ao fim do mês. Chegou no limite, o aviso fica no sino e no e-mail, e o sino avisa
+          a conta uma vez. O candidato fica fora dessa conta. Por conta, no máximo {dolares(mesGratis)} no grátis e{" "}
+          {dolares(mesPlano)} com plano.
+          {quemContrata &&
+            (quemContrata.contas === 0
+              ? " Neste mês, nenhuma conta de quem contrata recebeu aviso ainda."
+              : ` Neste mês, ${plural(quemContrata.contas, "conta recebeu", "contas receberam")} avisos, e ${
+                  quemContrata.no_limite === 0
+                    ? "nenhuma chegou no limite"
+                    : `${plural(quemContrata.no_limite, "chegou", "chegaram")} no limite`
+                }.`)}
+        </p>
+        {mesPlano < mesGratis && (
+          <p role="alert" className="text-body-sm text-danger">
+            O limite com plano precisa ser igual ou maior que o do grátis.
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">

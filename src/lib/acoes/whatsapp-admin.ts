@@ -17,9 +17,9 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { PARAMETROS_WHATSAPP, TIPOS_WHATSAPP, type ParametroWhatsapp } from "@/lib/whatsapp-tipos";
 
-// Admin › WhatsApp (migrações 20270619120000 e 20270710120000; claude/plano-whatsapp-oficial.md): ligar, o modo de
-// teste, os limites e os parâmetros do envio, cadastrar e conferir os modelos na Meta, o número e a mensagem de teste.
-// Só a equipe publike.org.
+// Admin › WhatsApp (migrações 20270619120000, 20270710120000 e 20270714120000; claude/plano-whatsapp-oficial.md):
+// ligar, o modo de teste, os limites (os do mês de quem contrata, no grátis e com plano) e os parâmetros do envio,
+// cadastrar e conferir os modelos na Meta, o número e a mensagem de teste. Só a equipe publike.org.
 
 async function banco(): Promise<ClienteBanco | null> {
   const admin = await clienteAdminOuNulo();
@@ -39,6 +39,8 @@ const NOME_DO_PARAMETRO: Record<ParametroWhatsapp, string> = {
   mensagem_minutos: "A espera da mensagem do chat",
   intervalo_conversa_horas: "O intervalo entre os avisos de uma conversa",
   validade_horas: "Quanto o aviso pode esperar na fila",
+  limite_mes_gratis: "O limite do mês de quem contrata no grátis",
+  limite_mes_plano: "O limite do mês de quem contrata com plano",
 };
 
 /** Número inteiro dentro da faixa, ou a frase do erro. */
@@ -84,6 +86,8 @@ export async function salvarWhatsapp(dados: {
   if (p.por_conta_dia === undefined) return { ok: false, erro: "Falta o limite por pessoa por dia." };
   if (p.hora_inicio !== undefined && p.hora_fim !== undefined && p.hora_inicio >= p.hora_fim)
     return { ok: false, erro: "O horário de envio precisa começar antes de terminar." };
+  if (p.limite_mes_gratis !== undefined && p.limite_mes_plano !== undefined && p.limite_mes_plano < p.limite_mes_gratis)
+    return { ok: false, erro: "O limite do mês com plano não pode ser menor que o do grátis." };
   const ligados = new Set((dados.tiposLigados ?? []).filter((t) => TIPOS.includes(t)));
   const { error } = await c.rpc("admin_salvar_whatsapp", {
     p_ativo: Boolean(dados.ativo),
@@ -101,10 +105,12 @@ export async function salvarWhatsapp(dados: {
     p_mensagem_minutos: p.mensagem_minutos,
     p_intervalo_conversa_horas: p.intervalo_conversa_horas,
     p_validade_horas: p.validade_horas,
+    p_limite_mes_gratis: p.limite_mes_gratis,
+    p_limite_mes_plano: p.limite_mes_plano,
   });
   if (error) {
-    // o site já novo e o banco ainda sem a migração 20270710120000 (a função não conhece os parâmetros novos)
-    if (error.code === "PGRST202") return { ok: false, erro: "Falta rodar a migração 20270710120000 no banco." };
+    // o site já novo e o banco ainda sem a migração 20270714120000 (a função não conhece os limites do mês)
+    if (error.code === "PGRST202") return { ok: false, erro: "Falta rodar a migração 20270714120000 no banco." };
     return { ok: false, erro: error.message || "Não deu para salvar agora." };
   }
   refresh();

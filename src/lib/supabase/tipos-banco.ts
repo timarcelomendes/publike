@@ -2549,6 +2549,8 @@ export type Database = {
       criar_chave_api: { Args: { p_nome: string }; Returns: string };
       apagar_chave_api: { Args: { p_id: string }; Returns: undefined };
       limites_da_api: { Args: Record<PropertyKey, never>; Returns: Json };
+      // os avisos pelo WhatsApp por mês de quem contrata, no grátis e nos planos (migração 20270714120000)
+      limites_do_whatsapp: { Args: Record<PropertyKey, never>; Returns: Json };
       servidor_api_conta: { Args: { p_chave: string; p_hash: string }; Returns: Json };
       servidor_api_vagas: { Args: { p_chave: string; p_hash: string; p_status?: string | null }; Returns: Json };
       servidor_api_candidaturas: {
@@ -4315,6 +4317,9 @@ export type Database = {
           p_mensagem_minutos?: number | null;
           p_intervalo_conversa_horas?: number | null;
           p_validade_horas?: number | null;
+          // os limites do mês de quem contrata (migração 20270714120000)
+          p_limite_mes_gratis?: number | null;
+          p_limite_mes_plano?: number | null;
         };
         Returns: undefined;
       };

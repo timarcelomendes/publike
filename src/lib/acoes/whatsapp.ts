@@ -22,7 +22,24 @@ export type MeuWhatsapp = {
   ligado: boolean;
   avisos: { tipo: string; rotulo: string }[];
   desligados: string[];
+  /** quem contrata: os avisos que saíram neste mês e o limite do mês (migração 20270714120000; antes dela, null) */
+  uso: UsoDoWhatsapp | null;
 };
+
+/** O mês de quem contrata: `limite` é o do grátis ou o do plano; `limitePlano`, o dos planos (para a oferta). */
+export type UsoDoWhatsapp = { usadas: number; limite: number; plano: boolean; limitePlano: number };
+
+function lerUso(v: unknown): UsoDoWhatsapp | null {
+  if (!v || typeof v !== "object") return null;
+  const u = v as Record<string, unknown>;
+  if (typeof u.usadas !== "number" || typeof u.limite !== "number") return null;
+  return {
+    usadas: u.usadas,
+    limite: u.limite,
+    plano: u.plano === true,
+    limitePlano: typeof u.limite_plano === "number" ? u.limite_plano : u.limite,
+  };
+}
 
 const textos = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
@@ -48,6 +65,7 @@ export async function meuWhatsapp(): Promise<MeuWhatsapp | null> {
         })
       : [],
     desligados: textos(o.desligados),
+    uso: lerUso(o.uso),
   };
 }
 

@@ -32,6 +32,7 @@ import { LIMITES_CONTA, REGIMES } from "@/lib/constantes";
 import { formatarNumero } from "@/lib/formato";
 import { CIDADES_ATENDIDAS, ONDE_FUNCIONA } from "@/lib/pracas";
 import { limitesDaApi, type LimitesDaApi } from "@/lib/servidor/limites-da-api";
+import { limitesDoWhatsapp, type LimitesDoWhatsapp } from "@/lib/servidor/limites-do-whatsapp";
 
 export const metadata: Metadata = {
   title: "Para empresas: publique sua vaga grátis",
@@ -155,7 +156,7 @@ const PASSOS = [
   },
   {
     titulo: "Receba curtidas de quem mora perto",
-    texto: "Quem se interessa curte a vaga, e você recebe um aviso no site e por e-mail.",
+    texto: "Quem se interessa curte a vaga, e você recebe um aviso no site, por e-mail e, se quiser, no WhatsApp.",
   },
   {
     titulo: "Aceite e converse",
@@ -286,7 +287,7 @@ const PERGUNTAS = [
   },
   {
     p: "O que é pago no Publike?",
-    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários). O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático, o mapa de talentos e mais chamadas por dia na API.",
+    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários). O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático, o mapa de talentos, mais avisos no WhatsApp e mais chamadas por dia na API.",
   },
   {
     p: "Dá para ligar o Publike ao CRM da minha empresa?",
@@ -302,13 +303,28 @@ const PERGUNTAS = [
   },
 ];
 
+/**
+ * Os avisos no WhatsApp de quem contrata (migração 20270714120000), com os números do banco: some com o envio desligado
+ * para todos (Admin › WhatsApp). Entra depois de "O que é pago no Publike?".
+ */
+function perguntas(whatsapp: LimitesDoWhatsapp | null) {
+  if (!whatsapp) return PERGUNTAS;
+  const pergunta = {
+    p: "Recebo os candidatos no WhatsApp?",
+    r: `Recebe, se quiser: em Preferências, marque “Receber os candidatos novos pelo WhatsApp”. O WhatsApp oficial do Publike avisa a candidatura nova (juntas por vaga), os candidatos esperando a sua resposta e a mensagem nova no chat, e você escolhe quais. No grátis, são até ${formatarNumero(whatsapp.gratis)} avisos por mês; com um plano, até ${formatarNumero(whatsapp.plano)}. Passou disso, os avisos continuam no sino e no e-mail até o dia 1º.`,
+  };
+  const depois = PERGUNTAS.findIndex((x) => x.p === "O que é pago no Publike?") + 1;
+  return depois > 0 ? [...PERGUNTAS.slice(0, depois), pergunta, ...PERGUNTAS.slice(depois)] : [...PERGUNTAS, pergunta];
+}
+
 export default async function Empresas() {
-  const api = await limitesDaApi();
+  const [api, whatsapp] = await Promise.all([limitesDaApi(), limitesDoWhatsapp()]);
+  const lista = perguntas(whatsapp);
   const dadosEstruturados = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     url: `${SITE_URL}/empresas`,
-    mainEntity: PERGUNTAS.map(({ p, r }) => ({
+    mainEntity: lista.map(({ p, r }) => ({
       "@type": "Question",
       name: p,
       acceptedAnswer: { "@type": "Answer", text: r },
@@ -547,7 +563,7 @@ export default async function Empresas() {
             Perguntas de quem contrata
           </h2>
           <dl className="mt-4 flex flex-col gap-5">
-            {PERGUNTAS.map(({ p, r }) => (
+            {lista.map(({ p, r }) => (
               <div key={p}>
                 <dt className="text-label">{p}</dt>
                 <dd className="mt-1 text-body text-ink-muted">{r}</dd>

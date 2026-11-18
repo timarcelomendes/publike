@@ -32,10 +32,11 @@ import {
 
 export const metadata: Metadata = { title: "WhatsApp" };
 
-// Admin › WhatsApp (claude/plano-whatsapp-oficial.md; migrações 20270619120000 e 20270710120000), em abas desde
-// 17/11/2026 (Marcelo: "melhore a visão dos resultados, na tela, coloque em abas e exibir os erros, se houver" e "e os
-// parâmetros para mudar também"):
-//   Resultados  o caminho dos avisos no período (hoje, 7 ou 30 dias), por dia, por aviso, os botões e as últimas
+// Admin › WhatsApp (claude/plano-whatsapp-oficial.md; migrações 20270619120000, 20270710120000 e 20270714120000), em
+// abas desde 17/11/2026 (Marcelo: "melhore a visão dos resultados, na tela, coloque em abas e exibir os erros, se
+// houver" e "e os parâmetros para mudar também"):
+//   Resultados  o caminho dos avisos no período (hoje, 7 ou 30 dias), por dia, por aviso, as empresas e agências no
+//               mês (contra o limite do mês), os botões e as últimas
 //   Erros       o que falhou, o que está parado na fila, os modelos com problema, os limites e a ligação
 //   Parâmetros  ligar, para quem, os limites, o horário, os tempos de juntar e espaçar, a validade e os avisos
 //   Modelos     os modelos na Meta
@@ -62,6 +63,20 @@ type Resumo = {
   estimativa: Record<string, { todos: number; aceitaram: number }>;
   /** quantas pessoas com o WhatsApp ligado desligaram cada aviso (migração 20270711120000) */
   desligados_por_tipo?: Record<string, number>;
+  /** quem contrata neste mês: os avisos, o limite e os que ele segurou (migração 20270714120000) */
+  quem_contrata_no_mes?: {
+    contas: number;
+    no_limite: number;
+    lista: {
+      conta_id: string;
+      nome: string | null;
+      tipo: string;
+      plano: boolean;
+      limite: number;
+      usadas: number;
+      seguradas: number;
+    }[];
+  };
 };
 
 type Contagem = {
@@ -162,6 +177,8 @@ const PORQUE: Record<string, string> = {
   "modo de teste": "o envio estava só para os números de teste",
   "parou de receber": "a pessoa parou de receber pelo WhatsApp",
   "desligou este aviso": "a pessoa desligou este aviso no WhatsApp (Preferências)",
+  "limite do mês do grátis": "a empresa ou agência usou os avisos do mês do grátis",
+  "limite do mês do plano": "a empresa ou agência usou os avisos do mês do plano",
 };
 
 export default function WhatsappAdmin({ searchParams }: PageProps<"/admin/whatsapp">) {
@@ -489,7 +506,9 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
         </Aviso>
       ) : (
         <>
-          {aba === "resultados" && r && <AbaResultados r={r} res={res} periodo={periodo} agora={agora} erros={erros} />}
+          {aba === "resultados" && r && (
+            <AbaResultados r={r} res={res} periodo={periodo} agora={agora} erros={erros} p={p} />
+          )}
           {aba === "erros" && r && <AbaErros erros={erros} res={res} periodo={periodo} />}
           {aba === "parametros" && r && <AbaParametros r={r} p={p} />}
           {aba === "modelos" && r && <AbaModelos r={r} p={p} conferir={s.token && s.conta} />}
@@ -536,12 +555,14 @@ function AbaResultados({
   periodo,
   agora,
   erros,
+  p,
 }: {
   r: Resumo;
   res: Resultados | null;
   periodo: Periodo;
   agora: number;
   erros: ErroWhatsapp[];
+  p: ParametrosWhatsapp;
 }) {
   if (!res) return <SemResultados />;
   const f = res.funil;
@@ -662,6 +683,8 @@ function AbaResultados({
         )}
       </Secao>
 
+      {r.quem_contrata_no_mes && <QuemContrataNoMes uso={r.quem_contrata_no_mes} p={p} />}
+
       {(respostas.size > 0 || res.descartes.length > 0) && (
         <div className="grid gap-6 lg:grid-cols-2">
           {respostas.size > 0 && (
@@ -765,6 +788,64 @@ function AbaResultados({
   );
 }
 
+/** As contas de quem contrata neste mês: os avisos que receberam contra o limite do mês (grátis ou plano). */
+function QuemContrataNoMes({ uso, p }: { uso: NonNullable<Resumo["quem_contrata_no_mes"]>; p: ParametrosWhatsapp }) {
+  return (
+    <Secao
+      titulo="Empresas e agências neste mês"
+      descricao={`Os avisos que cada conta de quem contrata recebeu desde o dia 1º, contra o limite do mês: ${formatarNumero(p.limite_mes_gratis)} no grátis e ${formatarNumero(p.limite_mes_plano)} com plano. Chegou no limite, o aviso fica no sino e no e-mail.`}
+    >
+      {uso.lista.length === 0 ? (
+        <p className="text-body-sm text-ink-muted">Nenhuma conta de quem contrata recebeu aviso neste mês.</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-left text-body-sm">
+              <thead className="text-ink-muted">
+                <tr>
+                  <th className="py-2 pr-3 font-normal">Conta</th>
+                  <th className="py-2 pr-3 font-normal">Plano</th>
+                  <th className="py-2 pr-3 text-right font-normal">Avisos no mês</th>
+                  <th className="py-2 text-right font-normal">Segurados pelo limite</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {uso.lista.map((c) => (
+                  <tr key={c.conta_id}>
+                    <td className="py-2 pr-3">
+                      <Link href={`/admin/usuarios/${c.conta_id}`} className="text-ink underline-offset-2 hover:underline">
+                        {c.nome ?? "Conta apagada"}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <Selo variante={c.plano ? "match" : "contorno"}>{c.plano ? "Plano" : "Grátis"}</Selo>
+                    </td>
+                    <td
+                      className={`py-2 pr-3 text-right tabular-nums ${c.usadas >= c.limite ? "text-terra-text" : "text-ink"}`}
+                    >
+                      {formatarNumero(c.usadas)} de {formatarNumero(c.limite)}
+                    </td>
+                    <td className="py-2 text-right text-ink-muted tabular-nums">
+                      {c.seguradas > 0 ? formatarNumero(c.seguradas) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-body-sm text-ink-muted">
+            {uso.no_limite === 0
+              ? "Nenhuma chegou no limite."
+              : `${plural(uso.no_limite, "conta chegou", "contas chegaram")} no limite.`}
+            {uso.contas > uso.lista.length &&
+              ` Aqui estão as ${formatarNumero(uso.lista.length)} que mais receberam, de ${formatarNumero(uso.contas)}.`}
+          </p>
+        </>
+      )}
+    </Secao>
+  );
+}
+
 function AbaErros({ erros, res, periodo }: { erros: ErroWhatsapp[]; res: Resultados | null; periodo: Periodo }) {
   return (
     <div className="flex flex-col gap-6">
@@ -830,6 +911,7 @@ function AbaParametros({ r, p }: { r: Resumo; p: ParametrosWhatsapp }) {
         estimativa={r.estimativa ?? {}}
         enviadasNoMes={r.enviadas_no_mes ?? 0}
         desligadosPorTipo={r.desligados_por_tipo ?? {}}
+        quemContrata={r.quem_contrata_no_mes ?? null}
       />
     </Secao>
   );

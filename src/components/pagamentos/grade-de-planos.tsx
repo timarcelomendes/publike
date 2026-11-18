@@ -19,6 +19,7 @@ import {
 } from "@/lib/pagamentos";
 import type { RecursosPagos } from "@/lib/recursos-pagos";
 import type { LimitesDaApi } from "@/lib/servidor/limites-da-api";
+import type { LimitesDoWhatsapp } from "@/lib/servidor/limites-do-whatsapp";
 
 // Os cartões de /painel/planos lado a lado (11/11/2026): o Grátis e as faixas numa linha só no computador (4 colunas
 // com o Plano Empresa, 3 com o Plano Agência), sem o quarto cair para baixo. Cada cartão diz só o que muda de uma faixa
@@ -66,6 +67,13 @@ export const apiNosPlanos = (api: LimitesDaApi | null) =>
   api
     ? `API para o seu sistema (CRM) com até ${formatarNumero(api.plano)} chamadas por dia`
     : "API para o seu sistema (CRM) com mais chamadas por dia";
+
+/**
+ * Os avisos pelo WhatsApp que a empresa ou a agência recebe por mês (migração 20270714120000): candidatura nova,
+ * candidatos esperando, mensagem do chat. O número vem do banco; com o envio desligado, a linha não aparece.
+ */
+export const whatsappNoGratis = (w: LimitesDoWhatsapp) => `Avisos no seu WhatsApp: até ${formatarNumero(w.gratis)} por mês`;
+export const whatsappNosPlanos = (w: LimitesDoWhatsapp) => `Avisos no seu WhatsApp: até ${formatarNumero(w.plano)} por mês`;
 
 export const vagas = (n: number) => (n === 1 ? "1 vaga" : `${n} vagas`);
 
@@ -123,11 +131,13 @@ function CartaoGratis({
   agencia,
   compacto,
   api,
+  whatsapp,
 }: {
   atual: boolean;
   agencia: boolean;
   compacto: boolean;
   api: LimitesDaApi | null;
+  whatsapp: LimitesDoWhatsapp | null;
 }) {
   return (
     <article className={`flex h-full flex-col gap-4 rounded-lg border border-line bg-surface-200 ${compacto ? "p-5" : "p-5 sm:p-6"}`}>
@@ -144,6 +154,7 @@ function CartaoGratis({
         itens={[
           ...GRATIS.slice(1),
           ...(agencia ? ["Clientes, pedidos e finalistas por link"] : []),
+          ...(whatsapp ? [whatsappNoGratis(whatsapp)] : []),
           apiNoGratis(api),
         ]}
       />
@@ -315,6 +326,7 @@ export function GradeDePlanos({
   agenciaNoGratis,
   valendo,
   api = null,
+  whatsapp = null,
 }: {
   faixas: Produto[];
   pag: PagamentosDaConta;
@@ -329,6 +341,8 @@ export function GradeDePlanos({
   valendo: Assinatura[];
   /** o limite de chamadas por dia da API, no grátis e nos planos (null: sem o número) */
   api?: LimitesDaApi | null;
+  /** os avisos pelo WhatsApp por mês, no grátis e nos planos (null: o envio está desligado) */
+  whatsapp?: LimitesDoWhatsapp | null;
 }) {
   const cartoes = faixas.length + 1;
   // 4 cartões (o Grátis e as 3 faixas do Plano Empresa): 2 por linha no tablet, os 4 juntos a partir de 1280 px
@@ -339,7 +353,7 @@ export function GradeDePlanos({
     <div className="flex flex-col gap-4">
       <ul className={`grid gap-4 ${grade}`}>
         <li>
-          <CartaoGratis atual={!meuPlano} agencia={agenciaNoGratis} compacto={compacto} api={api} />
+          <CartaoGratis atual={!meuPlano} agencia={agenciaNoGratis} compacto={compacto} api={api} whatsapp={whatsapp} />
         </li>
         {faixas.map((p) => (
           <li key={p}>
@@ -371,7 +385,7 @@ export function GradeDePlanos({
           <h3 id="em-todos" className="text-label">
             Em todos os planos, além do Grátis
           </h3>
-          <Lista itens={[...DOS_PLANOS, apiNosPlanos(api)]} colunas />
+          <Lista itens={[...DOS_PLANOS, ...(whatsapp ? [whatsappNosPlanos(whatsapp)] : []), apiNosPlanos(api)]} colunas />
           {agencia && <Lista titulo="Só no Plano Agência:" itens={SO_DA_AGENCIA} colunas />}
         </section>
       )}

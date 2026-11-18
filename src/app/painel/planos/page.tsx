@@ -21,6 +21,7 @@ import {
 import { dataCurta, type EstadoRecurso } from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { limitesDaApi } from "@/lib/servidor/limites-da-api";
+import { limitesDoWhatsapp } from "@/lib/servidor/limites-do-whatsapp";
 import { minhaFaixa } from "@/lib/servidor/pagina-de-carreiras";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -71,13 +72,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
   await exigirUsuario("/painel/planos");
   const pedido = primeiro((await searchParams).ciclo);
   const ciclo: Ciclo = pedido === "3" ? "QUARTERLY" : pedido === "12" ? "YEARLY" : "MONTHLY";
-  const [pag, recursos, faixa, agora, api] = await Promise.all([
+  const [pag, recursos, faixa, agora, api, whatsapp] = await Promise.all([
     pagamentosDaConta(),
     recursosPagos(),
     minhaFaixa(),
     agoraDaRequisicao(),
     // o limite da API no grátis e nos planos (migração 20270713120000)
     limitesDaApi(),
+    // os avisos pelo WhatsApp por mês no grátis e nos planos (migração 20270714120000)
+    limitesDoWhatsapp(),
   ]);
 
   if (!pag?.pode) {
@@ -134,6 +137,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
 
       <GradeDePlanos
         api={api}
+        whatsapp={whatsapp}
         faixas={faixas}
         pag={pag}
         recursos={recursos}

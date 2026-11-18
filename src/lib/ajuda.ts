@@ -268,7 +268,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é pago no Publike?",
-        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (as duas opções: gravada, com resumo da IA, e ao vivo, dentro do Publike, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático, o mapa de talentos e mais chamadas por dia na API (para o CRM da empresa). Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
+        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (as duas opções: gravada, com resumo da IA, e ao vivo, dentro do Publike, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático, o mapa de talentos, mais avisos no WhatsApp por mês e mais chamadas por dia na API (para o CRM da empresa). Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
       },
       {
         p: "Quais são os jeitos de ver as minhas vagas?",
@@ -314,6 +314,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       {
         p: "Sou agência de emprego ou RH. Posso usar?",
         r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. São até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça; para mais, até ${LIMITES_CONTA.comPlano.agencia}, com o Plano Agência. Depois que a equipe confere o CNPJ, a agência publica até ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
+      },
+      {
+        p: "Recebo os candidatos no WhatsApp?",
+        r: "Recebe, se quiser. Em Preferências, marque “Receber os candidatos novos pelo WhatsApp”: o WhatsApp oficial do Publike avisa a candidatura nova (juntas por vaga), os candidatos esperando a sua resposta e a mensagem nova no chat, e você escolhe quais. Para empresas, comércios e agências, há um limite de avisos por mês, maior nos planos: os números aparecem em Planos e, com o WhatsApp ligado, em Preferências, junto de quantos você já usou. Passou do limite, os avisos continuam no sino e no e-mail até o dia 1º. Para parar, desmarque em Preferências ou responda PARAR no WhatsApp.",
       },
       {
         p: "Dá para ligar o Publike ao CRM ou ao sistema da minha empresa?",

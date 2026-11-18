@@ -126,6 +126,8 @@ export function nomeDoAvisoWhatsapp(tipo: string, curto = false) {
 /**
  * Os parâmetros do envio (Admin › WhatsApp › Parâmetros; migração 20270710120000), com os valores de antes, que eram
  * fixos no código. `faixa`: o mínimo e o máximo que o banco aceita (admin_salvar_whatsapp corta no que passar).
+ * `limite_mes_gratis` e `limite_mes_plano` (migração 20270714120000): os avisos por mês de cada conta de quem contrata,
+ * no grátis e com plano.
  */
 export const PARAMETROS_WHATSAPP = {
   hora_inicio: { padrao: 8, faixa: [0, 23] },
@@ -137,6 +139,8 @@ export const PARAMETROS_WHATSAPP = {
   mensagem_minutos: { padrao: 10, faixa: [1, 240] },
   intervalo_conversa_horas: { padrao: 6, faixa: [0, 72] },
   validade_horas: { padrao: 24, faixa: [1, 72] },
+  limite_mes_gratis: { padrao: 30, faixa: [0, 100_000] },
+  limite_mes_plano: { padrao: 300, faixa: [0, 100_000] },
 } as const;
 
 export type ParametroWhatsapp = keyof typeof PARAMETROS_WHATSAPP;
