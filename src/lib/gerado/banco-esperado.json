@@ -329,7 +329,8 @@
   "20270712120000_home_abas_vistas",
   "20270713120000_api_publica",
   "20270714120000_whatsapp_limite_por_plano",
-  "20270715120000_planos_a_partir_de_20_vagas"
+  "20270715120000_planos_a_partir_de_20_vagas",
+  "20270716120000_pedidos_nao_pagos"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3474,6 +3475,8 @@
   "f|public.servidor_pagamento_tentativa(p_chave text, p_conta uuid)": "33809ac9b0",
   "f|public.servidor_pagamento_vincular(p_chave text, p_sub jsonb)": "20ca6bea0e",
   "f|public.servidor_parametros_email(p_chave text)": "9fc2d003b4",
+  "f|public.servidor_pedido_nao_pago_cancelado(p_chave text, p_assinatura uuid, p_asaas_id text)": "f92bea8f66",
+  "f|public.servidor_pedidos_nao_pagos(p_chave text)": "707b17c6de",
   "f|public.servidor_pegar_avaliacoes_ia(p_chave text, p_limite integer)": "5ae77edcfd",
   "f|public.servidor_pegar_comentarios_ia(p_chave text, p_limite integer)": "8c5ef68476",
   "f|public.servidor_pegar_emails(p_chave text, p_limite integer, p_so_teste boolean)": "7358260497",

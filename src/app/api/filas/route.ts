@@ -41,6 +41,7 @@ import { ajustarImpulsos } from "@/lib/servidor/impulso-ajuste";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura";
 import { enviarWhatsappPendentes } from "@/lib/servidor/whatsapp";
+import { cancelarPedidosNaoPagos } from "@/lib/servidor/pagamentos";
 
 // A garantia das filas: o cron-job.org chama a cada minuto (Admin › Chaves) e a tarefa agendada do GitHub
 // (.github/workflows/filas.yml) fica de reserva, os dois com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém usando o site
@@ -125,6 +126,8 @@ export async function GET(request: Request) {
   const faixas = await comTempo(() => avisarFaixasDosPlanos());
   // o plano por 30 dias, sem renovar: o aviso 3 dias antes do fim e no dia
   const fimDos30 = await comTempo(() => avisarFimDosPlanosDe30Dias());
+  // os pedidos de assinatura que não foram pagos: o checkout do cartão largado e o Pix vencido (saem do Asaas e daqui)
+  const pedidos = await comTempo(() => cancelarPedidosNaoPagos());
   // o Plano Agência: a garantia acompanhada com o cliente (7 dias antes do fim)
   const garantias = await comTempo(() => perguntarGarantias());
   // quem contrata: o candidato que combina com a vaga (dos currículos que mudaram desde a última rodada)
@@ -183,6 +186,7 @@ export async function GET(request: Request) {
     liberacoes.motivo,
     faixas.motivo,
     fimDos30.motivo,
+    pedidos.motivo,
     garantias.motivo,
     talentos.motivo,
     consultasSalario.motivo,
@@ -233,6 +237,7 @@ export async function GET(request: Request) {
       liberacoes: liberacoes.avisadas,
       faixas: faixas.avisadas,
       fim_dos_30_dias: fimDos30.avisadas,
+      pedidos_nao_pagos: pedidos.cancelados,
       garantias: garantias.perguntas,
       talentos: talentos.avisados,
       consultasSalario: consultasSalario.contas,

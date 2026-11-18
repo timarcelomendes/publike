@@ -4169,6 +4169,12 @@ export type Database = {
         Returns: Json;
       };
       servidor_pagamento_cancelada: { Args: { p_chave: string; p_asaas_id: string }; Returns: undefined };
+      // os pedidos de assinatura não pagos (migração 20270716120000)
+      servidor_pedidos_nao_pagos: { Args: { p_chave: string }; Returns: Json };
+      servidor_pedido_nao_pago_cancelado: {
+        Args: { p_chave: string; p_assinatura: string; p_asaas_id: string };
+        Returns: boolean;
+      };
       servidor_assinaturas_da_conta: { Args: { p_chave: string; p_conta: string }; Returns: Json };
       minhas_visoes_das_vagas: { Args: Record<PropertyKey, never>; Returns: Json };
       testar_visoes_das_vagas: { Args: Record<PropertyKey, never>; Returns: string };

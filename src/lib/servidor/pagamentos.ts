@@ -2,6 +2,7 @@ import "server-only";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { NOME_PRODUTO, PACOTES, ehProduto, substituiSozinho } from "@/lib/pagamentos";
 import {
+  asaasConfigurado,
   assinaturasDoCliente,
   atualizarAssinatura,
   cancelarAssinaturaAsaas,
@@ -368,4 +369,56 @@ export async function processarEvento(evento: Evento, sandbox = false): Promise<
   }
   await a.cliente.rpc("servidor_pagamento_evento_fim", { p_chave: a.chave, p_id: id, p_erro: erro });
   return erro;
+}
+
+/**
+ * Os pedidos de assinatura que não foram pagos (17/11/2026, migração 20270716120000): o checkout do cartão largado há
+ * mais de 1 dia (o do Asaas vale 60 minutos) e o Pix sem nenhuma cobrança paga, com a 1ª vencida há mais de 3 dias.
+ * O do Pix sai primeiro do Asaas (senão ele seguiria criando uma cobrança por ciclo, com o preço de quando foi pedido)
+ * e depois daqui; sem a chave do Asaas dessa conta (o sandbox ou a produção), fica para depois. O do cartão: antes,
+ * as assinaturas do cliente no Asaas (como na volta do checkout), para um cartão que passou e cujo aviso atrasou virar
+ * a assinatura em vez de sumir. O sino avisa a conta do Pix; o checkout largado do cartão sai sem aviso.
+ */
+export async function cancelarPedidosNaoPagos(): Promise<{ cancelados: number; motivo?: string }> {
+  const a = acessoFila();
+  if (!a) return { cancelados: 0 };
+  const { data, error } = await a.cliente.rpc("servidor_pedidos_nao_pagos", { p_chave: a.chave });
+  if (error) {
+    // sem a migração: os pedidos ficam como antes
+    if (error.code === "PGRST202") return { cancelados: 0 };
+    console.error("Publike: falha ao ler os pedidos de assinatura não pagos:", error.message);
+    return { cancelados: 0, motivo: "Não foi possível ler os pedidos de assinatura não pagos." };
+  }
+  let cancelados = 0;
+  for (const p of (data ?? []) as { id: string; conta: string; asaas_id: string | null; sandbox?: boolean }[]) {
+    const sandbox = p.sandbox === true;
+    try {
+      if (p.asaas_id) {
+        if (!asaasConfigurado(sandbox)) continue;
+        try {
+          await cancelarAssinaturaAsaas(sandbox, p.asaas_id);
+        } catch (e) {
+          // já não existe no Asaas: só falta marcar aqui; senão, tenta de novo na próxima volta
+          if (!(e instanceof ErroAsaas && e.status === 404)) throw e;
+        }
+      } else if (asaasConfigurado(sandbox)) {
+        // sem a chave dessa conta do Asaas, nem o aviso do cartão teria como ser lido: o pedido sai direto
+        await sincronizarCliente(p.conta);
+      }
+    } catch (e) {
+      console.error("Publike: não deu para conferir no Asaas o pedido não pago:", textoDoErro(e));
+      continue;
+    }
+    const { data: cancelou, error: e2 } = await a.cliente.rpc("servidor_pedido_nao_pago_cancelado", {
+      p_chave: a.chave,
+      p_assinatura: p.id,
+      p_asaas_id: p.asaas_id ?? "",
+    });
+    if (e2) {
+      console.error("Publike: não deu para cancelar o pedido não pago:", e2.message);
+      continue;
+    }
+    if (cancelou === true) cancelados++;
+  }
+  return { cancelados };
 }
