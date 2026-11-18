@@ -87,6 +87,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/chaves", nome: "Chaves" },
       { href: "/admin/telas", nome: "Quem vê cada tela" },
       { href: "/admin/velocidade", nome: "Velocidade" },
+      { href: "/admin/documentacao", nome: "Documentação técnica" },
     ],
   },
 ];
