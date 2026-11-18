@@ -70,7 +70,8 @@ type Resumo = {
     respondeu_em: string | null;
     quando: string;
   }[];
-  proximos: { id: number; publico: PublicoEmailEmpresas; nome: string }[];
+  /** `dias_ativos`: em quantos dias dos últimos 30 a conta entrou no Publike (migração 20270728120000) */
+  proximos: { id: number; publico: PublicoEmailEmpresas; nome: string; dias_ativos?: number }[];
 };
 
 const SITUACAO: Record<string, { nome: string; variante: VarianteSelo }> = {
@@ -227,7 +228,7 @@ async function Conteudo() {
 
       <Secao
         titulo="A fila"
-        descricao="Escolha quantos de cada público entram na fila. Cada endereço recebe uma vez só; quem pediu para sair, nunca mais. Sai primeiro quem é do Publike, depois as agências e as que abriram perto."
+        descricao="Escolha quantos de cada público entram na fila. Cada endereço recebe uma vez só; quem pediu para sair, nunca mais. Sai primeiro quem é do Publike, depois as agências e as que abriram perto; entre as contas do Publike, quem entrou no site em mais dias dos últimos 30."
       >
         <ul className="flex flex-col divide-y divide-line">
           {(Object.keys(PUBLICOS_EMAIL_EMPRESAS) as PublicoEmailEmpresas[]).map((p) => {
@@ -249,7 +250,10 @@ async function Conteudo() {
         </ul>
         {r.proximos.length > 0 && (
           <p className="text-body-sm text-ink-muted">
-            Os próximos: {r.proximos.map((x) => x.nome).join(", ")}
+            Os próximos:{" "}
+            {r.proximos
+              .map((x) => (x.dias_ativos ? `${x.nome} (${plural(x.dias_ativos, "dia", "dias")} no site)` : x.nome))
+              .join(", ")}
             {n.na_fila > r.proximos.length ? "…" : "."}
           </p>
         )}
