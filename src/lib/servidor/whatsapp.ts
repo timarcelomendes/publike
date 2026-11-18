@@ -241,7 +241,8 @@ export const MODELOS: Modelo[] = [
     nome: "publike_vaga_que_combina",
     aviso: "convite",
     para: "Candidato",
-    quando: "O pacote de candidatos convida quem combina com a vaga (marketing: claude/plano-ritmo-do-pacote.md)",
+    // modelo de marketing (claude/plano-ritmo-do-pacote.md)
+    quando: "O pacote de candidatos convida quem combina com a vaga",
     corpo:
       "Oi, {{nome}}! Tem uma vaga perto de você que combina com o seu currículo: {{vaga}}. Veja os detalhes no Publike e, se tiver interesse, curta a vaga.",
     exemplo: { nome: "Ana", vaga: "Atendente de padaria" },
@@ -562,6 +563,14 @@ export type SituacaoModelo = { status: string; categoria?: string; motivo?: stri
 export type SituacaoModelos = Record<string, SituacaoModelo>;
 
 /**
+ * A Meta pôs o modelo numa categoria que ele não declara (um de utilidade virou marketing): o robô não manda e o Admin
+ * avisa. O modelo que declara `categoria` (o do convite do pacote, marketing) sai na categoria dele.
+ */
+export function categoriaBloqueia(m: Pick<Modelo, "categoria">, categoriaNaMeta: string | undefined | null) {
+  return !!categoriaNaMeta && categoriaNaMeta !== "UTILITY" && categoriaNaMeta !== m.categoria;
+}
+
+/**
  * Confere na Meta a situação de cada modelo e cadastra os que faltam (no máximo uma tentativa a cada 6 horas por
  * modelo, a não ser que o Admin peça). Guarda no banco pela função `guardar`.
  */
@@ -800,7 +809,7 @@ export async function enviarWhatsappPendentes(limite = 30): Promise<ResultadoWha
       });
       continue;
     }
-    if (situacao.categoria && situacao.categoria !== "UTILITY" && situacao.categoria !== def.categoria) {
+    if (categoriaBloqueia(def, situacao.categoria)) {
       // a Meta mudou o modelo para marketing (umas 9 vezes mais caro e com limite por pessoa): não manda
       await marcar(item.id, "pendente", {
         modelo: m.modelo,

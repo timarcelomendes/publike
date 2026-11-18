@@ -11,6 +11,7 @@ import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
 import { formatarData, formatarDataHora, formatarNumero, plural, primeiro } from "@/lib/formato";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import {
+  categoriaBloqueia,
   erroPassageiro,
   explicarErro,
   MODELOS,
@@ -321,7 +322,7 @@ function errosDoWhatsapp(
         quantas,
         aba: "modelos",
       });
-    else if (st?.categoria && st.categoria !== "UTILITY")
+    else if (categoriaBloqueia(m, st?.categoria))
       erros.push({
         chave: `categoria-${m.nome}`,
         grave: true,
@@ -425,7 +426,7 @@ async function Conteudo({ aba, periodo }: { aba: Aba; periodo: Periodo }) {
   const prontos = r
     ? ligados.filter((m) => {
         const st = r.config.modelos?.[m.nome];
-        return st?.status === "APPROVED" && (!st.categoria || st.categoria === "UTILITY");
+        return st?.status === "APPROVED" && !categoriaBloqueia(m, st.categoria);
       }).length
     : 0;
 
@@ -949,7 +950,8 @@ function AbaModelos({ r, p, conferir }: { r: Resumo; p: ParametrosWhatsapp; conf
       titulo="Modelos na Meta"
       descricao={
         <>
-          Toda mensagem que o Publike começa precisa de um modelo aprovado pela Meta (categoria utilidade). Com as chaves
+          Toda mensagem que o Publike começa precisa de um modelo aprovado pela Meta (de utilidade; o do convite do
+          pacote é de marketing, que custa mais). Com as chaves
           na Vercel e o envio ligado, o Publike cadastra os que faltam e confere a aprovação a cada 30 minutos; o aviso
           espera até o modelo ser aprovado (no máximo {p.validade_horas} horas).
           {r.config.modelos_conferidos_em && ` Conferidos em ${formatarDataHora(r.config.modelos_conferidos_em)}.`}
@@ -967,10 +969,16 @@ function AbaModelos({ r, p, conferir }: { r: Resumo; p: ParametrosWhatsapp; conf
               <p className="flex flex-wrap items-center gap-2">
                 <span className="text-label break-all text-ink">{m.nome}</span>
                 <Selo variante={info.variante}>{info.nome}</Selo>
-                {st?.categoria && st.categoria !== "UTILITY" && (
+                {categoriaBloqueia(m, st?.categoria) ? (
                   <Selo variante="perigo" title="A Meta mudou a categoria: a mensagem fica mais cara e não sai">
-                    {st.categoria}
+                    {st?.categoria}
                   </Selo>
+                ) : (
+                  m.categoria && (
+                    <Selo variante="contorno" title="Modelo de marketing: custa umas 9 vezes a mensagem de utilidade">
+                      Marketing
+                    </Selo>
+                  )
                 )}
                 {desligado && (
                   <Selo variante="contorno" title="O aviso está desligado em Parâmetros: este modelo não é usado">
