@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
-import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
+import { FaixaExperimento, FaixaGratis, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Vazio } from "@/components/ui/basicos";
@@ -38,7 +38,9 @@ async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/copiloto");
   const [liberado, recursos, agora] = await Promise.all([copilotoLiberado(), recursosPagos(), agoraDaRequisicao()]);
-  // recurso pago: sem ele, a oferta dos 15 dias grátis (migração 20261215120000)
+  // recurso pago: sem ele, a oferta dos 15 dias grátis (migração 20261215120000); no grátis de cada mês (migração
+  // 20270730120000), as vagas, com o que sobra no mês
+  const gratis = liberado ? null : (recursos?.copiloto.gratis ?? null);
   const cabecalho = (
     <CabecalhoDaPagina
       titulo="Triagem com IA"
@@ -46,7 +48,7 @@ async function Conteudo() {
       descricao="Encontra os profissionais que combinam com a sua vaga e mostra o porquê. Quem decide é você."
     />
   );
-  if (!liberado)
+  if (!liberado && !gratis)
     return (
       <div className="flex flex-col gap-6">
         {cabecalho}
@@ -58,6 +60,7 @@ async function Conteudo() {
     <div className="flex flex-col gap-6">
       {cabecalho}
       <FaixaExperimento recurso="copiloto" estado={recursos?.copiloto} agora={agora} />
+      {gratis && <FaixaGratis recurso="copiloto" gratis={gratis} estado={recursos?.copiloto} />}
       <ol className="grid gap-3 sm:grid-cols-3">
         {PASSOS.map((p, i) => (
           <li key={p.titulo} className="flex gap-3 rounded-lg bg-surface-300 p-4">

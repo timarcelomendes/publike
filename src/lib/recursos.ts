@@ -1,4 +1,5 @@
 import type { Intencao } from "./intencao";
+import { GRATIS_PADRAO } from "./recursos-pagos";
 
 // "O que dá para fazer no Publike", por perfil. Usado na home e no Como funciona.
 // Frases curtas, do jeito que a pessoa fala; cada item é algo que o site faz hoje.
@@ -277,12 +278,12 @@ export const PERFIS: Perfil[] = [
     extras: {
       titulo: "Para ir mais longe",
       texto:
-        "Recursos pagos, para quem contrata muito. Experimente cada um por 15 dias grátis, ou assine todos no Plano Completo.",
+        "Recursos pagos, para quem contrata muito. Experimente cada um por 15 dias grátis, use um pouco de cada de graça todo mês, ou assine todos num plano.",
       recursos: [
         {
           icone: "texto",
           titulo: "Triagem com IA",
-          texto: "A IA lê os currículos contra o que a vaga pede e mostra quem chamar primeiro.",
+          texto: `A IA lê os currículos contra o que a vaga pede e mostra quem chamar primeiro. Grátis: ${GRATIS_PADRAO.triagem} candidatos por mês.`,
         },
         {
           icone: "teste",
@@ -292,7 +293,7 @@ export const PERFIS: Perfil[] = [
         {
           icone: "video",
           titulo: "Entrevista em vídeo",
-          texto: "Duas opções: gravada, com o resumo da IA, ou ao vivo, dentro do Publike, sem instalar nada.",
+          texto: `Duas opções: gravada, com o resumo da IA, ou ao vivo, dentro do Publike, sem instalar nada. Grátis: ${GRATIS_PADRAO.gravadas} gravadas e ${GRATIS_PADRAO.aoVivo} ao vivo por mês.`,
           novo: true,
         },
         {

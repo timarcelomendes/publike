@@ -1,6 +1,15 @@
 import { Check, ClipboardCheck, CreditCard, Sparkles, Video, Workflow } from "lucide-react";
 import { O_PRODUTO, type Produto } from "@/lib/pagamentos";
-import { dataCurta, DIAS_GRATIS, diasRestantes, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
+import {
+  dataCurta,
+  diaQueRenova,
+  DIAS_GRATIS,
+  diasRestantes,
+  NOME_RECURSO,
+  type EstadoRecurso,
+  type GratisDoMes,
+  type RecursoPago,
+} from "@/lib/recursos-pagos";
 import { BotaoExperimentar } from "./botao-experimentar";
 import { SeloCortesia } from "./selo-cortesia";
 import { Aviso, Selo } from "./ui/basicos";
@@ -105,7 +114,8 @@ export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estad
         <span className="flex size-10 items-center justify-center rounded-pill bg-terra-soft">
           <Icone aria-hidden className="size-5 text-terra-text" />
         </span>
-        <SeloCortesia />
+        {/* depois dos 15 dias (ou sem eles), a marca não promete mais os dias grátis */}
+        <SeloCortesia texto={estado && !estado.pode_experimentar ? "Recurso pago" : undefined} />
       </div>
       <h3 id={`oferta-${recurso}`} className="text-h3">
         {o.titulo}
@@ -158,6 +168,75 @@ export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estad
         </p>
       )}
     </section>
+  );
+}
+
+/** O que a assinatura soma ao grátis do mês, numa linha. */
+const SEM_LIMITE: Record<"copiloto" | "video", string> = {
+  copiloto: "Com a assinatura, a IA lê todos os candidatos e busca em Talentos.",
+  video: "Com a assinatura, gravadas sem limite, até 10 ao vivo por mês e o pedido a todo novo candidato.",
+};
+
+/** "a IA leu 3 de 5 candidatos", "2 de 5 entrevistas gravadas e 0 de 1 ao vivo": o que a conta usou no mês. */
+function usoDoGratis(recurso: "copiloto" | "video", g: GratisDoMes): string {
+  const usados = Math.min(g.usados, g.limite);
+  if (recurso === "copiloto") {
+    return `a IA leu ${usados} de ${g.limite} ${g.limite === 1 ? "candidato" : "candidatos"}`;
+  }
+  return [
+    g.limite > 0 && `${usados} de ${g.limite} ${g.limite === 1 ? "entrevista gravada" : "entrevistas gravadas"}`,
+    g.aoVivo && g.aoVivo.limite > 0 && `${Math.min(g.aoVivo.usados, g.aoVivo.limite)} de ${g.aoVivo.limite} ao vivo`,
+  ]
+    .filter(Boolean)
+    .join(" e ");
+}
+
+/**
+ * O grátis de cada mês (migração 20270730120000), no alto da Triagem com IA e da Entrevista em vídeo de quem não
+ * tem o recurso: o que já usou, quando renova e o que a assinatura (ou os 15 dias) soma. A barra é do principal
+ * (os candidatos lidos, as gravadas pedidas).
+ */
+export function FaixaGratis({
+  recurso,
+  gratis,
+  estado,
+}: {
+  recurso: "copiloto" | "video";
+  gratis: GratisDoMes;
+  estado: EstadoRecurso | null | undefined;
+}) {
+  const acabou = gratis.limite > 0 && gratis.usados >= gratis.limite;
+  const renova = gratis.renovaEm ? ` Renova em ${diaQueRenova(gratis.renovaEm)}.` : "";
+  const parte = gratis.limite > 0 ? Math.min(1, gratis.usados / gratis.limite) : 0;
+  return (
+    <div
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-md border border-line bg-surface-300 px-4 py-3"
+    >
+      <div className="flex min-w-0 flex-1 basis-72 flex-col gap-2">
+        <p className="text-body-sm">
+          <span className="text-label">Grátis neste mês: {usoDoGratis(recurso, gratis)}.</span>
+          <span className="text-ink-muted">
+            {renova} {SEM_LIMITE[recurso]}
+          </span>
+        </p>
+        {gratis.limite > 0 && (
+          <span aria-hidden className="block h-1.5 w-full max-w-xs overflow-hidden rounded-pill bg-line">
+            <span
+              className={`block h-full rounded-pill ${acabou ? "bg-terra" : "bg-cerrado"}`}
+              style={{ width: `${Math.round(parte * 100)}%` }}
+            />
+          </span>
+        )}
+      </div>
+      {estado?.pode_experimentar ? (
+        <BotaoExperimentar recurso={recurso} acao="experimentar" tamanho="sm" />
+      ) : estado?.pode_assinar ? (
+        <BotaoAssinar recurso={recurso} tamanho="sm" variante={acabou ? "primario" : "secundario"} novo={false} />
+      ) : estado?.experimentou && !estado.quer_continuar ? (
+        <BotaoExperimentar recurso={recurso} acao="continuar" tamanho="sm" />
+      ) : null}
+    </div>
   );
 }
 

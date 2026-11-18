@@ -4359,6 +4359,11 @@ export type Database = {
         Args: { p_aberto: boolean; p_servico: string; p_e_codigo: boolean; p_descricao: string };
         Returns: undefined;
       };
+      /** o grátis de cada mês (migração 20270730120000) */
+      admin_gratis_do_mes: {
+        Args: { p_triagem: number; p_gravadas: number; p_ao_vivo: number };
+        Returns: undefined;
+      };
       registrar_contato_candidato: {
         Args: { p_anuncio: string; p_perfil: string; p_canal: string };
         Returns: undefined;

@@ -55,14 +55,17 @@ export async function MenuDaConta({ semAConta = false }: { semAConta?: boolean }
         ajudaDaIADisponivel().catch(() => false),
       ])
     : [null, false];
-  // a pílula segue a conta: "15 dias grátis", "faltam N dias" no teste, nada depois de liberado
+  // a pílula segue a conta: "15 dias grátis", "faltam N dias" no teste, nada depois de liberado e, sem o recurso,
+  // o grátis de cada mês ("5 grátis por mês", "1 grátis por vaga")
   const pilulas = recursos
     ? {
-        copiloto: marcaDoRecurso(recursos.copiloto, agora).curto,
-        testes: marcaDoRecurso(recursos.testes, agora).curto,
+        copiloto: marcaDoRecurso(recursos.copiloto, agora, "copiloto").curto,
+        testes: marcaDoRecurso(recursos.testes, agora, "testes").curto,
         // sem a migração 20270104120000, a Entrevista em vídeo não entra no menu (undefined)
-        video: recursos.video.indisponivel ? undefined : marcaDoRecurso(recursos.video, agora).curto,
-        automacoes: recursos.automacoes.indisponivel ? undefined : marcaDoRecurso(recursos.automacoes, agora).curto,
+        video: recursos.video.indisponivel ? undefined : marcaDoRecurso(recursos.video, agora, "video").curto,
+        automacoes: recursos.automacoes.indisponivel
+          ? undefined
+          : marcaDoRecurso(recursos.automacoes, agora, "automacoes").curto,
       }
     : undefined;
   return (

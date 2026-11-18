@@ -2,6 +2,8 @@
 // usar bem (pedido do Marcelo, 10/11/2026). A página inteira de ajuda continua em /ajuda (src/lib/ajuda.ts).
 // Mudou como uma página funciona? Mude o texto dela aqui.
 
+import { GRATIS_PADRAO } from "./recursos-pagos";
+
 export type AjudaDaPagina = {
   titulo: string;
   texto: string;
@@ -250,7 +252,7 @@ const REGRAS: Regra[] = [
       dicas: [
         "Marque como obrigatório só o que é mesmo obrigatório: o resto vira desempate.",
         "A IA não olha nome, foto nem contato. Quem decide é você.",
-        "Dá para experimentar 15 dias grátis.",
+        `Sem assinar, a IA lê ${GRATIS_PADRAO.triagem} candidatos por mês; nos 15 dias grátis e com a assinatura, todos.`,
       ],
     },
   },
@@ -259,7 +261,10 @@ const REGRAS: Regra[] = [
     ajuda: {
       titulo: "Teste Prático",
       texto: "Um teste curto da função que o candidato faz pelo celular, para confirmar que a pessoa sabe fazer. O resultado chega no quadro da vaga: acima, dentro ou abaixo do esperado.",
-      dicas: ["Peça o teste depois do match, para quem já tem interesse.", "Dá para experimentar 15 dias grátis."],
+      dicas: [
+        "Peça o teste depois do match, para quem já tem interesse.",
+        "O teste da Publike que combina com a vaga é grátis. Os outros e os da sua empresa têm 15 dias grátis para experimentar.",
+      ],
     },
   },
   {
@@ -270,7 +275,7 @@ const REGRAS: Regra[] = [
       dicas: [
         "Três perguntas curtas bastam.",
         "A IA julga só o que a pessoa disse, nunca a aparência ou o jeito de falar.",
-        "A gravada não tem limite. Ao vivo pelo Publike: até 10 por mês com a Entrevista em vídeo sozinha; nos planos, 10, 20 ou 30, pela faixa (3 nos dias grátis).",
+        `Sem assinar, todo mês: ${GRATIS_PADRAO.gravadas} gravadas e ${GRATIS_PADRAO.aoVivo} ao vivo. Com a assinatura, a gravada não tem limite e a ao vivo vai a 10 por mês (nos planos, 10, 20 ou 30, pela faixa; 3 nos dias grátis).`,
       ],
     },
   },

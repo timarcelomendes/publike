@@ -13,7 +13,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { obterAnuncio, obterMeuPerfil, recursosPagos } from "@/lib/dados";
 import { formatarLugar } from "@/lib/formato";
-import { marcaDoRecurso } from "@/lib/recursos-pagos";
+import { marcaDoRecurso, podeUsar } from "@/lib/recursos-pagos";
 import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
 import { ordemDoCopiloto, triagemDosCandidatos } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
@@ -138,6 +138,7 @@ async function Conteudo({
         }
       : c,
   );
+  // a busca em Talentos é da Triagem paga: aqui, sem o grátis do mês ("Recurso pago", "15 dias grátis")
   const marcaCopiloto = marcaDoRecurso(recursos?.copiloto, agora).curto;
   const saude = (
     await saudeDasVagas(
@@ -275,7 +276,8 @@ async function Conteudo({
           video={
             videos && recursos && !recursos.video.indisponivel
               ? {
-                  liberado: recursos.video.liberado,
+                  // pago ou no grátis do mês (o banco confere o que sobra)
+                  liberado: podeUsar(recursos.video),
                   aoVivo: aoVivoAberto(aoVivoNoMes),
                   aoVivoNoMes,
                   meet: meetLigado(),

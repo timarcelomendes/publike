@@ -18,7 +18,7 @@ import {
   type Ciclo,
   type Produto,
 } from "@/lib/pagamentos";
-import { dataCurta, type EstadoRecurso } from "@/lib/recursos-pagos";
+import { dataCurta, ehRecursoPago, textoDoGratis, type EstadoRecurso } from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { limitesDaApi } from "@/lib/servidor/limites-da-api";
 import { limitesDoWhatsapp } from "@/lib/servidor/limites-do-whatsapp";
@@ -173,6 +173,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
                   <div className="min-w-0 flex-1 basis-56">
                     <p className="text-label">{NOME_PRODUTO[p]}</p>
                     <p className="text-body-sm text-ink-muted">{faz}</p>
+                    {/* o que dá para usar sem assinar (o grátis de cada mês, migração 20270730120000) */}
+                    {!tem && ehRecursoPago(p) && textoDoGratis(p, estado?.gratis) && (
+                      <p className="text-body-sm text-cerrado-text">{textoDoGratis(p, estado?.gratis)}</p>
+                    )}
                   </div>
                   <p className="text-body-sm tabular-nums">
                     <strong className="text-label">{formatarMoeda(valor)}</strong> por mês

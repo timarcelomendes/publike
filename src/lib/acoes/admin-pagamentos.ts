@@ -60,6 +60,33 @@ export async function salvarConfigPagamentos(d: {
 }
 
 /**
+ * O grátis de cada mês (migração 20270730120000): quantos candidatos a IA lê, quantas entrevistas gravadas e quantas
+ * ao vivo cada conta que contrata tem por mês, sem assinar. 0 desliga.
+ */
+export async function salvarGratisDoMes(d: { triagem: number; gravadas: number; aoVivo: number }): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const inteiro = (n: unknown, max: number) => {
+    const v = Number(n);
+    return Number.isInteger(v) && v >= 0 && v <= max ? v : null;
+  };
+  const triagem = inteiro(d.triagem, 1000);
+  const gravadas = inteiro(d.gravadas, 1000);
+  const aoVivo = inteiro(d.aoVivo, 100);
+  if (triagem === null || gravadas === null || aoVivo === null) {
+    return { ok: false, erro: "Use números inteiros: de 0 a 1000 (na ao vivo, de 0 a 100)." };
+  }
+  const { error } = await c.rpc("admin_gratis_do_mes", { p_triagem: triagem, p_gravadas: gravadas, p_ao_vivo: aoVivo });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270730120000_gratis_de_cada_mes.sql primeiro." };
+    return falha(error);
+  }
+  refresh();
+  return { ok: true, mensagem: "Salvo: vale já, para o mês de agora." };
+}
+
+/**
  * A conta que testa os pagamentos antes de abrir para todos (pelo código da conta, que vem da busca, ou pelo
  * e-mail de login). `sandbox`: com o site em produção, paga na conta sandbox do Asaas (nada é cobrado).
  */

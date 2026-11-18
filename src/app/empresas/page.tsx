@@ -31,6 +31,7 @@ import { SITE_URL } from "@/lib/config";
 import { LIMITES_CONTA, REGIMES } from "@/lib/constantes";
 import { formatarNumero } from "@/lib/formato";
 import { CIDADES_ATENDIDAS, ONDE_FUNCIONA } from "@/lib/pracas";
+import { GRATIS_PADRAO } from "@/lib/recursos-pagos";
 import { limitesDaApi, type LimitesDaApi } from "@/lib/servidor/limites-da-api";
 import { limitesDoWhatsapp, type LimitesDoWhatsapp } from "@/lib/servidor/limites-do-whatsapp";
 
@@ -287,7 +288,7 @@ const PERGUNTAS = [
   },
   {
     p: "O que é pago no Publike?",
-    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários). O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático, o mapa de talentos, mais avisos no WhatsApp e mais chamadas por dia na API.",
+    r: `Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários), e um pouco de cada fica grátis todo mês: a IA lê ${GRATIS_PADRAO.triagem} candidatos, ${GRATIS_PADRAO.gravadas} entrevistas gravadas e ${GRATIS_PADRAO.aoVivo} ao vivo, o teste da Publike na vaga e as 5 automações prontas. O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático, o mapa de talentos, mais avisos no WhatsApp e mais chamadas por dia na API.`,
   },
   {
     p: "Dá para ligar o Publike ao CRM da minha empresa?",
@@ -510,7 +511,9 @@ export default async function Empresas() {
           </ul>
           <p className="mt-4 text-body-sm text-ink-muted">
             15 dias grátis na Triagem, no Teste, na Entrevista em vídeo e nas Automações; na Consulta de salários, as
-            consultas grátis. Depois, assine só o que usar ou o plano.
+            consultas grátis. Depois, um pouco de cada continua grátis todo mês: a IA lê {GRATIS_PADRAO.triagem}{" "}
+            candidatos, {GRATIS_PADRAO.gravadas} entrevistas gravadas e {GRATIS_PADRAO.aoVivo} ao vivo, o teste da
+            Publike na vaga e as 5 automações prontas. Para mais, assine só o que usar ou o plano.
           </p>
           <h3 className="mt-8 text-h3">Só nos planos</h3>
           <ul className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

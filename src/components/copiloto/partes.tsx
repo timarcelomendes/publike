@@ -10,6 +10,7 @@ function Chave({
   ligado,
   pendente,
   aoMudar,
+  trancada,
   children,
 }: {
   id: string;
@@ -17,6 +18,8 @@ function Chave({
   ligado: boolean;
   pendente: boolean;
   aoMudar: () => void;
+  /** a parte é da assinatura: a chave fica desligada, e o texto diz por quê */
+  trancada?: string;
   children: string;
 }) {
   return (
@@ -26,13 +29,14 @@ function Chave({
           {titulo}
         </p>
         <p className="text-body-sm text-ink-muted">{children}</p>
+        {trancada && <p className="mt-1 text-body-sm text-terra-text">{trancada}</p>}
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={ligado}
         aria-labelledby={id}
-        disabled={pendente}
+        disabled={pendente || Boolean(trancada)}
         onClick={aoMudar}
         className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-pill border transition-colors disabled:opacity-60 ${
           ligado ? "border-transparent bg-cerrado" : "border-line-strong bg-surface-300"
@@ -49,15 +53,20 @@ function Chave({
   );
 }
 
-/** As partes do copiloto que ligam e desligam na vaga (e, se quiser, nas próximas vagas). */
+/**
+ * As partes do copiloto que ligam e desligam na vaga (e, se quiser, nas próximas vagas). `gratis`: a conta está no
+ * grátis do mês (migração 20270730120000): buscar em Talentos é da assinatura, e a escolha vale só para esta vaga.
+ */
 export function PartesDoCopiloto({
   anuncioId,
   triagem,
   busca,
+  gratis = false,
 }: {
   anuncioId: string;
   triagem: boolean;
   busca: boolean;
+  gratis?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [partes, setPartes] = useState({ triagem, busca });
@@ -77,9 +86,10 @@ export function PartesDoCopiloto({
       <Chave
         id="parte-busca"
         titulo="Buscar em Talentos"
-        ligado={partes.busca}
+        ligado={partes.busca && !gratis}
         pendente={pendente}
         aoMudar={() => mudar({ ...partes, busca: !partes.busca })}
+        trancada={gratis ? "Vem com a assinatura da Triagem com IA." : undefined}
       >
         Procura quem deixou o currículo visível para as empresas e mostra quem combina, para você convidar.
       </Chave>
@@ -92,15 +102,17 @@ export function PartesDoCopiloto({
       >
         Lê o currículo de quem curtiu a vaga contra os critérios. Aceitar e recusar continuam com você, no quadro.
       </Chave>
-      <label className="inline-flex cursor-pointer items-center gap-2 text-body-sm">
-        <input
-          type="checkbox"
-          checked={padrao}
-          onChange={(e) => setPadrao(e.target.checked)}
-          className="size-4 accent-[var(--pk-ink)]"
-        />
-        Usar a mesma escolha nas próximas vagas
-      </label>
+      {!gratis && (
+        <label className="inline-flex cursor-pointer items-center gap-2 text-body-sm">
+          <input
+            type="checkbox"
+            checked={padrao}
+            onChange={(e) => setPadrao(e.target.checked)}
+            className="size-4 accent-[var(--pk-ink)]"
+          />
+          Usar a mesma escolha nas próximas vagas
+        </label>
+      )}
       {mensagem}
     </div>
   );

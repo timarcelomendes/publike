@@ -12,6 +12,7 @@ import {
   type OrigemCopiloto,
 } from "@/lib/copiloto";
 import { listarCurriculosDosInteressados, talentosParaVaga } from "@/lib/dados";
+import { lerGratis, type GratisDoMes } from "@/lib/recursos-pagos";
 import { textosDosEstudos } from "@/lib/estudos";
 import { textoDoPeriodo } from "@/lib/experiencia";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -23,7 +24,12 @@ import { montarQuadro } from "./quadro";
 // (sem nome, foto, contato nem endereço) e a pré-seleção sem IA.
 
 export type ConfigCopiloto = {
+  /** a Triagem abre na vaga: paga (assinatura, 15 dias, Publike) ou no grátis do mês */
   liberado: boolean;
+  /** a Triagem paga: sem o limite do mês e com a busca em Talentos */
+  pago: boolean;
+  /** o grátis do mês (migração 20270730120000): quantos candidatos a IA lê e já leu; null na paga */
+  gratis: GratisDoMes | null;
   criterios: CriterioCopiloto[];
   versao: string;
   triagem: boolean;
@@ -53,14 +59,19 @@ export async function configDoCopiloto(anuncioId: string): Promise<ConfigCopilot
     return null;
   }
   const o = (data ?? {}) as Record<string, unknown>;
+  const pago = o.liberado === true;
+  const gratis = pago ? null : lerGratis(o.gratis);
   return {
-    liberado: o.liberado === true,
+    liberado: pago || Boolean(gratis),
+    pago,
+    gratis,
     criterios: criteriosDoBanco(o.criterios),
     versao: typeof o.versao === "string" ? o.versao : "",
     triagem: o.triagem !== false,
-    busca: o.busca !== false,
+    // buscar em Talentos é da Triagem paga (o banco também confere)
+    busca: pago && o.busca !== false,
     padraoTriagem: o.padrao_triagem !== false,
-    padraoBusca: o.padrao_busca !== false,
+    padraoBusca: pago && o.padrao_busca !== false,
     automaticos: o.automaticos === true,
     teto: typeof o.teto === "number" ? o.teto : Number.MAX_SAFE_INTEGER,
   };

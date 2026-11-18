@@ -134,7 +134,7 @@ async function Conteudo({ id }: { id: string }) {
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="flex flex-wrap items-center gap-2 text-h3">
                     {NOME_RECURSO[r]}
-                    <SeloCortesia curto texto={marcaDoRecurso(recursos?.[r], agora).curto} />
+                    <SeloCortesia curto texto={marcaDoRecurso(recursos?.[r], agora, r).curto} />
                   </span>
                   <span className="text-body-sm text-ink-muted">{O_QUE_FAZ[r]}</span>
                   {s && Sinal && (

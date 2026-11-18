@@ -5,6 +5,7 @@ import {
   contaDeTestePagamentos,
   procurarContasParaTeste,
   salvarConfigPagamentos,
+  salvarGratisDoMes,
   sandboxDaContaDeTeste,
   type ContaAchada,
 } from "@/lib/acoes/admin-pagamentos";
@@ -13,6 +14,65 @@ import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
 // Admin › Pagamentos: abrir para todos, as contas de teste e o serviço da nota (os preços: tabela-de-precos.tsx).
+
+/** O grátis de cada mês (migração 20270730120000): os três números, que valem já para o mês de agora. */
+export function GratisDoMes({ triagem, gravadas, aoVivo }: { triagem: number; gravadas: number; aoVivo: number }) {
+  const [t, setT] = useState(String(triagem));
+  const [g, setG] = useState(String(gravadas));
+  const [v, setV] = useState(String(aoVivo));
+  const { rodar, pendente, mensagem } = useAcao();
+  const campos = [
+    {
+      id: "gratis-triagem",
+      rotulo: "Triagem com IA",
+      ajuda: "candidatos que a IA lê",
+      valor: t,
+      mudar: setT,
+      max: 1000,
+    },
+    { id: "gratis-gravadas", rotulo: "Entrevista gravada", ajuda: "pedidos", valor: g, mudar: setG, max: 1000 },
+    { id: "gratis-ao-vivo", rotulo: "Entrevista ao vivo", ajuda: "pelo Publike", valor: v, mudar: setV, max: 100 },
+  ];
+  return (
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        rodar(() => salvarGratisDoMes({ triagem: Number(t), gravadas: Number(g), aoVivo: Number(v) }));
+      }}
+    >
+      <div className="flex flex-wrap gap-4">
+        {campos.map((c) => (
+          <div key={c.id} className="flex flex-col gap-1">
+            <label htmlFor={c.id} className="text-label">
+              {c.rotulo}
+            </label>
+            <span id={`${c.id}-ajuda`} className="text-body-sm text-ink-muted">
+              {c.ajuda}, por mês
+            </span>
+            <input
+              id={c.id}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={c.max}
+              step={1}
+              required
+              aria-describedby={`${c.id}-ajuda`}
+              value={c.valor}
+              onChange={(e) => c.mudar(e.target.value)}
+              className={`${classesEntrada} w-28 tabular-nums`}
+            />
+          </div>
+        ))}
+      </div>
+      <Botao type="submit" tamanho="sm" disabled={pendente} className="self-start">
+        {pendente ? "Salvando…" : "Salvar o grátis"}
+      </Botao>
+      {mensagem}
+    </form>
+  );
+}
 
 export function ConfigPagamentos({
   aberto,

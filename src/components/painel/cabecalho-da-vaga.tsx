@@ -97,7 +97,7 @@ export async function CabecalhoDaVaga({
     "testes",
     ...(recursos && !recursos.video.indisponivel ? ["video" as const] : []),
   ];
-  const marca = (r: FerramentaDeAvaliar) => marcaDoRecurso(recursos?.[r], agora).curto;
+  const marca = (r: FerramentaDeAvaliar) => marcaDoRecurso(recursos?.[r], agora, r).curto;
   const status = anuncio.status as StatusAnuncio;
   const noAr = status === "ativo";
   const id = anuncio.id;

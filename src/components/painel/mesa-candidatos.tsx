@@ -28,6 +28,7 @@ import {
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { ExtrasDaFicha } from "@/components/painel/controles-ficha";
 import { recursosPagos } from "@/lib/dados";
+import { podeUsar } from "@/lib/recursos-pagos";
 import { conversaCom } from "@/lib/servidor/conversas";
 import { aoVivoAberto, aoVivoDoMes } from "@/lib/servidor/ao-vivo";
 import { meetLigado } from "@/lib/servidor/google-meet";
@@ -343,7 +344,8 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
     // as entrevistas ao vivo do mês (migração 20270420120000)
     aoVivoDoMes(),
   ]);
-  const videoLiberado = Boolean(recursos?.video.liberado);
+  // pago ou no grátis do mês (migração 20270730120000; o banco confere o que sobra)
+  const videoLiberado = podeUsar(recursos?.video);
   const ficha: ExtrasDaFicha = {
     aba: abaDe(aberto),
     entrevista: aberto.entrevista,

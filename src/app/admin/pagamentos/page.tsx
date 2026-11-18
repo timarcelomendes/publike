@@ -6,6 +6,7 @@ import {
   ContaDeTeste,
   Copiar,
   GerarToken,
+  GratisDoMes,
   SandboxDaConta,
   TirarDoTeste,
 } from "@/components/admin/pagamentos";
@@ -31,6 +32,10 @@ type Dados = {
     servico_nota: string | null;
     servico_nota_e_codigo: boolean;
     descricao_nota: string | null;
+    /** o grátis de cada mês (sem a migração 20270730120000, undefined) */
+    gratis_triagem_mes?: number;
+    gratis_gravadas_mes?: number;
+    gratis_ao_vivo_mes?: number;
   };
   planos: { id: string; recurso: Produto; ciclo: Ciclo; valor: number | null; ligado: boolean }[];
   /** sandbox: sem a migração 20270125120000, undefined */
@@ -273,6 +278,19 @@ async function Conteudo() {
       >
         <TabelaDePrecos planos={d.planos.map((p) => ({ ...p, valor: p.valor == null ? null : Number(p.valor) }))} />
       </Secao>
+
+      {d.config.gratis_triagem_mes !== undefined && (
+        <Secao
+          titulo="O grátis de cada mês"
+          descricao="O que toda conta que contrata usa sem assinar, todo mês (fora dos 15 dias grátis e de quem assina, que não têm limite). O mês vira no dia 1º, à 0h. 0 desliga. Os textos fixos da Ajuda e da página Empresas dizem 5, 5 e 1: se mudar aqui, peça para mudar lá também."
+        >
+          <GratisDoMes
+            triagem={d.config.gratis_triagem_mes}
+            gravadas={d.config.gratis_gravadas_mes ?? 0}
+            aoVivo={d.config.gratis_ao_vivo_mes ?? 0}
+          />
+        </Secao>
+      )}
 
       <Secao titulo="Quem pode assinar e nota fiscal">
         <ConfigPagamentos

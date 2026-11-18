@@ -18,22 +18,29 @@ export function SeloCortesia({
   if (texto === null) return null;
   // nos dias grátis, "faltam 3 dias": o leitor de tela ouve de quê
   const teste = Boolean(texto?.startsWith("falta"));
+  // o que a marca quer dizer: os 15 dias, o grátis de cada mês ("5 grátis por mês", 18/11/2026) ou só pago
+  const explica =
+    !texto || texto.includes("15 dias")
+      ? EXPLICA_CORTESIA
+      : /grátis/i.test(texto)
+        ? "Recurso pago, com uma parte grátis para usar sem assinar."
+        : "Recurso pago.";
   if (curto) {
     return (
       <span
-        title={teste ? "Dias grátis do recurso pago" : EXPLICA_CORTESIA}
+        title={teste ? "Dias grátis do recurso pago" : explica}
         className={`relative inline-flex shrink-0 items-center gap-1 rounded-pill bg-ipe px-1.5 py-0.5 text-[11px] leading-none font-semibold text-on-ipe ${className}`}
       >
         <Gift aria-hidden className="size-3" />
         {teste && <span className="sr-only">Dias grátis: </span>}
         {texto ?? SELO_CORTESIA_CURTO}
-        {!teste && <span className="sr-only">: {EXPLICA_CORTESIA}</span>}
+        {!teste && <span className="sr-only">: {explica}</span>}
       </span>
     );
   }
   return (
     <span
-      title={EXPLICA_CORTESIA}
+      title={explica}
       className={`relative inline-flex shrink-0 items-center gap-1 rounded-pill bg-ipe px-2.5 py-1 text-caption whitespace-nowrap text-on-ipe uppercase ${className}`}
     >
       <Gift aria-hidden className="size-3.5" />

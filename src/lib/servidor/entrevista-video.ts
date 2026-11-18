@@ -13,6 +13,7 @@ import {
 import { MODELO_PADRAO, iaConfigurada } from "@/lib/ia/openai";
 import { resumirEntrevistaVideo } from "@/lib/ia/tarefas";
 import { falaDisponivel, transcrever } from "@/lib/ia/transcrever";
+import { lerGratis } from "@/lib/recursos-pagos";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { acessoFila } from "./filas";
@@ -34,6 +35,8 @@ export async function configVideo(anuncioId: string): Promise<ConfigVideo | null
     return null;
   }
   const o = data as Record<string, unknown>;
+  const pago = o.liberado === true;
+  const gratis = pago ? null : lerGratis(o.gratis);
   const perguntas = (Array.isArray(o.perguntas) ? o.perguntas : [])
     .filter((p): p is { id: string; texto: string } => Boolean(p) && typeof p === "object")
     .map((p) => ({ id: String(p.id), texto: String(p.texto) }));
@@ -45,7 +48,9 @@ export async function configVideo(anuncioId: string): Promise<ConfigVideo | null
     pedir_a_todos: o.pedir_a_todos === true,
     dias: (PRAZOS_PARA_RESPONDER as readonly number[]).includes(Number(o.dias)) ? Number(o.dias) : DIAS_PARA_RESPONDER,
     pcd: o.pcd === true,
-    liberado: o.liberado === true,
+    liberado: pago || Boolean(gratis),
+    pago,
+    gratis,
   };
 }
 

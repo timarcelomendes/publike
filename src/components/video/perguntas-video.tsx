@@ -35,7 +35,8 @@ export function FormPerguntasVideo({
   const [dias, setDias] = useState(String(config.dias));
   const [segundaChance, setSegundaChance] = useState(config.segunda_chance);
   const [aceitaTexto, setAceitaTexto] = useState(config.aceita_texto);
-  const [pedirATodos, setPedirATodos] = useState(config.pedir_a_todos);
+  // no grátis do mês (migração 20270730120000), pedir a todo novo candidato é da assinatura: fica desligado
+  const [pedirATodos, setPedirATodos] = useState(config.pago && config.pedir_a_todos);
   const [pendente, iniciar] = useTransition();
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   // as sugestões da IA para esta vaga, quando pedidas (nada é salvo até tocar em Salvar)
@@ -209,8 +210,13 @@ export function FormPerguntasVideo({
         <Caixa
           marcada={pedirATodos}
           mudar={setPedirATodos}
+          desligada={!config.pago}
           rotulo="Pedir a entrevista em vídeo a todo novo candidato"
-          ajuda="Quem curtir a vaga recebe o pedido na hora. Quem já se candidatou, peça pelo quadro."
+          ajuda={
+            config.pago
+              ? "Quem curtir a vaga recebe o pedido na hora. Quem já se candidatou, peça pelo quadro."
+              : "Vem com a assinatura da Entrevista em vídeo. Sem ela, peça pelo quadro, a quem você escolher."
+          }
         />
       </div>
 

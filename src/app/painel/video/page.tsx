@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
-import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
+import { FaixaExperimento, FaixaGratis, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
@@ -35,6 +35,8 @@ async function Conteudo() {
   const [recursos, agora, supabase] = await Promise.all([recursosPagos(), agoraDaRequisicao(), criarClienteServidor()]);
   const estado = recursos?.video ?? null;
   const liberado = Boolean(estado && !estado.indisponivel && estado.liberado);
+  // o grátis de cada mês (migração 20270730120000): as vagas, com o que sobra no mês
+  const gratis = !liberado && estado && !estado.indisponivel ? (estado.gratis ?? null) : null;
   const cabecalho = (
     <CabecalhoDaPagina
       titulo="Entrevista em vídeo"
@@ -47,7 +49,7 @@ async function Conteudo() {
       descricao="Monte de 2 a 6 perguntas na vaga. O candidato grava as respostas pelo celular, quando puder, e a IA transcreve e resume. Você assiste no quadro da vaga, na ficha de cada um."
     />
   );
-  if (!estado || estado.indisponivel || !estado.liberado) {
+  if (!estado || estado.indisponivel || (!estado.liberado && !gratis)) {
     return (
       <div className="flex flex-col gap-6">
         {cabecalho}
@@ -68,6 +70,7 @@ async function Conteudo() {
     <div className="flex flex-col gap-6">
       {cabecalho}
       <FaixaExperimento recurso="video" estado={estado} agora={agora} />
+      {gratis && <FaixaGratis recurso="video" gratis={gratis} estado={estado} />}
       {noAr.length === 0 ? (
         <Vazio
           icone={Video}

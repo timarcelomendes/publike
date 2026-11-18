@@ -29,7 +29,15 @@ import {
   type PagamentosDaConta,
   type Produto,
 } from "@/lib/pagamentos";
-import { dataCurta, NOME_RECURSO, PAGINA_DO_RECURSO, RECURSOS_PAGOS, type EstadoRecurso } from "@/lib/recursos-pagos";
+import {
+  dataCurta,
+  NOME_RECURSO,
+  PAGINA_DO_RECURSO,
+  RECURSOS_PAGOS,
+  textoDoGratis,
+  type EstadoRecurso,
+  type RecursoPago,
+} from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { sincronizarCliente } from "@/lib/servidor/pagamentos";
 import { minhaFaixa } from "@/lib/servidor/pagina-de-carreiras";
@@ -124,9 +132,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
       nome: NOME_RECURSO[r],
       href: PAGINA_DO_RECURSO[r],
       e: recursos?.[r],
+      recurso: r as RecursoPago | undefined,
     })),
     ...(recursos && !recursos.salarios.indisponivel && !assinados.has("salarios")
-      ? [{ nome: NOME_PRODUTO.salarios, href: "/painel/salarios", e: recursos.salarios }]
+      ? [{ nome: NOME_PRODUTO.salarios, href: "/painel/salarios", e: recursos.salarios, recurso: undefined }]
       : []),
   ];
   const aviso = volta
@@ -251,7 +260,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           </div>
           <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
             {semAssinar.map((r) => {
-              const s = situacaoSemAssinar(r.e, agora);
+              const s = situacaoSemAssinar(r.e, agora, r.recurso);
               return (
                 <li key={r.href} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 sm:px-5">
                   <Link href={r.href} className="text-label hover:underline">
@@ -405,13 +414,30 @@ function Compras({ compras, pag }: { compras: Compra[]; pag: PagamentosDaConta |
   );
 }
 
-/** Um recurso que a pessoa não assina: liberado pelo Publike, nos dias grátis ou fechado. */
-function situacaoSemAssinar(e: EstadoRecurso | undefined, agora: number): { texto: string; aberto: boolean } {
+/**
+ * Um recurso que a pessoa não assina: liberado pelo Publike, nos dias grátis, no grátis de cada mês (migração
+ * 20270730120000, com o que já usou) ou fechado.
+ */
+function situacaoSemAssinar(
+  e: EstadoRecurso | undefined,
+  agora: number,
+  recurso?: RecursoPago,
+): { texto: string; aberto: boolean } {
   if (!e) return { texto: "Fechado", aberto: false };
   if (e.liberado && !e.ate) return { texto: "Liberado pelo Publike, sem prazo", aberto: true };
   if (e.liberado && e.ate) {
     const gratis = e.fim_experimento && new Date(e.fim_experimento).getTime() > agora;
     return { texto: gratis ? `Grátis até ${dataCurta(e.ate)}` : `Liberado até ${dataCurta(e.ate)}`, aberto: true };
+  }
+  const gratis =
+    recurso && (recurso === "testes" || recurso === "automacoes" || e.gratis) ? textoDoGratis(recurso, e.gratis) : null;
+  if (gratis) {
+    const uso =
+      e.gratis && e.gratis.limite > 0
+        ? ` Neste mês: ${Math.min(e.gratis.usados, e.gratis.limite)} de ${e.gratis.limite}.`
+        : "";
+    const teste = e.pode_experimentar ? " E 15 dias com tudo, para experimentar." : "";
+    return { texto: `${gratis}${uso}${teste}`, aberto: true };
   }
   if (e.experimentou) return { texto: "Os dias grátis acabaram", aberto: false };
   return { texto: "Dá para experimentar 15 dias grátis", aberto: false };

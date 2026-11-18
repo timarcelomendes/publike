@@ -2,6 +2,8 @@
 // monta de 2 a 6 perguntas na vaga, o candidato grava pelo celular e a IA transcreve e resume. Peças usadas no
 // navegador e no servidor.
 
+import type { GratisDoMes } from "./recursos-pagos";
+
 export const MIN_PERGUNTAS = 2;
 export const MAX_PERGUNTAS = 6;
 /** Quanto tempo a pessoa tem para cada resposta. */
@@ -38,7 +40,12 @@ export type ConfigVideo = {
   dias: number;
   /** vaga exclusiva para PCD: a resposta por texto fica sempre ligada */
   pcd: boolean;
+  /** a Entrevista em vídeo abre na vaga: paga (assinatura, 15 dias, Publike) ou no grátis do mês */
   liberado: boolean;
+  /** a paga: sem o limite do mês e com "Pedir a todo novo candidato" */
+  pago: boolean;
+  /** o grátis do mês (migração 20270730120000): as gravadas e as ao vivo; null na paga */
+  gratis: GratisDoMes | null;
 };
 
 /** A entrevista de um candidato, como o quadro vê (sem os arquivos). */

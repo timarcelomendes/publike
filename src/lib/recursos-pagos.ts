@@ -20,6 +20,26 @@ export const PAGINA_DO_RECURSO: Record<RecursoPago, string> = {
   automacoes: "/painel/automacoes",
 };
 
+/**
+ * O grátis de cada mês (18/11/2026, migração 20270730120000), na Triagem com IA (os candidatos que a IA lê) e na
+ * Entrevista em vídeo (as gravadas pedidas e, em `aoVivo`, as ao vivo pelo Publike). Só fora dos dias liberados:
+ * com a assinatura, os 15 dias ou a liberação do Publike, não tem limite.
+ */
+export type GratisDoMes = {
+  limite: number;
+  usados: number;
+  /** quando o mês vira (1º, 0h, em Goiânia) */
+  renovaEm: string | null;
+  aoVivo?: { limite: number; usados: number };
+};
+
+/**
+ * Os números de sempre do grátis de cada mês (os do banco, em privado.config_pagamentos; mudam em Admin ›
+ * Pagamentos). As telas da conta leem os do banco; os textos fixos (Ajuda, Empresas) usam estes: mudou no Admin,
+ * mude aqui também.
+ */
+export const GRATIS_PADRAO = { triagem: 5, gravadas: 5, aoVivo: 1 } as const;
+
 export type EstadoRecurso = {
   liberado: boolean;
   /** até quando vai o acesso; null: sem prazo (liberado pelo Publike) */
@@ -32,6 +52,8 @@ export type EstadoRecurso = {
   assinante: boolean;
   /** pode assinar agora: pagamentos abertos para a conta e o plano à venda */
   pode_assinar: boolean;
+  /** o grátis de cada mês (só na Triagem e na Entrevista em vídeo, e só sem o recurso liberado) */
+  gratis?: GratisDoMes | null;
   /** o banco ainda não tem o recurso (a migração não rodou): as telas escondem */
   indisponivel?: boolean;
 };
@@ -74,6 +96,22 @@ export function ehRecursoPago(x: unknown): x is RecursoPago {
   return x === "copiloto" || x === "testes" || x === "video" || x === "automacoes";
 }
 
+/** O grátis do mês, como o banco manda (`recursos_pagos`, `copiloto_da_vaga`, `video_config`); torto: null. */
+export function lerGratis(x: unknown): GratisDoMes | null {
+  if (!x || typeof x !== "object") return null;
+  const o = x as Record<string, unknown>;
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.round(v)) : null);
+  const limite = n(o.limite);
+  if (limite === null) return null;
+  const aoVivo = n(o.ao_vivo_limite);
+  return {
+    limite,
+    usados: n(o.usados) ?? 0,
+    renovaEm: typeof o.renova_em === "string" ? o.renova_em : null,
+    ...(aoVivo !== null ? { aoVivo: { limite: aoVivo, usados: n(o.ao_vivo_usados) ?? 0 } } : {}),
+  };
+}
+
 function lerEstado(x: unknown): EstadoRecurso | null {
   if (!x || typeof x !== "object") return null;
   const o = x as Record<string, unknown>;
@@ -87,7 +125,38 @@ function lerEstado(x: unknown): EstadoRecurso | null {
     pode_experimentar: o.pode_experimentar === true,
     assinante: o.assinante === true,
     pode_assinar: o.pode_assinar === true,
+    gratis: lerGratis(o.gratis),
   };
+}
+
+/** A conta usa o recurso agora: liberado (assinatura, 15 dias, Publike) ou no grátis do mês. */
+export function podeUsar(estado: EstadoRecurso | null | undefined): boolean {
+  return Boolean(estado && !estado.indisponivel && (estado.liberado || estado.gratis));
+}
+
+/** "1º de dezembro": o dia em que o grátis renova. */
+export function diaQueRenova(iso: string): string {
+  return dataCurta(iso).replace(/^1 /, "1º ");
+}
+
+/**
+ * O que é grátis em cada recurso, numa linha (a oferta, os Planos, a Assinatura). `gratis`: os números da conta;
+ * sem eles, os de sempre (`GRATIS_PADRAO`).
+ */
+export function textoDoGratis(recurso: RecursoPago, gratis?: GratisDoMes | null): string | null {
+  if (recurso === "testes") return "Grátis: o teste da Publike que combina com a vaga.";
+  if (recurso === "automacoes") return "Grátis: as 5 automações prontas, em toda vaga.";
+  if (recurso === "copiloto") {
+    const n = gratis ? gratis.limite : GRATIS_PADRAO.triagem;
+    return n > 0 ? `Grátis todo mês: a IA lê ${n === 1 ? "1 candidato" : `${n} candidatos`}.` : null;
+  }
+  const gravadas = gratis ? gratis.limite : GRATIS_PADRAO.gravadas;
+  const aoVivo = gratis ? (gratis.aoVivo?.limite ?? 0) : GRATIS_PADRAO.aoVivo;
+  const partes = [
+    gravadas > 0 && (gravadas === 1 ? "1 entrevista gravada" : `${gravadas} entrevistas gravadas`),
+    aoVivo > 0 && (aoVivo === 1 ? "1 ao vivo" : `${aoVivo} ao vivo`),
+  ].filter(Boolean);
+  return partes.length ? `Grátis todo mês: ${partes.join(" e ")}.` : null;
 }
 
 /** O jsonb de `recursos_pagos()`; o que vier torto, null (a página segue como antes). */
@@ -128,14 +197,39 @@ export function dataCurta(iso: string): string {
 }
 
 /**
+ * A marca do grátis de cada mês, depois dos 15 dias (ou sem eles): o que a conta tem sem assinar, para ela saber
+ * que dá para usar. null: o recurso não tem grátis (ou o Admin pôs 0).
+ */
+function marcaDoGratis(
+  recurso: RecursoPago,
+  gratis: GratisDoMes | null | undefined,
+): { curto: string; longo: string } | null {
+  if (recurso === "testes") return { curto: "1 grátis por vaga", longo: "Grátis: 1 teste por vaga" };
+  if (recurso === "automacoes") return { curto: "5 prontas grátis", longo: "Grátis: as 5 prontas" };
+  if (!gratis) return null;
+  if (recurso === "copiloto") {
+    return gratis.limite > 0
+      ? { curto: `${gratis.limite} grátis por mês`, longo: `Grátis: ${gratis.limite} candidatos por mês` }
+      : null;
+  }
+  if (gratis.limite > 0) {
+    return { curto: `${gratis.limite} grátis por mês`, longo: `Grátis: ${gratis.limite} gravadas por mês` };
+  }
+  const aoVivo = gratis.aoVivo?.limite ?? 0;
+  return aoVivo > 0 ? { curto: `${aoVivo} ao vivo grátis`, longo: `Grátis: ${aoVivo} ao vivo por mês` } : null;
+}
+
+/**
  * A marca do recurso pelo estado da conta (claude/plano-painel-simples.md, parte 3): "15 dias grátis" antes de
- * experimentar, "faltam N dias" durante o teste e nada depois de liberado. `curto`: a pílula do menu e das
- * abas; `longo`: o selo do alto das páginas (no teste, a faixa dos dias já diz). Sem o estado (antes da
- * migração), a marca de sempre.
+ * experimentar, "faltam N dias" durante o teste e nada depois de liberado. Depois dos 15 dias, o grátis de cada
+ * mês ("5 grátis por mês", "1 grátis por vaga"; 18/11/2026), com `recurso`; sem ele, ou sem grátis, "Recurso
+ * pago". `curto`: a pílula do menu e das abas; `longo`: o selo do alto das páginas (no teste, a faixa dos dias já
+ * diz). Sem o estado (antes da migração), a marca de sempre.
  */
 export function marcaDoRecurso(
   estado: EstadoRecurso | null | undefined,
   agora: number,
+  recurso?: RecursoPago,
 ): { curto: string | null; longo: string | null } {
   if (!estado) return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
   if (estado.liberado) {
@@ -144,5 +238,6 @@ export function marcaDoRecurso(
     return { curto: n === 1 ? "falta 1 dia" : `faltam ${n} dias`, longo: null };
   }
   if (estado.pode_experimentar) return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
-  return { curto: "Recurso pago", longo: "Recurso pago" };
+  const gratis = recurso ? marcaDoGratis(recurso, estado.gratis) : null;
+  return gratis ?? { curto: "Recurso pago", longo: "Recurso pago" };
 }

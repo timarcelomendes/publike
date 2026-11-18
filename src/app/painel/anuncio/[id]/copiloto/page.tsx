@@ -12,7 +12,7 @@ import { LerMaisNaTriagem } from "@/components/copiloto/ler-mais";
 import { RodarCopiloto } from "@/components/copiloto/rodar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
-import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
+import { FaixaExperimento, FaixaGratis, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
@@ -151,12 +151,20 @@ async function Conteudo({
     config.busca && `${talentos.length} ${talentos.length === 1 ? "pessoa" : "pessoas"} em Talentos`,
   ].filter(Boolean);
 
+  // o grátis do mês (migração 20270730120000): a IA lê só o que sobra, e a busca em Talentos fica com a assinatura
+  const restamGratis = config.gratis ? Math.max(0, config.gratis.limite - config.gratis.usados) : null;
+  const semGratis =
+    restamGratis === 0 && faltam > 0 && config.gratis
+      ? `${config.gratis.limite === 1 ? "O candidato grátis deste mês já foi lido" : `Os ${config.gratis.limite} candidatos grátis deste mês já foram lidos`}. ${faltam === 1 ? "O outro fica" : `Os outros ${faltam} ficam`} para o mês que vem, ou para quando você assinar.`
+      : undefined;
+
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
       <FaixaExperimento recurso="copiloto" estado={recursos?.copiloto} agora={agora} />
+      {config.gratis && <FaixaGratis recurso="copiloto" gratis={config.gratis} estado={recursos?.copiloto} />}
       <div className="flex flex-wrap items-center gap-2">
-        <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} />
+        <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora, "copiloto").longo} />
         <p className="text-body-sm text-ink-muted">
           <IA forma="Nome" /> lê sozinha cada candidato que chega, contra os critérios, e mostra o trecho que comprova.
           Quem decide é você.
@@ -205,7 +213,7 @@ async function Conteudo({
         <h3 id="titulo-partes" className="mb-3 text-h3">
           O que a triagem faz nesta vaga
         </h3>
-        <PartesDoCopiloto anuncioId={id} triagem={config.triagem} busca={config.busca} />
+        <PartesDoCopiloto anuncioId={id} triagem={config.triagem} busca={config.busca} gratis={!config.pago} />
       </section>
 
       {!origens.length ? (
@@ -254,9 +262,9 @@ async function Conteudo({
                 <RodarCopiloto
                   anuncioId={id}
                   origem="todos"
-                  faltam={faltam}
+                  faltam={restamGratis === null ? faltam : Math.min(faltam, restamGratis)}
                   lidos={lidas.length}
-                  semFaltar={naoLidos.length ? `Os ${config.teto} primeiros já foram lidos.` : undefined}
+                  semFaltar={semGratis ?? (naoLidos.length ? `Os ${config.teto} primeiros já foram lidos.` : undefined)}
                 />
               </div>
 
@@ -417,7 +425,8 @@ async function Conteudo({
                           E mais {naoLidos.length - MOSTRAR_NAO_LIDOS}. Veja todos em Candidatos.
                         </p>
                       )}
-                      <LerMaisNaTriagem anuncioId={id} abaixo={naoLidos.length} />
+                      {/* no grátis do mês, o limite é o do mês, não o teto da vaga */}
+                      {config.pago && <LerMaisNaTriagem anuncioId={id} abaixo={naoLidos.length} />}
                     </>
                   )}
                   {funil.eliminados.length > 0 && (

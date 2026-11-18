@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
-import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
+import { FaixaExperimento, FaixaGratis, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
@@ -75,6 +75,7 @@ async function Conteudo({ id }: { id: string }) {
       ) : (
         <>
           <FaixaExperimento recurso="video" estado={estado ?? undefined} agora={agora} />
+          {config.gratis && <FaixaGratis recurso="video" gratis={config.gratis} estado={estado} />}
           <section
             aria-labelledby="perguntas-video"
             className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
@@ -84,7 +85,7 @@ async function Conteudo({ id }: { id: string }) {
                 <Video aria-hidden className="size-5 text-ink-muted" />
                 Entrevista em vídeo
                 <Selo variante="novo">Novo</Selo>
-                <SeloCortesia texto={marcaDoRecurso(estado, agora).longo} />
+                <SeloCortesia texto={marcaDoRecurso(estado, agora, "video").longo} />
               </h3>
               <p className="text-body-sm text-ink-muted">
                 O candidato grava as respostas pelo celular, quando puder, em até {config.dias} dias. A IA transcreve e
@@ -115,8 +116,8 @@ async function Conteudo({ id }: { id: string }) {
         {lista.length === 0 ? (
           <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-line p-5">
             <p className="text-body-sm text-ink-muted">
-              Ninguém recebeu o pedido ainda. No quadro, marque os candidatos e toque em “Pedir entrevista em vídeo”, ou
-              ligue “Pedir a todo novo candidato” aqui em cima.
+              Ninguém recebeu o pedido ainda. No quadro, marque os candidatos e toque em “Pedir entrevista em vídeo”
+              {config.pago ? ", ou ligue “Pedir a todo novo candidato” aqui em cima." : "."}
             </p>
             <BotaoLink href={`/painel/anuncio/${id}/quadro`} tamanho="sm">
               <KanbanSquare aria-hidden />
