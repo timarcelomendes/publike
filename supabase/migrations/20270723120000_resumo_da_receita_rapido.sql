@@ -12,3 +12,5 @@ create index if not exists empresas_receita_com_ponto_idx
   where situacao = 'ativa' and not mei and local is not null;
 
 analyze privado.empresas_receita;
+
+select privado.migracao_aplicada('20270723120000_resumo_da_receita_rapido');
