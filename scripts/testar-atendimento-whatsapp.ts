@@ -136,6 +136,7 @@ async function main() {
 
   // --- A conversa -------------------------------------------------------------------------------------------------
   let saidas: any[] = [];
+  let vagasJaEnviadas = 0;
   let entrada: any = {};
   let ultima: any = null; // null: a mesma mensagem e a conversa da entrada
   let entradas: any[] = [];
@@ -173,6 +174,8 @@ async function main() {
         };
       // o Publicar pelo WhatsApp (migração 20270806120000) fica desligado nesta bateria: não é uma saída
       if (nome === "servidor_whatsapp_vagas_config") return { data: { ligado: false }, error: null };
+      // as vagas do dia (migração 20270807120000): quantas já foram hoje
+      if (nome === "servidor_whatsapp_vagas_enviadas") return { data: vagasJaEnviadas, error: null };
       saidas.push({ nome, ...args });
       return { data: null, error: null };
     },
@@ -410,6 +413,31 @@ async function main() {
     corpo(r.msgs[0]).includes("*Cozinheira*") && corpo(r.msgs[0]).includes("/anuncio/1111"),
     "a vaga com o link",
   );
+
+  // 13b. até 3 vagas por dia (migração 20270807120000): já foram 2, vai 1 e o aviso; já foram 3, nenhuma busca
+  vagasJaEnviadas = 2;
+  r = await rodar("sou cozinheira, moro no setor bueno", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Cozinheira*") &&
+      corpo(r.msgs[0]).includes("Por hoje são essas") &&
+      botao(r.msgs[0]) === "Ver vagas",
+    "a última vaga do dia, com Ver vagas",
+    corpo(r.msgs[0]),
+  );
+  vagasJaEnviadas = 3;
+  r = await rodar("tem de auxiliar de cozinha também?", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "tem de auxiliar de cozinha também?" }],
+  });
+  conferir(
+    buscas.length === 0 && corpo(r.msgs[0]).startsWith("Hoje eu já te mandei 3 vagas") && botao(r.msgs[0]) === "Ver vagas",
+    "passou de 3 no dia: amanhã tem mais, e o site",
+    corpo(r.msgs[0]),
+  );
+  vagasJaEnviadas = 0;
 
   // 14. o pedido à IA: as instruções iguais sempre (para o cache), e a conversa na mensagem
   respostaIA = ia("Publicar a vaga é grátis.", { perfil: "contratar", link: "publicar" });

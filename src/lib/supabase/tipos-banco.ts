@@ -4322,6 +4322,7 @@ export type Database = {
       servidor_whatsapp_conversa_ultima: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
       // Publicar pelo WhatsApp (migração 20270806120000)
       servidor_whatsapp_vagas_config: { Args: { p_chave: string }; Returns: Json };
+      servidor_whatsapp_vagas_enviadas: { Args: { p_chave: string; p_conversa: string }; Returns: number };
       servidor_whatsapp_midia: {
         Args: {
           p_chave: string;

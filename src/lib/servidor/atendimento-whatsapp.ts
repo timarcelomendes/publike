@@ -79,6 +79,9 @@ const ESPERA = { texto: 5000, botao: 800 };
 
 type Mensagem = { de: "pessoa" | "robo" | "equipe"; texto: string };
 
+/** Quantas vagas o atendimento manda por dia a cada pessoa (de Brasília); o resto fica no botão do site. */
+export const VAGAS_POR_DIA = 3;
+
 type Entrada = {
   chave: string;
   nova: boolean;
@@ -343,6 +346,8 @@ async function vagasEmTexto(
     local?: Local | null;
     ponto?: { lat: number; lng: number } | null;
   } = {},
+  /** quantas vagas cabem nesta resposta (o que sobra das do dia) */
+  max = 4,
 ) {
   // a cidade, o bairro e a região só ordenam (o bairro primeiro, depois a região e a cidade); quem corta é o raio
   const centro = onde.local ? pontoDoLocal(onde.local) : null;
@@ -386,12 +391,13 @@ async function vagasEmTexto(
     return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${formatarLugar(a.bairro, a.cidade)}\n${link(`/anuncio/${a.id}`)}`;
   };
   // a mensagem com botão vai até 1.024 letras: com links longos, cabem menos vagas
-  let n = Math.min(4, lista.length);
+  let n = Math.min(Math.max(1, max), 4, lista.length);
   while (n > 1 && lista.slice(0, n).map(linha).join("\n\n").length > 800) n--;
   const p = new URLSearchParams({ tipo: "vaga" });
   if (texto) p.set("q", texto);
   return {
     texto: lista.slice(0, n).map(linha).join("\n\n"),
+    quantas: n,
     mais: lista.length > n ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
     parecidas,
   };
@@ -421,7 +427,7 @@ function boasVindas(nome: string | null, comeco: string) {
 const PARA_QUEM_PROCURA = [
   "Que bom! Para quem procura trabalho, funciona assim:",
   "1. Você faz o currículo pelo celular, em poucos minutos.\n2. Vê as vagas perto de casa e se candidata com um toque, no botão *Curtir*.\n3. Acompanha cada candidatura: se a empresa viu, se aceitou e quando é a entrevista. Quando ela aceita, vocês conversam direto.",
-  "É grátis, sempre. Se quiser, me conta o que você faz e o bairro onde mora, que eu procuro vagas para você por aqui.",
+  `É grátis, sempre. Me conta o que você faz e o bairro onde mora, que eu te mando até ${VAGAS_POR_DIA} vagas por dia por aqui.`,
 ].join("\n\n");
 
 /**
@@ -436,6 +442,16 @@ function paraQuemContrata(porAqui: boolean) {
       : "1. Você publica a vaga de graça. Pode colar o texto ou mandar a foto do anúncio: o Publike preenche tudo para você conferir.\n2. Os candidatos chegam no seu painel, mostrando o quanto cada um combina com a vaga.\n3. Você aceita quem quiser e conversa direto com a pessoa.",
     `Dá para ter até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça, sem limite de candidatos. Quem contrata muito tem planos com recursos a mais, como a triagem com IA. Se ficar alguma dúvida, é só me perguntar.`,
   ].join("\n\n");
+}
+
+/** As vagas de hoje acabaram: amanhã tem mais, e o site tem todas. */
+const ACABARAM_AS_DE_HOJE = `Hoje eu já te mandei ${VAGAS_POR_DIA} vagas por aqui. Amanhã eu mando mais! Enquanto isso, todas as vagas no ar estão no botão abaixo.`;
+
+/** Depois da lista: como se candidatar e, se as do dia acabaram, que amanhã tem mais. */
+function depoisDasVagas(sobram: number) {
+  return sobram > 0
+    ? "Para se candidatar, abra a vaga e toque em *Curtir*."
+    : "Para se candidatar, abra a vaga e toque em *Curtir*. Por hoje são essas: amanhã eu mando mais, e todas estão no botão abaixo.";
 }
 
 const POR_NADA = "Por nada! 😊 Qualquer coisa, é só chamar.";
@@ -672,6 +688,12 @@ export async function atenderConversa(
     });
   };
 
+  // quantas vagas a pessoa já recebeu hoje (migração 20270807120000; sem ela, nenhuma: vale o limite de cada resposta)
+  const vagasDeHoje = async () => {
+    const { data, error } = await banco.rpc("servidor_whatsapp_vagas_enviadas", { p_chave: chave, p_conversa: e.chave });
+    return error ? 0 : Number(data) || 0;
+  };
+
   // a oferta depois de publicar pelo WhatsApp: o "Sim, quero receber" é o aceite dos avisos (migração 20270806120000)
   const daOferta = await respostaDaOferta(banco, chave, e.chave, m.payload);
   if (daOferta) return saida(daOferta, { perfil: "contratar" });
@@ -770,15 +792,17 @@ export async function atenderConversa(
         `${ola}Recebi a localização! Por aqui eu não consigo publicar, mas no site o endereço da vaga entra no passo *Onde*, e a vaga aparece para quem mora perto.`,
         { botao: LINKS.publicar },
       );
-    const vagas = await vagasEmTexto({ texto: "", categoria: "todas" }, { ponto: m.local });
+    const restam = VAGAS_POR_DIA - (await vagasDeHoje());
+    if (restam <= 0) return saida(`${ola}${ACABARAM_AS_DE_HOJE}`, { perfil: e.perfil ?? "trabalho", botao: LINKS.vagas });
+    const vagas = await vagasEmTexto({ texto: "", categoria: "todas" }, { ponto: m.local }, restam);
     if (!vagas)
       return saida(
         `${ola}Agora não achei vaga no ar perto desse lugar. Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`,
         { botao: LINKS.vagas },
       );
     return saida(
-      `${ola}Olha as vagas no ar mais perto desse lugar:\n\n${vagas.texto}\n\nPara se candidatar, abra a vaga e toque em *Curtir*.`,
-      { perfil: e.perfil ?? "trabalho", botao: vagas.mais },
+      `${ola}Olha as vagas no ar mais perto desse lugar:\n\n${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}`,
+      { perfil: e.perfil ?? "trabalho", botao: vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null) },
     );
   }
 
@@ -875,7 +899,9 @@ export async function atenderConversa(
   if (plano.acao === "buscar_vagas") {
     const busca = plano.busca?.texto?.trim().slice(0, 40) ?? "";
     const local = lugarDaBusca(plano.busca?.cidade ?? "", plano.busca?.bairro ?? "");
-    const vagas = await vagasEmTexto({ texto: busca, categoria: plano.busca?.categoria ?? "todas" }, { local });
+    const restam = VAGAS_POR_DIA - (await vagasDeHoje());
+    if (restam <= 0) return saida(`${ola}${ACABARAM_AS_DE_HOJE}`, { perfil: perfil ?? "trabalho", botao: LINKS.vagas });
+    const vagas = await vagasEmTexto({ texto: busca, categoria: plano.busca?.categoria ?? "todas" }, { local }, restam);
     // sem a frase da IA (ela apresenta vagas que não vieram), a apresentação vai junto, na primeira mensagem
     const naoAchei = `Agora não achei vaga${busca ? ` de ${busca}` : ""} no ar${local ? " nessa região" : ""}.`;
     if (!vagas)
@@ -883,8 +909,11 @@ export async function atenderConversa(
         perfil: perfil ?? "trabalho",
         botao: LINKS.vagas,
       });
-    resposta = `${vagas.parecidas ? `${ola}${naoAchei} Olha as que mais se parecem:` : resposta}\n\n${vagas.texto}\n\nPara se candidatar, abra a vaga e toque em *Curtir*.`;
-    return saida(resposta, { perfil: perfil ?? "trabalho", botao: vagas.mais });
+    resposta = `${vagas.parecidas ? `${ola}${naoAchei} Olha as que mais se parecem:` : resposta}\n\n${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}`;
+    return saida(resposta, {
+      perfil: perfil ?? "trabalho",
+      botao: vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null),
+    });
   }
 
   // o botão que abre o site, quando a conversa leva até ele; senão, os botões do começo, uma vez, enquanto não se sabe

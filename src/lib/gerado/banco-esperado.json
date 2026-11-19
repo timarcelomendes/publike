@@ -351,7 +351,8 @@
   "20270803120000_whatsapp_atendimento_juntar",
   "20270804120000_whatsapp_uma_pergunta_por_dia",
   "20270805120000_whatsapp_atendimento_melhor",
-  "20270806120000_publicar_pelo_whatsapp"
+  "20270806120000_publicar_pelo_whatsapp",
+  "20270807120000_whatsapp_vagas_do_dia"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3756,6 +3757,7 @@
   "f|public.servidor_whatsapp_status(p_chave text, p_wamid text, p_status text, p_erro text, p_cobrada boolean)": "74cff74ff4",
   "f|public.servidor_whatsapp_vaga_publicada(p_chave text, p_token text)": "7a786b85c2",
   "f|public.servidor_whatsapp_vagas_config(p_chave text)": "5104014ee1",
+  "f|public.servidor_whatsapp_vagas_enviadas(p_chave text, p_conversa text)": "1d010d4345",
   "f|public.situacao_da_cobranca(p_id uuid)": "a40528fddb",
   "f|public.talento_completo(p_perfil uuid)": "b149e20664",
   "f|public.talento_resumo(p_perfil uuid)": "b3c491e154",
