@@ -4,6 +4,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { TetoDoMesWhatsapp } from "@/components/admin/teto-whatsapp-dados";
+import {
+  diaDaMensagem,
+  horaDaMensagem,
+  Iniciais,
+  quandoNaLista,
+  semMarcas,
+  TextoDoWhatsapp,
+} from "@/components/admin/conversa-whatsapp-visual";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Barras } from "@/components/admin/grafico";
 import { Filtros, linkCom, Numero, Secao, Situacao } from "@/components/admin/ui";
@@ -1417,7 +1425,7 @@ type ConversaAberta = {
 };
 
 const PERFIL_DA_CONVERSA = { trabalho: "Procura trabalho", contratar: "Quer contratar" } as const;
-const QUEM_FALOU = { pessoa: "Pessoa", robo: "Publike", equipe: "Equipe" } as const;
+const QUEM_FALOU = { pessoa: "Pessoa", robo: "Publike (automático)", equipe: "Equipe" } as const;
 
 /** A resposta guardada leva os botões que foram junto entre colchetes, no fim ("[Botões: A · B]", "[Botão: Ver vagas]"). */
 const MARCA_DOS_BOTOES = /\s*\[Bot(?:ão|ões):([^\]]*)\]?\s*$/;
@@ -1511,39 +1519,54 @@ function AbaConversas({
         link={(v) => linkDaConversa(na, { filtro: v === "todas" ? null : v, c: null })}
       />
 
-      {/* minmax(0, 1fr) também no celular: um link comprido numa mensagem não alarga a página */}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-2">
+      {/* minmax(0, 1fr) também no celular: um link comprido numa mensagem não alarga a página. No celular, com uma
+          conversa aberta, a lista sai da frente (o "Todas as conversas" volta). */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:gap-6">
+        <div className={`flex-col gap-2 ${aberta ? "hidden lg:flex" : "flex"}`}>
           {d.lista.length === 0 ? (
             <Vazio titulo="Nenhuma conversa ainda" icone={MessageCircle}>
               Quando alguém escrever para o número do Publike, a conversa aparece aqui.
             </Vazio>
           ) : (
-            <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+            <ul className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 lg:max-h-[78vh] lg:overflow-y-auto">
               {d.lista.map((x) => {
                 const atual = x.chave === na.aberta;
+                const etiquetas = [x.perfil ? PERFIL_DA_CONVERSA[x.perfil] : null, x.origem ? "veio do anúncio" : null]
+                  .filter(Boolean)
+                  .join(" · ");
                 return (
-                  <li key={x.chave}>
+                  <li key={x.chave} className="border-b border-line last:border-b-0">
                     <Link
                       href={linkDaConversa(na, { c: x.chave })}
                       scroll={false}
                       aria-current={atual ? "true" : undefined}
-                      className={`flex flex-col gap-1 p-3 ${atual ? "bg-surface-300" : "hover:bg-surface-100"}`}
+                      className={`flex gap-3 px-3 py-2.5 ${atual ? "bg-surface-300" : "hover:bg-surface-100"}`}
                     >
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className={`text-label ${x.nao_vista ? "" : "text-ink-muted"}`}>
-                          {x.nome ?? "Sem nome"} <span className="text-caption text-ink-muted">· final {x.final}</span>
+                      <Iniciais nome={x.nome} chave={x.chave} />
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="flex items-baseline gap-2">
+                          <span className={`min-w-0 flex-1 truncate ${x.nao_vista ? "text-label text-ink" : "text-body-sm text-ink"}`}>
+                            {x.nome ?? "Sem nome"}
+                            <span className="text-caption text-ink-muted"> · {x.final}</span>
+                          </span>
+                          <span className={`shrink-0 text-caption tabular-nums ${x.nao_vista ? "text-cerrado-text" : "text-ink-muted"}`}>
+                            {quandoNaLista(x.ultima_em, agora)}
+                          </span>
                         </span>
-                        {x.situacao === "equipe" && <Selo variante="aviso">Com a equipe</Selo>}
-                        {x.perfil && <Selo variante="contorno">{PERFIL_DA_CONVERSA[x.perfil]}</Selo>}
-                        {x.origem && <Selo variante="neutro">Anúncio</Selo>}
+                        {x.ultima && (
+                          <span className="flex items-center gap-2">
+                            <span className={`min-w-0 flex-1 truncate text-body-sm ${x.nao_vista ? "text-ink" : "text-ink-muted"}`}>
+                              {x.ultima.de === "pessoa" ? "" : x.ultima.de === "equipe" ? "Equipe: " : "Publike: "}
+                              {semMarcas(separarBotoes(x.ultima.texto).texto)}
+                            </span>
+                            {x.nao_vista && <span aria-label="nova" className="size-2.5 shrink-0 rounded-full bg-cerrado" />}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-2 text-caption text-ink-muted">
+                          {x.situacao === "equipe" && <span className="font-semibold text-terra-text">Com a equipe</span>}
+                          {etiquetas && <span className="truncate">{etiquetas}</span>}
+                        </span>
                       </span>
-                      {x.ultima && (
-                        <span className="line-clamp-2 text-body-sm text-ink-muted">
-                          {QUEM_FALOU[x.ultima.de]}: {separarBotoes(x.ultima.texto).texto}
-                        </span>
-                      )}
-                      <span className="text-caption text-ink-muted">{quandoFoi(x.ultima_em, agora)}</span>
                     </Link>
                   </li>
                 );
@@ -1554,7 +1577,7 @@ function AbaConversas({
 
         <div>
           {aberta ? (
-            <ConversaDoWhatsapp c={aberta} agora={agora} />
+            <ConversaDoWhatsapp c={aberta} agora={agora} voltar={linkDaConversa(na, { c: null })} />
           ) : (
             d.lista.length > 0 && <p className="text-body-sm text-ink-muted">Escolha uma conversa para ler e responder.</p>
           )}
@@ -1564,85 +1587,121 @@ function AbaConversas({
   );
 }
 
-function ConversaDoWhatsapp({ c, agora }: { c: ConversaAberta; agora: number }) {
+function ConversaDoWhatsapp({ c, agora, voltar }: { c: ConversaAberta; agora: number; voltar: string }) {
   const janelaAberta = Boolean(c.janela_ate && new Date(c.janela_ate).getTime() > agora);
   const gratis = c.gratis_ate && new Date(c.gratis_ate).getTime() > agora;
+  const equipe = c.situacao === "equipe";
   return (
-    <section aria-label={`Conversa com ${c.nome ?? "a pessoa"}`} className="flex flex-col gap-4 rounded-md border border-line p-4">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-h3">
-            {c.nome ?? "Sem nome"} <span className="text-body-sm text-ink-muted">· final {c.final}</span>
-          </h2>
-          <p className="text-body-sm text-ink-muted">
-            {[
-              c.perfil ? PERFIL_DA_CONVERSA[c.perfil] : "Ainda não disse o que quer",
-              c.conta ? `Tem conta: ${c.conta.nome ?? "sem nome"}` : "Sem conta no Publike",
-              `Desde ${quandoFoi(c.criado_em, agora)}`,
-              gratis ? `Grátis até ${quandoFoi(c.gratis_ate as string, agora)}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          {c.conta && (
-            <Link href={`/admin/usuarios/${c.conta.id}`} className="text-body-sm underline">
-              Abrir a conta no admin
-            </Link>
-          )}
-          {c.origem && (
-            <p className="text-body-sm">
-              Veio do anúncio{c.origem.titulo ? ` “${c.origem.titulo}”` : ""}
-              {c.origem.link && (
-                <>
-                  {" · "}
-                  <a href={c.origem.link} target="_blank" rel="noreferrer" className="underline">
-                    ver o post
-                  </a>
-                </>
+    <section
+      aria-label={`Conversa com ${c.nome ?? "a pessoa"}`}
+      className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200"
+    >
+      <header className="flex flex-col gap-3 border-b border-line p-3 sm:p-4">
+        <Link href={voltar} scroll={false} className="text-body-sm text-ink-muted underline lg:hidden">
+          ← Todas as conversas
+        </Link>
+        <div className="flex flex-wrap items-start gap-3">
+          <Iniciais nome={c.nome} chave={c.chave} />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 className="text-h3">
+              {c.nome ?? "Sem nome"} <span className="text-body-sm text-ink-muted">· final {c.final}</span>
+            </h2>
+            <p className="text-body-sm text-ink-muted">
+              {[
+                c.perfil ? PERFIL_DA_CONVERSA[c.perfil] : "Ainda não disse o que quer",
+                c.conta ? null : "sem conta no Publike",
+                gratis ? `grátis até ${quandoFoi(c.gratis_ate as string, agora)}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            <p className="flex flex-wrap gap-x-3 text-body-sm">
+              {c.conta && (
+                <Link href={`/admin/usuarios/${c.conta.id}`} className="underline">
+                  Conta: {c.conta.nome ?? "sem nome"}
+                </Link>
+              )}
+              {c.origem && (
+                <span className="text-ink-muted">
+                  Veio do anúncio{c.origem.titulo ? ` “${c.origem.titulo}”` : ""}
+                  {c.origem.link && (
+                    <>
+                      {" · "}
+                      <a href={c.origem.link} target="_blank" rel="noreferrer" className="text-ink underline">
+                        ver o post
+                      </a>
+                    </>
+                  )}
+                </span>
               )}
             </p>
-          )}
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Selo variante={c.situacao === "equipe" ? "aviso" : "match"}>
-            {c.situacao === "equipe" ? "A equipe responde" : "O Publike responde"}
-          </Selo>
+        {/* quem responde agora, e o botão para trocar, numa faixa só */}
+        <div
+          className={`flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 ${equipe ? "bg-terra-soft" : "bg-tom-servico"}`}
+        >
+          <p className="text-body-sm">
+            <span className="text-label">{equipe ? "A equipe está respondendo" : "O Publike responde sozinho"}</span>
+            <span className="text-ink-muted">
+              {equipe
+                ? " · a IA fica quieta até você devolver"
+                : " · pegue a conversa para responder você mesmo"}
+            </span>
+          </p>
           <SituacaoDaConversa conversa={c.chave} situacao={c.situacao} />
         </div>
       </header>
 
-      <ol className="flex flex-col gap-2">
-        {c.mensagens.map((m, i) => {
-          // os botões que foram junto da resposta, como a pessoa viu (embaixo da mensagem)
-          const { texto, botoes } = m.de === "pessoa" ? { texto: m.texto, botoes: [] } : separarBotoes(m.texto);
-          return (
-            <li
-              key={i}
-              className={`flex max-w-[85%] flex-col gap-2 rounded-md px-3 py-2 text-body-sm ${
-                m.de === "pessoa" ? "self-start bg-surface-300" : m.de === "equipe" ? "self-end border border-ink" : "self-end border border-line bg-surface-100"
-              }`}
-            >
-              <span className="whitespace-pre-line [overflow-wrap:anywhere]">
-                <span className="block text-caption text-ink-muted">
-                  {QUEM_FALOU[m.de]} · {quandoFoi(m.em, agora)}
-                </span>
-                {texto}
-              </span>
-              {botoes.length > 0 && (
-                <span className="flex flex-wrap gap-1" aria-label="Botões que foram junto">
-                  {botoes.map((b) => (
-                    <span key={b} className="rounded-full border border-line bg-surface-200 px-2 py-0.5 text-caption">
-                      {b}
+      {/* começa embaixo, na mensagem mais nova, como no WhatsApp */}
+      <div className="flex max-h-[62vh] flex-col-reverse overflow-y-auto bg-surface-100 px-3 py-4 sm:px-4">
+        <ol className="flex flex-col gap-1.5">
+          {c.mensagens.map((m, i) => {
+            const { texto, botoes } = m.de === "pessoa" ? { texto: m.texto, botoes: [] } : separarBotoes(m.texto);
+            const dia = diaDaMensagem(m.em, agora);
+            const novoDia = i === 0 || diaDaMensagem(c.mensagens[i - 1].em, agora) !== dia;
+            const mesmoLado = i > 0 && !novoDia && (c.mensagens[i - 1].de === "pessoa") === (m.de === "pessoa");
+            const daPessoa = m.de === "pessoa";
+            return (
+              <li key={i} className={`flex flex-col ${daPessoa ? "items-start" : "items-end"} ${mesmoLado ? "" : "mt-2"}`}>
+                {novoDia && (
+                  <span className="mb-2 self-center rounded-pill bg-surface-300 px-3 py-0.5 text-caption text-ink-muted">
+                    {dia}
+                  </span>
+                )}
+                <div
+                  className={`flex max-w-[88%] flex-col gap-1 rounded-lg px-3 py-2 text-body-sm shadow-card sm:max-w-[75%] ${
+                    daPessoa
+                      ? "rounded-tl-sm bg-surface-200"
+                      : m.de === "equipe"
+                        ? "rounded-tr-sm bg-terra-soft"
+                        : "rounded-tr-sm bg-tom-servico"
+                  }`}
+                >
+                  {!daPessoa && (
+                    <span className="text-caption font-semibold text-ink-muted">{QUEM_FALOU[m.de]}</span>
+                  )}
+                  <TextoDoWhatsapp texto={texto} />
+                  {botoes.length > 0 && (
+                    <span className="mt-1 flex flex-col gap-1 border-t border-line pt-1.5" aria-label="Botões que foram junto">
+                      {botoes.map((b) => (
+                        <span key={b} className="text-center text-label text-cerrado-text">
+                          {b}
+                        </span>
+                      ))}
                     </span>
-                  ))}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+                  )}
+                  <span className="self-end text-caption text-ink-muted tabular-nums">{horaDaMensagem(m.em)}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
-      <ResponderConversa conversa={c.chave} aberta={janelaAberta} />
+      <div className="border-t border-line p-3 sm:p-4">
+        <ResponderConversa conversa={c.chave} aberta={janelaAberta} />
+      </div>
     </section>
   );
 }
