@@ -591,10 +591,13 @@ function boasVindas(nome: string | null, comeco: string) {
   ].join("\n\n");
 }
 
+// "Procuro trabalho" (19/11/2026; Marcelo: "As pessoas estão parando aqui"): antes, o passo a passo em três itens e a
+// pergunta no fim, com o botão Ver vagas competindo com ela. Agora, curta: só a pergunta, com o exemplo, sem botão (as
+// vagas vêm na resposta, com o link de cada uma e o "Curtir" para se candidatar).
 const PARA_QUEM_PROCURA = [
-  "Que bom! Para quem procura trabalho, funciona assim:",
-  "1. Você faz o currículo pelo celular, em poucos minutos.\n2. Vê as vagas perto de casa e se candidata com um toque, no botão *Curtir*.\n3. Acompanha cada candidatura: se a empresa viu, se aceitou e quando é a entrevista. Quando ela aceita, vocês conversam direto.",
-  `É grátis, sempre. *Me conta o que você faz e o bairro onde mora*, que eu te mando até ${VAGAS_POR_DIA} vagas por dia por aqui.`,
+  `Que bom! 😊 Eu te mando até ${VAGAS_POR_DIA} vagas por dia por aqui, de graça.`,
+  "*Me conta o que você faz e o bairro onde mora.*",
+  "Por exemplo: _sou cozinheira e moro no Jardim América_.",
 ].join("\n\n");
 
 /** O "ok" de quem procura trabalho: a pergunta, clara, com um exemplo. */
@@ -967,7 +970,7 @@ export async function atenderConversa(
 
   // os botões do começo, com texto pronto
   if (novas.length <= 1 && m.payload === "a:trabalho")
-    return saida(PARA_QUEM_PROCURA, { perfil: "trabalho", botao: LINKS.vagas });
+    return saida(PARA_QUEM_PROCURA, { perfil: "trabalho" });
   if (novas.length <= 1 && m.payload === "a:contratar") {
     const porAqui = Boolean(await configVagasWhatsapp(banco, chave));
     return saida(paraQuemContrata(porAqui), {

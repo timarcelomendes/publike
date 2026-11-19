@@ -280,10 +280,14 @@ async function main() {
     { perfil: "trabalho", historico: [...comeco, { de: "pessoa", texto: "Procuro trabalho" }] },
     { payload: "a:trabalho" },
   );
-  conferir(botao(r.msgs[0]) === "Ver vagas" && saidas[0]?.p_perfil === "trabalho", "Procuro trabalho: Ver vagas");
+  // curta, só a pergunta, sem botão que tire a pessoa da conversa (19/11/2026: "As pessoas estão parando aqui")
   conferir(
-    r.msgs[0]?.interactive?.action?.parameters?.url.includes("utm_campaign=atendimento"),
-    "o botão leva a origem",
+    r.msgs[0]?.type === "text" &&
+      corpo(r.msgs[0]).includes("*Me conta o que você faz e o bairro onde mora.*") &&
+      corpo(r.msgs[0]).length < 220 &&
+      saidas[0]?.p_perfil === "trabalho",
+    "Procuro trabalho: só a pergunta, curta, sem botão",
+    corpo(r.msgs[0]),
   );
   r = await rodar(
     "Quero contratar",
@@ -529,12 +533,16 @@ async function main() {
   // 18. a mensagem com botão recusada: vai o texto com o link escrito
   falharInterativo = true;
   r = await rodar(
-    "Procuro trabalho",
-    { perfil: "trabalho", historico: [...comeco, { de: "pessoa", texto: "Procuro trabalho" }] },
-    { payload: "a:trabalho" },
+    "Quero contratar",
+    { perfil: "contratar", historico: [...comeco, { de: "pessoa", texto: "Quero contratar" }] },
+    { payload: "a:contratar" },
+  );
+  conferir(
+    r.msgs[0]?.interactive?.action?.parameters?.url.includes("utm_campaign=atendimento"),
+    "o botão leva a origem",
   );
   const texto = r.msgs.find((e) => e.type === "text");
-  conferir(corpo(texto).includes("Ver vagas: https://publike.org/?tipo=vaga"), "sem o botão, o link escrito");
+  conferir(corpo(texto).includes("Publicar vaga grátis: https://publike.org/"), "sem o botão, o link escrito", corpo(texto));
   conferir(!String(saidas[0]?.p_texto).includes("[Botão"), "sem o botão, a conversa não marca o botão");
   falharInterativo = false;
 
