@@ -875,19 +875,32 @@ export function SituacaoDaConversa({ conversa, situacao }: { conversa: string; s
   const para = situacao === "equipe" ? "robo" : "equipe";
   return (
     <div className="flex flex-col items-start gap-1">
-      <button
-        type="button"
-        disabled={pendente}
-        className={classesBotao("secundario", "sm")}
-        onClick={() =>
-          iniciar(async () => {
-            const r = await mudarConversaWhatsapp(conversa, para);
-            setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
-          })
-        }
-      >
-        {pendente ? "Mudando…" : para === "robo" ? "Devolver para o automático" : "Pegar a conversa"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        {[
+          { rotulo: para === "robo" ? "Devolver para o automático" : "Pegar a conversa", comBotoes: false },
+          ...(para === "robo" ? [{ rotulo: "Devolver com os botões", comBotoes: true }] : []),
+        ].map((o) => (
+          <button
+            key={o.rotulo}
+            type="button"
+            disabled={pendente}
+            className={classesBotao("secundario", "sm")}
+            title={
+              o.comBotoes
+                ? "O automático volta e manda de novo os botões do começo (Procuro trabalho, Quero contratar, Falar com a equipe)"
+                : undefined
+            }
+            onClick={() =>
+              iniciar(async () => {
+                const r = await mudarConversaWhatsapp(conversa, para, o.comBotoes);
+                setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+              })
+            }
+          >
+            {pendente ? "Mudando…" : o.rotulo}
+          </button>
+        ))}
+      </div>
       <Resposta r={resposta} />
     </div>
   );

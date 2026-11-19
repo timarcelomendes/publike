@@ -99,6 +99,8 @@ globalThis.fetch = (async (url: any, init: any) => {
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
     // a busca de texto também acha na descrição: o título de outra função não pode entrar
     if (t === "porteiro") return json([vaga("4", "Auxiliar de escritório"), vaga("3", "Porteiro noturno")]);
+    // a área de um cargo de liderança: só o título de liderança entra
+    if (t === "logística") return json([vaga("6", "Auxiliar de logística"), vaga("7", "Coordenador de Logística")]);
     // auxiliar de cozinha só longe (nas cidades em volta)
     if (t === "auxiliar de cozinha")
       return json(corpo.p_raio_km === 100 ? [vaga("5", "Auxiliar de cozinha", { cidade: "Trindade", bairro: "Centro", distancia_km: 24 })] : []);
@@ -215,7 +217,7 @@ async function main() {
         audio: extra.audio ?? null,
         local: extra.local ?? null,
       },
-      { espera: { texto: 0, botao: 0 }, agora: extra.agora ?? quarta14h, retomada: extra.retomada ?? false },
+      { espera: { texto: 0, botao: 0 }, agora: extra.agora ?? quarta14h, retomada: extra.retomada ?? false, comBotoes: extra.comBotoes ?? false },
     );
     return { msgs: enviados.filter((e) => e.type), lidas: enviados.filter((e) => e.status === "read") };
   };
@@ -673,6 +675,46 @@ async function main() {
     buscas.some((b) => b.p_texto === "vigilante patrimonial" && b.p_raio_km === 100) && buscas.some((b) => b.p_texto === "vigilante"),
     "antes das parecidas, a função longe e a função mais curta",
     buscas.map((b) => `${b.p_texto}/${b.p_raio_km}`),
+  );
+  // 22b1. a equipe devolveu com os botões: os três botões do começo de novo, sem a IA (19/11/2026: "dar uma opção pra
+  // voltar pra IA com botões novamente")
+  respostaIA = ia("não devia ser chamada", { perfil: null, acao: "responder" });
+  r = await rodar("", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "equipe", texto: "Clique no botão Procuro trabalho." }, { de: "pessoa", texto: "Já cliquei" }],
+  }, { retomada: true, comBotoes: true, wamid: "" });
+  conferir(
+    corpo(r.msgs[0]) === a.VOLTEI_COM_BOTOES &&
+      r.msgs[0]?.interactive?.action?.buttons?.length === 3 &&
+      pedidosClaude.length === 0 && pedidosIA.length === 0,
+    "devolver com os botões: o menu de novo, sem a IA",
+    JSON.stringify(r.msgs[0]).slice(0, 300),
+  );
+  // 22b2. cargo de liderança sem vaga: o mesmo cargo em outro nível da área, antes das parecidas da IA (19/11/2026:
+  // "Tem vaga pra coordenador de logística")
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "gerente operacional / supervisor de logística", funcoes: ["gerente operacional", "supervisor de logística"], parecidas: ["porteiro"], categoria: "todas", cidade: "Aparecida de Goiânia", bairro: "", fora: "" },
+  });
+  r = await rodar("Sou gerente operacional / supervisor de logística moro na vila Maria", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "Sou gerente operacional / supervisor de logística moro na vila Maria" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Coordenador de Logística*") &&
+      !corpo(r.msgs[0]).includes("Auxiliar de logística") &&
+      !corpo(r.msgs[0]).includes("Porteiro") &&
+      corpo(r.msgs[0]).includes("Separei outras vagas que podem combinar"),
+    "liderança: o mesmo cargo em outro nível da área",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.areaDaLideranca("supervisor de logística") === "logística" &&
+      a.areaDaLideranca("auxiliar de cozinha") === null &&
+      a.tituloDeLideranca("Coordenador de Logística", "logística") &&
+      !a.tituloDeLideranca("Auxiliar de logística", "logística"),
+    "a área e o título de liderança",
   );
   // 22c. duas funções: a que não tem é dita; a outra, mesmo longe, vem antes de qualquer parecida
   respostaIA = ia("Olha as vagas:", {

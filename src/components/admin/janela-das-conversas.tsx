@@ -249,23 +249,36 @@ function Conversa({
     <>
       <div className={`flex items-center justify-between gap-2 px-3 py-2 text-body-sm ${equipe ? "bg-terra-soft" : "bg-tom-servico"}`}>
         <span>{equipe ? "A equipe está respondendo" : "O Publike responde sozinho"}</span>
-        <button
-          type="button"
-          disabled={pendente}
-          onClick={() =>
-            iniciar(async () => {
-              setErro(null);
-              const r = await mudarConversaWhatsapp(c.chave, equipe ? "robo" : "equipe");
-              if (!r.ok) setErro(r.erro);
-              await recarregar();
-              // devolvida, o automático pode responder em uns segundos
-              if (equipe) setTimeout(() => void recarregar(), 8000);
-            })
-          }
-          className="min-h-9 shrink-0 rounded-pill border border-line-strong bg-surface-200 px-3 text-label hover:bg-surface-100"
-        >
-          {equipe ? "Devolver" : "Pegar"}
-        </button>
+        <span className="flex shrink-0 gap-1.5">
+          {[
+            ...(equipe ? [{ rotulo: "Devolver com os botões", comBotoes: true }] : []),
+            { rotulo: equipe ? "Devolver" : "Pegar", comBotoes: false },
+          ].map((o) => (
+            <button
+              key={o.rotulo}
+              type="button"
+              disabled={pendente}
+              title={
+                o.comBotoes
+                  ? "O automático volta e manda de novo os botões do começo (Procuro trabalho, Quero contratar, Falar com a equipe)"
+                  : undefined
+              }
+              onClick={() =>
+                iniciar(async () => {
+                  setErro(null);
+                  const r = await mudarConversaWhatsapp(c.chave, equipe ? "robo" : "equipe", o.comBotoes);
+                  if (!r.ok) setErro(r.erro);
+                  await recarregar();
+                  // devolvida, o automático pode responder em uns segundos
+                  if (equipe) setTimeout(() => void recarregar(), 8000);
+                })
+              }
+              className="min-h-9 shrink-0 rounded-pill border border-line-strong bg-surface-200 px-3 text-label hover:bg-surface-100"
+            >
+              {o.rotulo}
+            </button>
+          ))}
+        </span>
       </div>
       <div className="flex-1 overflow-y-auto bg-surface-100 px-3 py-3">
         <ol className="flex flex-col gap-1.5">

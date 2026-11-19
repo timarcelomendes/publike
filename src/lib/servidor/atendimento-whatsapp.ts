@@ -378,7 +378,7 @@ export function lugarDaBusca(cidade: string, bairro: string): Local | null {
 }
 
 const REGRAS_DA_BUSCA =
-  `Preencha "busca.texto" com o que ela faz, como ela falou ("vigilante patrimonial", "auxiliar de costura e de cozinha"); "busca.funcoes" com cada função que ela disse, separada, no singular e com o nome que os anúncios usam (até 3: ["auxiliar de costura", "auxiliar de cozinha"]); "busca.parecidas" com até 4 outras funções que essa pessoa consegue fazer com a experiência que tem, do mesmo ramo, as mais próximas primeiro (vigilante: vigia, porteiro, controlador de acesso; auxiliar de costura: costureira, auxiliar de produção têxtil, arrematadeira; auxiliar de cozinha: ajudante de cozinha, cozinheira, auxiliar de padaria). Cuidado com as parecidas: elas aparecem quando não há vaga da função, como oportunidades que podem combinar com o perfil, então nunca ponha uma função só porque divide uma palavra (auxiliar de escritório não é parecida com auxiliar de costura) nem funções que pedem outra formação; na dúvida, deixe de fora;`;
+  `Preencha "busca.texto" com o que ela faz, como ela falou ("vigilante patrimonial", "auxiliar de costura e de cozinha"); "busca.funcoes" com cada função que ela disse, separada, no singular e com o nome que os anúncios usam (até 3: ["auxiliar de costura", "auxiliar de cozinha"]); "busca.parecidas" com até 4 outras funções que essa pessoa consegue fazer com a experiência que tem, do mesmo ramo, as mais próximas primeiro (vigilante: vigia, porteiro, controlador de acesso; auxiliar de costura: costureira, auxiliar de produção têxtil, arrematadeira; auxiliar de cozinha: ajudante de cozinha, cozinheira, auxiliar de padaria; cargo de liderança: o mesmo cargo em outro nível da mesma área, como supervisor de logística: coordenador de logística, encarregado de logística, gerente de logística). Cuidado com as parecidas: elas aparecem quando não há vaga da função, como oportunidades que podem combinar com o perfil, então nunca ponha uma função só porque divide uma palavra (auxiliar de escritório não é parecida com auxiliar de costura) nem funções que pedem outra formação; na dúvida, deixe de fora;`;
 
 // --- As vagas da função (19/11/2026; Marcelo: "privilegiar a função solicitada, mesmo que mais longe, cidade e região"
 // e "se não tiver a profissão, exibir vagas semelhantes [...] deixar claro ao usuário [...] cuidado com essa lista") --
@@ -411,6 +411,25 @@ export function tituloDaFuncao(titulo: string, funcao: string) {
 export function funcaoCurta(funcao: string) {
   const ps = palavrasDaFuncao(funcao);
   return ps.length > 1 && !PALAVRAS_GERAIS.has(ps[0]) ? ps[0] : null;
+}
+
+/** Os níveis de liderança: "supervisor de logística" combina com "coordenador de logística" (19/11/2026). */
+const NIVEIS = "gerente coordenador coordenadora supervisor supervisora encarregado encarregada lider chefe gestor gestora diretor diretora".split(
+  " ",
+);
+
+/** A área de um cargo de liderança ("supervisor de logística" → "logística"); null quando não é de liderança. */
+export function areaDaLideranca(funcao: string) {
+  const ps = palavrasDaFuncao(funcao);
+  if (ps.length < 2 || !NIVEIS.includes(ps[0])) return null;
+  const area = funcao.trim().split(/\s+/).slice(1).join(" ").replace(/^(de|da|do|das|dos|em)\s+/i, "").trim();
+  return area.length >= 3 ? area : null;
+}
+
+/** O título é de liderança na área ("Coordenador de Logística" para a área "logística"). */
+export function tituloDeLideranca(titulo: string, area: string) {
+  const palavras = simples(titulo).split(" ");
+  return tituloDaFuncao(titulo, area) && NIVEIS.some((n) => palavras.some((w) => w.startsWith(n.slice(0, 5))));
 }
 
 /** "a", "a e b", "a, b e c". */
@@ -480,10 +499,16 @@ async function procurarVagas(
   const achadas: Achada[] = [];
   const ids = new Set<string>();
   // de cada termo, uma por vez (as duas funções que a pessoa disse aparecem), até caber
-  const juntar = async (termos: string[], lugar: Record<string, unknown>, parecida: boolean, eLonge: boolean) => {
+  const juntar = async (
+    termos: string[],
+    lugar: Record<string, unknown>,
+    parecida: boolean,
+    eLonge: boolean,
+    combina: (titulo: string, termo: string) => boolean = tituloDaFuncao,
+  ) => {
     if (achadas.length >= max || !termos.length) return;
     const listas = await Promise.all(
-      termos.map(async (t) => ({ t, l: (await tentar(t, lugar)).filter((a) => tituloDaFuncao(a.titulo, t)) })),
+      termos.map(async (t) => ({ t, l: (await tentar(t, lugar)).filter((a) => combina(a.titulo, t)) })),
     );
     for (let i = 0; achadas.length < max && listas.some((x) => x.l.length > i); i++)
       for (const { t, l } of listas) {
@@ -512,6 +537,13 @@ async function procurarVagas(
     );
     await juntar(curtas, perto, false, false);
     await juntar(curtas, longe, false, true);
+    if (!achadas.length) {
+      // o mesmo cargo em outro nível da mesma área ("supervisor de logística": coordenador, gerente, encarregado de
+      // logística), antes das parecidas da IA (19/11/2026; Marcelo: "Tem vaga pra coordenador de logística")
+      const areas = unicos(funcoes.map(areaDaLideranca), 3);
+      await juntar(areas, perto, true, false, tituloDeLideranca);
+      await juntar(areas, longe, true, true, tituloDeLideranca);
+    }
     if (!achadas.length) {
       const parecidas = unicos(busca.parecidas ?? [], 4).filter(
         (p) => !funcoes.concat(curtas).some((f) => simples(f) === simples(p)),
@@ -662,7 +694,13 @@ export const ECONOMICO_SEM_PERFIL =
  * trabalho"): se a última mensagem é da pessoa e ficou sem resposta, o automático responde agora, como se ela tivesse
  * acabado de mandar (o botão que ela tocou vale de novo). O "Falar com a equipe" não volta para a equipe.
  */
-export async function retomarConversa(conversa: string, numero: string) {
+/**
+ * A equipe devolveu com os botões (19/11/2026; Marcelo: "dar uma opção pra voltar pra IA com botões novamente"): no lugar
+ * de responder a última mensagem, o atendimento manda os botões do começo de novo.
+ */
+export const VOLTEI_COM_BOTOES = "Pronto! 😊 Para continuar, é só tocar numa das opções abaixo.";
+
+export async function retomarConversa(conversa: string, numero: string, opcoes: { comBotoes?: boolean } = {}) {
   const cfg = configMeta();
   const acesso = acessoFila();
   if (!cfg || !acesso) return;
@@ -671,7 +709,18 @@ export async function retomarConversa(conversa: string, numero: string) {
   if (error || !data) return;
   const u = data as unknown as { wamid: string | null; situacao: "robo" | "equipe"; historico: Mensagem[] };
   const ultima = u.historico.at(-1);
-  if (u.situacao !== "robo" || !u.wamid || ultima?.de !== "pessoa") return;
+  if (u.situacao !== "robo" || !ultima) return;
+  if (opcoes.comBotoes) {
+    await atenderConversa(
+      cfg,
+      banco,
+      chave,
+      { wamid: u.wamid ?? "", numero, texto: "", payload: null, nome: null, origem: null },
+      { retomada: true, comBotoes: true, espera: { texto: 0, botao: 0 } },
+    );
+    return;
+  }
+  if (!u.wamid || ultima.de !== "pessoa") return;
   const botao = MENU.find((b) => b.titulo === ultima.texto.trim());
   if (botao?.id === "a:equipe") return;
   await atenderConversa(
@@ -854,6 +903,8 @@ export async function atenderConversa(
     agora?: Date;
     /** a equipe devolveu a conversa: a última mensagem da pessoa já está guardada, só falta a resposta */
     retomada?: boolean;
+    /** com `retomada`: no lugar da resposta, os botões do começo de novo */
+    comBotoes?: boolean;
   } = {},
 ) {
   // o áudio vira texto antes de entrar na conversa (sem a transcrição, fica o "[a pessoa mandou um áudio]")
@@ -887,7 +938,7 @@ export async function atenderConversa(
     conversando &&
     !(pediuFuncao && soConfirmacao(m.texto)) &&
     (soEmoji(m.texto) || midiaDaMensagem(m.texto) === "figurinha" || (semPergunta && soConfirmacao(m.texto)));
-  await marcarLidaDigitando(cfg, m.wamid, !soReacao).catch(() => undefined);
+  if (m.wamid) await marcarLidaDigitando(cfg, m.wamid, !soReacao).catch(() => undefined);
 
   // espera um pouco: se chegou outra mensagem da pessoa, ela é que responde, com a conversa toda
   const espera = opcoes.espera ?? ESPERA;
@@ -903,7 +954,8 @@ export async function atenderConversa(
       perfil: Entrada["perfil"];
       historico: Mensagem[];
     };
-    if (u.wamid !== m.wamid || u.situacao === "equipe") return;
+    // com os botões da equipe, não há mensagem nova da pessoa para conferir
+    if ((!opcoes.comBotoes && u.wamid !== m.wamid) || u.situacao === "equipe") return;
     e.historico = u.historico;
     e.perfil = u.perfil ?? e.perfil;
   }
@@ -992,6 +1044,9 @@ export async function atenderConversa(
   // anúncio já recebeu a da Meta (`BOAS_VINDAS_DO_ANUNCIO`): nada de "Oi" duas vezes
   const doAnuncio = veioDoAnuncio(e.origem);
   const ola = jaFalou || doAnuncio ? "" : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.\n\n`;
+
+  // a equipe devolveu com os botões
+  if (opcoes.retomada && opcoes.comBotoes) return saida(VOLTEI_COM_BOTOES, { menu: true });
 
   // o teto do mês (migração 20270808120000): no modo econômico, quem procura trabalho recebe uma mensagem só por dia,
   // com o link das vagas, sem a IA; quem contrata segue normal (é quem traz vaga nova)

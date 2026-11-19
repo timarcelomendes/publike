@@ -263,7 +263,12 @@ export async function salvarAtendimentoWhatsapp(ligado: boolean, porDia: number 
 }
 
 /** A equipe pega a conversa (a IA fica quieta) ou devolve para a IA. */
-export async function mudarConversaWhatsapp(conversa: string, situacao: "robo" | "equipe"): Promise<Resultado> {
+export async function mudarConversaWhatsapp(
+  conversa: string,
+  situacao: "robo" | "equipe",
+  /** ao devolver: manda os botões do começo de novo, no lugar de responder a última mensagem */
+  comBotoes = false,
+): Promise<Resultado> {
   const c = await banco();
   if (!c) return { ok: false, erro: "Só a equipe do Publike." };
   const { error } = await c.rpc("admin_whatsapp_conversa_situacao", { p_conversa: conversa, p_situacao: situacao });
@@ -276,7 +281,7 @@ export async function mudarConversaWhatsapp(conversa: string, situacao: "robo" |
     if (d?.numero && d.janela_aberta) {
       respondendo = true;
       after(async () => {
-        await retomarConversa(conversa, d.numero).catch((e) =>
+        await retomarConversa(conversa, d.numero, { comBotoes: comBotoes === true }).catch((e) =>
           console.error("Publike: não deu para retomar a conversa do WhatsApp:", e instanceof Error ? e.message : e),
         );
       });
@@ -288,7 +293,9 @@ export async function mudarConversaWhatsapp(conversa: string, situacao: "robo" |
     mensagem:
       situacao === "robo"
         ? respondendo
-          ? "O atendimento automático volta e já responde a última mensagem, se ficou sem resposta. Atualize em uns segundos."
+          ? comBotoes === true
+            ? "O atendimento automático volta e manda os botões do começo. Atualize em uns segundos."
+            : "O atendimento automático volta e já responde a última mensagem, se ficou sem resposta. Atualize em uns segundos."
           : "O atendimento automático volta a responder."
         : "O atendimento automático fica quieto nesta conversa.",
   };
