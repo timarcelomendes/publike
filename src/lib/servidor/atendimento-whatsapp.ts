@@ -189,6 +189,23 @@ const ESQUEMA = {
 
 /** Os links do site, já com a origem (o Admin conta quem chegou pelo WhatsApp e as contas que vieram dele). */
 const link = (caminho: string) => comOrigem(`${SITE_URL}${caminho}`, "whatsapp", "atendimento");
+const DO_ATENDIMENTO = "utm_source=whatsapp&utm_campaign=atendimento";
+
+/**
+ * A campanha dos links de quem chegou por um anúncio de clique para o WhatsApp (19/11/2026; Marcelo: "parece que as
+ * campanhas do Instagram não apareceram aqui", no quadro De onde vêm as contas): "ig-whatsapp" (o anúncio do
+ * Instagram), "fb-whatsapp" ou "meta-whatsapp", com utm_source=meta-ads, que conta em Anúncios pagos. Sem anúncio, null:
+ * os links seguem com a do atendimento. A migração 20270811120000 faz o mesmo com as contas de antes.
+ */
+export function campanhaDoAnuncio(o: Entrada["origem"]) {
+  if (!veioDoAnuncio(o)) return null;
+  const l = (o?.link ?? "").toLowerCase();
+  return `${l.includes("instagram") ? "ig" : l.includes("facebook") || l.includes("fb.") ? "fb" : "meta"}-whatsapp`;
+}
+
+/** Troca, no texto ou no link, a campanha do atendimento pela do anúncio. */
+export const comCampanhaDoAnuncio = (t: string, campanha: string | null) =>
+  campanha ? t.replaceAll(DO_ATENDIMENTO, `utm_source=meta-ads&utm_campaign=${campanha}`) : t;
 
 // --- Ler a mensagem ---------------------------------------------------------------------------------------------
 
@@ -893,8 +910,10 @@ export async function atenderConversa(
   // sem a função (a migração 20270803120000 ainda não rodou), segue com a conversa da entrada
 
   const agora = opcoes.agora ?? new Date();
+  // quem veio de um anúncio: os links contam no anúncio, não no atendimento
+  const campanha = campanhaDoAnuncio(e.origem);
   const saida = async (
-    texto: string,
+    textoDaResposta: string,
     extra: {
       perfil?: string | null;
       equipe?: boolean;
@@ -903,7 +922,8 @@ export async function atenderConversa(
       botao?: Botao | null;
     } = {},
   ) => {
-    const url = extra.botao ? link(extra.botao.caminho) : null;
+    const texto = comCampanhaDoAnuncio(textoDaResposta, campanha);
+    const url = extra.botao ? comCampanhaDoAnuncio(link(extra.botao.caminho), campanha) : null;
     let r = extra.menu
       ? await enviarComBotoes(cfg, m.numero, caber(texto), MENU)
       : extra.botao && url

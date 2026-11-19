@@ -278,6 +278,25 @@ async function main() {
     "do anúncio: a IA sabe que a pessoa já foi cumprimentada",
   );
   conferir(r.msgs.length === 1 && !corpo(r.msgs[0]).includes("Aqui é o Marcelo"), "do anúncio: a IA responde direto", r.msgs);
+  // os links de quem veio do anúncio contam no anúncio do Instagram, não no atendimento (19/11/2026: "parece que as
+  // campanhas do Instagram não apareceram aqui")
+  r = await rodar(
+    "Quero contratar",
+    { origem: doAnuncio, historico: [{ de: "pessoa", texto: "Quero contratar" }] },
+    { payload: "a:contratar" },
+  );
+  const doLink = JSON.stringify(r.msgs);
+  conferir(
+    doLink.includes("utm_source=meta-ads&utm_campaign=ig-whatsapp") && !doLink.includes("utm_campaign=atendimento"),
+    "do anúncio: o link leva a campanha do anúncio do Instagram",
+    doLink.slice(0, 400),
+  );
+  r = await rodar(
+    "Quero contratar",
+    { historico: [{ de: "pessoa", texto: "Quero contratar" }] },
+    { payload: "a:contratar" },
+  );
+  conferir(JSON.stringify(r.msgs).includes("utm_campaign=atendimento"), "sem anúncio: o link segue com o atendimento");
 
   // 2. dois "Oi" seguidos: uma resposta só
   r = await rodar("Oi", {

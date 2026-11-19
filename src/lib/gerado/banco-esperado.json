@@ -355,7 +355,8 @@
   "20270807120000_whatsapp_vagas_do_dia",
   "20270808120000_whatsapp_teto_do_mes",
   "20270809120000_whatsapp_mensagem_so_empresas",
-  "20270810120000_convites_manter_contato"
+  "20270810120000_convites_manter_contato",
+  "20270811120000_origem_anuncio_whatsapp"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3037,7 +3038,7 @@
   "f|public.admin_numeros_do_mes_receita(p_mes date)": "f0deeb247d",
   "f|public.admin_numeros_teste_app(p_dias integer)": "620b4b79ba",
   "f|public.admin_oferta_procura(p_dias integer, p_com_equipe boolean)": "90f6a9f7e7",
-  "f|public.admin_origens(p_desde timestamp with time zone)": "11cd8d4851",
+  "f|public.admin_origens(p_desde timestamp with time zone)": "a1ef746878",
   "f|public.admin_pagamentos()": "c538bebbcc",
   "f|public.admin_pagamentos_situacao()": "b047a98238",
   "f|public.admin_pagamentos_teste(p_conta text, p_marcar boolean)": "62ee824990",

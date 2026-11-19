@@ -324,6 +324,12 @@ const NOMES_DAS_ORIGENS: Record<string, string> = {
   "instagram:bio": "Instagram do Publike (bio)",
   "instagram:stories": "Instagram do Publike (stories)",
   "whatsapp:atendimento": "Atendimento pelo WhatsApp",
+  // os anúncios de clique para o WhatsApp (migração 20270811120000 e `campanhaDoAnuncio`)
+  "meta-ads:ig-whatsapp": "Anúncio do Instagram (pelo WhatsApp)",
+  "meta-ads:fb-whatsapp": "Anúncio do Facebook (pelo WhatsApp)",
+  "meta-ads:meta-whatsapp": "Anúncio da Meta (pelo WhatsApp)",
+  ig: "Instagram (link sem campanha)",
+  fb: "Facebook (link sem campanha)",
   "whatsapp:indicacao": "Indicação pelo WhatsApp",
   "whatsapp:compartilhar": "Vaga compartilhada no WhatsApp",
   "convite:candidato": "Convite da empresa ao candidato",
