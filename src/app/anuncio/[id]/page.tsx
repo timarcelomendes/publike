@@ -529,12 +529,13 @@ async function DetalheAnuncio({
               vê a pessoa no seu painel. Preencheu a vaga? Marque como preenchida no painel.
             </Aviso>
             {whatsappAoPublicar?.pode && !whatsappAoPublicar.aceito && (
-              <div className="mt-3 rounded-lg border border-line bg-surface-200 p-4">
+              <div className="mt-3">
                 <AceiteWhatsapp
                   inicial={whatsappAoPublicar}
                   origem="publicar"
                   rotulo="Receber os candidatos novos pelo WhatsApp"
                   esconderSeAceito
+                  cartao={{ vaga: anuncio.titulo, empresa: anuncio.autor_nome }}
                 />
               </div>
             )}

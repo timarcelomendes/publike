@@ -335,13 +335,24 @@ export function QuadroCandidatos({
             Retorno a quem não seguir: {retorno.ligado ? "ligado" : "desligado"}
           </Link>
         )}
+        {lista.length === 0 && (
+          <AceiteWhatsapp
+            origem="quadro"
+            rotulo="Receber os candidatos novos no WhatsApp"
+            esconderSeAceito
+            compacto
+          />
+        )}
+      </div>
+      {/* com candidato no quadro, o pedido vira o cartão com o exemplo da mensagem (é quando a empresa mais quer saber) */}
+      {lista.length > 0 && (
         <AceiteWhatsapp
           origem="quadro"
           rotulo="Receber os candidatos novos no WhatsApp"
           esconderSeAceito
-          compacto
+          cartao={{ vaga, empresa, titulo: "Receba os próximos candidatos no WhatsApp" }}
         />
-      </div>
+      )}
       {aviso && (
         <p role="status" className={`text-body-sm ${aviso.ok ? "text-cerrado-text" : "text-danger"}`}>
           {aviso.texto}
