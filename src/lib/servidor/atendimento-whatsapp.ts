@@ -57,6 +57,19 @@ import { configVagasWhatsapp, deveTentarVaga, respostaDaOferta, tentarVagaPeloWh
 // quem escreve; a IA confundia os dois e se apresentava com o nome da pessoa.
 const QUEM_ATENDE = "Marcelo";
 
+/**
+ * A mensagem de boas-vindas dos anúncios de clique para o WhatsApp (19/11/2026; Marcelo: "isso não pode ocorrer, traz
+ * desconfiança", sobre a boas-vindas do anúncio e a do robô, uma depois da outra). A Meta mostra esta mensagem quando a
+ * pessoa toca no anúncio, antes de ela escrever, e o webhook não fica sabendo: quem chega por um anúncio (o `referral`)
+ * já foi cumprimentado, e o robô responde direto, sem o "Oi" e sem se apresentar de novo. É o texto que vai em todo
+ * anúncio (Gerenciador de Anúncios › Conversas › Mensagem de boas-vindas): mudou lá, mude aqui.
+ */
+export const BOAS_VINDAS_DO_ANUNCIO = `Oi! 👋 Aqui é o ${QUEM_ATENDE}, do Publike.`;
+
+/** A pessoa chegou por um anúncio de clique para o WhatsApp: já viu `BOAS_VINDAS_DO_ANUNCIO`. */
+export const veioDoAnuncio = (o: { tipo?: string | null; link?: string | null; titulo?: string | null } | null) =>
+  Boolean(o && (o.tipo || o.link || o.titulo));
+
 /** Os botões de quando ainda não se sabe o que a pessoa quer (o toque volta no webhook como `a:<id>`). */
 const MENU = [
   { id: "a:trabalho", titulo: "Procuro trabalho" },
@@ -583,12 +596,15 @@ export function cumprimentoDe(textos: string[]) {
 
 const oi = (nome: string | null, comeco = "Oi") => `${comeco}${nome ? `, ${nome}` : ""}!`;
 
-function boasVindas(nome: string | null, comeco: string) {
+function boasVindas(nome: string | null, comeco: string, doAnuncio = false) {
   return [
-    `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.`,
+    // quem veio do anúncio já recebeu o "Oi! 👋 Aqui é o Marcelo" da Meta (`BOAS_VINDAS_DO_ANUNCIO`)
+    doAnuncio ? null : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.`,
     `O Publike é um site *grátis* de vagas de emprego perto de casa, em ${ONDE_FUNCIONA}:\n• quem procura trabalho se candidata pelo celular e acompanha cada passo: se a empresa viu, se aceitou e quando é a entrevista;\n• quem contrata publica a vaga de graça e recebe os candidatos organizados.`,
     "Como posso te ajudar?",
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 // "Procuro trabalho" (19/11/2026; Marcelo: "As pessoas estão parando aqui"): antes, o passo a passo em três itens e a
@@ -685,7 +701,7 @@ function instrucoes() {
 
 Quem você é
 - Você é o ${QUEM_ATENDE}, do Publike.
-- Na sua primeira mensagem para a pessoa (está dito em "Sobre esta conversa"), comece com "Oi, <primeiro nome>! Aqui é o ${QUEM_ATENDE}, do Publike." (sem nome, só "Oi!"; se ela disse "bom dia", "boa tarde" ou "boa noite", comece igual) e diga numa frase o que é o Publike; depois responda. Nas outras, não se apresente de novo e não comece com "Oi".
+- Na sua primeira mensagem para a pessoa (está dito em "Sobre esta conversa"), comece com "Oi, <primeiro nome>! Aqui é o ${QUEM_ATENDE}, do Publike." (sem nome, só "Oi!"; se ela disse "bom dia", "boa tarde" ou "boa noite", comece igual) e diga numa frase o que é o Publike; depois responda. Nas outras, não se apresente de novo e não comece com "Oi". Se "Sobre esta conversa" diz que ela já foi cumprimentada pelo anúncio, também não: responda direto.
 - O nome que vem em "Sobre esta conversa" é o da pessoa, não o seu: chame pelo nome no máximo uma vez, na saudação.
 - Se a pessoa perguntar se está falando com um robô, diga com franqueza que é o atendimento automático do Publike, em nome do ${QUEM_ATENDE}, e que alguém da equipe responde por aqui se ela quiser.
 
@@ -747,7 +763,11 @@ function contexto(e: Entrada, jaFalou: boolean, agora: Date, vagasPorAqui = fals
         ? "- Ela quer contratar."
         : "- Ainda não se sabe se ela procura trabalho ou quer contratar.",
     anuncio ? `- Ela chegou por um anúncio do Publike no Instagram ou no Facebook: "${anuncio}".` : null,
-    jaFalou ? "- Você já falou com ela nesta conversa." : "- Esta é a sua primeira mensagem para ela.",
+    jaFalou
+      ? "- Você já falou com ela nesta conversa."
+      : veioDoAnuncio(e.origem)
+        ? `- Esta é a sua primeira resposta, mas ela já foi cumprimentada pelo anúncio: ao tocar nele, recebeu do Publike "${BOAS_VINDAS_DO_ANUNCIO}". Não comece com "Oi" e não se apresente: responda direto ao que ela mandou.`
+        : "- Esta é a sua primeira mensagem para ela.",
     `- Se passar a conversa para a equipe, alguém responde por aqui ${quandoAEquipeResponde(agora)}.`,
     vagasPorAqui
       ? "- Quem quer publicar uma vaga pode mandar aqui mesmo, nesta conversa, a foto do anúncio, o PDF ou o texto da vaga (o cargo, o salário, o horário e o bairro): o Publike lê, prepara a vaga e manda o link para a pessoa conferir e publicar. Diga isso quando a pessoa quiser publicar, em vez de mandar para o site."
@@ -948,8 +968,10 @@ export async function atenderConversa(
   const midias = textos.map(midiaDaMensagem);
   const semPerfil = !e.perfil;
   const comeco = cumprimentoDe(textos);
-  // a apresentação, na primeira mensagem para a pessoa (as respostas prontas que não são as boas-vindas)
-  const ola = jaFalou ? "" : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.\n\n`;
+  // a apresentação, na primeira mensagem para a pessoa (as respostas prontas que não são as boas-vindas); quem veio do
+  // anúncio já recebeu a da Meta (`BOAS_VINDAS_DO_ANUNCIO`): nada de "Oi" duas vezes
+  const doAnuncio = veioDoAnuncio(e.origem);
+  const ola = jaFalou || doAnuncio ? "" : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.\n\n`;
 
   // o teto do mês (migração 20270808120000): no modo econômico, quem procura trabalho recebe uma mensagem só por dia,
   // com o link das vagas, sem a IA; quem contrata segue normal (é quem traz vaga nova)
@@ -1027,7 +1049,7 @@ export async function atenderConversa(
     (t) => soCumprimento(t) || soEmoji(t) || midiaDaMensagem(t) === "figurinha" || (!jaFalou && pedidoGeral(t)),
   );
   if (soOi) {
-    if (!jaFalou) return saida(boasVindas(nome, comeco), { menu: semPerfil });
+    if (!jaFalou) return saida(boasVindas(nome, comeco, doAnuncio), { menu: semPerfil });
     const deNovo = /^(Oi|Bom dia|Boa tarde|Boa noite|Estou por aqui)\b/.test(minhaUltima);
     return saida(
       deNovo

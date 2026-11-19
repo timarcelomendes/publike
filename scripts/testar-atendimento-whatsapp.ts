@@ -255,6 +255,30 @@ async function main() {
     "guarda os botões",
   );
 
+  // 1b. quem veio do anúncio já recebeu a boas-vindas da Meta ("Oi! 👋 Aqui é o Marcelo, do Publike."): o robô não
+  // cumprimenta nem se apresenta de novo (19/11/2026; Marcelo: "isso não pode ocorrer, traz desconfiança")
+  const doAnuncio = { tipo: "ad", link: "https://www.instagram.com/reel/x", titulo: "Contratando?", texto: null };
+  r = await rodar("Olá! Posso ter mais informações sobre isso?", {
+    origem: doAnuncio,
+    historico: [{ de: "pessoa", texto: "Olá! Posso ter mais informações sobre isso?" }],
+  });
+  conferir(
+    r.msgs.length === 1 && !corpo(r.msgs[0]).includes("Aqui é o Marcelo") && corpo(r.msgs[0]).startsWith("O Publike é"),
+    "do anúncio: as boas-vindas sem o Oi de novo",
+    r.msgs,
+  );
+  respostaIA = ia("Pode mandar aqui mesmo a foto do cartaz, o print ou o texto da vaga.");
+  r = await rodar("Olá! Quero publicar uma vaga pelo WhatsApp.", {
+    origem: doAnuncio,
+    historico: [{ de: "pessoa", texto: "Olá! Quero publicar uma vaga pelo WhatsApp." }],
+  });
+  conferir(
+    JSON.stringify([...pedidosIA, ...pedidosClaude]).includes("já foi cumprimentada pelo anúncio") &&
+      !JSON.stringify([...pedidosIA, ...pedidosClaude]).includes("Esta é a sua primeira mensagem para ela"),
+    "do anúncio: a IA sabe que a pessoa já foi cumprimentada",
+  );
+  conferir(r.msgs.length === 1 && !corpo(r.msgs[0]).includes("Aqui é o Marcelo"), "do anúncio: a IA responde direto", r.msgs);
+
   // 2. dois "Oi" seguidos: uma resposta só
   r = await rodar("Oi", {
     historico: [
