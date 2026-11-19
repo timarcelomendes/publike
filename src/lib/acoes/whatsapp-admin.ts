@@ -1,6 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { refresh, updateTag } from "next/cache";
+import { retomarConversa } from "@/lib/servidor/atendimento-whatsapp";
 import { TAG_CONTATO_DAS_VAGAS } from "@/lib/servidor/numero-do-publike";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import {
@@ -266,12 +268,28 @@ export async function mudarConversaWhatsapp(conversa: string, situacao: "robo" |
   if (!c) return { ok: false, erro: "Só a equipe do Publike." };
   const { error } = await c.rpc("admin_whatsapp_conversa_situacao", { p_conversa: conversa, p_situacao: situacao });
   if (error) return { ok: false, erro: error.message || "Não deu para mudar agora." };
+  // devolveu: a última mensagem da pessoa, se ficou sem resposta, é respondida agora (na janela de 24 horas)
+  let respondendo = false;
+  if (situacao === "robo") {
+    const { data } = await c.rpc("admin_whatsapp_conversa_numero", { p_conversa: conversa });
+    const d = data as { numero: string; janela_aberta: boolean } | null;
+    if (d?.numero && d.janela_aberta) {
+      respondendo = true;
+      after(async () => {
+        await retomarConversa(conversa, d.numero).catch((e) =>
+          console.error("Publike: não deu para retomar a conversa do WhatsApp:", e instanceof Error ? e.message : e),
+        );
+      });
+    }
+  }
   refresh();
   return {
     ok: true,
     mensagem:
       situacao === "robo"
-        ? "O atendimento automático volta a responder."
+        ? respondendo
+          ? "O atendimento automático volta e já responde a última mensagem, se ficou sem resposta. Atualize em uns segundos."
+          : "O atendimento automático volta a responder."
         : "O atendimento automático fica quieto nesta conversa.",
   };
 }

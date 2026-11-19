@@ -208,7 +208,7 @@ async function main() {
         audio: extra.audio ?? null,
         local: extra.local ?? null,
       },
-      { espera: { texto: 0, botao: 0 }, agora: extra.agora ?? quarta14h },
+      { espera: { texto: 0, botao: 0 }, agora: extra.agora ?? quarta14h, retomada: extra.retomada ?? false },
     );
     return { msgs: enviados.filter((e) => e.type), lidas: enviados.filter((e) => e.status === "read") };
   };
@@ -608,6 +608,23 @@ async function main() {
     buscas.length === 0 && corpo(r.msgs[0]).startsWith("O Publike ainda não está disponível em Manaus."),
     "cidade fora: ainda não está disponível, sem vagas daqui",
     corpo(r.msgs[0]),
+  );
+
+  // 19c. a equipe devolveu a conversa: a última mensagem ("Procuro trabalho") é respondida agora, sem entrar de novo
+  r = await rodar(
+    "Procuro trabalho",
+    {
+      historico: [
+        { de: "robo", texto: "Certo! Vou pedir para alguém da equipe do Publike te responder por aqui." },
+        { de: "pessoa", texto: "Procuro trabalho" },
+      ],
+    },
+    { payload: "a:trabalho", retomada: true },
+  );
+  conferir(
+    entradas[0]?.p_texto === "" && entradas[0]?.p_wamid === null && r.msgs.length === 1 && corpo(r.msgs[0]).includes("até 3 vagas por dia"),
+    "devolvida: responde a última da pessoa sem repetir a mensagem",
+    `${JSON.stringify(entradas[0]?.p_texto)} ${corpo(r.msgs[0])}`,
   );
 
   // 20. o teto do mês: quem procura trabalho, uma mensagem com o link; de novo no dia, nada; quem contrata, normal

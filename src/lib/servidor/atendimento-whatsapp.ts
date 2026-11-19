@@ -13,8 +13,10 @@ import { chaveBairro, chavesDaRegiao, criarLocal, pontoDoLocal, type Local } fro
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
+import { acessoFila } from "./filas";
 import {
   baixarMidia,
+  configMeta,
   enviarComBotoes,
   enviarComLink,
   enviarTexto,
@@ -453,6 +455,32 @@ export const ECONOMICO_TRABALHO =
 export const ECONOMICO_SEM_PERFIL =
   "Procura trabalho? As vagas perto de você estão no botão abaixo, de graça. Quer contratar? Mande aqui a foto ou o texto da vaga, que eu preparo para você publicar.";
 
+/**
+ * A equipe devolveu a conversa para o automático (19/11/2026; Marcelo: "eu devolvi pra IA porque ela procura
+ * trabalho"): se a última mensagem é da pessoa e ficou sem resposta, o automático responde agora, como se ela tivesse
+ * acabado de mandar (o botão que ela tocou vale de novo). O "Falar com a equipe" não volta para a equipe.
+ */
+export async function retomarConversa(conversa: string, numero: string) {
+  const cfg = configMeta();
+  const acesso = acessoFila();
+  if (!cfg || !acesso) return;
+  const { cliente: banco, chave } = acesso;
+  const { data, error } = await banco.rpc("servidor_whatsapp_conversa_ultima", { p_chave: chave, p_conversa: conversa });
+  if (error || !data) return;
+  const u = data as unknown as { wamid: string | null; situacao: "robo" | "equipe"; historico: Mensagem[] };
+  const ultima = u.historico.at(-1);
+  if (u.situacao !== "robo" || !u.wamid || ultima?.de !== "pessoa") return;
+  const botao = MENU.find((b) => b.titulo === ultima.texto.trim());
+  if (botao?.id === "a:equipe") return;
+  await atenderConversa(
+    cfg,
+    banco,
+    chave,
+    { wamid: u.wamid, numero, texto: ultima.texto, payload: botao?.id ?? null, nome: null, origem: null },
+    { retomada: true, espera: { texto: 0, botao: 0 } },
+  );
+}
+
 /** O teto do mês (migração 20270808120000); sem a migração ou com erro, null (segue normal). */
 async function tetoDoMes(banco: ClienteBanco, chave: string, conversa: string) {
   const { data, error } = await banco.rpc("servidor_whatsapp_teto", { p_chave: chave, p_conversa: conversa });
@@ -615,7 +643,12 @@ export async function atenderConversa(
   banco: ClienteBanco,
   chave: string,
   recebida: MensagemDoAtendimento,
-  opcoes: { espera?: typeof ESPERA; agora?: Date } = {},
+  opcoes: {
+    espera?: typeof ESPERA;
+    agora?: Date;
+    /** a equipe devolveu a conversa: a última mensagem da pessoa já está guardada, só falta a resposta */
+    retomada?: boolean;
+  } = {},
 ) {
   // o áudio vira texto antes de entrar na conversa (sem a transcrição, fica o "[a pessoa mandou um áudio]")
   const falado = recebida.audio ? await audioEmTexto(cfg, recebida.audio) : null;
@@ -624,11 +657,12 @@ export async function atenderConversa(
   const { data, error } = await banco.rpc("servidor_whatsapp_conversa_entrada", {
     p_chave: chave,
     p_numero: m.numero,
-    p_texto: m.texto,
+    // na retomada, a mensagem já está na conversa: entra vazia, para não repetir
+    p_texto: opcoes.retomada ? "" : m.texto,
     p_nome: m.nome,
     p_origem: (m.origem as Json) ?? null,
     p_payload: m.payload,
-    p_wamid: m.wamid,
+    p_wamid: opcoes.retomada ? null : m.wamid,
   });
   if (error || !data) {
     console.error("Publike: a conversa do WhatsApp não entrou:", error?.message);
