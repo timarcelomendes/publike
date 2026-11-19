@@ -594,6 +594,22 @@ async function main() {
     corpo(r.msgs[0]),
   );
 
+  // 19b. a cidade fora de onde o Publike funciona: ainda não está disponível, sem buscar
+  respostaIA = ia("Olha as vagas de cozinheira em Manaus:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "cozinheira", categoria: "todas", cidade: "", bairro: "", fora: "Manaus" },
+  });
+  r = await rodar("sou cozinheira e moro em Manaus", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou cozinheira e moro em Manaus" }],
+  });
+  conferir(
+    buscas.length === 0 && corpo(r.msgs[0]).startsWith("O Publike ainda não está disponível em Manaus."),
+    "cidade fora: ainda não está disponível, sem vagas daqui",
+    corpo(r.msgs[0]),
+  );
+
   // 20. o teto do mês: quem procura trabalho, uma mensagem com o link; de novo no dia, nada; quem contrata, normal
   teto = { teto: 5000, enviadas: 5000, economico: true, respondida_hoje: false };
   r = await rodar("sou cozinheira, moro no setor bueno", {

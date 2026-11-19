@@ -121,6 +121,8 @@ type Busca = {
   categoria: string;
   cidade: string;
   bairro: string;
+  /** a cidade que a pessoa disse, quando fica fora de onde o Publike funciona ("Manaus"); senão vazio */
+  fora: string;
 };
 
 type Plano = {
@@ -148,7 +150,7 @@ const ESQUEMA = {
       busca: {
         type: "object",
         additionalProperties: false,
-        required: ["texto", "categoria", "cidade", "bairro"],
+        required: ["texto", "categoria", "cidade", "bairro", "fora"],
         properties: {
           texto: { type: "string" },
           categoria: {
@@ -157,6 +159,7 @@ const ESQUEMA = {
           },
           cidade: { type: "string", enum: [...CIDADES, ""] },
           bairro: { type: "string" },
+          fora: { type: "string" },
         },
       },
     },
@@ -457,6 +460,13 @@ async function tetoDoMes(banco: ClienteBanco, chave: string, conversa: string) {
   return data as unknown as { teto: number; enviadas: number; economico: boolean; respondida_hoje: boolean };
 }
 
+/** Fora de onde o Publike funciona (a cidade que a pessoa disse, ou a localização sem vaga perto). */
+export function aindaNaoDisponivel(cidade: string | null) {
+  return cidade
+    ? `O Publike ainda não está disponível em ${cidade}. Por enquanto, as vagas são de ${ONDE_FUNCIONA}. Se você puder trabalhar por aqui, me diz o bairro que eu procuro para você.`
+    : `Ainda não tenho vagas perto desse lugar. Por enquanto, o Publike está disponível em ${ONDE_FUNCIONA}: entram vagas novas todo dia, e as que estão no ar ficam no botão abaixo.`;
+}
+
 /** As vagas de hoje acabaram: amanhã tem mais, e o site tem todas. */
 const ACABARAM_AS_DE_HOJE = `Hoje eu já te mandei ${VAGAS_POR_DIA} vagas por aqui. Amanhã eu mando mais! Enquanto isso, todas as vagas no ar estão no botão abaixo.`;
 
@@ -504,10 +514,10 @@ O essencial do Publike
 
 O que fazer (campo "acao")
 - responder: o normal.
-- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. Preencha "busca.texto" com a função, no singular, como ela falou ("cozinheira", "motorista"); "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz e onde mora.
+- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. Preencha "busca.texto" com a função, no singular, como ela falou ("cozinheira", "motorista"); "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). Se a cidade que ela disse não está na lista (fica fora de onde o Publike funciona), deixe "busca.cidade" vazio e ponha o nome dela em "busca.fora", como ela escreveu; senão, "busca.fora" vazio. A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz e onde mora.
 - equipe: a pessoa pede para falar com alguém, reclama, fala de pagamento, cobrança ou golpe, de problema na conta, de parceria ou de imprensa, ou você não sabe a resposta. Responda o que der (no golpe: não pague nada) e diga que vai pedir para alguém da equipe responder por aqui, no prazo que está em "Sobre esta conversa".
 - silencio: a mensagem não pede resposta, como "ok", "beleza", "👍" ou um "obrigado" depois que você já se despediu. Deixe "resposta" vazia.
-Fora de buscar_vagas, "busca" vai com texto, cidade e bairro vazios e categoria "todas".
+Fora de buscar_vagas, "busca" vai com texto, cidade, bairro e fora vazios e categoria "todas".
 
 O botão (campo "link")
 - vagas: ver as vagas no ar. publicar: publicar uma vaga. curriculo: fazer ou mudar o currículo. empresas: o que o Publike oferece a quem contrata, com os planos. ajuda: as perguntas e respostas do site. entrar: entrar na conta. nenhum: sem botão.
@@ -827,8 +837,8 @@ export async function atenderConversa(
     const vagas = await vagasEmTexto({ texto: "", categoria: "todas" }, { ponto: m.local }, restam);
     if (!vagas)
       return saida(
-        `${ola}Agora não achei vaga no ar perto desse lugar. Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`,
-        { botao: LINKS.vagas },
+        `${ola}${aindaNaoDisponivel(null)}`,
+        { perfil: e.perfil ?? "trabalho", botao: LINKS.vagas },
       );
     return saida(
       `${ola}Olha as vagas no ar mais perto desse lugar:\n\n${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}`,
@@ -927,6 +937,9 @@ export async function atenderConversa(
     });
 
   if (plano.acao === "buscar_vagas") {
+    // a cidade fora de onde o Publike funciona: ainda não está disponível lá (sem as vagas daqui, que enganariam)
+    const fora = plano.busca?.fora?.trim().slice(0, 40) ?? "";
+    if (fora && !plano.busca?.cidade) return saida(`${ola}${aindaNaoDisponivel(fora)}`, { perfil: perfil ?? "trabalho" });
     const busca = plano.busca?.texto?.trim().slice(0, 40) ?? "";
     const local = lugarDaBusca(plano.busca?.cidade ?? "", plano.busca?.bairro ?? "");
     const restam = VAGAS_POR_DIA - (await vagasDeHoje());
