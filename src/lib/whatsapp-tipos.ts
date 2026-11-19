@@ -73,9 +73,10 @@ export const TIPOS_WHATSAPP: { tipo: string; nome: string; curto: string; para: 
   },
   {
     tipo: "mensagem",
-    nome: "Mensagem nova no chat que ficou sem ler",
+    // só para quem contrata desde 19/11/2026 (migração 20270809120000)
+    nome: "Mensagem nova no chat que ficou sem ler (para quem contrata)",
     curto: "Mensagem no chat",
-    para: "Todos",
+    para: "Quem contrata",
     economico: false,
   },
   // o convite do pacote (migração 20270718120000): só o que o pacote de candidatos fez; modelo de marketing

@@ -353,7 +353,8 @@
   "20270805120000_whatsapp_atendimento_melhor",
   "20270806120000_publicar_pelo_whatsapp",
   "20270807120000_whatsapp_vagas_do_dia",
-  "20270808120000_whatsapp_teto_do_mes"
+  "20270808120000_whatsapp_teto_do_mes",
+  "20270809120000_whatsapp_mensagem_so_empresas"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2771,7 +2772,7 @@
   "f|privado.notas_validas(p_anuncio uuid, p_notas jsonb)": "12ad9777af",
   "f|privado.noticias_atualizado()": "67c08784fe",
   "f|privado.notificacao_para_celular()": "6b758f9620",
-  "f|privado.notificacao_para_whatsapp()": "a128409636",
+  "f|privado.notificacao_para_whatsapp()": "13d42245f6",
   "f|privado.notificacao_por_email()": "892ce2c137",
   "f|privado.numero_do_whatsapp(p_conta uuid)": "b383d1ebff",
   "f|privado.numeros_do_cliente(p_cliente uuid, p_de date, p_ate date)": "8d6b835c98",
