@@ -354,7 +354,8 @@
   "20270806120000_publicar_pelo_whatsapp",
   "20270807120000_whatsapp_vagas_do_dia",
   "20270808120000_whatsapp_teto_do_mes",
-  "20270809120000_whatsapp_mensagem_so_empresas"
+  "20270809120000_whatsapp_mensagem_so_empresas",
+  "20270810120000_convites_manter_contato"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -1971,6 +1972,8 @@
   "c|public.convites.anuncio_id": "4516c61a19",
   "c|public.convites.atualizado_em": "0d502ae88a",
   "c|public.convites.cnpj_receita": "00bdf2fb04",
+  "c|public.convites.contato_em": "de599dc94b",
+  "c|public.convites.contato_motivo": "00bdf2fb04",
   "c|public.convites.criado_em": "0d502ae88a",
   "c|public.convites.email": "00bdf2fb04",
   "c|public.convites.enviada_em": "de599dc94b",

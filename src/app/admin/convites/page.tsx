@@ -1,15 +1,17 @@
-import { Building2, FileUp, ImageIcon, List, Store, Wrench } from "lucide-react";
+import { Building2, FileUp, HeartHandshake, ImageIcon, List, Store, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ImportarConvites, ImportarPorImagens, ListaConvites } from "@/components/admin/convites";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { ListaDaReceitaAdmin } from "@/components/admin/listas-da-receita";
+import { ManterContato } from "@/components/admin/manter-contato";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import type { Convite } from "@/lib/convites";
 import { primeiro } from "@/lib/formato";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
+import { empresasParaContato } from "@/lib/servidor/manter-contato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -18,6 +20,8 @@ export const metadata: Metadata = { title: "Convites" };
 // sub-abas: a lista, importar pelas imagens dos anúncios e importar pelo arquivo
 const ABAS = [
   { id: "lista", nome: "Convidados", icone: List },
+  // quem veio do convite e publicou (migração 20270810120000)
+  { id: "contato", nome: "Manter contato", icone: HeartHandshake },
   { id: "imagens", nome: "Importar pelas imagens", icone: ImageIcon },
   { id: "arquivo", nome: "Importar arquivo", icone: FileUp },
   // a base da Receita (migração 20270604120000)
@@ -99,6 +103,14 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
           )}
         </Secao>
       )}
+      {aba === "contato" && (
+        <Secao
+          titulo="Manter contato"
+          descricao="As empresas que vieram dos convites e já publicaram. Cada uma tem a mensagem de hoje: com vaga no ar, pede a próxima; com a vaga saindo do ar, pergunta se contratou ou quer renovar; sem vaga no ar, pergunta por que não publicou de novo, com respostas numeradas. Abra no WhatsApp, mande e marque o que a empresa respondeu: os motivos se somam no topo. Depois do contato, a empresa volta para a lista em 30 dias."
+        >
+          <ContatoDasEmpresas c={c} agora={agora} />
+        </Secao>
+      )}
       {aba === "imagens" && (
         <Secao
           id="importar-imagens"
@@ -122,6 +134,26 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
           <ImportarConvites />
         </Secao>
       )}
+    </div>
+  );
+}
+
+async function ContatoDasEmpresas({ c, agora }: { c: Awaited<ReturnType<typeof exigirAdminLocal>>; agora: number }) {
+  const r = await empresasParaContato(c, agora);
+  if (!r)
+    return (
+      <Aviso tipo="erro" titulo="Não deu para ler as empresas">
+        Tente de novo em instantes.
+      </Aviso>
+    );
+  return (
+    <div className="flex flex-col gap-4">
+      {r.semMigracao && (
+        <Aviso tipo="alerta" titulo="Falta a migração do contato">
+          Rode a migração 20270810120000_convites_manter_contato no Supabase para guardar o contato e as respostas.
+        </Aviso>
+      )}
+      <ManterContato empresas={r.empresas} agora={agora} />
     </div>
   );
 }

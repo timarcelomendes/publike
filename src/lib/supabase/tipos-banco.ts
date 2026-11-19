@@ -978,6 +978,9 @@ export type Database = {
           /** a página de vagas da empresa e a mensagem escolhida (migração 20270724120000) */
           link_vagas: string | null;
           mensagem: string | null;
+          /** o último contato e o motivo que a empresa deu (migração 20270810120000) */
+          contato_em: string | null;
+          contato_motivo: string | null;
         };
         Insert: {
           nome: string;
@@ -1003,6 +1006,8 @@ export type Database = {
           aceite_em?: string | null;
           link_vagas?: string | null;
           mensagem?: string | null;
+          contato_em?: string | null;
+          contato_motivo?: string | null;
         };
         Relationships: [];
       };
