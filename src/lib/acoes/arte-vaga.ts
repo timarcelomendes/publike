@@ -3,7 +3,8 @@
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { rascunhoValido, type RascunhoConvite } from "@/lib/convites";
 import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
-import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
+import { lerVagas } from "@/lib/ia/ler-vagas";
+import { erroDaLeitura } from "@/lib/leitura-de-vagas";
 import { ACABOU_SEM_CONTA, usarLeituraDaVaga } from "@/lib/servidor/cota-leitura-vaga";
 import { registrarFalha, textoDoErro } from "@/lib/servidor/falhas";
 import { TIPOS_DE_FOTO } from "@/lib/servidor/ler-curriculo";
@@ -11,7 +12,10 @@ import { TIPOS_DE_FOTO } from "@/lib/servidor/ler-curriculo";
 // "Tem a arte da vaga?": quem publica manda a foto do anúncio (a arte que postou numa rede social)
 // e a IA preenche a vaga. Nada é salvo aqui: a pessoa confere o formulário e publica.
 
-export type LeituraDaArte = { ok: true; vaga: RascunhoConvite } | { ok: false; erro: string };
+/** `total`: quantas vagas o anúncio tem (vem a primeira; a pessoa publica uma por vez). */
+export type LeituraDaArte =
+  | { ok: true; vaga: RascunhoConvite; vagas: RascunhoConvite[]; total: number }
+  | { ok: false; erro: string };
 
 /** A foto já vem diminuída do navegador (JPG de até 1 MB). */
 const MAX_BYTES = 1024 * 1024;
@@ -45,18 +49,11 @@ async function lerArte(dados: FormData): Promise<LeituraDaArte> {
 
   try {
     const nome = typeof dados.get("nome") === "string" ? String(dados.get("nome")) : "";
-    const lida = await lerVagaDaImagem(`data:${foto.type};base64,${bytes.toString("base64")}`, nome, modelo);
-    if (!lida.e_vaga) {
-      return {
-        ok: false,
-        erro: lida.e_servico
-          ? "Isso parece o anúncio de um serviço. Para oferecer serviço, use “Meus serviços” no painel."
-          : `Não parece o anúncio de uma vaga${lida.motivo ? ` (${lida.motivo})` : ""}. Tente outra imagem.`,
-      };
-    }
-    const vaga = rascunhoValido(lida.vaga);
+    const lida = await lerVagas({ imagens: [`data:${foto.type};base64,${bytes.toString("base64")}`], nome }, modelo);
+    if (lida.tipo !== "vaga") return { ok: false, erro: erroDaLeitura(lida.tipo, lida.motivo) };
+    const vaga = rascunhoValido(lida.vagas[0]);
     if (!vaga) return { ok: false, erro: "Não deu para achar o cargo na imagem. Tente uma foto mais nítida." };
-    return { ok: true, vaga };
+    return { ok: true, vaga, vagas: lida.vagas, total: lida.vagas.length };
   } catch (e) {
     const falha = {
       ok: false as const,

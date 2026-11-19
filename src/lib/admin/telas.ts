@@ -65,6 +65,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/noticias", nome: "Notícias" },
       { href: "/admin/conteudos", nome: "Conteúdos" },
       { href: "/admin/whatsapp", nome: "WhatsApp" },
+      { href: "/admin/publicar-pelo-whatsapp", nome: "Publicar pelo WhatsApp" },
       { href: "/admin/email-empresas", nome: "E-mail às empresas" },
     ],
   },
@@ -116,6 +117,8 @@ export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" |
   { href: "/admin/receita", nome: "Base da Receita", precisa: "equipe" },
   // o WhatsApp oficial (migração 20270619120000; só a equipe publike.org)
   { href: "/admin/whatsapp", nome: "WhatsApp", precisa: "equipe" },
+  // a vaga mandada pelo WhatsApp: os números e os ajustes (migração 20270806120000; só a equipe publike.org)
+  { href: "/admin/publicar-pelo-whatsapp", nome: "Publicar pelo WhatsApp", precisa: "equipe" },
   // o e-mail às empresas (migração 20270722120000; só a equipe publike.org)
   { href: "/admin/email-empresas", nome: "E-mail às empresas", precisa: "equipe" },
   // a velocidade de verdade de quem abre o site (migração 20270709120000; só a equipe publike.org)

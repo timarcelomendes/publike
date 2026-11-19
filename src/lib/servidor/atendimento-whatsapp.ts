@@ -21,6 +21,7 @@ import {
   marcarLidaDigitando,
   type ConfigMeta,
 } from "./whatsapp";
+import { configVagasWhatsapp, deveTentarVaga, respostaDaOferta, tentarVagaPeloWhatsapp } from "./vaga-pelo-whatsapp";
 
 // O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000,
 // 20270803120000 e 20270805120000). Pedido do Marcelo: "Quero automatizar o atendimento do WhatsApp, explicar aos
@@ -423,11 +424,19 @@ const PARA_QUEM_PROCURA = [
   "É grátis, sempre. Se quiser, me conta o que você faz e o bairro onde mora, que eu procuro vagas para você por aqui.",
 ].join("\n\n");
 
-const PARA_QUEM_CONTRATA = [
-  "Que bom! Para contratar pelo Publike:",
-  "1. Você publica a vaga de graça. Pode colar o texto ou mandar a foto do anúncio: o Publike preenche tudo para você conferir.\n2. Os candidatos chegam no seu painel, mostrando o quanto cada um combina com a vaga.\n3. Você aceita quem quiser e conversa direto com a pessoa.",
-  `Dá para ter até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça, sem limite de candidatos. Quem contrata muito tem planos com recursos a mais, como a triagem com IA. Se ficar alguma dúvida, é só me perguntar.`,
-].join("\n\n");
+/**
+ * O "Quero contratar". Com o Publicar pelo WhatsApp ligado (migração 20270806120000), o caminho mais curto vem
+ * primeiro: mandar aqui mesmo a foto ou o texto da vaga.
+ */
+function paraQuemContrata(porAqui: boolean) {
+  return [
+    "Que bom! Para contratar pelo Publike:",
+    porAqui
+      ? "1. Você me manda aqui mesmo a foto do anúncio, o PDF ou o texto da vaga (o cargo, o salário, o horário e o bairro). Eu preparo a vaga e te mando o link para conferir e publicar, de graça.\n2. Os candidatos chegam no seu painel, mostrando o quanto cada um combina com a vaga.\n3. Você aceita quem quiser e conversa direto com a pessoa."
+      : "1. Você publica a vaga de graça. Pode colar o texto ou mandar a foto do anúncio: o Publike preenche tudo para você conferir.\n2. Os candidatos chegam no seu painel, mostrando o quanto cada um combina com a vaga.\n3. Você aceita quem quiser e conversa direto com a pessoa.",
+    `Dá para ter até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça, sem limite de candidatos. Quem contrata muito tem planos com recursos a mais, como a triagem com IA. Se ficar alguma dúvida, é só me perguntar.`,
+  ].join("\n\n");
+}
 
 const POR_NADA = "Por nada! 😊 Qualquer coisa, é só chamar.";
 
@@ -457,7 +466,7 @@ Como responder
 O que nunca fazer
 - Nunca invente vaga, empresa, salário, preço, prazo ou regra: use só o que está aqui. Não diga o preço dos planos: escolha o botão "empresas".
 - Nunca peça documento, CPF, senha, código, dados de cartão ou dinheiro. O Publike nunca cobra de quem procura trabalho: se pediram dinheiro em nome de uma vaga, é golpe.
-- Você não mexe na conta de ninguém, não publica vaga nem candidata a pessoa: diga como ela faz no site.
+- Você não mexe na conta de ninguém, não publica vaga nem candidata a pessoa: diga como ela faz no site. (A exceção está em "Sobre esta conversa", quando o Publicar pelo WhatsApp está ligado.)
 
 O essencial do Publike
 - Para quem procura trabalho: é grátis, sempre. A pessoa faz o currículo pelo celular em poucos minutos (dá para mandar o PDF, uma foto ou contar falando), vê as vagas perto de casa e se candidata com um toque, no botão Curtir da vaga. Depois acompanha cada candidatura: se a empresa viu, se aceitou e quando é a entrevista. Quando a empresa aceita, as duas se conectam e conversam direto.
@@ -483,8 +492,11 @@ ${textoDaAjuda()}`;
   return instrucoesGuardadas;
 }
 
-/** O que muda de uma conversa para outra: vai na mensagem, antes da conversa. */
-function contexto(e: Entrada, jaFalou: boolean, agora: Date) {
+/**
+ * O que muda de uma conversa para outra: vai na mensagem, antes da conversa. `vagasPorAqui`: o Publicar pelo WhatsApp
+ * está ligado (migração 20270806120000), e quem quer publicar pode mandar a vaga aqui mesmo.
+ */
+function contexto(e: Entrada, jaFalou: boolean, agora: Date, vagasPorAqui = false) {
   const nome = primeiroNome(e.nome);
   const anuncio = [e.origem?.titulo, e.origem?.texto].filter(Boolean).join(" — ");
   return [
@@ -501,6 +513,9 @@ function contexto(e: Entrada, jaFalou: boolean, agora: Date) {
     anuncio ? `- Ela chegou por um anúncio do Publike no Instagram ou no Facebook: "${anuncio}".` : null,
     jaFalou ? "- Você já falou com ela nesta conversa." : "- Esta é a sua primeira mensagem para ela.",
     `- Se passar a conversa para a equipe, alguém responde por aqui ${quandoAEquipeResponde(agora)}.`,
+    vagasPorAqui
+      ? "- Quem quer publicar uma vaga pode mandar aqui mesmo, nesta conversa, a foto do anúncio, o PDF ou o texto da vaga (o cargo, o salário, o horário e o bairro): o Publike lê, prepara a vaga e manda o link para a pessoa conferir e publicar. Diga isso quando a pessoa quiser publicar, em vez de mandar para o site."
+      : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -657,6 +672,10 @@ export async function atenderConversa(
     });
   };
 
+  // a oferta depois de publicar pelo WhatsApp: o "Sim, quero receber" é o aceite dos avisos (migração 20270806120000)
+  const daOferta = await respostaDaOferta(banco, chave, e.chave, m.payload);
+  if (daOferta) return saida(daOferta, { perfil: "contratar" });
+
   // o botão "Falar com a equipe"
   if (e.pediu_equipe)
     return saida(passarParaEquipe("Certo!", agora), {
@@ -685,11 +704,33 @@ export async function atenderConversa(
   // os botões do começo, com texto pronto
   if (novas.length <= 1 && m.payload === "a:trabalho")
     return saida(PARA_QUEM_PROCURA, { perfil: "trabalho", botao: LINKS.vagas });
-  if (novas.length <= 1 && m.payload === "a:contratar")
-    return saida(PARA_QUEM_CONTRATA, {
+  if (novas.length <= 1 && m.payload === "a:contratar") {
+    const porAqui = Boolean(await configVagasWhatsapp(banco, chave));
+    return saida(paraQuemContrata(porAqui), {
       perfil: "contratar",
+      // pelo WhatsApp, o caminho é mandar a vaga aqui mesmo: o botão do site fica para quem prefere
       botao: LINKS.publicar,
     });
+  }
+
+  // a foto, o PDF ou o texto de uma vaga (Publicar pelo WhatsApp, migração 20270806120000): o Publike lê, prepara a
+  // vaga e devolve o link para conferir e publicar
+  if (
+    deveTentarVaga(textos, e.perfil) &&
+    (await tentarVagaPeloWhatsapp({
+      cfg,
+      banco,
+      chave,
+      conversa: e.chave,
+      numero: m.numero,
+      wamid: m.wamid,
+      perfil: e.perfil,
+      textos,
+      saida,
+      comeco: ola,
+    }))
+  )
+    return;
 
   // "ok", "beleza", "👍" ou figurinha depois de conversar: não pedem resposta
   if (
@@ -780,12 +821,13 @@ export async function atenderConversa(
     });
 
   let plano: Plano;
+  const vagasPorAqui = Boolean(await configVagasWhatsapp(banco, chave).catch(() => null));
   try {
     const { texto } = await chamarIA({
       funcionalidade: "chat",
       modelo,
       sistema: instrucoes(),
-      mensagem: `${contexto(e, jaFalou, agora)}\n\n${transcricao(e.historico.length ? e.historico : [{ de: "pessoa", texto: m.texto }])}`,
+      mensagem: `${contexto(e, jaFalou, agora, vagasPorAqui)}\n\n${transcricao(e.historico.length ? e.historico : [{ de: "pessoa", texto: m.texto }])}`,
       maxTokens: 600,
       esquema: ESQUEMA,
       tempoLimite: 20_000,

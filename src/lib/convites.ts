@@ -1,6 +1,19 @@
 // Convites às empresas (admin): a lista, o arquivo modelo e a mensagem do convite.
 
-import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, SLUGS_OFICIOS, VALORES_BENEFICIO } from "./constantes";
+import {
+  CNHS,
+  LISTA_REGIMES,
+  LISTA_UNIDADES,
+  SLUGS_CATEGORIAS,
+  SLUGS_OFICIOS,
+  VALORES_BENEFICIO,
+  VALORES_ESCOLARIDADE,
+  VALORES_EXPERIENCIA,
+  VALORES_JORNADA,
+  VALORES_MODELO,
+  VALORES_PCD,
+} from "./constantes";
+import { LIMITES_EXTRA, lerBeneficiosExtras, lerGanhosExtras, lerHorario, type GanhoExtra, type HorarioDetalhe } from "./vaga-extra";
 import { escaparHtml } from "./email/montar";
 import { paginaDeVagasDaGupy } from "./gupy";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
@@ -69,6 +82,24 @@ export type RascunhoConvite = {
   cidade: string;
   bairro: string;
   quantidade: number;
+  /**
+   * O resto que a leitura da vaga acha (19/11/2026, src/lib/ia/ler-vagas.ts), pronto para o formulário. Só vem o
+   * que o anúncio diz; os convites de antes não têm.
+   */
+  beneficios_extras?: string[];
+  ganhos_extras?: GanhoExtra[];
+  escolaridade_minima?: string;
+  experiencia?: string;
+  cnh?: string;
+  jornada?: string;
+  modelo?: string;
+  pcd?: string;
+  horario_detalhe?: HorarioDetalhe;
+  comeca_ja?: boolean;
+  /** a empresa que contrata, quando é uma agência que anuncia */
+  contratante?: string;
+  /** o que a empresa precisa conferir (o que não estava no anúncio, o que ficou de fora) */
+  conferir?: string[];
 };
 
 /** O que vem de uma linha do arquivo (ou do formulário), já limpo. */
@@ -173,7 +204,70 @@ export function rascunhoValido(x: unknown): RascunhoConvite | null {
     cidade: t("cidade", 60),
     bairro: t("bairro", 60),
     quantidade: qtd && qtd >= 1 && qtd <= 999 ? Math.floor(qtd) : 1,
+    ...extrasDoRascunho(o),
   };
+}
+
+/** Os campos a mais do rascunho (`RascunhoConvite`): só os que vieram e valem. */
+function extrasDoRascunho(o: Record<string, unknown>): Partial<RascunhoConvite> {
+  const r: Partial<RascunhoConvite> = {};
+  const um = (k: string, valores: readonly string[]) =>
+    typeof o[k] === "string" && valores.includes(o[k] as string) ? (o[k] as string) : null;
+  const escolaridade = um("escolaridade_minima", VALORES_ESCOLARIDADE);
+  if (escolaridade) r.escolaridade_minima = escolaridade;
+  const experiencia = um("experiencia", VALORES_EXPERIENCIA);
+  if (experiencia) r.experiencia = experiencia;
+  const cnh = um("cnh", CNHS);
+  if (cnh) r.cnh = cnh;
+  const jornada = um("jornada", VALORES_JORNADA);
+  if (jornada) r.jornada = jornada;
+  const modelo = um("modelo", VALORES_MODELO);
+  if (modelo) r.modelo = modelo;
+  const pcd = um("pcd", VALORES_PCD);
+  if (pcd) r.pcd = pcd;
+  if (o.comeca_ja === true) r.comeca_ja = true;
+  // o que passa do tamanho fica de fora (em vez de recusar o rascunho inteiro)
+  if (Array.isArray(o.beneficios_extras)) {
+    const b = lerBeneficiosExtras(
+      o.beneficios_extras
+        .filter((x): x is string => typeof x === "string")
+        .map((x) => x.replace(/\s+/g, " ").trim())
+        .filter((x) => x.length >= 2 && x.length <= LIMITES_EXTRA.nomeBeneficio)
+        .slice(0, LIMITES_EXTRA.beneficiosExtras),
+    );
+    if (b.ok && b.lista.length) r.beneficios_extras = b.lista;
+  }
+  if (Array.isArray(o.ganhos_extras) && o.ganhos_extras.length) {
+    const g = lerGanhosExtras(
+      o.ganhos_extras
+        .map((x) => (x ?? {}) as Record<string, unknown>)
+        .map((x) => ({
+          nome: typeof x.nome === "string" ? x.nome.replace(/\s+/g, " ").trim() : "",
+          detalhe: typeof x.detalhe === "string" ? x.detalhe.replace(/\s+/g, " ").trim().slice(0, LIMITES_EXTRA.detalheGanho) : "",
+        }))
+        .filter((x) => x.nome.length >= 2 && x.nome.length <= LIMITES_EXTRA.nomeGanho)
+        .slice(0, LIMITES_EXTRA.ganhos),
+    );
+    if (g.ok && g.lista.length) r.ganhos_extras = g.lista;
+  }
+  if (o.horario_detalhe && typeof o.horario_detalhe === "object") {
+    const h = lerHorario(o.horario_detalhe);
+    if (h.ok && h.horario && (h.horario.escala || h.horario.dias.length || h.horario.turnos.length || h.horario.obs))
+      r.horario_detalhe = h.horario;
+  }
+  if (typeof o.contratante === "string") {
+    const c = o.contratante.replace(/\s+/g, " ").trim().slice(0, 80);
+    if (c.length >= 2) r.contratante = c;
+  }
+  if (Array.isArray(o.conferir)) {
+    const lista = o.conferir
+      .filter((x): x is string => typeof x === "string")
+      .map((x) => x.replace(/\s+/g, " ").trim().slice(0, 160))
+      .filter(Boolean)
+      .slice(0, 6);
+    if (lista.length) r.conferir = lista;
+  }
+  return r;
 }
 
 /** O link que vai na mensagem: a empresa confere a vaga e publica (é o aceite). */

@@ -171,6 +171,8 @@ async function main() {
           },
           error: null,
         };
+      // o Publicar pelo WhatsApp (migração 20270806120000) fica desligado nesta bateria: não é uma saída
+      if (nome === "servidor_whatsapp_vagas_config") return { data: { ligado: false }, error: null };
       saidas.push({ nome, ...args });
       return { data: null, error: null };
     },

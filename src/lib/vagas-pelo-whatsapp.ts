@@ -1,0 +1,182 @@
+// Publicar pelo WhatsApp (19/11/2026; migração 20270806120000): os textos das respostas, com o padrão e o que dá para
+// mudar em Admin › Publicar pelo WhatsApp. Vale no navegador (o Admin) e no servidor (o atendimento).
+
+import type { RascunhoConvite } from "./convites";
+import { faltaNaVaga, juntarComE, linhaDaVaga, resumoDaVaga } from "./leitura-de-vagas";
+
+export type ChaveTextoVagas =
+  | "intro"
+  | "fim"
+  | "botao"
+  | "lote"
+  | "botao_lote"
+  | "nao_e_vaga"
+  | "curriculo"
+  | "servico"
+  | "golpe"
+  | "no_ar"
+  | "oferta";
+
+/** Cada texto: o padrão, onde aparece, as marcas que ele aceita e o tamanho (os botões vão até 20 letras). */
+export const TEXTOS_VAGAS: Record<
+  ChaveTextoVagas,
+  { padrao: string; nome: string; ajuda: string; marcas?: string[]; max: number }
+> = {
+  intro: {
+    padrao: "Pronto! Preparei a sua vaga:",
+    nome: "Antes do resumo (uma vaga)",
+    ajuda: "Logo depois vem o resumo da vaga lida: o cargo, o salário, o horário, o lugar e os benefícios.",
+    max: 200,
+  },
+  lote: {
+    padrao: "Achei {n} vagas no anúncio:",
+    nome: "Antes da lista (várias vagas)",
+    ajuda: "Logo depois vem a lista das vagas, uma por linha.",
+    marcas: ["{n}"],
+    max: 200,
+  },
+  fim: {
+    padrao: "Confira, ajuste o que precisar e publique. É grátis e leva um minuto.",
+    nome: "Depois do resumo",
+    ajuda: "Antes, quando o anúncio não diz, vai o que falta (o salário, o bairro, o horário).",
+    max: 300,
+  },
+  botao: { padrao: "Conferir e publicar", nome: "Botão (uma vaga)", ajuda: "Abre o publicar já preenchido.", max: 20 },
+  botao_lote: {
+    padrao: "Ver as vagas",
+    nome: "Botão (várias vagas)",
+    ajuda: "Abre a página com as vagas do anúncio, cada uma com o seu “Conferir e publicar”.",
+    max: 20,
+  },
+  nao_e_vaga: {
+    padrao:
+      "Não achei uma vaga nessa mensagem. Para eu preparar a sua vaga, mande a foto do anúncio ou escreva o cargo, o salário, o horário e o bairro.",
+    nome: "Quando não é vaga",
+    ajuda: "A foto ou o texto não tinha um anúncio de vaga.",
+    max: 400,
+  },
+  curriculo: {
+    padrao:
+      "Isso parece um currículo. Para as empresas acharem você, cadastre o currículo no Publike: dá para enviar o PDF ou uma foto, e o site preenche tudo para você conferir.",
+    nome: "Quando é um currículo",
+    ajuda: "Vai com o botão “Fazer meu currículo”.",
+    max: 400,
+  },
+  servico: {
+    padrao:
+      "Isso parece o anúncio de um serviço. No Publike, quem oferece serviço monta a vitrine de graça, e quem precisa chama no WhatsApp.",
+    nome: "Quando é um serviço",
+    ajuda: "Vai com o botão “Montar a vitrine”.",
+    max: 400,
+  },
+  golpe: {
+    padrao:
+      "Esse anúncio pede pagamento para começar ou tem sinais de golpe, e o Publike não publica. Se a vaga é de verdade, mande os detalhes do trabalho: o cargo, o salário, o horário e o local.",
+    nome: "Quando parece golpe",
+    ajuda: "Pede taxa, curso pago ou Pix para começar, ou promete ganho fácil sem dizer o trabalho.",
+    max: 400,
+  },
+  no_ar: {
+    padrao: "Sua vaga *{titulo}* está no ar! Quando alguém se candidatar, você vê no painel do Publike.",
+    nome: "Depois de publicar",
+    ajuda: "Sai uma vez, com o botão “Ver a vaga”, se a empresa falou com o Publike nas últimas 23 horas (a regra da Meta).",
+    marcas: ["{titulo}"],
+    max: 400,
+  },
+  oferta: {
+    padrao:
+      "Quer receber os candidatos desta vaga aqui no WhatsApp do Publike? Para parar quando quiser, é só responder PARAR.",
+    nome: "A oferta dos avisos",
+    ajuda: "Vai com os botões “Sim, quero receber” e “Agora não”. O toque no “Sim” é o aceite que a Meta pede.",
+    max: 400,
+  },
+};
+
+export const CHAVES_TEXTOS_VAGAS = Object.keys(TEXTOS_VAGAS) as ChaveTextoVagas[];
+
+/** O texto que vale (o do Admin ou o padrão), com as marcas trocadas ("{n}" → "3"). */
+export function textoDasVagas(
+  personalizados: Partial<Record<string, string>> | null | undefined,
+  chave: ChaveTextoVagas,
+  marcas: Record<string, string | number> = {},
+) {
+  const proprio = personalizados?.[chave];
+  const base = typeof proprio === "string" && proprio.trim() ? proprio.trim() : TEXTOS_VAGAS[chave].padrao;
+  return Object.entries(marcas)
+    .reduce((t, [k, v]) => t.split(`{${k}}`).join(String(v)), base)
+    .slice(0, TEXTOS_VAGAS[chave].max);
+}
+
+/** A mensagem com botão da Meta vai até 1.024 letras (o atendimento corta em 1.000, no fim de uma frase). */
+const MAX_MENSAGEM = 1000;
+
+/**
+ * A resposta com as vagas lidas: o texto e o botão. Uma vaga: o resumo e o que faltou; várias: uma linha por vaga, com
+ * o botão da página do lote. `total`: quantas vagas o anúncio tinha (passou do limite do Admin, avisa). `comeco`: a
+ * apresentação, na primeira mensagem para a pessoa ("Oi, Rita! 👋 Aqui é o Marcelo, do Publike."). O atendimento manda
+ * esta resposta e o Admin mostra a mesma na prévia.
+ */
+export function respostaDasVagas(
+  personalizados: Partial<Record<string, string>> | null | undefined,
+  vagas: RascunhoConvite[],
+  total = vagas.length,
+  comeco = "",
+): { texto: string; botao: string; lote: boolean } {
+  const t = (k: ChaveTextoVagas, marcas?: Record<string, string | number>) => textoDasVagas(personalizados, k, marcas);
+  const ola = comeco.trim();
+  const sobrou =
+    total > vagas.length
+      ? `O anúncio tem ${total} vagas: preparei ${vagas.length === 1 ? "a primeira" : `as ${vagas.length} primeiras`}. Para as outras, mande uma foto só da parte que falta.`
+      : "";
+  const caber = (partes: string[]) => {
+    const texto = partes.filter(Boolean).join("\n\n");
+    return texto.length <= MAX_MENSAGEM ? texto : null;
+  };
+  if (vagas.length === 1) {
+    const v = vagas[0];
+    const falta = faltaNaVaga(v);
+    const faltou = falta.length ? `Faltou dizer ${juntarComE(falta)}: você completa quando conferir.` : "";
+    const resumo = resumoDaVaga(v);
+    // passou de 1.024 letras: sem os benefícios e o que a vaga pede (aparecem no publicar), e por fim cortado
+    const curto = resumo
+      .split("\n")
+      .filter((l) => !/^(Benefícios|Pede):/.test(l))
+      .join("\n");
+    const texto =
+      caber([ola, t("intro"), resumo, faltou, sobrou, t("fim")]) ??
+      caber([ola, t("intro"), curto, faltou, sobrou, t("fim")]) ??
+      `${[ola, t("intro"), curto, faltou, t("fim")].filter(Boolean).join("\n\n").slice(0, MAX_MENSAGEM - 1)}…`;
+    return { texto, botao: t("botao"), lote: false };
+  }
+  const linhas = vagas.map(linhaDaVaga);
+  let texto = caber([ola, t("lote", { n: vagas.length }), linhas.join("\n"), sobrou, t("fim")]);
+  // muitas linhas longas: as primeiras e "e mais N" (todas aparecem na página do lote)
+  for (let n = linhas.length - 1; !texto && n >= 1; n--)
+    texto = caber([
+      ola,
+      t("lote", { n: vagas.length }),
+      `${linhas.slice(0, n).join("\n")}\ne mais ${linhas.length - n}`,
+      sobrou,
+      t("fim"),
+    ]);
+  return {
+    texto: texto ?? `${[ola, t("lote", { n: vagas.length })].filter(Boolean).join("\n\n").slice(0, MAX_MENSAGEM - 1)}…`,
+    botao: t("botao_lote"),
+    lote: true,
+  };
+}
+
+/** Os limites dos números que se ajustam (o banco corta no que passar). */
+export const LIMITES_VAGAS_WHATSAPP = {
+  por_mensagem: { padrao: 10, faixa: [1, 10] },
+  leituras_dia: { padrao: 10, faixa: [1, 50] },
+} as const;
+
+/** O link que a mensagem leva (o publicar preenchido, ou a página do lote), com a origem para o Admin › Campanhas. */
+export function caminhoDaVagaDoWhatsapp(token: string, lote = false) {
+  const origem = "utm_source=whatsapp&utm_campaign=publicar-pelo-whatsapp";
+  return lote ? `/publicar/whatsapp/${token}?${origem}` : `/publicar?whatsapp=${token}&${origem}`;
+}
+
+/** O texto que já vem escrito na conversa (o "Mandar pelo WhatsApp" do site). */
+export const TEXTO_PRONTO_DO_WHATSAPP = "Olá! Quero publicar uma vaga no Publike.";

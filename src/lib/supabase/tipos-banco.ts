@@ -4320,6 +4320,58 @@ export type Database = {
       };
       // a última mensagem da pessoa, para responder só a mais nova (migração 20270803120000)
       servidor_whatsapp_conversa_ultima: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
+      // Publicar pelo WhatsApp (migração 20270806120000)
+      servidor_whatsapp_vagas_config: { Args: { p_chave: string }; Returns: Json };
+      servidor_whatsapp_midia: {
+        Args: {
+          p_chave: string;
+          p_wamid: string;
+          p_numero: string;
+          p_tipo: string;
+          p_midia: string;
+          p_mime?: string | null;
+          p_legenda?: string | null;
+        };
+        Returns: undefined;
+      };
+      servidor_whatsapp_midias_da_vez: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
+      servidor_whatsapp_leitura: {
+        Args: {
+          p_chave: string;
+          p_conversa: string;
+          p_numero: string;
+          p_fonte: string;
+          p_resultado: string;
+          p_empresa?: string | null;
+          p_motivo?: string | null;
+          p_ms?: number | null;
+          p_vagas?: Json;
+          p_midias?: string[];
+        };
+        Returns: Json;
+      };
+      servidor_whatsapp_vaga_publicada: { Args: { p_chave: string; p_token: string }; Returns: Json };
+      servidor_whatsapp_aceite_pela_vaga: { Args: { p_chave: string; p_conversa: string; p_vaga: string }; Returns: Json };
+      vaga_do_whatsapp: { Args: { p_token: string }; Returns: Json };
+      lote_do_whatsapp: { Args: { p_token: string }; Returns: Json };
+      publicar_vaga_do_whatsapp: { Args: { p_token: string; p_anuncio: string }; Returns: Json };
+      whatsapp_vagas_no_site: { Args: Record<PropertyKey, never>; Returns: boolean };
+      admin_whatsapp_vagas: { Args: { p_dias?: number }; Returns: Json };
+      admin_salvar_whatsapp_vagas: {
+        Args: {
+          p_ligado: boolean;
+          p_fotos: boolean;
+          p_pdf: boolean;
+          p_texto: boolean;
+          p_por_mensagem: number;
+          p_leituras_dia: number;
+          p_confirmar: boolean;
+          p_oferecer_avisos: boolean;
+          p_no_site: boolean;
+          p_textos: Json;
+        };
+        Returns: undefined;
+      };
       admin_whatsapp_conversas: { Args: { p_filtro?: string }; Returns: Json };
       admin_whatsapp_conversa: { Args: { p_conversa: string }; Returns: Json };
       admin_whatsapp_conversa_situacao: { Args: { p_conversa: string; p_situacao: string }; Returns: undefined };

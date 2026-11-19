@@ -24,7 +24,7 @@ import { paginaDeVagasDaGupy } from "@/lib/gupy";
 import { configSmtp, urlDosEmails } from "@/lib/servidor/ambiente";
 import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
-import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
+import { lerVagas } from "@/lib/ia/ler-vagas";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
@@ -232,14 +232,20 @@ export async function lerConviteDaImagem(
   const { data: cfg } = await c.from("config_site").select("*").limit(1).maybeSingle();
   let lida;
   try {
-    lida = await lerVagaDaImagem(imagem, String(nomeArquivo ?? ""), modeloPara(cfg, "ler"));
+    lida = await lerVagas({ imagens: [imagem], nome: String(nomeArquivo ?? "") }, modeloPara(cfg, "ler"));
   } catch (e) {
     return { ok: false, erro: e instanceof ErroIA ? e.message : "A IA não conseguiu ler esta imagem." };
   }
-  const servico = Boolean(lida.e_servico) && !lida.e_vaga;
-  if (!lida.e_vaga && !servico)
-    return { ok: false, erro: `Não parece anúncio de vaga nem de serviço${lida.motivo ? `: ${lida.motivo}` : "."}` };
-  const nome = (lida.empresa || "").replace(/\s+/g, " ").trim();
+  const servico = lida.tipo === "servico";
+  if (lida.tipo !== "vaga" && !servico)
+    return {
+      ok: false,
+      erro:
+        lida.tipo === "golpe"
+          ? `Parece golpe${lida.motivo ? `: ${lida.motivo}` : "."}`
+          : `Não parece anúncio de vaga nem de serviço${lida.motivo ? `: ${lida.motivo}` : "."}`,
+    };
+  const nome = (lida.empresa.nome || "").replace(/\s+/g, " ").trim();
   if (nome.length < 2) return { ok: false, erro: "A imagem não diz o nome da empresa." };
   const fones = (l: unknown) =>
     [
@@ -247,20 +253,19 @@ export async function lerConviteDaImagem(
         (Array.isArray(l) ? l : []).map((t) => limparTelefone(String(t))).filter((t): t is string => Boolean(t)),
       ),
     ].slice(0, 5);
-  const whatsapp = fones(lida.whatsapp);
-  const telefones = fones(lida.telefones).filter((t) => !whatsapp.includes(t));
-  const email = emailValido(lida.email) ? lida.email.trim().toLowerCase().slice(0, 200) : null;
+  const whatsapp = fones(lida.empresa.whatsapp);
+  const telefones = fones(lida.empresa.telefones).filter((t) => !whatsapp.includes(t));
+  const email = emailValido(lida.empresa.email) ? lida.empresa.email.trim().toLowerCase().slice(0, 200) : null;
   if (!whatsapp.length && !telefones.length && !email)
     return { ok: false, erro: `${nome}: a imagem não tem WhatsApp, telefone ou e-mail.` };
-  const rascunho = rascunhoValido(lida.vaga);
-  const cargos = (Array.isArray(lida.cargos) ? lida.cargos : [])
-    .map((v) => String(v).trim().slice(0, 80))
-    .filter(Boolean);
+  // no serviço, a "vaga" é o serviço principal (o ofício, o nome e o preço): a vitrine do prestador vem pronta
+  const rascunho = rascunhoValido(lida.vagas[0]);
+  const cargos = lida.vagas.map((v) => v.titulo.trim().slice(0, 80)).filter(Boolean);
   return {
     ok: true,
     convite: {
       nome: nome.slice(0, 120),
-      tipo: servico ? "prestador" : lida.tipo === "agencia" ? "agencia" : "empresa",
+      tipo: servico ? "prestador" : lida.empresa.tipo === "agencia" ? "agencia" : "empresa",
       vagas: [...new Set(cargos.length ? cargos : rascunho ? [rascunho.titulo] : [])].slice(0, 20),
       whatsapp,
       telefones,

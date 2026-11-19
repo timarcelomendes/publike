@@ -10,6 +10,7 @@ import {
   Lock,
   MapPin,
   Megaphone,
+  MessageCircle,
   MessagesSquare,
   Plug,
   Scale,
@@ -34,6 +35,8 @@ import { CIDADES_ATENDIDAS, ONDE_FUNCIONA } from "@/lib/pracas";
 import { GRATIS_PADRAO } from "@/lib/recursos-pagos";
 import { limitesDaApi, type LimitesDaApi } from "@/lib/servidor/limites-da-api";
 import { limitesDoWhatsapp, type LimitesDoWhatsapp } from "@/lib/servidor/limites-do-whatsapp";
+import { contatoDasVagasPeloWhatsapp } from "@/lib/servidor/numero-do-publike";
+import { TEXTO_PRONTO_DO_WHATSAPP } from "@/lib/vagas-pelo-whatsapp";
 
 export const metadata: Metadata = {
   title: "Para empresas: publique sua vaga grátis",
@@ -306,21 +309,40 @@ const PERGUNTAS = [
 
 /**
  * Os avisos no WhatsApp de quem contrata (migração 20270714120000), com os números do banco: some com o envio desligado
- * para todos (Admin › WhatsApp). Entra depois de "O que é pago no Publike?".
+ * para todos (Admin › WhatsApp). Entra depois de "O que é pago no Publike?". Com o Publicar pelo WhatsApp ligado
+ * (migração 20270806120000), entra também "Dá para publicar pelo WhatsApp?", com o número.
  */
-function perguntas(whatsapp: LimitesDoWhatsapp | null) {
-  if (!whatsapp) return PERGUNTAS;
-  const pergunta = {
-    p: "Recebo os candidatos no WhatsApp?",
-    r: `Recebe, se quiser: em Preferências, marque “Receber os candidatos novos pelo WhatsApp”. O WhatsApp oficial do Publike avisa a candidatura nova (juntas por vaga), os candidatos esperando a sua resposta e a mensagem nova no chat, e você escolhe quais. No grátis, são até ${formatarNumero(whatsapp.gratis)} avisos por mês; com um plano, até ${formatarNumero(whatsapp.plano)}. Passou disso, os avisos continuam no sino e no e-mail até o dia 1º.`,
-  };
+function perguntas(whatsapp: LimitesDoWhatsapp | null, contato: { exibicao: string } | null) {
+  const novas = [
+    ...(contato
+      ? [
+          {
+            p: "Dá para publicar a vaga pelo WhatsApp?",
+            r: `Dá: mande a foto do anúncio, o PDF ou o texto da vaga para o WhatsApp do Publike, ${contato.exibicao}. A vaga volta pronta, com o link para conferir e publicar, e é grátis do mesmo jeito. Um anúncio com várias vagas vira uma vaga para cada cargo.`,
+          },
+        ]
+      : []),
+    ...(whatsapp
+      ? [
+          {
+            p: "Recebo os candidatos no WhatsApp?",
+            r: `Recebe, se quiser: em Preferências, marque “Receber os candidatos novos pelo WhatsApp”. O WhatsApp oficial do Publike avisa a candidatura nova (juntas por vaga), os candidatos esperando a sua resposta e a mensagem nova no chat, e você escolhe quais. No grátis, são até ${formatarNumero(whatsapp.gratis)} avisos por mês; com um plano, até ${formatarNumero(whatsapp.plano)}. Passou disso, os avisos continuam no sino e no e-mail até o dia 1º.`,
+          },
+        ]
+      : []),
+  ];
+  if (!novas.length) return PERGUNTAS;
   const depois = PERGUNTAS.findIndex((x) => x.p === "O que é pago no Publike?") + 1;
-  return depois > 0 ? [...PERGUNTAS.slice(0, depois), pergunta, ...PERGUNTAS.slice(depois)] : [...PERGUNTAS, pergunta];
+  return depois > 0 ? [...PERGUNTAS.slice(0, depois), ...novas, ...PERGUNTAS.slice(depois)] : [...PERGUNTAS, ...novas];
 }
 
 export default async function Empresas() {
-  const [api, whatsapp] = await Promise.all([limitesDaApi(), limitesDoWhatsapp()]);
-  const lista = perguntas(whatsapp);
+  const [api, whatsapp, contato] = await Promise.all([
+    limitesDaApi(),
+    limitesDoWhatsapp(),
+    contatoDasVagasPeloWhatsapp(),
+  ]);
+  const lista = perguntas(whatsapp, contato);
   const dadosEstruturados = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -374,6 +396,23 @@ export default async function Empresas() {
             </BotaoLink>
             <BotaoLink href="#como">Ver como funciona</BotaoLink>
           </div>
+          {contato && (
+            <p className="mt-4 flex max-w-2xl items-start gap-2 text-body">
+              <MessageCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-cerrado-text" />
+              <span>
+                Prefere pelo WhatsApp? Mande a foto ou o texto da vaga para o{" "}
+                <a
+                  href={`https://wa.me/${contato.numero}?text=${encodeURIComponent(TEXTO_PRONTO_DO_WHATSAPP)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+                >
+                  {contato.exibicao}
+                </a>
+                : a vaga volta pronta para você conferir e publicar.
+              </span>
+            </p>
+          )}
           <p className="mt-6 flex max-w-2xl items-start gap-2 text-body-sm text-ink-muted">
             <CalendarClock aria-hidden className="mt-0.5 size-4 shrink-0 text-terra-text" />
             <span>

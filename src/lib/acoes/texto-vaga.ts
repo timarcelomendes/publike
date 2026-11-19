@@ -2,7 +2,8 @@
 
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { rascunhoValido, type RascunhoConvite } from "@/lib/convites";
-import { lerVagasImportadas } from "@/lib/ia/importar-vaga";
+import { lerVagas } from "@/lib/ia/ler-vagas";
+import { erroDaLeitura } from "@/lib/leitura-de-vagas";
 import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
 import { usarLeituraDaVaga } from "@/lib/servidor/cota-leitura-vaga";
 import { registrarFalha, textoDoErro } from "@/lib/servidor/falhas";
@@ -11,7 +12,9 @@ import { registrarFalha, textoDoErro } from "@/lib/servidor/falhas";
 // (do WhatsApp, de um e-mail, de outro site) e a IA preenche a vaga, com a mesma leitura do admin e a cota da
 // ajuda da IA da conta. Uma vaga por vez: com várias no texto, vem a primeira e o total. Nada é salvo aqui.
 
-export type LeituraDoTexto = { ok: true; vaga: RascunhoConvite; total: number } | { ok: false; erro: string };
+export type LeituraDoTexto =
+  | { ok: true; vaga: RascunhoConvite; vagas: RascunhoConvite[]; total: number }
+  | { ok: false; erro: string };
 
 const MIN = 20;
 const MAX = 6000;
@@ -29,25 +32,12 @@ export async function lerTextoDaVaga(texto: string): Promise<LeituraDoTexto> {
   const modelo = cota.modelo;
 
   try {
-    const vagas = await lerVagasImportadas({ textoColado: colado }, modelo);
-    const v = vagas[0];
-    const vaga = v
-      ? rascunhoValido({
-          titulo: v.titulo,
-          descricao: v.descricao,
-          categoria: v.categoria,
-          regime: v.regime ?? "",
-          salario: v.pagamento_valor,
-          salario_ate: v.pagamento_ate,
-          unidade: v.pagamento_unidade ?? "",
-          beneficios: v.beneficios_lista,
-          bairro: v.bairro ?? "",
-          cidade: "",
-          quantidade: v.vagas,
-        })
-      : null;
+    const lida = await lerVagas({ texto: colado }, modelo);
+    if (lida.tipo !== "vaga") return { ok: false, erro: erroDaLeitura(lida.tipo, lida.motivo, "texto") };
+    const vagas = lida.vagas;
+    const vaga = rascunhoValido(vagas[0]);
     if (!vaga) return { ok: false, erro: "Não achamos uma vaga neste texto. Confira se ele diz o cargo." };
-    return { ok: true, vaga, total: vagas.length };
+    return { ok: true, vaga, vagas, total: vagas.length };
   } catch (e) {
     const erro = e instanceof ErroIA ? e.message : "Não deu para ler o texto agora. Tente de novo.";
     console.error("Publike: a leitura do texto da vaga falhou:", e);

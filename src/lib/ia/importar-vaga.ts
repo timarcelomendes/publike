@@ -43,7 +43,7 @@ export type VagaImportada = {
   conferir: string[];
 };
 
-// como em vaga-da-imagem.ts: "" (e não null) quando o anúncio não diz
+// como em ler-vagas.ts: "" (e não null) quando o anúncio não diz
 const opcoes = (valores: readonly string[]) => ({ type: "string", enum: [...valores, ""] });
 const textoLivre = { type: "string" };
 const numero = { type: ["number", "null"] };

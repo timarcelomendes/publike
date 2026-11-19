@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { lerTextoDaVaga } from "@/lib/acoes/texto-vaga";
 import type { RascunhoConvite } from "@/lib/convites";
 import { detalheDoErro, ehFalhaDeInternet, MENSAGEM_SEM_INTERNET, relatarFalha } from "@/lib/falhas";
+import { EscolherVagaLida } from "./escolher-vaga-lida";
 import { classesEntrada, MensagemErro } from "./ui/campo";
 
 /**
@@ -16,13 +17,17 @@ export function TextoDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite, total: n
   const [texto, setTexto] = useState("");
   const [lendo, setLendo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // o texto com mais de uma vaga: a pessoa escolhe qual preencher
+  const [vagas, setVagas] = useState<RascunhoConvite[] | null>(null);
 
   async function ler() {
     setErro(null);
+    setVagas(null);
     setLendo(true);
     try {
       const r = await lerTextoDaVaga(texto);
       if (!r.ok) return setErro(r.erro);
+      if (r.vagas.length > 1) return setVagas(r.vagas);
       aoLer(r.vaga, r.total);
     } catch (falha) {
       const mensagem = ehFalhaDeInternet(falha) ? MENSAGEM_SEM_INTERNET : "Não deu para ler o texto agora. Tente de novo.";
@@ -59,6 +64,7 @@ export function TextoDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite, total: n
         placeholder="Ex.: Contrata-se atendente de loja, CLT, R$ 1.800 + VT, seg a sáb, Setor Bueno…"
         className={`${classesEntrada} min-h-32 py-2.5`}
       />
+      {vagas && <EscolherVagaLida vagas={vagas} de="texto" aoEscolher={(v) => aoLer(v, vagas.length)} />}
       {erro && <MensagemErro>{erro}</MensagemErro>}
       <button
         type="button"

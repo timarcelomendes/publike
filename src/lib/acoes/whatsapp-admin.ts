@@ -1,6 +1,7 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
+import { TAG_CONTATO_DAS_VAGAS } from "@/lib/servidor/numero-do-publike";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import {
   appsDoWebhook,
@@ -114,6 +115,8 @@ export async function salvarWhatsapp(dados: {
     if (error.code === "PGRST202") return { ok: false, erro: "Falta rodar a migração 20270714120000 no banco." };
     return { ok: false, erro: error.message || "Não deu para salvar agora." };
   }
+  // o "Prefere pelo WhatsApp?" do site some ou volta na hora (Publicar pelo WhatsApp, migração 20270806120000)
+  updateTag(TAG_CONTATO_DAS_VAGAS);
   refresh();
   return { ok: true, mensagem: "Salvo. Os parâmetros valem a partir do próximo aviso." };
 }
@@ -246,6 +249,8 @@ export async function salvarAtendimentoWhatsapp(ligado: boolean, porDia: number 
     if (error.code === "PGRST202") return { ok: false, erro: "Falta rodar a migração 20270801120000 no banco." };
     return { ok: false, erro: error.message || "Não deu para salvar agora." };
   }
+  // sem o atendimento, o Publicar pelo WhatsApp não responde: o "Prefere pelo WhatsApp?" do site some na hora
+  updateTag(TAG_CONTATO_DAS_VAGAS);
   refresh();
   return {
     ok: true,

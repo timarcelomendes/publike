@@ -21,9 +21,11 @@ import { MODELOS_ANUNCIO } from "@/lib/modelos-anuncio";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
-import { conviteDoLink } from "@/lib/servidor/convite-do-link";
+import { conviteDoLink, vagaDoWhatsappDoLink } from "@/lib/servidor/convite-do-link";
+import { contatoDasVagasPeloWhatsapp } from "@/lib/servidor/numero-do-publike";
 import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { valoresDoConvite } from "@/lib/valores-convite";
+import type { RascunhoConvite } from "@/lib/convites";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
 import { pedidoDaAgencia } from "@/lib/servidor/pedidos-do-cliente";
@@ -79,7 +81,27 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   const lido = await conviteDoLink(primeiro(sp.convite));
   // convite de prestador: a página dele é a da vitrine de serviços
   if (lido?.tipo === "prestador") redirect(`/convite/${lido.token}`);
-  const convite = lido;
+  // veio do link da resposta do WhatsApp (Publicar pelo WhatsApp): a vaga que a empresa mandou vem pronta; a já
+  // publicada abre a vaga (ou a lista do anúncio, quando faltam outras)
+  const doWhatsapp = lido ? null : await vagaDoWhatsappDoLink(primeiro(sp.whatsapp));
+  if (doWhatsapp?.publicada)
+    redirect(doWhatsapp.total > 1 || !doWhatsapp.anuncioId ? `/publicar/whatsapp/${doWhatsapp.token}` : `/anuncio/${doWhatsapp.anuncioId}`);
+  const convite: VagaPronta | null = lido
+    ? { token: lido.token, nome: lido.nome, rascunho: lido.rascunho, de: "convite" }
+    : doWhatsapp?.rascunho
+      ? {
+          token: doWhatsapp.token,
+          nome: doWhatsapp.nome,
+          rascunho: doWhatsapp.rascunho,
+          de: "whatsapp",
+          total: doWhatsapp.total,
+        }
+      : null;
+  const linkDaVagaPronta = convite
+    ? `/publicar?${convite.de === "whatsapp" ? "whatsapp" : "convite"}=${convite.token}`
+    : null;
+  // o "Mandar pelo WhatsApp" do passo 1 (só com o recurso ligado e o número da Meta)
+  const pelaConversa = convite ? null : await contatoDasVagasPeloWhatsapp();
   // sem conta dá para preencher a vaga: o rascunho fica no aparelho e sai depois de entrar
   if (!pedidaCopia && !(await obterUsuario())) {
     // a cidade de quem vê (onde disse que mora ou pelo endereço de internet)
@@ -97,7 +119,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
         modelo={convite ? null : modelo}
         // ainda não se sabe se a conta é de empresa: o endereço aparece como opcional
         enderecoPublico="talvez"
-        convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
+        convite={convite && paraOFormulario(convite)}
+        pelaConversa={pelaConversa}
       />
     );
   }
@@ -105,8 +128,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
     ? `/publicar?copiar=${pedidaCopia}`
     : continuar
       ? "/publicar?continuar=1"
-      : convite
-        ? `/publicar?convite=${convite.token}`
+      : linkDaVagaPronta
+        ? linkDaVagaPronta
         : modelo
           ? `/publicar?modelo=${modelo}`
           : "/publicar";
@@ -250,12 +273,30 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
       clientes={clientes}
       enderecoPublico={publico}
-      convite={
-        convite && !copia ? { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) } : null
-      }
+      convite={convite && !copia ? paraOFormulario(convite) : null}
+      pelaConversa={copia || pedido ? null : pelaConversa}
     />
   );
 }
+
+/** A vaga que vem pronta: a do convite do Publike ou a que a empresa mandou pelo WhatsApp. */
+type VagaPronta = {
+  token: string;
+  nome: string;
+  rascunho: RascunhoConvite | null;
+  de: "convite" | "whatsapp";
+  /** WhatsApp: quantas vagas o anúncio tinha (as outras ficam na página do lote) */
+  total?: number;
+};
+
+const paraOFormulario = (c: VagaPronta) => ({
+  token: c.token,
+  nome: c.nome,
+  pronta: Boolean(c.rascunho),
+  de: c.de,
+  total: c.total ?? 1,
+  conferir: c.rascunho?.conferir ?? [],
+});
 
 /**
  * Quem procura trabalho às vezes toca em "Publicar" achando que é para o currículo:

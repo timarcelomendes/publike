@@ -10,6 +10,7 @@ import { obterUsuario } from "@/lib/dados";
 import { anuncioRepetido, mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
+import { confirmarVagaPublicada } from "@/lib/servidor/vaga-pelo-whatsapp";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerAnuncio, registroDoAnuncio, UUID, type DadosAnuncio } from "@/lib/validacao";
@@ -211,6 +212,22 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
         vigia.parcial("A vaga foi publicada, mas o aceite do convite não ficou registrado.", erroConvite);
       }
     }
+    // veio do link da resposta do WhatsApp (Publicar pelo WhatsApp, migração 20270806120000): a vaga lida fica ligada a
+    // esta; o WhatsApp avisa que está no ar e, com outras vagas do mesmo anúncio, a página delas abre em seguida
+    const doWhatsapp = formData.get("whatsapp");
+    let outrasDoWhatsapp: string | null = null;
+    if (typeof doWhatsapp === "string" && /^[0-9a-f]{64}$/.test(doWhatsapp) && d.tipo === "vaga") {
+      const { data: ligada, error: erroWhatsapp } = await supabase.rpc("publicar_vaga_do_whatsapp", {
+        p_token: doWhatsapp,
+        p_anuncio: data.id,
+      });
+      if (erroWhatsapp && erroWhatsapp.code !== "PGRST202") {
+        vigia.parcial("A vaga foi publicada, mas não ficou ligada à mensagem do WhatsApp.", erroWhatsapp);
+      } else if (ligada) {
+        after(() => confirmarVagaPublicada(doWhatsapp));
+        if (Number((ligada as { restantes?: number }).restantes) > 0) outrasDoWhatsapp = doWhatsapp;
+      }
+    }
     // agência: a vaga do pedido do cliente (migração 20270307120000) fica ligada a ele
     const pedido = formData.get("pedido");
     if (typeof pedido === "string" && UUID.test(pedido) && d.tipo === "vaga") {
@@ -223,7 +240,9 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
         vigia.parcial("A vaga foi publicada, mas não ficou ligada ao pedido do cliente.", erroPedido);
       }
     }
-    destino = `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}${comTeste ? "&teste=1" : ""}`;
+    destino = outrasDoWhatsapp
+      ? `/publicar/whatsapp/${outrasDoWhatsapp}?publicada=${data.id}`
+      : `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}${comTeste ? "&teste=1" : ""}`;
     if (d.tipo === "vaga") await marcarConversao("vaga");
     // o funil do publicar em passos: a vaga saiu (só a contagem do dia; sem a migração, nada)
     if (formData.get("de_passos") === "1") {
@@ -294,7 +313,8 @@ async function publicarOutrosCargos(
   for (const titulo of cargos) {
     const dados = new FormData();
     for (const [k, v] of base.entries()) {
-      if (!["outros_cargos", "descricao", "categoria", "id", "convite", "cliente_novo"].includes(k)) dados.append(k, v);
+      if (!["outros_cargos", "descricao", "categoria", "id", "convite", "whatsapp", "cliente_novo"].includes(k))
+        dados.append(k, v);
     }
     dados.set("titulo", titulo);
     if (cliente) dados.set("cliente_id", cliente);

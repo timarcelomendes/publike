@@ -6,6 +6,7 @@ import { lerArteDaVaga } from "@/lib/acoes/arte-vaga";
 import { ErroDaLeitura, fotosParaLeitura } from "@/lib/arquivo-curriculo";
 import { detalheDoErro, ehFalhaDeInternet, MENSAGEM_SEM_INTERNET, relatarFalha } from "@/lib/falhas";
 import type { RascunhoConvite } from "@/lib/convites";
+import { EscolherVagaLida } from "./escolher-vaga-lida";
 import { pedirEntrar } from "./folha-de-entrar";
 import { classesBotao } from "./ui/botao";
 import { MensagemErro } from "./ui/campo";
@@ -19,16 +20,19 @@ const pedeConta = (erro: string) => /Entre na sua conta/i.test(erro);
  * "Tem a arte da vaga?": a foto do anúncio (a arte postada numa rede social) vira a vaga
  * preenchida. Quem chama põe o que foi lido no formulário; a pessoa confere e publica.
  */
-export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }) {
+export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite, total: number) => void }) {
   const id = useId();
   const [lendo, setLendo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // o anúncio com mais de uma vaga: a pessoa escolhe qual preencher
+  const [vagas, setVagas] = useState<RascunhoConvite[] | null>(null);
 
   async function escolher(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     e.target.value = "";
     if (!arquivo) return;
     setErro(null);
+    setVagas(null);
     if (!/^image\/(jpeg|png|webp)$/.test(arquivo.type)) return setErro("Escolha uma imagem (JPG ou PNG).");
     setLendo(true);
     try {
@@ -38,7 +42,8 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
       dados.append("nome", arquivo.name.slice(0, 120));
       const r = await lerArteDaVaga(dados);
       if (!r.ok) return setErro(r.erro);
-      aoLer(r.vaga);
+      if (r.vagas.length > 1) return setVagas(r.vagas);
+      aoLer(r.vaga, r.total);
     } catch (falha) {
       const mensagem =
         falha instanceof ErroDaLeitura
@@ -74,6 +79,11 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
           Pode ser o post do Instagram, o cartaz ou um print do WhatsApp. O Publike lê a imagem e preenche a vaga; você
           só confere antes de publicar.
         </p>
+        {vagas && (
+          <div className="mt-3">
+            <EscolherVagaLida vagas={vagas} de="imagem" aoEscolher={(v) => aoLer(v, vagas.length)} />
+          </div>
+        )}
         {erro && (
           <div className="mt-2 flex flex-col items-start gap-2">
             <MensagemErro>{erro}</MensagemErro>

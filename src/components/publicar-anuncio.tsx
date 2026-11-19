@@ -4,21 +4,22 @@ import {
   Briefcase,
   CalendarClock,
   Check,
+  ChevronRight,
   Circle,
   CircleCheck,
   ClipboardPaste,
+  CloudDownload,
+  ExternalLink,
   Heart,
   ImageUp,
   LoaderCircle,
   LockKeyhole,
   MapPin,
+  MessageCircle,
   RotateCcw,
   Sparkles,
-  Zap,
-  ExternalLink,
-  ChevronRight,
-  CloudDownload,
   type LucideIcon,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,6 +45,7 @@ import {
 import { ganhosDoBanco } from "@/lib/vaga-extra";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import { valoresDoConvite } from "@/lib/valores-convite";
+import { TEXTO_PRONTO_DO_WHATSAPP } from "@/lib/vagas-pelo-whatsapp";
 import { AvisoDaSaida, useSaidaDoSalvar, vagaGravada } from "./anuncio/saida-do-salvar";
 import { ArteDaVaga } from "./arte-da-vaga";
 import { TextoDaVaga } from "./texto-da-vaga";
@@ -211,6 +213,7 @@ export function PublicarAnuncio({
   clientes = null,
   enderecoPublico = false,
   convite = null,
+  pelaConversa = null,
   pedido = null,
   modelo: modeloPedido = null,
   comecarConferindo = false,
@@ -239,8 +242,20 @@ export function PublicarAnuncio({
   /** agência: os clientes para escolher */
   clientes?: ClienteParaVaga[] | null;
   enderecoPublico?: boolean | "talvez";
-  /** veio do link do convite do Publike: publicar é o aceite */
-  convite?: { token: string; nome: string; pronta: boolean } | null;
+  /**
+   * a vaga veio pronta por um link: o convite do Publike (publicar é o aceite) ou a resposta do Publicar pelo WhatsApp
+   * (a vaga que a empresa mandou; `total`: quantas o anúncio tinha; `conferir`: o que a leitura pediu para conferir)
+   */
+  convite?: {
+    token: string;
+    nome: string;
+    pronta: boolean;
+    de?: "convite" | "whatsapp";
+    total?: number;
+    conferir?: string[];
+  } | null;
+  /** o "Mandar pelo WhatsApp" do passo 1 (Publicar pelo WhatsApp ligado): o número do Publike */
+  pelaConversa?: { numero: string; exibicao: string } | null;
   /** agência: a vaga do pedido do cliente (sai ligada a ele; o rascunho antigo do aparelho não passa por cima) */
   pedido?: string | null;
 }) {
@@ -261,8 +276,8 @@ export function PublicarAnuncio({
   const passoAtual = useRef(passoDeComeco);
   // os atalhos do passo 1: os modelos ou a foto da vaga (quem chega por /publicar#arte já vê a foto)
   const [atalho, setAtalho] = useState<"modelo" | "texto" | "foto" | null>(modeloInicial ? "modelo" : null);
-  // "Colar o texto da vaga": quantas vagas a IA achou no texto (publica-se uma por vez)
-  const [doTexto, setDoTexto] = useState<number | null>(null);
+  // a vaga lida pela IA (a foto ou o texto): de onde veio, quantas o anúncio tinha e o que conferir
+  const [lida, setLida] = useState<{ fonte: "texto" | "foto"; total: number; conferir: string[] } | null>(null);
   const chaveDoRascunho = semConta ? undefined : CHAVE_COM_CONTA;
   // o rascunho publicado sozinho depois de entrar: se a tela não sair do "Publicando…", diz que deu certo e abre a vaga
   const {
@@ -427,8 +442,8 @@ export function PublicarAnuncio({
   }
 
   // "Tem a arte da vaga?": o que a IA leu da imagem entra no formulário (o lugar já escrito fica)
-  function aplicarArte(vaga: Parameters<typeof valoresDoConvite>[0], total: number | null = null) {
-    setDoTexto(total);
+  function aplicarArte(vaga: Parameters<typeof valoresDoConvite>[0], total: number, fonte: "texto" | "foto") {
+    setLida({ fonte, total, conferir: vaga.conferir ?? [] });
     setInicial(valoresDoConvite(vaga, lugarDoFormulario(formulario(), base)));
     setModelo(null);
     // a vaga veio pronta da imagem: abre no Conferir
@@ -463,7 +478,35 @@ export function PublicarAnuncio({
   const avisos = (
     <>
       {antes}
-      {convite && (
+      {convite?.de === "whatsapp" && (
+        <Aviso tipo="info" titulo="A vaga que você mandou no WhatsApp">
+          <span className="flex flex-col gap-2">
+            <span>
+              Já veio preenchida com o anúncio. Confira cada passo, ajuste o que precisar e toque em Publicar. É grátis,
+              sem plano e sem taxa. Para publicar, você entra com o e-mail, sem senha.
+            </span>
+            {(convite.total ?? 1) > 1 && (
+              <span>
+                O anúncio tinha {convite.total} vagas.{" "}
+                <Link href={`/publicar/whatsapp/${convite.token}`} className="underline underline-offset-2">
+                  Ver todas
+                </Link>
+                : depois de publicar esta, você volta para as outras.
+              </span>
+            )}
+            {(convite.conferir?.length ?? 0) > 0 && (
+              <span className="flex flex-col gap-1">
+                {convite.conferir!.map((c) => (
+                  <span key={c} className="block">
+                    · {c}
+                  </span>
+                ))}
+              </span>
+            )}
+          </span>
+        </Aviso>
+      )}
+      {convite && convite.de !== "whatsapp" && (
         <AvisoConvite token={convite.token} nome={convite.nome}>
           {convite.pronta
             ? "A vaga já veio preenchida com o anúncio de vocês. Confira, ajuste o que precisar e toque em Publicar."
@@ -498,12 +541,21 @@ export function PublicarAnuncio({
       {aviso === "lido" && (
         <Aviso
           tipo="info"
-          titulo={doTexto ? "Preenchemos com o que estava no texto" : "Preenchemos com o que estava na imagem"}
+          titulo={lida?.fonte === "texto" ? "Preenchemos com o que estava no texto" : "Preenchemos com o que estava na imagem"}
         >
-          {doTexto && doTexto > 1
-            ? `Achamos ${doTexto} vagas no texto: publique esta e depois cole o texto de novo para a próxima. `
+          {lida && lida.total > 1
+            ? `Esta é uma das ${lida.total} vagas do anúncio: depois de publicar, ${lida.fonte === "texto" ? "cole o texto de novo" : "mande a foto de novo"} e escolha a próxima. `
             : ""}
           Confira cada passo antes de publicar (toque em Editar): o título, o valor, o que a vaga pede e o endereço.
+          {lida && lida.conferir.length > 0 && (
+            <span className="mt-2 flex flex-col gap-1">
+              {lida.conferir.map((c) => (
+                <span key={c} className="block">
+                  · {c}
+                </span>
+              ))}
+            </span>
+          )}
         </Aviso>
       )}
       {erro && (
@@ -579,7 +631,10 @@ export function PublicarAnuncio({
         )}
         extras={
           convite || pedido
-            ? { ...(convite ? { convite: convite.token } : {}), ...(pedido ? { pedido } : {}) }
+            ? {
+                ...(convite ? { [convite.de === "whatsapp" ? "whatsapp" : "convite"]: convite.token } : {}),
+                ...(pedido ? { pedido } : {}),
+              }
             : undefined
         }
         jaMudou={aviso === "lido"}
@@ -649,8 +704,29 @@ export function PublicarAnuncio({
                   })}
                 </ul>
               )}
-              {atalho === "texto" && lerComIA && <TextoDaVaga aoLer={aplicarArte} />}
-              {atalho === "foto" && lerComIA && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
+              {atalho === "texto" && lerComIA && <TextoDaVaga aoLer={(v, total) => aplicarArte(v, total, "texto")} />}
+              {atalho === "foto" && lerComIA && <ArteDaVaga aoLer={(v, total) => aplicarArte(v, total, "foto")} />}
+              {/* Publicar pelo WhatsApp (migração 20270806120000): mandar a foto ou o texto para o número do Publike */}
+              {pelaConversa && (
+                <a
+                  href={`https://wa.me/${pelaConversa.numero}?text=${encodeURIComponent(TEXTO_PRONTO_DO_WHATSAPP)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex items-center gap-3 rounded-md border border-line bg-surface-200 p-3 transition-colors hover:border-line-strong"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-cerrado text-on-cerrado">
+                    <MessageCircle aria-hidden className="size-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-label">Prefere pelo WhatsApp? Mande a foto ou o texto da vaga</span>
+                    <span className="block text-body-sm text-ink-muted">
+                      Para o {pelaConversa.exibicao}: o Publike lê e te manda o link da vaga pronta para conferir e
+                      publicar.
+                    </span>
+                  </span>
+                  <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted group-hover:text-ink" />
+                </a>
+              )}
               {/* empresa com as vagas na Gupy: todas de uma vez (sem conta, entra antes) */}
               {enderecoPublico !== false && (
                 <Link

@@ -1021,6 +1021,9 @@ type MensagemRecebida = {
   audio?: { id?: string; mime_type?: string };
   /** a localização que a pessoa mandou: o atendimento mostra as vagas perto dela */
   location?: { latitude?: number; longitude?: number; name?: string; address?: string };
+  /** a foto e o arquivo: o id para baixar na Meta (vale 30 dias) e a legenda (Publicar pelo WhatsApp) */
+  image?: { id?: string; mime_type?: string; caption?: string };
+  document?: { id?: string; mime_type?: string; filename?: string; caption?: string };
 };
 type ContatoRecebido = { wa_id?: string; profile?: { name?: string } };
 type StatusRecebido = {
@@ -1050,6 +1053,44 @@ const MIDIA_RECEBIDA: Record<string, string> = {
   location: "uma localização",
   contacts: "um contato",
 };
+
+/** A foto ou o PDF da mensagem (a imagem mandada como arquivo também vale como foto). */
+function midiaRecebida(m: MensagemRecebida) {
+  if (m.type === "image" && m.image?.id)
+    return { tipo: "imagem" as const, id: m.image.id, mime: m.image.mime_type ?? null, legenda: m.image.caption ?? null };
+  if (m.type === "document" && m.document?.id) {
+    const mime = (m.document.mime_type ?? "").toLowerCase();
+    if (mime === "application/pdf")
+      return { tipo: "pdf" as const, id: m.document.id, mime, legenda: m.document.caption ?? null };
+    if (/^image\/(jpeg|png|webp)$/.test(mime))
+      return { tipo: "imagem" as const, id: m.document.id, mime, legenda: m.document.caption ?? null };
+  }
+  return null;
+}
+
+/**
+ * Baixa a foto ou o PDF que a pessoa mandou (Publicar pelo WhatsApp): a Meta dá o endereço pelo id (vale 5 minutos) e
+ * o arquivo sai com o mesmo token. Até `max` bytes; o resto, null.
+ */
+export async function baixarFotoOuPdf(cfg: ConfigMeta, id: string, max = 8 * 1024 * 1024) {
+  const info = await graph<{ url?: string; mime_type?: string; file_size?: number }>(cfg, encodeURIComponent(id));
+  if (!info.ok || !info.dados.url) return { ok: false as const, erro: info.ok ? "sem endereço" : info.texto };
+  if (info.dados.file_size && info.dados.file_size > max) return { ok: false as const, erro: "grande", grande: true };
+  try {
+    const r = await fetch(info.dados.url, {
+      headers: { Authorization: `Bearer ${cfg.token}` },
+      signal: AbortSignal.timeout(15_000),
+      cache: "no-store",
+    });
+    if (!r.ok) return { ok: false as const, erro: `HTTP ${r.status}` };
+    const bytes = Buffer.from(await r.arrayBuffer());
+    if (bytes.length > max) return { ok: false as const, erro: "grande", grande: true };
+    const mime = (info.dados.mime_type || r.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    return { ok: true as const, bytes, mime };
+  } catch (e) {
+    return { ok: false as const, erro: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 /** O anúncio de onde a pessoa veio, só o que serve (sem a imagem nem o id do clique). */
 function origemDoAnuncio(r: Record<string, unknown> | undefined) {
@@ -1109,6 +1150,22 @@ export async function tratarAvisoDaMeta(aviso: AvisoDaMeta, cliente?: ClienteBan
           // a reação (o joinha numa mensagem) e o que a Meta não sabe mostrar não pedem resposta
           if (m.type === "reaction" || m.type === "unsupported" || m.type === "system") continue;
           const nome = mudanca.value.contacts?.find((c) => c.wa_id === m.from)?.profile?.name ?? null;
+          // a foto e o PDF ficam guardados (só o id da Meta): o Publicar pelo WhatsApp lê as fotos seguidas juntas
+          const midia = midiaRecebida(m);
+          if (midia) {
+            const { error: erroMidia } = await banco.rpc("servidor_whatsapp_midia", {
+              p_chave: chave,
+              p_wamid: m.id,
+              p_numero: m.from,
+              p_tipo: midia.tipo,
+              p_midia: midia.id,
+              p_mime: midia.mime,
+              p_legenda: midia.legenda,
+            });
+            // sem a migração 20270806120000: a foto segue como antes (o atendimento responde pelo tipo)
+            if (erroMidia && erroMidia.code !== "PGRST202")
+              console.error("Publike: a foto do WhatsApp não ficou guardada:", erroMidia.message);
+          }
           const recebida = {
             wamid: m.id,
             numero: m.from,
