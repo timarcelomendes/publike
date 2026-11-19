@@ -177,6 +177,7 @@ export function ConfigWhatsapp({
   // fora do horário o aviso espera; se a espera máxima for menor que a janela fechada, o da noite vence antes de sair
   const fechado = horarioRuim ? 0 : 24 - (fimDoHorario - inicio);
   const validade = Number(p.validade_horas);
+  const juntar = Math.max(0, Math.round(Number(p.juntar_minutos) || 0));
   const venceAntes = !horarioRuim && Number.isFinite(validade) && validade > 0 && validade < fechado;
   const tempoNoPadrao = TEMPOS.every((k) => Number(p[k]) === PARAMETROS_WHATSAPP[k].padrao);
   const mesGratis = Math.max(0, Math.round(Number(p.limite_mes_gratis) || 0));
@@ -433,7 +434,17 @@ export function ConfigWhatsapp({
           />
           <p className="max-w-2xl text-body-sm text-ink-muted">
             As candidaturas desse tempo vão juntas (“Ana e mais 2 pessoas”). Se quem contrata vir no Publike antes, a
-            mensagem não sai.
+            mensagem não sai. O mesmo tempo junta os aceites do candidato (abaixo).
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-body-sm font-semibold text-ink">Aceites e perguntas (para o candidato)</p>
+          <p className="max-w-2xl text-body-sm text-ink-muted">
+            {juntar > 0
+              ? `Os aceites que chegam com até ${plural(juntar, "minuto", "minutos")} de diferença vão numa mensagem só (“Você teve 3 candidaturas aceitas”).`
+              : "Com 0 minuto para juntar, cada aceite sai na hora, numa mensagem."}{" "}
+            “A empresa te respondeu?” e “Deu certo?” saem no máximo uma de cada por pessoa por dia, a mais antiga
+            primeiro. As outras esperam a vez, com os mesmos botões, por até 7 dias; depois disso, ficam só no site.
           </p>
         </div>
         <div className="flex flex-col gap-2">
@@ -465,7 +476,7 @@ export function ConfigWhatsapp({
           />
           <p className="max-w-2xl text-body-sm text-ink-muted">
             Passou disso (fora do horário, no limite do dia ou com o modelo em análise na Meta), o aviso é descartado:
-            velho, ele já não ajuda. Continua no sino e no e-mail.
+            velho, ele já não ajuda. Continua no sino e no e-mail. As perguntas que esperam a vez valem 7 dias.
           </p>
           {venceAntes && (
             <p role="alert" className="max-w-2xl text-body-sm text-terra-text">

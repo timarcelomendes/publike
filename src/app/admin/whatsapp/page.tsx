@@ -355,14 +355,16 @@ function errosDoWhatsapp(
     esperando.forEach((x) => usados.add(x.motivo));
     const quantas = esperando.reduce((n, x) => n + x.quantas, 0) || undefined;
     const aviso = `“${nomeDoAvisoWhatsapp(m.aviso, true)}”`;
+    // o modelo com reserva (os aceites juntos): enquanto não pode sair, o aviso sai pelo outro, sem esperar
+    const enquantoIsso = m.reserva ? `Enquanto isso, o aviso ${aviso} sai pelo modelo ${m.reserva}.` : null;
     if (status !== "APPROVED")
       erros.push({
         chave: `modelo-${m.nome}`,
-        grave: info.grave,
+        grave: info.grave && !m.reserva,
         titulo: `O modelo ${m.nome}: ${info.nome.toLowerCase()}`,
         detalhe: (
           <>
-            O aviso {aviso} espera na fila até a aprovação (no máximo {p.validade_horas} horas).
+            {enquantoIsso ?? <>O aviso {aviso} espera na fila até a aprovação (no máximo {p.validade_horas} horas).</>}
             {st?.motivo && <> Motivo da Meta: {st.motivo}.</>}
           </>
         ),
@@ -372,9 +374,11 @@ function errosDoWhatsapp(
     else if (categoriaBloqueia(m, st?.categoria))
       erros.push({
         chave: `categoria-${m.nome}`,
-        grave: true,
+        grave: !m.reserva,
         titulo: `A Meta pôs o modelo ${m.nome} em ${st.categoria}`,
-        detalhe: `O aviso ${aviso} não sai: marketing custa umas 9 vezes mais. Desligue o aviso em Parâmetros ou cadastre uma versão nova do modelo.`,
+        detalhe:
+          enquantoIsso ??
+          `O aviso ${aviso} não sai: marketing custa umas 9 vezes mais. Desligue o aviso em Parâmetros ou cadastre uma versão nova do modelo.`,
         quantas,
         aba: "modelos",
       });
@@ -382,9 +386,10 @@ function errosDoWhatsapp(
 
   if (!res) return erros;
 
-  // parado agora na fila (fora o que espera um modelo, que já entrou acima)
+  // parado agora na fila (fora o que espera um modelo, que já entrou acima, e as perguntas que esperam a vez, que não
+  // são problema: uma de cada por pessoa por dia, migração 20270804120000)
   for (const x of res.parados) {
-    if (usados.has(x.motivo)) continue;
+    if (usados.has(x.motivo) || x.motivo.startsWith("espera a vez")) continue;
     const parado = x.motivo.startsWith("a Meta recusou o envio:");
     erros.push({
       chave: `parado-${x.motivo}`,

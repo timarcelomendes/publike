@@ -150,6 +150,8 @@ export function quemRecebeuWhatsapp(tipo: string, contaTipo: string | null) {
 /** Por que o aviso não saiu, em palavras (os motivos que o robô grava; não são erros). */
 export const PORQUE_NAO_SAIU: Record<string, string> = {
   "já viu no Publike": "a pessoa viu no Publike antes (a mensagem não fez falta)",
+  // migração 20270804120000: o aviso apagado do sino não é "já viu" (antes, os dois eram um motivo só)
+  "saiu do sino": "o aviso saiu do sino antes (trocado por um mais novo ou apagado)",
   "limite do dia da conta": "a conta já tinha recebido o limite do dia",
   "modo de teste": "o envio estava só para os números de teste",
   "parou de receber": "a pessoa parou de receber pelo WhatsApp",

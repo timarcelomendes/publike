@@ -79,6 +79,11 @@ export type Modelo = {
    * a Meta mudar para marketing não sai.
    */
   categoria?: "MARKETING";
+  /**
+   * O modelo que sai no lugar deste enquanto a Meta não aprova (ou se ela o puser em marketing): os aceites juntos
+   * saem pelo de um aceite, com o primeiro (18/11/2026).
+   */
+  reserva?: string;
 };
 
 export const RODAPE_WHATSAPP = "Responda PARAR para não receber mais";
@@ -93,6 +98,19 @@ export const MODELOS: Modelo[] = [
       "Oi, {{nome}}! {{empresa}} aceitou a sua candidatura para a vaga de {{vaga}}. O contato de vocês já está liberado no Publike.",
     exemplo: { nome: "Ana", empresa: "Padaria Pão de Ouro", vaga: "Atendente de padaria" },
     botoes: [{ tipo: "link", texto: "Ver o contato", exemplo: "painel/matches" }],
+  },
+  {
+    // 18/11/2026: 7 aceites em 7 minutos para a mesma pessoa viravam 7 mensagens; os que chegam nos minutos de juntar
+    // (Admin › WhatsApp › Parâmetros) vão juntos (migração 20270804120000)
+    nome: "publike_matches",
+    aviso: "match",
+    para: "Candidato",
+    quando: "Mais de um aceite nos mesmos minutos (juntos numa mensagem)",
+    corpo:
+      "Oi, {{nome}}! Você teve {{quantos}} aceitas no Publike, entre elas a da vaga de {{vaga}} em {{empresa}}. Os contatos de vocês já estão liberados: abra o Publike para ver cada um e combinar os próximos passos.",
+    exemplo: { nome: "Ana", quantos: "3 candidaturas", vaga: "Atendente de padaria", empresa: "Padaria Pão de Ouro" },
+    botoes: [{ tipo: "link", texto: "Ver os contatos", exemplo: "painel/matches" }],
+    reserva: "publike_match",
   },
   {
     nome: "publike_entrevista",
@@ -643,6 +661,13 @@ export function categoriaBloqueia(m: Pick<Modelo, "categoria">, categoriaNaMeta:
   return !!categoriaNaMeta && categoriaNaMeta !== "UTILITY" && categoriaNaMeta !== m.categoria;
 }
 
+/** O modelo pode sair agora: aprovado pela Meta e na categoria que ele declara. */
+export function podeSair(modelos: SituacaoModelos, nome: string) {
+  const def = POR_NOME.get(nome);
+  const st = modelos[nome];
+  return !!def && st?.status === "APPROVED" && !categoriaBloqueia(def, st.categoria);
+}
+
 /**
  * Confere na Meta a situação de cada modelo e cadastra os que faltam (no máximo uma tentativa a cada 6 horas por
  * modelo, a não ser que o Admin peça). Guarda no banco pela função `guardar`.
@@ -717,7 +742,19 @@ export type ItemWhatsapp = {
   } | null;
 };
 
-type Montada = { modelo: string; params: Record<string, string>; respostas?: string[] } | { pular: string };
+export type Escolha = { modelo: string; params: Record<string, string>; respostas?: string[] };
+/** `reserva`: o que sai se o modelo ainda não puder sair (em análise na Meta ou posto em marketing). */
+type Montada = (Escolha & { reserva?: Escolha }) | { pular: string };
+
+/**
+ * O que sai: o modelo escolhido ou, se ele ainda não pode sair e o de reserva pode, o de reserva (os aceites juntos
+ * saem pelo de um aceite enquanto a Meta não aprova o publike_matches).
+ */
+export function escolherModelo(montada: Escolha & { reserva?: Escolha }, modelos: SituacaoModelos): Escolha {
+  return montada.reserva && !podeSair(modelos, montada.modelo) && podeSair(modelos, montada.reserva.modelo)
+    ? montada.reserva
+    : montada;
+}
 
 function emais(nome: string | null, quantos: number) {
   const base = nome || "Uma pessoa";
@@ -737,6 +774,13 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
   switch (item.tipo) {
     case "match":
       if (!pessoa) return { pular: "match para quem não é candidato" };
+      // os aceites que chegaram juntos (a vaga e a empresa são as do primeiro): uma mensagem só
+      if (item.quantos > 1)
+        return {
+          modelo: "publike_matches",
+          params: { nome, quantos: `${item.quantos} candidaturas`, vaga, empresa },
+          reserva: { modelo: "publike_match", params: { nome, empresa, vaga } },
+        };
       return { modelo: "publike_match", params: { nome, empresa, vaga } };
     case "entrevista":
       if (!e) return { pular: "sem entrevista desta pessoa" };
@@ -865,12 +909,13 @@ export async function enviarWhatsappPendentes(limite = 30): Promise<ResultadoWha
       await marcar(item.id, "pendente", { motivo: parar, minutos: 30 });
       continue;
     }
-    const m = montarMensagem(item);
-    if ("pular" in m) {
+    const montada = montarMensagem(item);
+    if ("pular" in montada) {
       resultado.puladas++;
-      await marcar(item.id, "descartada", { motivo: m.pular });
+      await marcar(item.id, "descartada", { motivo: montada.pular });
       continue;
     }
+    const m = escolherModelo(montada, modelos);
     const def = POR_NOME.get(m.modelo)!;
     const situacao = modelos[m.modelo];
     if (situacao?.status !== "APPROVED") {
