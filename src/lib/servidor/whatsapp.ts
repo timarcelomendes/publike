@@ -439,11 +439,46 @@ export async function enviarComBotoes(
   return r.ok ? { ok: true as const, wamid: r.dados.messages?.[0]?.id ?? null } : { ok: false as const, erro: r.texto };
 }
 
-/** Marca a mensagem como lida e mostra "digitando…" para a pessoa até a resposta sair (no máximo 25 segundos). */
-export async function marcarLidaDigitando(cfg: ConfigMeta, wamid: string) {
+/**
+ * Texto com um botão que abre uma página do site (só na janela de 24 horas): o atendimento usa para deixar o caminho à
+ * vista ("Ver vagas", "Publicar vaga grátis") sem pôr o link no meio do texto. O nome do botão vai até 20 letras.
+ */
+export async function enviarComLink(
+  cfg: ConfigMeta,
+  numero: string,
+  texto: string,
+  botao: { titulo: string; url: string },
+) {
+  const r = await graph<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
+    metodo: "POST",
+    corpo: {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: numero.replace(/\D/g, ""),
+      type: "interactive",
+      interactive: {
+        type: "cta_url",
+        body: { text: texto.slice(0, 1024) },
+        action: { name: "cta_url", parameters: { display_text: botao.titulo.slice(0, 20), url: botao.url } },
+      },
+    },
+  });
+  return r.ok ? { ok: true as const, wamid: r.dados.messages?.[0]?.id ?? null } : { ok: false as const, erro: r.texto };
+}
+
+/**
+ * Marca a mensagem como lida e mostra "digitando…" para a pessoa até a resposta sair (no máximo 25 segundos). Sem
+ * `digitando`, só marca como lida (o "👍" que não vai ter resposta).
+ */
+export async function marcarLidaDigitando(cfg: ConfigMeta, wamid: string, digitando = true) {
   await graph(cfg, `${cfg.phoneId}/messages`, {
     metodo: "POST",
-    corpo: { messaging_product: "whatsapp", status: "read", message_id: wamid, typing_indicator: { type: "text" } },
+    corpo: {
+      messaging_product: "whatsapp",
+      status: "read",
+      message_id: wamid,
+      ...(digitando ? { typing_indicator: { type: "text" } } : {}),
+    },
   });
 }
 
@@ -925,6 +960,18 @@ export type AvisoDaMeta = {
   }[];
 };
 
+/** O que a pessoa mandou sem texto, como fica guardado na conversa ("[a pessoa mandou um áudio]"). */
+const MIDIA_RECEBIDA: Record<string, string> = {
+  audio: "um áudio",
+  voice: "um áudio",
+  image: "uma foto",
+  video: "um vídeo",
+  document: "um arquivo",
+  sticker: "uma figurinha",
+  location: "uma localização",
+  contacts: "um contato",
+};
+
 /** O anúncio de onde a pessoa veio, só o que serve (sem a imagem nem o id do clique). */
 function origemDoAnuncio(r: Record<string, unknown> | undefined) {
   if (!r) return null;
@@ -986,8 +1033,8 @@ export async function tratarAvisoDaMeta(aviso: AvisoDaMeta, cliente?: ClienteBan
           const recebida = {
             wamid: m.id,
             numero: m.from,
-            // áudio, foto e figurinha chegam sem texto: a IA pede para escrever
-            texto: texto ?? (m.type && m.type !== "text" ? `[a pessoa mandou ${m.type === "audio" ? "um áudio" : m.type === "image" ? "uma foto" : "um arquivo"}]` : ""),
+            // áudio, foto, figurinha e arquivo chegam sem texto: o atendimento responde pelo tipo (`midiaDaMensagem`)
+            texto: texto ?? (m.type && m.type !== "text" ? `[a pessoa mandou ${MIDIA_RECEBIDA[m.type] ?? "uma mensagem que não é texto"}]` : ""),
             payload,
             nome,
             origem: origemDoAnuncio(m.referral),

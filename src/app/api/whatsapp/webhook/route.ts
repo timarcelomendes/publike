@@ -48,13 +48,16 @@ export async function POST(request: Request) {
     const r = await tratarAvisoDaMeta(aviso);
     // o atendimento (a IA responde a conversa) roda depois do 200: a Meta espera a resposta rápida
     if (r.depois.length)
-      after(async () => {
-        for (const atender of r.depois) {
-          await atender().catch((e) =>
-            console.error("Publike: o atendimento do WhatsApp falhou:", e instanceof Error ? e.message.slice(0, 300) : e),
-          );
-        }
-      });
+      // juntas: duas mensagens seguidas da mesma pessoa no mesmo aviso esperam ao mesmo tempo, e só a mais nova responde
+      after(() =>
+        Promise.all(
+          r.depois.map((atender) =>
+            atender().catch((e) =>
+              console.error("Publike: o atendimento do WhatsApp falhou:", e instanceof Error ? e.message.slice(0, 300) : e),
+            ),
+          ),
+        ),
+      );
     return Response.json({ ok: true, tratados: r.tratados });
   } catch (e) {
     console.error("Publike: aviso do WhatsApp sem tratar:", e instanceof Error ? e.message.slice(0, 300) : e);

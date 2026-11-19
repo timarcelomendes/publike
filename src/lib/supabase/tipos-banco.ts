@@ -4318,6 +4318,8 @@ export type Database = {
         };
         Returns: undefined;
       };
+      // a última mensagem da pessoa, para responder só a mais nova (migração 20270803120000)
+      servidor_whatsapp_conversa_ultima: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
       admin_whatsapp_conversas: { Args: { p_filtro?: string }; Returns: Json };
       admin_whatsapp_conversa: { Args: { p_conversa: string }; Returns: Json };
       admin_whatsapp_conversa_situacao: { Args: { p_conversa: string; p_situacao: string }; Returns: undefined };

@@ -347,7 +347,8 @@
   "20270730120000_gratis_de_cada_mes",
   "20270731120000_aviso_do_gratis_de_cada_mes",
   "20270801120000_whatsapp_atendimento",
-  "20270802120000_origem_organica"
+  "20270802120000_origem_organica",
+  "20270803120000_whatsapp_atendimento_juntar"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3692,6 +3693,7 @@
   "f|public.servidor_whatsapp_config(p_chave text)": "940efaf897",
   "f|public.servidor_whatsapp_conversa_entrada(p_chave text, p_numero text, p_texto text, p_nome text, p_origem jsonb, p_payload text, p_wamid text)": "9687d930b1",
   "f|public.servidor_whatsapp_conversa_saida(p_chave text, p_conversa text, p_texto text, p_wamid text, p_perfil text, p_equipe boolean, p_motivo text)": "9a757ced2e",
+  "f|public.servidor_whatsapp_conversa_ultima(p_chave text, p_conversa text)": "690ad0490f",
   "f|public.servidor_whatsapp_marcar(p_chave text, p_id bigint, p_situacao text, p_modelo text, p_wamid text, p_motivo text, p_tentar_em_minutos integer)": "47d933ec31",
   "f|public.servidor_whatsapp_pegar(p_chave text, p_limite integer)": "a4beca8d27",
   "f|public.servidor_whatsapp_recebida(p_chave text, p_wamid text, p_numero text, p_texto text, p_payload text)": "879944c30c",
