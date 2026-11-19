@@ -627,6 +627,18 @@ async function main() {
     `${JSON.stringify(entradas[0]?.p_texto)} ${corpo(r.msgs[0])}`,
   );
 
+  // 19d. "Ok" depois do "me conta o que você faz e o bairro": a pergunta de novo, clara
+  r = await rodar("Ok", {
+    perfil: "trabalho",
+    historico: [
+      ...comeco,
+      { de: "pessoa", texto: "Procuro trabalho" },
+      { de: "robo", texto: "É grátis, sempre. *Me conta o que você faz e o bairro onde mora*, que eu te mando até 3 vagas por dia por aqui.\n\n[Botão: Ver vagas]" },
+      { de: "pessoa", texto: "Ok" },
+    ],
+  });
+  conferir(corpo(r.msgs[0]) === a.PEDIR_FUNCAO_E_BAIRRO, "ok de quem procura: pergunta o que faz e o bairro", corpo(r.msgs[0]));
+
   // 20. o teto do mês: quem procura trabalho, uma mensagem com o link; de novo no dia, nada; quem contrata, normal
   teto = { teto: 5000, enviadas: 5000, economico: true, respondida_hoje: false };
   r = await rodar("sou cozinheira, moro no setor bueno", {

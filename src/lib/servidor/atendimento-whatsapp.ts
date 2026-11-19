@@ -435,6 +435,10 @@ const PARA_QUEM_PROCURA = [
   `É grátis, sempre. *Me conta o que você faz e o bairro onde mora*, que eu te mando até ${VAGAS_POR_DIA} vagas por dia por aqui.`,
 ].join("\n\n");
 
+/** O "ok" de quem procura trabalho: a pergunta, clara, com um exemplo. */
+export const PEDIR_FUNCAO_E_BAIRRO =
+  "Combinado! 😊 *Me conta o que você faz e o bairro onde mora*, que eu te mando as vagas. Por exemplo: _sou cozinheira e moro no Jardim América_.";
+
 /**
  * O "Quero contratar". Com o Publicar pelo WhatsApp ligado (migração 20270806120000), o caminho mais curto vem
  * primeiro: mandar aqui mesmo a foto ou o texto da vaga.
@@ -676,8 +680,10 @@ export async function atenderConversa(
   // o "👍", o "ok" ou a figurinha depois de conversar não vão ter resposta: só "lida", sem o "digitando…"
   const conversando = e.historico.some((x) => x.de !== "pessoa");
   const semPergunta = !semBotoes(e.historico.findLast((x) => x.de !== "pessoa")?.texto ?? "").endsWith("?");
+  const pediuFuncao = /o que você faz e o bairro/i.test(e.historico.findLast((x) => x.de !== "pessoa")?.texto ?? "");
   const soReacao =
     conversando &&
+    !(pediuFuncao && soConfirmacao(m.texto)) &&
     (soEmoji(m.texto) || midiaDaMensagem(m.texto) === "figurinha" || (semPergunta && soConfirmacao(m.texto)));
   await marcarLidaDigitando(cfg, m.wamid, !soReacao).catch(() => undefined);
 
@@ -827,6 +833,15 @@ export async function atenderConversa(
     }))
   )
     return;
+
+  // "ok" depois do "me conta o que você faz e o bairro": a pergunta de novo, clara (19/11/2026; Marcelo: "quando
+  // demonstrar confirmação, deve perguntar claramente")
+  if (
+    jaFalou &&
+    /o que você faz e o bairro/i.test(minhaUltima) &&
+    textos.every((t) => soConfirmacao(t) || soEmoji(t))
+  )
+    return saida(PEDIR_FUNCAO_E_BAIRRO, { perfil: e.perfil ?? "trabalho" });
 
   // "ok", "beleza", "👍" ou figurinha depois de conversar: não pedem resposta
   if (
