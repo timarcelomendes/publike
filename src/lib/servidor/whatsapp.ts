@@ -485,6 +485,36 @@ export async function enviarComLink(
 }
 
 /**
+ * Baixa um arquivo que a pessoa mandou (o áudio do atendimento): a Meta dá o endereço pelo id, e o arquivo sai com o
+ * mesmo token. Maior que `maxBytes` (ou sem resposta em 15 s), devolve null.
+ */
+export async function baixarMidia(cfg: ConfigMeta, id: string, maxBytes = 4_000_000) {
+  const r = await graph<{ url?: string; mime_type?: string; file_size?: number }>(cfg, encodeURIComponent(id));
+  if (!r.ok || !r.dados.url) {
+    if (!r.ok) console.error("Publike: a Meta não deu o arquivo:", r.texto);
+    return null;
+  }
+  if ((r.dados.file_size ?? 0) > maxBytes) return null;
+  try {
+    const arquivo = await fetch(r.dados.url, {
+      headers: { Authorization: `Bearer ${cfg.token}` },
+      signal: AbortSignal.timeout(15_000),
+      cache: "no-store",
+    });
+    if (!arquivo.ok) {
+      console.error("Publike: o arquivo da Meta não veio:", arquivo.status);
+      return null;
+    }
+    const dados = await arquivo.blob();
+    if (dados.size > maxBytes) return null;
+    return { dados, tipo: r.dados.mime_type ?? (dados.type || "application/octet-stream") };
+  } catch (e) {
+    console.error("Publike: o arquivo da Meta não veio:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/**
  * Marca a mensagem como lida e mostra "digitando…" para a pessoa até a resposta sair (no máximo 25 segundos). Sem
  * `digitando`, só marca como lida (o "👍" que não vai ter resposta).
  */
@@ -987,6 +1017,10 @@ type MensagemRecebida = {
   interactive?: { button_reply?: { id?: string; title?: string }; list_reply?: { id?: string; title?: string } };
   /** de onde veio: o anúncio de clique para o WhatsApp (Instagram ou Facebook) */
   referral?: Record<string, unknown>;
+  /** o áudio (a mensagem de voz): o atendimento baixa e transcreve (`baixarMidia`) */
+  audio?: { id?: string; mime_type?: string };
+  /** a localização que a pessoa mandou: o atendimento mostra as vagas perto dela */
+  location?: { latitude?: number; longitude?: number; name?: string; address?: string };
 };
 type ContatoRecebido = { wa_id?: string; profile?: { name?: string } };
 type StatusRecebido = {
@@ -1083,6 +1117,13 @@ export async function tratarAvisoDaMeta(aviso: AvisoDaMeta, cliente?: ClienteBan
             payload,
             nome,
             origem: origemDoAnuncio(m.referral),
+            audio: m.type === "audio" && m.audio?.id ? { id: m.audio.id, tipo: m.audio.mime_type ?? null } : null,
+            local:
+              m.type === "location" &&
+              typeof m.location?.latitude === "number" &&
+              typeof m.location?.longitude === "number"
+                ? { lat: m.location.latitude, lng: m.location.longitude }
+                : null,
           };
           depois.push(() => atenderConversa(cfg, banco, chave, recebida));
           continue;

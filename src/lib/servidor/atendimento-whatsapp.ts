@@ -1,16 +1,20 @@
 import "server-only";
 import { textoDaAjuda } from "@/lib/ajuda";
+import { BAIRROS } from "@/lib/bairros";
 import { SITE_URL } from "@/lib/config";
-import { CATEGORIAS, LIMITES_CONTA } from "@/lib/constantes";
+import { CATEGORIAS, CIDADES, LIMITES_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarLugar, valorDoAnuncio } from "@/lib/formato";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { chamarIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
+import { falaDisponivel, transcrever } from "@/lib/ia/transcrever";
 import { comOrigem } from "@/lib/origem";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
+import { chaveBairro, chavesDaRegiao, criarLocal, pontoDoLocal, type Local } from "@/lib/regioes";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import {
+  baixarMidia,
   enviarComBotoes,
   enviarComLink,
   enviarTexto,
@@ -18,16 +22,18 @@ import {
   type ConfigMeta,
 } from "./whatsapp";
 
-// O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000 e
-// 20270803120000). Pedido do Marcelo: "Quero automatizar o atendimento do WhatsApp, explicar aos interessados sobre o
-// Publike". Quem escreve para o número da API (quase sempre vindo de um anúncio de clique para o WhatsApp no Instagram)
-// recebe a resposta do Publike. Quando a pessoa pede alguém, a IA não sabe ou o número passa das respostas do dia, a
-// conversa passa para a equipe (Admin › WhatsApp › Conversas e o e-mail dos "Avisos para a equipe") e a IA fica quieta.
+// O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000,
+// 20270803120000 e 20270805120000). Pedido do Marcelo: "Quero automatizar o atendimento do WhatsApp, explicar aos
+// interessados sobre o Publike". Quem escreve para o número da API (quase sempre vindo de um anúncio de clique para o
+// WhatsApp no Instagram) recebe a resposta do Publike. Quando a pessoa pede alguém, a IA não sabe ou o número passa das
+// respostas do dia, a conversa passa para a equipe (Admin › WhatsApp › Conversas e o e-mail dos "Avisos para a
+// equipe", com as últimas mensagens) e a IA fica quieta.
 //
 // O jeito de conversar (18/11/2026, à noite; Marcelo: "Tornar o diálogo mais simples mas completo, capricha e deixe ele
 // melhor, não seja tão aficionado a levar o usuário a publicar ou procurar vagas, mas isso precisa ser evidente"):
 //   * os momentos de sempre têm texto pronto, escrito com cuidado e sem IA: as boas-vindas (o "Oi" ou o "Posso ter mais
-//     informações?" do anúncio), o "Procuro trabalho", o "Quero contratar", o "Oi" de novo, o áudio, a foto e o arquivo;
+//     informações?" do anúncio), o "Procuro trabalho", o "Quero contratar", o "Oi" de novo, o "obrigado", a foto, o
+//     arquivo e a localização (as vagas perto dela);
 //   * o resto a IA responde, com o que está na Ajuda (src/lib/ajuda.ts): o que a pessoa perguntou, simples e completo,
 //     sem terminar toda mensagem empurrando a publicar ou procurar vaga;
 //   * o caminho fica à vista nos botões, e não no texto: os botões "Procuro trabalho", "Quero contratar" e "Falar com a
@@ -36,6 +42,11 @@ import {
 //   * mensagens seguidas ("Oi", "Oi", "tudo bem?") recebem uma resposta só: espera uns segundos e só a mais nova
 //     responde, com a conversa toda;
 //   * "ok", "👍" e o código que a Meta manda ao ligar o número no Instagram não recebem resposta.
+// De madrugada (19/11; Marcelo: "Melhore tudo que for possível nessa funcionalidade, vou dormir"):
+//   * o áudio vira texto (a mesma transcrição do currículo falado) e a conversa segue como se fosse escrita ("🎤 …");
+//   * as vagas saem perto de onde a pessoa disse que mora (o bairro ou a cidade) ou da localização que ela mandou;
+//   * a passagem para a equipe diz quando alguém responde (agora, hoje cedo, amanhã cedo ou na segunda);
+//   * as instruções da IA são sempre as mesmas e o que muda vai na mensagem: o Claude guarda as instruções (o cache).
 // A IA usa o modelo do chat (Admin › IA › "IA do Publike").
 
 // Quem atende se apresenta sempre como o Marcelo, o dono (18/11/2026, Marcelo, com o print do "Aqui é o Marcelo":
@@ -87,12 +98,33 @@ type Entrada = {
   historico: Mensagem[];
 };
 
+/** O que chegou pelo webhook (`tratarAvisoDaMeta`). */
+export type MensagemDoAtendimento = {
+  wamid: string;
+  numero: string;
+  texto: string;
+  payload: string | null;
+  nome: string | null;
+  origem: Record<string, string | null> | null;
+  /** o áudio, para virar texto */
+  audio?: { id: string; tipo: string | null } | null;
+  /** a localização que a pessoa mandou */
+  local?: { lat: number; lng: number } | null;
+};
+
+type Busca = {
+  texto: string;
+  categoria: string;
+  cidade: string;
+  bairro: string;
+};
+
 type Plano = {
   resposta: string;
   perfil: "trabalho" | "contratar" | "indefinido";
   acao: "responder" | "buscar_vagas" | "equipe" | "silencio";
   link: NomeDoLink | "nenhum";
-  busca: { texto: string; categoria: string };
+  busca: Busca;
 };
 
 const ESQUEMA = {
@@ -112,27 +144,28 @@ const ESQUEMA = {
       busca: {
         type: "object",
         additionalProperties: false,
-        required: ["texto", "categoria"],
+        required: ["texto", "categoria", "cidade", "bairro"],
         properties: {
           texto: { type: "string" },
           categoria: {
             type: "string",
             enum: [...CATEGORIAS.map((c) => c.slug), "todas"],
           },
+          cidade: { type: "string", enum: [...CIDADES, ""] },
+          bairro: { type: "string" },
         },
       },
     },
   },
 };
 
-/** Os links do site, já com a origem (o Admin conta quem chegou pelo WhatsApp). */
-const link = (caminho: string) =>
-  comOrigem(`${SITE_URL}${caminho}`, "whatsapp", "atendimento");
+/** Os links do site, já com a origem (o Admin conta quem chegou pelo WhatsApp e as contas que vieram dele). */
+const link = (caminho: string) => comOrigem(`${SITE_URL}${caminho}`, "whatsapp", "atendimento");
 
 // --- Ler a mensagem ---------------------------------------------------------------------------------------------
 
 /** Sem acento, sem pontuação, em minúsculas: "Olá! Tudo bem?" vira "ola tudo bem". */
-const simples = (t: string) =>
+export const simples = (t: string) =>
   t
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -141,85 +174,77 @@ const simples = (t: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const PALAVRAS_DE_OI = new Set([
-  "oi",
-  "oii",
-  "oiii",
-  "oie",
-  "ola",
-  "olaa",
-  "opa",
-  "eai",
-  "e",
-  "ai",
-  "bom",
-  "boa",
-  "dia",
-  "tarde",
-  "noite",
-  "tudo",
-  "bem",
-  "td",
-  "bm",
-  "blz",
-  "beleza",
-  "tranquilo",
-  "joia",
-  "hello",
-  "hi",
-  "hey",
-  "alo",
-  "salve",
-  "como",
-  "vai",
-  "voce",
-  "vc",
-  "pessoal",
-  "gente",
-  "amigo",
-  "amiga",
-  "moco",
-  "moca",
-  "marcelo",
-  "publike",
-]);
+const palavras = (t: string) => simples(t).split(" ").filter(Boolean);
+
+const PALAVRAS_DE_OI = new Set(
+  (
+    "oi oii oiii oie ola olaa opa eai e ai bom boa dia tarde noite tudo bem td bm blz beleza tranquilo " +
+    "joia hello hi hey alo salve como vai voce vc pessoal gente amigo amiga moco moca marcelo publike"
+  ).split(" "),
+);
+/** O que faz da mensagem um cumprimento ("beleza" sozinho é confirmação; "oi, beleza?" é cumprimento). */
+const OI_DE_VERDADE = /^(o+i+e*|ola+|opa|eai|hello|hi|hey|alo|salve)$/;
 
 /** Só um "Oi", "Boa tarde", "Olá, tudo bem?". */
-function soCumprimento(t: string) {
-  const p = simples(t).split(" ").filter(Boolean);
+export function soCumprimento(t: string) {
+  const p = palavras(t);
+  if (!p.length || p.length > 6) return false;
+  const temOi = p.some((x) => OI_DE_VERDADE.test(x)) || /\b(bom dia|boa (tarde|noite)|e ai)\b/.test(simples(t));
+  return temOi && p.every((x) => PALAVRAS_DE_OI.has(x) || OI_DE_VERDADE.test(x));
+}
+
+const PALAVRAS_DE_OK = new Set(
+  (
+    "ok okay okk blz beleza certo entendi ta bom show top joia perfeito combinado otimo legal massa uhum " +
+    "aham ah ata entao tranquilo de boa tudo pode ser vou ver olhar dar uma olhada depois fechado valeu"
+  ).split(" "),
+);
+
+/** Só uma confirmação ("ok", "beleza", "entendi", "vou dar uma olhada"): depois de conversar, não pede resposta. */
+export function soConfirmacao(t: string) {
+  const p = palavras(t);
+  return p.length > 0 && p.length <= 6 && p.every((x) => PALAVRAS_DE_OK.has(x)) && !soAgradecimento(t);
+}
+
+const OBRIGADO = /^(obrigad[oa]|obg|brigad[oa]|valeu|vlw|agradeco|grat[oa])$/;
+const PALAVRAS_DO_OBRIGADO = new Set(
+  (
+    "muito mt mto muitissimo ok ta bom beleza blz certo entao de pela pelas informacao informacoes ajuda " +
+    "atencao deus abencoe te lhe demais show top otimo por tudo ai viu moco moca marcelo"
+  ).split(" "),
+);
+
+/** Só um "Obrigado!", "Valeu, muito obrigada pela ajuda". */
+export function soAgradecimento(t: string) {
+  const p = palavras(t);
   return (
     p.length > 0 &&
-    p.length <= 6 &&
-    p.every((x) => PALAVRAS_DE_OI.has(x) || /^o+i+e*$/.test(x))
+    p.length <= 8 &&
+    p.some((x) => OBRIGADO.test(x)) &&
+    p.every((x) => OBRIGADO.test(x) || PALAVRAS_DO_OBRIGADO.has(x))
   );
 }
 
 /** Só emoji ("👍", "🙏"): depois de conversar, não pede resposta. */
-const soEmoji = (t: string) =>
-  t.trim() !== "" && simples(t) === "" && t.trim().length <= 12;
+export const soEmoji = (t: string) => t.trim() !== "" && simples(t) === "" && t.trim().length <= 12;
 
 /** O pedido geral, como o texto pronto do anúncio: "Olá! Posso ter mais informações sobre isso?". */
-function pedidoGeral(t: string) {
+export function pedidoGeral(t: string) {
   const s = simples(t);
-  if (s.split(" ").length > 10 || /\bvagas? (de|para|pra)\b/.test(s))
-    return false;
+  if (s.split(" ").length > 10 || /\bvagas? (de|para|pra)\b/.test(s)) return false;
   return /(mais informac|informac(ao|oes) sobre|saber mais|tenho interesse|como funciona|quero entender|do que se trata|sobre isso|me explica|o que e o publike|que site e esse)/.test(
     s,
   );
 }
 
 /** O código que a Meta manda ao ligar o número no Instagram ou no Facebook ("79680 é seu código do Instagram"). */
-function codigoDaMeta(t: string) {
+export function codigoDaMeta(t: string) {
   const s = simples(t);
-  return (
-    /\b\d{4,8}\b/.test(s) &&
-    /\b(codigo|code)\b/.test(s) &&
-    /\b(instagram|facebook|whatsapp|meta)\b/.test(s)
-  );
+  return /\b\d{4,8}\b/.test(s) && /\b(codigo|code)\b/.test(s) && /\b(instagram|facebook|whatsapp|meta)\b/.test(s);
 }
 
 /** "[a pessoa mandou um áudio]": o que veio sem texto (o webhook escreve assim). */
-function midiaDaMensagem(t: string) {
+export function midiaDaMensagem(t: string) {
   const m = t.match(/^\[a pessoa mandou (.+)\]$/);
   if (!m) return null;
   const o = m[1];
@@ -228,46 +253,20 @@ function midiaDaMensagem(t: string) {
   if (o.includes("vídeo")) return "video" as const;
   if (o.includes("figurinha")) return "figurinha" as const;
   if (o.includes("arquivo")) return "arquivo" as const;
+  if (o.includes("localização")) return "localizacao" as const;
   return "outro" as const;
 }
 
-const NAO_E_NOME = new Set([
-  "loja",
-  "centro",
-  "studio",
-  "estudio",
-  "salao",
-  "clinica",
-  "academia",
-  "mercado",
-  "supermercado",
-  "padaria",
-  "restaurante",
-  "bar",
-  "lanchonete",
-  "empresa",
-  "comercial",
-  "distribuidora",
-  "farmacia",
-  "escola",
-  "colegio",
-  "igreja",
-  "grupo",
-  "agencia",
-  "publike",
-  "dr",
-  "dra",
-  "sr",
-  "sra",
-  "pr",
-  "pastor",
-  "rh",
-  "vagas",
-  "emprego",
-]);
+const NAO_E_NOME = new Set(
+  (
+    "loja centro studio estudio salao clinica academia mercado supermercado padaria restaurante bar " +
+    "lanchonete empresa comercial distribuidora farmacia escola colegio igreja grupo agencia publike dr " +
+    "dra sr sra pr pastor rh vagas emprego"
+  ).split(" "),
+);
 
 /** O primeiro nome do perfil do WhatsApp, quando parece nome de gente ("~Raphael" vira "Raphael"; "Loja X", nada). */
-function primeiroNome(nome: string | null) {
+export function primeiroNome(nome: string | null) {
   if (!nome) return null;
   const p = nome.replace(/^[^A-Za-zÀ-ÿ]+/, "").split(/\s+/)[0] ?? "";
   if (!/^[A-Za-zÀ-ÿ]{2,20}$/.test(p) || NAO_E_NOME.has(simples(p))) return null;
@@ -280,13 +279,139 @@ function semResposta(historico: Mensagem[]) {
   return historico.slice(ultima + 1).filter((x) => x.de === "pessoa");
 }
 
+/** O texto sem os botões entre colchetes do fim ("[Botão: Ver vagas]"). */
+const semBotoes = (t: string) => t.replace(/\s*\[Bot(ão|ões):[^\]]*\]\s*$/, "").trim();
+
+/**
+ * Quando a equipe responde: em breve, no horário (dias úteis, das 8h às 18h de Brasília); fora dele, quando ela volta
+ * ("hoje de manhã", "amanhã de manhã" ou "na segunda de manhã").
+ */
+export function quandoAEquipeResponde(agora = new Date()) {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "short",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(agora);
+  const dia = partes.find((p) => p.type === "weekday")?.value ?? "Mon";
+  const hora = Number(partes.find((p) => p.type === "hour")?.value ?? 12);
+  const util = dia !== "Sat" && dia !== "Sun";
+  if (util && hora >= 8 && hora < 18) return "em breve";
+  if (util && hora < 8) return "hoje de manhã";
+  if (dia === "Mon" || dia === "Tue" || dia === "Wed" || dia === "Thu") return "amanhã de manhã";
+  return "na segunda de manhã";
+}
+
+/** "Certo! Vou pedir para alguém da equipe…", com quando a equipe responde. */
+export function passarParaEquipe(
+  comeco: "Certo!" | "Para continuar," | "Para te ajudar direitinho,",
+  agora = new Date(),
+) {
+  const quando = quandoAEquipeResponde(agora);
+  const vou = comeco.endsWith(",") ? "vou" : "Vou";
+  return `${comeco} ${vou} pedir para alguém da equipe do Publike te responder por aqui. ${
+    quando === "em breve"
+      ? "Em breve alguém fala com você."
+      : `Agora a equipe está fora do horário: alguém fala com você ${quando}.`
+  }`;
+}
+
+// --- Onde procurar as vagas -------------------------------------------------------------------------------------
+
+/** A cidade de um bairro, pelas listas de bairros (Goiânia primeiro, a maior); sem achar, Goiânia. */
+function cidadeDoBairro(bairro: string): Cidade {
+  const chave = chaveBairro(bairro);
+  const ordem = ["Goiânia" as Cidade, ...CIDADES.filter((c) => c !== "Goiânia")];
+  return ordem.find((c) => BAIRROS[c]?.some((b) => chaveBairro(b) === chave)) ?? "Goiânia";
+}
+
+/** Onde a pessoa disse que mora ou quer trabalhar (a cidade e o bairro que a IA tirou da conversa). */
+export function lugarDaBusca(cidade: string, bairro: string): Local | null {
+  const b = bairro.replace(/\s+/g, " ").trim().slice(0, 60);
+  const c = CIDADES.find((x) => simples(x) === simples(cidade)) ?? (b ? cidadeDoBairro(b) : null);
+  return c ? criarLocal(c, b, "busca") : null;
+}
+
+/**
+ * As vagas no ar que combinam com o que a pessoa disse, em linhas com o link: perto do lugar que ela disse (o bairro
+ * primeiro, depois a região e a cidade) ou da localização que ela mandou; sem lugar, as mais novas.
+ */
+async function vagasEmTexto(
+  busca: { texto: string; categoria: string },
+  onde: {
+    local?: Local | null;
+    ponto?: { lat: number; lng: number } | null;
+  } = {},
+) {
+  // a cidade, o bairro e a região só ordenam (o bairro primeiro, depois a região e a cidade); quem corta é o raio
+  const centro = onde.local ? pontoDoLocal(onde.local) : null;
+  const lugar = onde.ponto
+    ? { p_lat: onde.ponto.lat, p_lng: onde.ponto.lng, p_raio_km: 30, p_ordem: "perto", p_por_distancia: true }
+    : onde.local && centro
+      ? {
+          p_lat: centro.lat,
+          p_lng: centro.lng,
+          p_raio_km: 40,
+          p_ordem: "perto",
+          p_cidade: onde.local.cidade,
+          p_bairro: onde.local.bairro || null,
+          p_bairros_regiao: onde.local.regiao ? chavesDaRegiao(onde.local.regiao) : null,
+          p_regiao: onde.local.regiao,
+        }
+      : { p_raio_km: 60, p_ordem: "recentes" };
+  const tentar = async (texto: string | null, categoria: string | null) => {
+    const { data, error } = await criarClientePublico().rpc("buscar_anuncios", {
+      ...lugar,
+      p_tipo: "vaga",
+      p_texto: texto,
+      p_categoria: categoria,
+      p_limite: 20,
+    });
+    return error ? [] : (data ?? []);
+  };
+  const texto = busca.texto.trim().slice(0, 60) || null;
+  const categoria = CATEGORIAS.some((c) => c.slug === busca.categoria) ? busca.categoria : null;
+  let lista = await tentar(texto, categoria);
+  if (!lista.length && categoria) lista = await tentar(texto, null);
+  // sem nada com a função inteira ("auxiliar de cozinha"), as que começam igual ("auxiliar"): são parecidas, não iguais
+  let parecidas = false;
+  if (!lista.length && texto && texto.length > 6) {
+    lista = await tentar(texto.slice(0, 6), null);
+    parecidas = lista.length > 0;
+  }
+  if (!lista.length) return null;
+  const linha = (a: (typeof lista)[number]) => {
+    const valor = valorDoAnuncio(a);
+    return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${formatarLugar(a.bairro, a.cidade)}\n${link(`/anuncio/${a.id}`)}`;
+  };
+  // a mensagem com botão vai até 1.024 letras: com links longos, cabem menos vagas
+  let n = Math.min(4, lista.length);
+  while (n > 1 && lista.slice(0, n).map(linha).join("\n\n").length > 800) n--;
+  const p = new URLSearchParams({ tipo: "vaga" });
+  if (texto) p.set("q", texto);
+  return {
+    texto: lista.slice(0, n).map(linha).join("\n\n"),
+    mais: lista.length > n ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
+    parecidas,
+  };
+}
+
 // --- Os textos prontos ------------------------------------------------------------------------------------------
 
-const oi = (nome: string | null) => `Oi${nome ? `, ${nome}` : ""}!`;
+/** "Bom dia", "Boa tarde" ou "Boa noite", quando a pessoa cumprimentou assim; senão, "Oi". */
+export function cumprimentoDe(textos: string[]) {
+  const s = simples(textos.join(" "));
+  if (/\bbom dia\b/.test(s)) return "Bom dia";
+  if (/\bboa tarde\b/.test(s)) return "Boa tarde";
+  if (/\bboa noite\b/.test(s)) return "Boa noite";
+  return "Oi";
+}
 
-function boasVindas(nome: string | null) {
+const oi = (nome: string | null, comeco = "Oi") => `${comeco}${nome ? `, ${nome}` : ""}!`;
+
+function boasVindas(nome: string | null, comeco: string) {
   return [
-    `${oi(nome)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.`,
+    `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.`,
     `O Publike é um site *grátis* de vagas de emprego perto de casa, em ${ONDE_FUNCIONA}:\n• quem procura trabalho se candidata pelo celular e acompanha cada passo: se a empresa viu, se aceitou e quando é a entrevista;\n• quem contrata publica a vaga de graça e recebe os candidatos organizados.`,
     "Como posso te ajudar?",
   ].join("\n\n");
@@ -304,46 +429,19 @@ const PARA_QUEM_CONTRATA = [
   `Dá para ter até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça, sem limite de candidatos. Quem contrata muito tem planos com recursos a mais, como a triagem com IA. Se ficar alguma dúvida, é só me perguntar.`,
 ].join("\n\n");
 
-const PASSAR_PARA_EQUIPE =
-  "Certo! Vou pedir para alguém da equipe do Publike te responder por aqui. Em breve alguém fala com você, no horário comercial.";
-const CONTINUAR_COM_A_EQUIPE =
-  "Para continuar, vou pedir para alguém da equipe do Publike te responder por aqui. Em breve alguém fala com você, no horário comercial.";
+const POR_NADA = "Por nada! 😊 Qualquer coisa, é só chamar.";
 
 // --- A IA -------------------------------------------------------------------------------------------------------
 
-function instrucoes(e: Entrada, jaFalou: boolean) {
-  const nome = primeiroNome(e.nome);
-  const anuncio = [e.origem?.titulo, e.origem?.texto]
-    .filter(Boolean)
-    .join(" — ");
-  const quem = [
-    nome
-      ? `A pessoa se chama ${nome} (é o nome dela no WhatsApp, não o seu). Chame pelo nome no máximo uma vez, na saudação.`
-      : "O nome de quem escreve não veio: não chame a pessoa por nome.",
-    e.conta
-      ? `Este número já tem conta no Publike (${e.conta.tipo === "pessoa" ? "de pessoa" : "de empresa, comércio ou agência"}).`
-      : "Este número ainda não tem conta no Publike.",
-    e.perfil === "trabalho"
-      ? "Ela procura trabalho."
-      : e.perfil === "contratar"
-        ? "Ela quer contratar."
-        : "Ainda não se sabe se ela procura trabalho ou quer contratar.",
-    anuncio
-      ? `Ela chegou por um anúncio do Publike no Instagram ou no Facebook: "${anuncio}".`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  return `Você responde o WhatsApp oficial do Publike, um site grátis de vagas de emprego, freelances e serviços perto de casa, em ${ONDE_FUNCIONA}.
+/** As instruções da IA: sempre as mesmas (o que muda vai em `contexto`), para o Claude guardar e cobrar menos. */
+let instrucoesGuardadas: string | null = null;
+function instrucoes() {
+  instrucoesGuardadas ??= `Você responde o WhatsApp oficial do Publike, um site grátis de vagas de emprego, freelances e serviços perto de casa, em ${ONDE_FUNCIONA}. O que você sabe desta conversa vem em "Sobre esta conversa", no começo da mensagem.
 
 Quem você é
 - Você é o ${QUEM_ATENDE}, do Publike.
-- ${
-    jaFalou
-      ? 'Você já falou com a pessoa nesta conversa: não se apresente de novo e não comece com "Oi".'
-      : `Esta é a sua primeira mensagem para a pessoa: comece com "${oi(nome)} Aqui é o ${QUEM_ATENDE}, do Publike." e diga numa frase o que é o Publike; depois responda.`
-  }
+- Na sua primeira mensagem para a pessoa (está dito em "Sobre esta conversa"), comece com "Oi, <primeiro nome>! Aqui é o ${QUEM_ATENDE}, do Publike." (sem nome, só "Oi!"; se ela disse "bom dia", "boa tarde" ou "boa noite", comece igual) e diga numa frase o que é o Publike; depois responda. Nas outras, não se apresente de novo e não comece com "Oi".
+- O nome que vem em "Sobre esta conversa" é o da pessoa, não o seu: chame pelo nome no máximo uma vez, na saudação.
 - Se a pessoa perguntar se está falando com um robô, diga com franqueza que é o atendimento automático do Publike, em nome do ${QUEM_ATENDE}, e que alguém da equipe responde por aqui se ela quiser.
 
 Como responder
@@ -354,6 +452,7 @@ Como responder
 - Sem pressa de vender: não termine toda mensagem com uma pergunta nem convidando a publicar vaga, procurar vaga ou fazer currículo. Ofereça o próximo passo só quando ele ajudar a pessoa a resolver o que ela falou, e uma vez só.
 - Não escreva links nem endereços de site. Quando a pessoa precisar abrir o site, escolha o botão no campo "link": ele vai junto da mensagem, e no texto você pode dizer "é só tocar no botão abaixo".
 - Não repita o que você já disse na conversa. Não pergunte se a pessoa procura trabalho ou quer contratar: quando ainda não se sabe, a mensagem já vai com os botões "Procuro trabalho" e "Quero contratar".
+- As mensagens que começam com 🎤 vieram em áudio e foram passadas para texto (pode haver palavra trocada): responda normalmente, por escrito.
 
 O que nunca fazer
 - Nunca invente vaga, empresa, salário, preço, prazo ou regra: use só o que está aqui. Não diga o preço dos planos: escolha o botão "empresas".
@@ -363,15 +462,14 @@ O que nunca fazer
 O essencial do Publike
 - Para quem procura trabalho: é grátis, sempre. A pessoa faz o currículo pelo celular em poucos minutos (dá para mandar o PDF, uma foto ou contar falando), vê as vagas perto de casa e se candidata com um toque, no botão Curtir da vaga. Depois acompanha cada candidatura: se a empresa viu, se aceitou e quando é a entrevista. Quando a empresa aceita, as duas se conectam e conversam direto.
 - Para quem contrata (empresa, comércio, agência ou família): publicar é grátis, até ${LIMITES_CONTA.comum.noAr} vagas no ar ao mesmo tempo, sem limite de candidatos. Dá para colar o texto da vaga ou mandar a foto do anúncio, e o Publike preenche tudo para conferir. Os candidatos chegam no painel com o quanto combinam com a vaga. Para quem contrata muito, há planos com recursos a mais (triagem com IA, teste prático, entrevista em vídeo e mais vagas no ar).
-
-${quem}
+- Onde funciona: ${ONDE_FUNCIONA}.
 
 O que fazer (campo "acao")
 - responder: o normal.
-- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"). Preencha "busca.texto" com a função, no singular, como ela falou ("cozinheira", "motorista"), e "busca.categoria" só se tiver certeza (senão "todas"). A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista no ar agora:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz.
-- equipe: a pessoa pede para falar com alguém, reclama, fala de pagamento, cobrança ou golpe, de problema na conta, de parceria ou de imprensa, ou você não sabe a resposta. Responda o que der (no golpe: não pague nada) e diga que vai pedir para alguém da equipe responder por aqui, em breve, no horário comercial.
-- silencio: a mensagem não pede resposta, como "ok", "beleza", "👍" ou um "obrigado" depois que você já se despediu. Deixe "resposta" vazia. Para o primeiro "obrigado", use responder, com uma frase curta e sem pergunta.
-Fora de buscar_vagas, "busca" vai com texto vazio e categoria "todas".
+- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. Preencha "busca.texto" com a função, no singular, como ela falou ("cozinheira", "motorista"); "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz e onde mora.
+- equipe: a pessoa pede para falar com alguém, reclama, fala de pagamento, cobrança ou golpe, de problema na conta, de parceria ou de imprensa, ou você não sabe a resposta. Responda o que der (no golpe: não pague nada) e diga que vai pedir para alguém da equipe responder por aqui, no prazo que está em "Sobre esta conversa".
+- silencio: a mensagem não pede resposta, como "ok", "beleza", "👍" ou um "obrigado" depois que você já se despediu. Deixe "resposta" vazia.
+Fora de buscar_vagas, "busca" vai com texto, cidade e bairro vazios e categoria "todas".
 
 O botão (campo "link")
 - vagas: ver as vagas no ar. publicar: publicar uma vaga. curriculo: fazer ou mudar o currículo. empresas: o que o Publike oferece a quem contrata, com os planos. ajuda: as perguntas e respostas do site. entrar: entrar na conta. nenhum: sem botão.
@@ -382,6 +480,30 @@ Assunto que não é trabalho nem o Publike: diga com gentileza que por aqui voc�
 
 A Ajuda do site (o que você sabe sobre o Publike):
 ${textoDaAjuda()}`;
+  return instrucoesGuardadas;
+}
+
+/** O que muda de uma conversa para outra: vai na mensagem, antes da conversa. */
+function contexto(e: Entrada, jaFalou: boolean, agora: Date) {
+  const nome = primeiroNome(e.nome);
+  const anuncio = [e.origem?.titulo, e.origem?.texto].filter(Boolean).join(" — ");
+  return [
+    "Sobre esta conversa:",
+    nome ? `- A pessoa se chama ${nome}.` : "- O nome da pessoa não veio: não chame por nome.",
+    e.conta
+      ? `- Este número já tem conta no Publike (${e.conta.tipo === "pessoa" ? "de pessoa" : "de empresa, comércio ou agência"}).`
+      : "- Este número ainda não tem conta no Publike.",
+    e.perfil === "trabalho"
+      ? "- Ela procura trabalho."
+      : e.perfil === "contratar"
+        ? "- Ela quer contratar."
+        : "- Ainda não se sabe se ela procura trabalho ou quer contratar.",
+    anuncio ? `- Ela chegou por um anúncio do Publike no Instagram ou no Facebook: "${anuncio}".` : null,
+    jaFalou ? "- Você já falou com ela nesta conversa." : "- Esta é a sua primeira mensagem para ela.",
+    `- Se passar a conversa para a equipe, alguém responde por aqui ${quandoAEquipeResponde(agora)}.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function transcricao(historico: Mensagem[]) {
@@ -389,49 +511,38 @@ function transcricao(historico: Mensagem[]) {
   return `Conversa até agora:\n${historico.map((m) => `${quem[m.de]}: ${m.texto}`).join("\n")}\n\nResponda à Pessoa (às mensagens dela depois da sua última resposta).`;
 }
 
-/** As vagas no ar que combinam com o que a pessoa disse (as mais perto do centro de Goiânia), em linhas com o link. */
-async function vagasEmTexto(busca: Plano["busca"]) {
-  const tentar = async (texto: string | null, categoria: string | null) => {
-    const { data, error } = await criarClientePublico().rpc("buscar_anuncios", {
-      p_tipo: "vaga",
-      p_texto: texto,
-      p_categoria: categoria,
-      p_raio_km: 60,
-      p_ordem: "recentes",
-      p_limite: 20,
-    });
-    return error ? [] : (data ?? []);
-  };
-  const texto = busca.texto.trim().slice(0, 60) || null;
-  const categoria = CATEGORIAS.some((c) => c.slug === busca.categoria)
-    ? busca.categoria
-    : null;
-  let lista = await tentar(texto, categoria);
-  if (!lista.length && categoria) lista = await tentar(texto, null);
-  if (!lista.length && texto && texto.length > 6)
-    lista = await tentar(texto.slice(0, 6), null);
-  if (!lista.length) return null;
-  const linha = (a: (typeof lista)[number]) => {
-    const valor = valorDoAnuncio(a);
-    return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${formatarLugar(a.bairro, a.cidade)}\n${link(`/anuncio/${a.id}`)}`;
-  };
-  // a mensagem com botão vai até 1.024 letras: com links longos, cabem menos vagas
-  let n = Math.min(4, lista.length);
-  while (n > 1 && lista.slice(0, n).map(linha).join("\n\n").length > 800) n--;
-  const p = new URLSearchParams({ tipo: "vaga" });
-  if (texto) p.set("q", texto);
-  return {
-    texto: lista.slice(0, n).map(linha).join("\n\n"),
-    mais:
-      lista.length > n ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
-  };
-}
-
 /** O modelo do chat (Admin › IA), se a IA está configurada. */
 async function modeloDoAtendimento() {
   if (!iaConfigurada()) return null;
   const { data } = await criarClientePublico().rpc("config_publica");
   return modeloPara(data?.[0], "chat");
+}
+
+/** O áudio que a pessoa mandou, em texto ("🎤 …"); sem a transcrição (ou se falhou), null. */
+async function audioEmTexto(cfg: ConfigMeta, audio: { id: string; tipo: string | null }) {
+  if (!falaDisponivel()) return null;
+  const arquivo = await baixarMidia(cfg, audio.id);
+  if (!arquivo) return null;
+  const extensao = /mpeg|mp3/.test(arquivo.tipo) ? "mp3" : /mp4|m4a|aac/.test(arquivo.tipo) ? "m4a" : "ogg";
+  try {
+    // até 20 s: depois disso, a conversa segue sem o áudio ("Não consegui ouvir esse áudio")
+    let relogio: ReturnType<typeof setTimeout> | undefined;
+    const texto = await Promise.race([
+      transcrever(
+        arquivo.dados,
+        `audio.${extensao}`,
+        `Uma pessoa manda um áudio no WhatsApp do Publike, um site de vagas de emprego em ${ONDE_FUNCIONA}, sobre vagas, currículo, candidatura ou como contratar.`,
+      ),
+      new Promise<never>((_, falhou) => {
+        relogio = setTimeout(() => falhou(new Error("a transcrição passou de 20 s")), 20_000);
+      }),
+    ]).finally(() => clearTimeout(relogio));
+    const limpo = texto.replace(/\s+/g, " ").trim().slice(0, 1500);
+    return limpo ? `🎤 ${limpo}` : null;
+  } catch (erro) {
+    console.error("Publike: o áudio do atendimento não virou texto:", erro instanceof Error ? erro.message : erro);
+    return null;
+  }
 }
 
 /** Corta no fim de uma frase antes do limite (a mensagem com botão vai até 1.024 letras). */
@@ -449,33 +560,24 @@ export async function atenderConversa(
   cfg: ConfigMeta,
   banco: ClienteBanco,
   chave: string,
-  m: {
-    wamid: string;
-    numero: string;
-    texto: string;
-    payload: string | null;
-    nome: string | null;
-    origem: Record<string, string | null> | null;
-  },
-  opcoes: { espera?: typeof ESPERA } = {},
+  recebida: MensagemDoAtendimento,
+  opcoes: { espera?: typeof ESPERA; agora?: Date } = {},
 ) {
-  const { data, error } = await banco.rpc(
-    "servidor_whatsapp_conversa_entrada",
-    {
-      p_chave: chave,
-      p_numero: m.numero,
-      p_texto: m.texto,
-      p_nome: m.nome,
-      p_origem: (m.origem as Json) ?? null,
-      p_payload: m.payload,
-      p_wamid: m.wamid,
-    },
-  );
+  // o áudio vira texto antes de entrar na conversa (sem a transcrição, fica o "[a pessoa mandou um áudio]")
+  const falado = recebida.audio ? await audioEmTexto(cfg, recebida.audio) : null;
+  const m = falado ? { ...recebida, texto: falado } : recebida;
+
+  const { data, error } = await banco.rpc("servidor_whatsapp_conversa_entrada", {
+    p_chave: chave,
+    p_numero: m.numero,
+    p_texto: m.texto,
+    p_nome: m.nome,
+    p_origem: (m.origem as Json) ?? null,
+    p_payload: m.payload,
+    p_wamid: m.wamid,
+  });
   if (error || !data) {
-    console.error(
-      "Publike: a conversa do WhatsApp não entrou:",
-      error?.message,
-    );
+    console.error("Publike: a conversa do WhatsApp não entrou:", error?.message);
     return;
   }
   const e = data as unknown as Entrada;
@@ -483,23 +585,23 @@ export async function atenderConversa(
   // o código que a Meta manda ao ligar o número no Instagram fica guardado na conversa, sem resposta
   if (codigoDaMeta(m.texto)) return;
 
-  // o "👍" ou a figurinha depois de conversar não vai ter resposta: só marca como lida, sem o "digitando…"
+  // o "👍", o "ok" ou a figurinha depois de conversar não vão ter resposta: só "lida", sem o "digitando…"
+  const conversando = e.historico.some((x) => x.de !== "pessoa");
+  const semPergunta = !semBotoes(e.historico.findLast((x) => x.de !== "pessoa")?.texto ?? "").endsWith("?");
   const soReacao =
-    e.historico.some((x) => x.de !== "pessoa") &&
-    (soEmoji(m.texto) || midiaDaMensagem(m.texto) === "figurinha");
+    conversando &&
+    (soEmoji(m.texto) || midiaDaMensagem(m.texto) === "figurinha" || (semPergunta && soConfirmacao(m.texto)));
   await marcarLidaDigitando(cfg, m.wamid, !soReacao).catch(() => undefined);
 
   // espera um pouco: se chegou outra mensagem da pessoa, ela é que responde, com a conversa toda
   const espera = opcoes.espera ?? ESPERA;
-  await new Promise((r) =>
-    setTimeout(r, m.payload ? espera.botao : espera.texto),
-  );
-  const agora = await banco.rpc("servidor_whatsapp_conversa_ultima", {
+  await new Promise((r) => setTimeout(r, m.payload ? espera.botao : espera.texto));
+  const ultima = await banco.rpc("servidor_whatsapp_conversa_ultima", {
     p_chave: chave,
     p_conversa: e.chave,
   });
-  if (!agora.error && agora.data) {
-    const u = agora.data as unknown as {
+  if (!ultima.error && ultima.data) {
+    const u = ultima.data as unknown as {
       wamid: string | null;
       situacao: "robo" | "equipe";
       perfil: Entrada["perfil"];
@@ -511,6 +613,7 @@ export async function atenderConversa(
   }
   // sem a função (a migração 20270803120000 ainda não rodou), segue com a conversa da entrada
 
+  const agora = opcoes.agora ?? new Date();
   const saida = async (
     texto: string,
     extra: {
@@ -537,21 +640,11 @@ export async function atenderConversa(
         : "";
     // a mensagem com botão não saiu: vai o texto, com o link escrito
     if (!r.ok && (extra.menu || extra.botao)) {
-      console.error(
-        "Publike: a mensagem com botão do atendimento não saiu:",
-        r.erro,
-      );
-      r = await enviarTexto(
-        cfg,
-        m.numero,
-        extra.botao && url
-          ? `${texto}\n\n${extra.botao.titulo}: ${url}`
-          : texto,
-      );
+      console.error("Publike: a mensagem com botão do atendimento não saiu:", r.erro);
+      r = await enviarTexto(cfg, m.numero, extra.botao && url ? `${texto}\n\n${extra.botao.titulo}: ${url}` : texto);
       marca = "";
     }
-    if (!r.ok)
-      console.error("Publike: a resposta do atendimento não saiu:", r.erro);
+    if (!r.ok) console.error("Publike: a resposta do atendimento não saiu:", r.erro);
     await banco.rpc("servidor_whatsapp_conversa_saida", {
       p_chave: chave,
       p_conversa: e.chave,
@@ -566,25 +659,28 @@ export async function atenderConversa(
 
   // o botão "Falar com a equipe"
   if (e.pediu_equipe)
-    return saida(PASSAR_PARA_EQUIPE, {
+    return saida(passarParaEquipe("Certo!", agora), {
       equipe: true,
       motivo: "a pessoa pediu",
     });
   // passou das respostas do dia: a equipe continua
   if (e.respostas_hoje >= e.limite)
-    return saida(CONTINUAR_COM_A_EQUIPE, {
+    return saida(passarParaEquipe("Para continuar,", agora), {
       equipe: true,
-      motivo: "o número passou das respostas da IA no dia",
+      motivo: "o número passou das respostas do dia",
     });
 
   const nome = primeiroNome(e.nome);
   const respostas = e.historico.filter((x) => x.de !== "pessoa");
   const jaFalou = respostas.length > 0;
-  const minhaUltima = respostas.at(-1)?.texto ?? "";
+  const minhaUltima = semBotoes(respostas.at(-1)?.texto ?? "");
   const novas = semResposta(e.historico);
   const textos = novas.length ? novas.map((x) => x.texto) : [m.texto];
   const midias = textos.map(midiaDaMensagem);
   const semPerfil = !e.perfil;
+  const comeco = cumprimentoDe(textos);
+  // a apresentação, na primeira mensagem para a pessoa (as respostas prontas que não são as boas-vindas)
+  const ola = jaFalou ? "" : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.\n\n`;
 
   // os botões do começo, com texto pronto
   if (novas.length <= 1 && m.payload === "a:trabalho")
@@ -595,47 +691,82 @@ export async function atenderConversa(
       botao: LINKS.publicar,
     });
 
+  // "ok", "beleza", "👍" ou figurinha depois de conversar: não pedem resposta
+  if (
+    jaFalou &&
+    !minhaUltima.endsWith("?") &&
+    textos.every((t) => soConfirmacao(t) || soEmoji(t) || midiaDaMensagem(t) === "figurinha")
+  )
+    return;
+
+  // "obrigado": a despedida pronta, uma vez
+  if (jaFalou && textos.every((t) => soAgradecimento(t) || soEmoji(t))) {
+    if (minhaUltima.startsWith("Por nada")) return;
+    return saida(POR_NADA);
+  }
+
   // só "Oi", "Posso ter mais informações sobre isso?" ou uma figurinha
   const soOi = textos.every(
-    (t) =>
-      soCumprimento(t) ||
-      soEmoji(t) ||
-      midiaDaMensagem(t) === "figurinha" ||
-      (!jaFalou && pedidoGeral(t)),
+    (t) => soCumprimento(t) || soEmoji(t) || midiaDaMensagem(t) === "figurinha" || (!jaFalou && pedidoGeral(t)),
   );
   if (soOi) {
-    if (!jaFalou) return saida(boasVindas(nome), { menu: semPerfil });
-    // "👍" ou figurinha depois de conversar: não pede resposta
-    if (!textos.some(soCumprimento)) return;
-    const deNovo =
-      minhaUltima.startsWith("Oi") || minhaUltima.startsWith("Estou por aqui");
+    if (!jaFalou) return saida(boasVindas(nome, comeco), { menu: semPerfil });
+    const deNovo = /^(Oi|Bom dia|Boa tarde|Boa noite|Estou por aqui)\b/.test(minhaUltima);
     return saida(
       deNovo
         ? semPerfil
           ? "Estou por aqui! 😊 É só me contar como posso te ajudar, ou tocar num dos botões abaixo."
           : "Estou por aqui! 😊 É só me contar como posso te ajudar."
-        : `${oi(nome)} ${semPerfil ? "Como posso te ajudar?" : "Em que posso te ajudar?"}`,
+        : `${oi(nome, comeco)} ${semPerfil ? "Como posso te ajudar?" : "Em que posso te ajudar?"}`,
       { menu: semPerfil },
     );
   }
 
-  // só áudio, foto, vídeo ou arquivo: por aqui, só texto
+  // a localização: as vagas perto dela (para quem contrata, o endereço vai no Publicar)
+  if (m.local && midias.at(-1) === "localizacao") {
+    if (e.perfil === "contratar")
+      return saida(
+        `${ola}Recebi a localização! Por aqui eu não consigo publicar, mas no site o endereço da vaga entra no passo *Onde*, e a vaga aparece para quem mora perto.`,
+        { botao: LINKS.publicar },
+      );
+    const vagas = await vagasEmTexto({ texto: "", categoria: "todas" }, { ponto: m.local });
+    if (!vagas)
+      return saida(
+        `${ola}Agora não achei vaga no ar perto desse lugar. Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`,
+        { botao: LINKS.vagas },
+      );
+    return saida(
+      `${ola}Olha as vagas no ar mais perto desse lugar:\n\n${vagas.texto}\n\nPara se candidatar, abra a vaga e toque em *Curtir*.`,
+      { perfil: e.perfil ?? "trabalho", botao: vagas.mais },
+    );
+  }
+
+  // só áudio (que não virou texto), foto, vídeo ou arquivo: por aqui, só texto
   if (midias.every(Boolean)) {
     const tipo = midias.at(-1);
     if (tipo === "foto" && e.perfil === "contratar")
       return saida(
-        "Recebi a foto! Por aqui eu não consigo publicar, mas no site é rapidinho: toque em *Publicar vaga grátis* e envie a foto do anúncio lá. O Publike lê e preenche tudo para você conferir.",
+        `${ola}Recebi a foto! Por aqui eu não consigo publicar, mas no site é rapidinho: toque em *Publicar vaga grátis* e envie a foto do anúncio lá. O Publike lê e preenche tudo para você conferir.`,
         { botao: LINKS.publicar },
       );
-    if (tipo === "arquivo" && e.perfil !== "contratar")
+    // a foto de quem ainda não disse o que quer pode ser o currículo ou o anúncio de uma vaga: os botões do começo
+    // levam a cada caminho
+    if (tipo === "foto" && semPerfil)
       return saida(
-        "Recebi o arquivo, mas por aqui eu não consigo abrir. Se for o seu currículo, é só enviar no site: dá para mandar o PDF ou uma foto, e o Publike preenche tudo para você conferir.",
+        `${ola}Recebi a foto, mas por aqui eu não consigo abrir. No site dá: o Publike lê o currículo e também o anúncio de uma vaga, e preenche tudo para você conferir. Toque num botão abaixo que eu te mostro o caminho.`,
+        { menu: true },
+      );
+    if (tipo === "arquivo" || tipo === "foto")
+      return saida(
+        `${ola}Recebi ${tipo === "foto" ? "a foto" : "o arquivo"}, mas por aqui eu não consigo abrir. Se for o seu currículo, é só enviar no site: dá para mandar o PDF ou uma foto, e o Publike preenche tudo para você conferir.`,
         { botao: LINKS.curriculo },
       );
     return saida(
-      tipo === "audio"
-        ? "Ainda não consigo ouvir áudio por aqui. Pode me escrever? Assim eu já te respondo."
-        : "Por aqui eu só consigo ler mensagens escritas. Pode me contar por escrito?",
+      `${ola}${
+        tipo === "audio"
+          ? "Não consegui ouvir esse áudio. Pode me escrever? Assim eu já te respondo."
+          : "Por aqui eu só consigo ler mensagens escritas. Pode me contar por escrito?"
+      }`,
       { menu: !jaFalou && semPerfil },
     );
   }
@@ -643,7 +774,7 @@ export async function atenderConversa(
   // o resto, a IA
   const modelo = await modeloDoAtendimento();
   if (!modelo)
-    return saida(CONTINUAR_COM_A_EQUIPE, {
+    return saida(passarParaEquipe("Para te ajudar direitinho,", agora), {
       equipe: true,
       motivo: "a IA está desligada",
     });
@@ -653,30 +784,23 @@ export async function atenderConversa(
     const { texto } = await chamarIA({
       funcionalidade: "chat",
       modelo,
-      sistema: instrucoes(e, jaFalou),
-      mensagem: transcricao(
-        e.historico.length ? e.historico : [{ de: "pessoa", texto: m.texto }],
-      ),
+      sistema: instrucoes(),
+      mensagem: `${contexto(e, jaFalou, agora)}\n\n${transcricao(e.historico.length ? e.historico : [{ de: "pessoa", texto: m.texto }])}`,
       maxTokens: 600,
       esquema: ESQUEMA,
       tempoLimite: 20_000,
+      guardarSistema: true,
     });
     plano = lerJson<Plano>(texto);
   } catch (erro) {
-    console.error(
-      "Publike: a IA do atendimento falhou:",
-      erro instanceof Error ? erro.message : erro,
-    );
-    return saida(CONTINUAR_COM_A_EQUIPE, {
+    console.error("Publike: a IA do atendimento falhou:", erro instanceof Error ? erro.message : erro);
+    return saida(passarParaEquipe("Para te ajudar direitinho,", agora), {
       equipe: true,
       motivo: "a IA não respondeu",
     });
   }
 
-  const perfil =
-    plano.perfil === "trabalho" || plano.perfil === "contratar"
-      ? plano.perfil
-      : null;
+  const perfil = plano.perfil === "trabalho" || plano.perfil === "contratar" ? plano.perfil : null;
   // o que a IA não deve escrever: os colchetes dos botões
   let resposta = (plano.resposta ?? "")
     .replace(/\[bot(ão|ões)[^\]]*\]/gi, "")
@@ -695,7 +819,7 @@ export async function atenderConversa(
     return;
   }
   if (!resposta)
-    return saida(CONTINUAR_COM_A_EQUIPE, {
+    return saida(passarParaEquipe("Para te ajudar direitinho,", agora), {
       equipe: true,
       motivo: "a IA não soube responder",
     });
@@ -708,25 +832,22 @@ export async function atenderConversa(
 
   if (plano.acao === "buscar_vagas") {
     const busca = plano.busca?.texto?.trim().slice(0, 40) ?? "";
-    const vagas = await vagasEmTexto({
-      texto: busca,
-      categoria: plano.busca?.categoria ?? "todas",
-    });
+    const local = lugarDaBusca(plano.busca?.cidade ?? "", plano.busca?.bairro ?? "");
+    const vagas = await vagasEmTexto({ texto: busca, categoria: plano.busca?.categoria ?? "todas" }, { local });
+    // sem a frase da IA (ela apresenta vagas que não vieram), a apresentação vai junto, na primeira mensagem
+    const naoAchei = `Agora não achei vaga${busca ? ` de ${busca}` : ""} no ar${local ? " nessa região" : ""}.`;
     if (!vagas)
-      return saida(
-        `Agora não achei vaga${busca ? ` de ${busca}` : ""} no ar perto daqui. Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`,
-        { perfil: perfil ?? "trabalho", botao: LINKS.vagas },
-      );
-    resposta = `${resposta}\n\n${vagas.texto}\n\nPara se candidatar, abra a vaga e toque em *Curtir*.`;
+      return saida(`${ola}${naoAchei} Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`, {
+        perfil: perfil ?? "trabalho",
+        botao: LINKS.vagas,
+      });
+    resposta = `${vagas.parecidas ? `${ola}${naoAchei} Olha as que mais se parecem:` : resposta}\n\n${vagas.texto}\n\nPara se candidatar, abra a vaga e toque em *Curtir*.`;
     return saida(resposta, { perfil: perfil ?? "trabalho", botao: vagas.mais });
   }
 
   // o botão que abre o site, quando a conversa leva até ele; senão, os botões do começo, uma vez, enquanto não se sabe
   // o que a pessoa quer
-  const botao =
-    plano.link && plano.link !== "nenhum" && plano.link in LINKS
-      ? LINKS[plano.link]
-      : null;
+  const botao = plano.link && plano.link !== "nenhum" && plano.link in LINKS ? LINKS[plano.link] : null;
   const menuJaFoi = respostas.some((x) => x.texto.includes("[Botões:"));
   return saida(resposta, {
     perfil,

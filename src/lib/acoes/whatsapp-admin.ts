@@ -250,7 +250,7 @@ export async function salvarAtendimentoWhatsapp(ligado: boolean, porDia: number 
   return {
     ok: true,
     mensagem: ligado
-      ? "Atendimento ligado: a IA responde as próximas mensagens."
+      ? "Atendimento ligado: o Publike responde as próximas mensagens."
       : "Atendimento desligado: o número volta a dizer que só manda avisos.",
   };
 }
@@ -262,7 +262,13 @@ export async function mudarConversaWhatsapp(conversa: string, situacao: "robo" |
   const { error } = await c.rpc("admin_whatsapp_conversa_situacao", { p_conversa: conversa, p_situacao: situacao });
   if (error) return { ok: false, erro: error.message || "Não deu para mudar agora." };
   refresh();
-  return { ok: true, mensagem: situacao === "robo" ? "A IA volta a responder." : "A IA fica quieta nesta conversa." };
+  return {
+    ok: true,
+    mensagem:
+      situacao === "robo"
+        ? "O atendimento automático volta a responder."
+        : "O atendimento automático fica quieto nesta conversa.",
+  };
 }
 
 /** A equipe responde pelo número do Publike (só na janela de 24 horas depois da última mensagem da pessoa). */
@@ -291,5 +297,5 @@ export async function responderConversaWhatsapp(conversa: string, texto: string)
   });
   if (erroGravar) return { ok: false, erro: `Saiu, mas não ficou na conversa: ${erroGravar.message}` };
   refresh();
-  return { ok: true, mensagem: "Enviada. A IA fica quieta nesta conversa até você devolver." };
+  return { ok: true, mensagem: "Enviada. O atendimento automático fica quieto nesta conversa até você devolver." };
 }

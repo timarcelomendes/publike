@@ -133,6 +133,11 @@ type Pedido = {
   buscaNaWeb?: { cidade: string; regiao: string; maxBuscas?: number };
   /** Em milissegundos (padrão 45 s; a busca na internet demora mais). */
   tempoLimite?: number;
+  /**
+   * As instruções (`sistema`) são sempre as mesmas, longas, e o que muda vai na `mensagem`: o Claude guarda as
+   * instruções por 5 minutos (o cache) e a chamada seguinte paga 10% delas. A OpenAI guarda sozinha o começo igual.
+   */
+  guardarSistema?: boolean;
 };
 
 /** Por que a resposta parou antes: a IA se recusou ou acabou o espaço. */

@@ -6,8 +6,9 @@ import { assinaturaValida, tokenDoWebhookValido, tratarAvisoDaMeta, type AvisoDa
 //   GET: a Meta confere o endereço (hub.verify_token) e espera o hub.challenge de volta.
 //   POST: a entrega e a leitura dos avisos, os botões de resposta rápida e o PARAR. Só com a assinatura certa
 //   (X-Hub-Signature-256, com WHATSAPP_APP_SECRET). Erro: 500, e a Meta manda de novo (o banco não repete nada).
-//   Com o atendimento ligado (migração 20270801120000), a conversa com a IA roda em after(), dentro do maxDuration.
-export const maxDuration = 60;
+//   Com o atendimento ligado (migração 20270801120000), a conversa com a IA roda em after(), dentro do maxDuration:
+//   o áudio (baixar e virar texto, até ~35 s), a espera das mensagens seguidas (5 s) e a IA (até 20 s) cabem em 120 s.
+export const maxDuration = 120;
 
 export async function GET(request: Request) {
   const u = new URL(request.url);

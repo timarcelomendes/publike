@@ -19,6 +19,8 @@ export type PedidoClaude = {
   /** maxBuscas: quantas buscas a IA pode fazer (padrão 5) */
   buscaNaWeb?: { cidade: string; regiao: string; maxBuscas?: number };
   tempoLimite?: number;
+  /** as instruções ficam guardadas por 5 minutos (cache_control): a chamada seguinte paga 10% delas */
+  guardarSistema?: boolean;
 };
 
 export class ErroClaude extends Error {
@@ -119,7 +121,12 @@ type Bloco = {
 type RespostaClaude = {
   content?: Bloco[];
   stop_reason?: string | null;
-  usage?: { input_tokens?: number; output_tokens?: number };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
 };
 
 export async function chamarClaude(
@@ -159,7 +166,10 @@ export async function chamarClaude(
     : p.sistema;
   const corpo: Record<string, unknown> = {
     model: p.modelo,
-    system: sistema,
+    system:
+      p.guardarSistema && !formatoNoTexto
+        ? [{ type: "text", text: sistema, cache_control: { type: "ephemeral" } }]
+        : sistema,
     max_tokens: p.buscaNaWeb ? p.maxTokens + 2000 : p.maxTokens,
     messages: [{ role: "user", content: conteudo }],
     // o Haiku responde direto; o Sonnet só raciocina entre uma busca e outra
@@ -197,7 +207,12 @@ export async function chamarClaude(
   let json: RespostaClaude = {};
   for (let vez = 0; vez < 4; vez++) {
     json = await pedirAoClaude(corpo, chave, p.tempoLimite);
-    tokens.entrada += json.usage?.input_tokens ?? 0;
+    // com as instruções guardadas (guardarSistema), a entrada conta pelo preço: guardar custa 1,25 vez; ler, 0,1
+    tokens.entrada += Math.round(
+      (json.usage?.input_tokens ?? 0) +
+        (json.usage?.cache_creation_input_tokens ?? 0) * 1.25 +
+        (json.usage?.cache_read_input_tokens ?? 0) * 0.1,
+    );
     tokens.saida += json.usage?.output_tokens ?? 0;
     for (const b of json.content ?? []) {
       if (b.type === "server_tool_use") buscas++;

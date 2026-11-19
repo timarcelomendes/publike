@@ -25,7 +25,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Posso falar com o Publike pelo WhatsApp?",
-        r: "Pode. Escreva para o WhatsApp oficial do Publike, (62) 8477-1907: a IA do Publike responde na hora o que é o Publike, como se candidatar, como publicar uma vaga e mostra vagas do que você faz. Para falar com uma pessoa da equipe, toque em “Falar com a equipe” ou peça na conversa: alguém responde por ali, no horário comercial. O Publike nunca pede documento, senha, código de SMS nem dinheiro pelo WhatsApp.",
+        r: "Pode. Escreva ou mande um áudio para o WhatsApp oficial do Publike, (62) 8477-1907: a resposta chega na hora, com o que é o Publike, como se candidatar e como publicar uma vaga. Conte o que você faz e o bairro onde mora (ou mande a sua localização), que chegam as vagas no ar perto de você. Para falar com uma pessoa da equipe, toque em “Falar com a equipe” ou peça na conversa: alguém responde por ali no horário comercial, nos dias úteis. O Publike nunca pede documento, senha, código de SMS nem dinheiro pelo WhatsApp.",
       },
       {
         p: "Funciona em quais cidades?",

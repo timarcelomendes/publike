@@ -1379,6 +1379,9 @@ type Conversas = {
     contratar: number;
     respostas_robo_7_dias: number;
     gratis_agora: number;
+    /** migração 20270805120000: as contas criadas pelos links do atendimento */
+    contas_7_dias?: number;
+    contas_30_dias?: number;
   };
   lista: {
     chave: string;
@@ -1413,7 +1416,21 @@ type ConversaAberta = {
 };
 
 const PERFIL_DA_CONVERSA = { trabalho: "Procura trabalho", contratar: "Quer contratar" } as const;
-const QUEM_FALOU = { pessoa: "Pessoa", robo: "IA do Publike", equipe: "Equipe" } as const;
+const QUEM_FALOU = { pessoa: "Pessoa", robo: "Publike", equipe: "Equipe" } as const;
+
+/** A resposta guardada leva os botões que foram junto entre colchetes, no fim ("[Botões: A · B]", "[Botão: Ver vagas]"). */
+const MARCA_DOS_BOTOES = /\s*\[Bot(?:ão|ões):([^\]]*)\]?\s*$/;
+function separarBotoes(texto: string) {
+  const m = texto.match(MARCA_DOS_BOTOES);
+  if (!m) return { texto, botoes: [] as string[] };
+  return {
+    texto: texto.slice(0, m.index).trimEnd(),
+    botoes: m[1]
+      .split("·")
+      .map((b) => b.trim())
+      .filter(Boolean),
+  };
+}
 
 const linkDaConversa = (na: NaConversa, mudanca: Record<string, string | null>) =>
   linkCom(
@@ -1444,25 +1461,38 @@ function AbaConversas({
   return (
     <div className="flex flex-col gap-6">
       <Secao
-        titulo="Atendimento pela IA"
+        titulo="Atendimento automático"
         descricao={
           <>
             Quem escreve para o número do Publike (quase sempre vindo de um anúncio de clique para o WhatsApp) recebe a
-            resposta da IA, com o que está na Ajuda e as vagas no ar. A primeira resposta pergunta se a pessoa procura
-            trabalho ou quer contratar. Quando ela pede alguém, a IA não sabe ou o número passa das respostas do dia, a
-            conversa vem para a equipe e chega o e-mail dos Avisos para a equipe. A conversa que começa num anúncio não
-            paga nada à Meta por até 7 dias depois da primeira resposta.
+            resposta na hora, em nome do Marcelo: os momentos de sempre (o primeiro “Oi”, “Procuro trabalho”, “Quero
+            contratar”, o “obrigado”) têm texto pronto, e o resto a IA responde com o que está na Ajuda e as vagas no ar,
+            perto de onde a pessoa disse que mora. O áudio vira texto. Quando a pessoa pede alguém, a IA não sabe ou o
+            número passa das respostas do dia, a conversa vem para a equipe e chega o e-mail dos Avisos para a equipe, com
+            as últimas mensagens. A conversa que começa num anúncio não paga nada à Meta por até 7 dias depois da
+            primeira resposta.
           </>
         }
       >
         <AtendimentoWhatsapp ligado={d.ligado} porDia={d.por_dia} />
       </Secao>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Numero rotulo="Conversas em 7 dias" valor={r.conversas_7_dias} />
         <Numero rotulo="Vieram do anúncio" valor={r.de_anuncio_7_dias} detalhe="em 7 dias" />
         <Numero rotulo="Com a equipe" valor={r.com_a_equipe} alerta={r.com_a_equipe > 0} />
-        <Numero rotulo="Respostas da IA" valor={r.respostas_robo_7_dias} detalhe={`em 7 dias · ${plural(r.gratis_agora, "na janela grátis", "na janela grátis")}`} />
+        <Numero
+          rotulo="Respostas do Publike"
+          valor={r.respostas_robo_7_dias}
+          detalhe={`em 7 dias · ${plural(r.gratis_agora, "na janela grátis", "na janela grátis")}`}
+        />
+        {typeof r.contas_7_dias === "number" && (
+          <Numero
+            rotulo="Contas criadas"
+            valor={r.contas_7_dias}
+            detalhe={`em 7 dias, pelos links da conversa · ${formatarNumero(r.contas_30_dias ?? 0)} em 30 dias`}
+          />
+        )}
       </div>
 
       <Filtros
@@ -1476,7 +1506,8 @@ function AbaConversas({
         link={(v) => linkDaConversa(na, { filtro: v === "todas" ? null : v, c: null })}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      {/* minmax(0, 1fr) também no celular: um link comprido numa mensagem não alarga a página */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className="flex flex-col gap-2">
           {d.lista.length === 0 ? (
             <Vazio titulo="Nenhuma conversa ainda" icone={MessageCircle}>
@@ -1504,7 +1535,7 @@ function AbaConversas({
                       </span>
                       {x.ultima && (
                         <span className="line-clamp-2 text-body-sm text-ink-muted">
-                          {QUEM_FALOU[x.ultima.de]}: {x.ultima.texto}
+                          {QUEM_FALOU[x.ultima.de]}: {separarBotoes(x.ultima.texto).texto}
                         </span>
                       )}
                       <span className="text-caption text-ink-muted">{quandoFoi(x.ultima_em, agora)}</span>
@@ -1569,26 +1600,41 @@ function ConversaDoWhatsapp({ c, agora }: { c: ConversaAberta; agora: number }) 
         </div>
         <div className="flex flex-col items-end gap-1">
           <Selo variante={c.situacao === "equipe" ? "aviso" : "match"}>
-            {c.situacao === "equipe" ? "A equipe responde" : "A IA responde"}
+            {c.situacao === "equipe" ? "A equipe responde" : "O Publike responde"}
           </Selo>
           <SituacaoDaConversa conversa={c.chave} situacao={c.situacao} />
         </div>
       </header>
 
       <ol className="flex flex-col gap-2">
-        {c.mensagens.map((m, i) => (
-          <li
-            key={i}
-            className={`max-w-[85%] rounded-md px-3 py-2 text-body-sm whitespace-pre-line ${
-              m.de === "pessoa" ? "self-start bg-surface-300" : m.de === "equipe" ? "self-end border border-ink" : "self-end border border-line bg-surface-100"
-            }`}
-          >
-            <span className="block text-caption text-ink-muted">
-              {QUEM_FALOU[m.de]} · {quandoFoi(m.em, agora)}
-            </span>
-            {m.texto}
-          </li>
-        ))}
+        {c.mensagens.map((m, i) => {
+          // os botões que foram junto da resposta, como a pessoa viu (embaixo da mensagem)
+          const { texto, botoes } = m.de === "pessoa" ? { texto: m.texto, botoes: [] } : separarBotoes(m.texto);
+          return (
+            <li
+              key={i}
+              className={`flex max-w-[85%] flex-col gap-2 rounded-md px-3 py-2 text-body-sm ${
+                m.de === "pessoa" ? "self-start bg-surface-300" : m.de === "equipe" ? "self-end border border-ink" : "self-end border border-line bg-surface-100"
+              }`}
+            >
+              <span className="whitespace-pre-line [overflow-wrap:anywhere]">
+                <span className="block text-caption text-ink-muted">
+                  {QUEM_FALOU[m.de]} · {quandoFoi(m.em, agora)}
+                </span>
+                {texto}
+              </span>
+              {botoes.length > 0 && (
+                <span className="flex flex-wrap gap-1" aria-label="Botões que foram junto">
+                  {botoes.map((b) => (
+                    <span key={b} className="rounded-full border border-line bg-surface-200 px-2 py-0.5 text-caption">
+                      {b}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ol>
 
       <ResponderConversa conversa={c.chave} aberta={janelaAberta} />

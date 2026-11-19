@@ -839,22 +839,24 @@ export function AtendimentoWhatsapp({ ligado, porDia }: { ligado: boolean; porDi
           onChange={(ev) => setLiga(ev.target.checked)}
         />
         <span className="text-body-sm">
-          <span className="text-label">A IA responde quem escreve para o número do Publike</span>
+          <span className="text-label">O Publike responde quem escreve para o número</span>
           <br />
           <span className="text-ink-muted">
-            Desligado, o número responde uma vez por dia que só manda avisos, como antes.
+            Com os textos prontos e a IA. Desligado, o número responde uma vez por dia que só manda avisos, como antes.
           </span>
         </span>
       </label>
       <label className="flex max-w-xs flex-col gap-1 text-body-sm">
-        <span className="text-label">Respostas da IA por número a cada 24 horas</span>
+        <span className="text-label">Respostas por número a cada 24 horas</span>
         <input
           inputMode="numeric"
           className={classesEntrada}
           value={n}
           onChange={(ev) => setN(ev.target.value)}
         />
-        <span className="text-caption text-ink-muted">Depois disso, a conversa passa para a equipe.</span>
+        <span className="text-caption text-ink-muted">
+          Contam as respostas prontas e as da IA. Depois disso, a conversa passa para a equipe.
+        </span>
       </label>
       <div>
         <button type="submit" disabled={pendente} className={classesBotao("secundario", "sm")}>
@@ -884,7 +886,7 @@ export function SituacaoDaConversa({ conversa, situacao }: { conversa: string; s
           })
         }
       >
-        {pendente ? "Mudando…" : para === "robo" ? "Devolver para a IA" : "Pegar a conversa"}
+        {pendente ? "Mudando…" : para === "robo" ? "Devolver para o automático" : "Pegar a conversa"}
       </button>
       <Resposta r={resposta} />
     </div>
