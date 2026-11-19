@@ -10,6 +10,7 @@ import {
   Iniciais,
   quandoNaLista,
   semMarcas,
+  separarBotoes,
   TextoDoWhatsapp,
 } from "@/components/admin/conversa-whatsapp-visual";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
@@ -1426,20 +1427,6 @@ type ConversaAberta = {
 
 const PERFIL_DA_CONVERSA = { trabalho: "Procura trabalho", contratar: "Quer contratar" } as const;
 const QUEM_FALOU = { pessoa: "Pessoa", robo: "Publike (automático)", equipe: "Equipe" } as const;
-
-/** A resposta guardada leva os botões que foram junto entre colchetes, no fim ("[Botões: A · B]", "[Botão: Ver vagas]"). */
-const MARCA_DOS_BOTOES = /\s*\[Bot(?:ão|ões):([^\]]*)\]?\s*$/;
-function separarBotoes(texto: string) {
-  const m = texto.match(MARCA_DOS_BOTOES);
-  if (!m) return { texto, botoes: [] as string[] };
-  return {
-    texto: texto.slice(0, m.index).trimEnd(),
-    botoes: m[1]
-      .split("·")
-      .map((b) => b.trim())
-      .filter(Boolean),
-  };
-}
 
 const linkDaConversa = (na: NaConversa, mudanca: Record<string, string | null>) =>
   linkCom(

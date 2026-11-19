@@ -76,3 +76,17 @@ export function TextoDoWhatsapp({ texto }: { texto: string }) {
 export function semMarcas(texto: string) {
   return texto.replace(/[*_~](\S[^*_~\n]*?\S|\S)[*_~]/g, "$1").replace(/\s+/g, " ").trim();
 }
+
+/** A resposta guardada leva os botões que foram junto entre colchetes, no fim ("[Botões: A · B]", "[Botão: Ver vagas]"). */
+const MARCA_DOS_BOTOES = /\s*\[Bot(?:ão|ões):([^\]]*)\]?\s*$/;
+export function separarBotoes(texto: string) {
+  const m = texto.match(MARCA_DOS_BOTOES);
+  if (!m) return { texto, botoes: [] as string[] };
+  return {
+    texto: texto.slice(0, m.index).trimEnd(),
+    botoes: m[1]
+      .split("·")
+      .map((b) => b.trim())
+      .filter(Boolean),
+  };
+}

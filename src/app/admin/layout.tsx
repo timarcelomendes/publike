@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { AbasAdmin, MenuAdmin, SeloAdmin, type ModoAdmin } from "@/components/admin/abas";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { JanelaDasConversas } from "@/components/admin/janela-das-conversas";
 import { Aviso, Container, Logo } from "@/components/ui/basicos";
 import { telasNoSite } from "@/lib/servidor/telas-do-admin";
 import { numerosDoMenu } from "@/lib/admin/painel";
@@ -39,11 +40,19 @@ async function ConteudoComModo({ children }: { children: ReactNode }) {
   const telas = admin ? [] : await telasNoSite();
   const modo: ModoAdmin = admin ? "admin" : telas.length ? "moderador" : null;
   if (!modo && (await adminSemCookie())) return <AbrirPeloTerminal />;
+  // a janela flutuante das conversas do WhatsApp: em todas as telas do Admin, para quem vê Admin › WhatsApp
+  const conversas =
+    modo === "admin" || telas.includes("/admin/whatsapp") ? (
+      <Suspense fallback={null}>
+        <JanelaDasConversas />
+      </Suspense>
+    ) : null;
   if (modo !== "admin") {
     return (
       <>
         <Topo modo={modo} telas={telas} />
         <div className="mt-6">{children}</div>
+        {conversas}
       </>
     );
   }
@@ -57,6 +66,7 @@ async function ConteudoComModo({ children }: { children: ReactNode }) {
         </Suspense>
         <div className="min-w-0">{children}</div>
       </div>
+      {conversas}
     </>
   );
 }
