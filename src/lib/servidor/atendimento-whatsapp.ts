@@ -444,6 +444,19 @@ function paraQuemContrata(porAqui: boolean) {
   ].join("\n\n");
 }
 
+/** O modo econômico (o teto do mês): uma mensagem só por dia para quem procura trabalho, com o botão das vagas. */
+export const ECONOMICO_TRABALHO =
+  "As vagas perto de você estão no botão abaixo: escolha o bairro, veja o salário e se candidate com um toque, de graça.";
+export const ECONOMICO_SEM_PERFIL =
+  "Procura trabalho? As vagas perto de você estão no botão abaixo, de graça. Quer contratar? Mande aqui a foto ou o texto da vaga, que eu preparo para você publicar.";
+
+/** O teto do mês (migração 20270808120000); sem a migração ou com erro, null (segue normal). */
+async function tetoDoMes(banco: ClienteBanco, chave: string, conversa: string) {
+  const { data, error } = await banco.rpc("servidor_whatsapp_teto", { p_chave: chave, p_conversa: conversa });
+  if (error || !data) return null;
+  return data as unknown as { teto: number; enviadas: number; economico: boolean; respondida_hoje: boolean };
+}
+
 /** As vagas de hoje acabaram: amanhã tem mais, e o site tem todas. */
 const ACABARAM_AS_DE_HOJE = `Hoje eu já te mandei ${VAGAS_POR_DIA} vagas por aqui. Amanhã eu mando mais! Enquanto isso, todas as vagas no ar estão no botão abaixo.`;
 
@@ -722,6 +735,23 @@ export async function atenderConversa(
   const comeco = cumprimentoDe(textos);
   // a apresentação, na primeira mensagem para a pessoa (as respostas prontas que não são as boas-vindas)
   const ola = jaFalou ? "" : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.\n\n`;
+
+  // o teto do mês (migração 20270808120000): no modo econômico, quem procura trabalho recebe uma mensagem só por dia,
+  // com o link das vagas, sem a IA; quem contrata segue normal (é quem traz vaga nova)
+  const teto = await tetoDoMes(banco, chave, e.chave);
+  if (teto?.economico && e.perfil !== "contratar" && m.payload !== "a:contratar") {
+    // a foto ou o texto de uma vaga é de quem contrata: o Publicar pelo WhatsApp responde normal
+    if (
+      deveTentarVaga(textos, e.perfil) &&
+      (await tentarVagaPeloWhatsapp({ cfg, banco, chave, conversa: e.chave, numero: m.numero, wamid: m.wamid, perfil: e.perfil, textos, saida, comeco: ola }))
+    )
+      return;
+    if (teto.respondida_hoje) return;
+    return saida(
+      `${ola}${e.perfil === "trabalho" || m.payload === "a:trabalho" ? ECONOMICO_TRABALHO : ECONOMICO_SEM_PERFIL}`,
+      { perfil: e.perfil ?? (m.payload === "a:trabalho" ? "trabalho" : null), botao: LINKS.vagas },
+    );
+  }
 
   // os botões do começo, com texto pronto
   if (novas.length <= 1 && m.payload === "a:trabalho")

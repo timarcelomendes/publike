@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
+import { TetoDoMesWhatsapp } from "@/components/admin/teto-whatsapp-dados";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Barras } from "@/components/admin/grafico";
 import { Filtros, linkCom, Numero, Secao, Situacao } from "@/components/admin/ui";
@@ -1475,6 +1476,10 @@ function AbaConversas({
         }
       >
         <AtendimentoWhatsapp ligado={d.ligado} porDia={d.por_dia} />
+        {/* o teto do mês (migração 20270808120000) */}
+        <Suspense fallback={null}>
+          <TetoDoMesWhatsapp />
+        </Suspense>
       </Secao>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

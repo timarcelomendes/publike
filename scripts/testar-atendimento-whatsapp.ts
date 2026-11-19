@@ -137,6 +137,7 @@ async function main() {
   // --- A conversa -------------------------------------------------------------------------------------------------
   let saidas: any[] = [];
   let vagasJaEnviadas = 0;
+  let teto: any = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
   let entrada: any = {};
   let ultima: any = null; // null: a mesma mensagem e a conversa da entrada
   let entradas: any[] = [];
@@ -176,6 +177,8 @@ async function main() {
       if (nome === "servidor_whatsapp_vagas_config") return { data: { ligado: false }, error: null };
       // as vagas do dia (migração 20270807120000): quantas já foram hoje
       if (nome === "servidor_whatsapp_vagas_enviadas") return { data: vagasJaEnviadas, error: null };
+      // o teto do mês (migração 20270808120000)
+      if (nome === "servidor_whatsapp_teto") return { data: teto, error: null };
       saidas.push({ nome, ...args });
       return { data: null, error: null };
     },
@@ -590,6 +593,24 @@ async function main() {
     "sem vaga na primeira mensagem: apresentação e Ver vagas",
     corpo(r.msgs[0]),
   );
+
+  // 20. o teto do mês: quem procura trabalho, uma mensagem com o link; de novo no dia, nada; quem contrata, normal
+  teto = { teto: 5000, enviadas: 5000, economico: true, respondida_hoje: false };
+  r = await rodar("sou cozinheira, moro no setor bueno", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+  });
+  conferir(
+    r.msgs.length === 1 && corpo(r.msgs[0]) === a.ECONOMICO_TRABALHO && botao(r.msgs[0]) === "Ver vagas" && buscas.length === 0 && pedidosIA.length + pedidosClaude.length === 0,
+    "teto: uma mensagem com Ver vagas, sem IA e sem busca",
+    corpo(r.msgs[0]),
+  );
+  teto = { ...teto, respondida_hoje: true };
+  r = await rodar("e de auxiliar?", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "e de auxiliar?" }] });
+  conferir(r.msgs.length === 0, "teto: a segunda no mesmo dia fica sem resposta", r.msgs.map(corpo));
+  r = await rodar("Quero contratar", { historico: [{ de: "pessoa", texto: "Quero contratar" }] }, { payload: "a:contratar" });
+  conferir(r.msgs.length === 1 && corpo(r.msgs[0]).includes("Para contratar"), "teto: quem contrata segue normal", corpo(r.msgs[0]));
+  teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);
   process.exit(falhas ? 1 : 0);

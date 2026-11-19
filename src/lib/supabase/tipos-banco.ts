@@ -4323,6 +4323,9 @@ export type Database = {
       // Publicar pelo WhatsApp (migração 20270806120000)
       servidor_whatsapp_vagas_config: { Args: { p_chave: string }; Returns: Json };
       servidor_whatsapp_vagas_enviadas: { Args: { p_chave: string; p_conversa: string }; Returns: number };
+      servidor_whatsapp_teto: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
+      admin_whatsapp_teto: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_salvar_teto_whatsapp: { Args: { p_teto: number }; Returns: undefined };
       servidor_whatsapp_midia: {
         Args: {
           p_chave: string;
