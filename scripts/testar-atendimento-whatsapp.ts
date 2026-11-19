@@ -94,9 +94,16 @@ globalThis.fetch = (async (url: any, init: any) => {
   if (u.includes("/rpc/ia_reserva")) return json(false);
   if (u.includes("/rpc/buscar_anuncios")) {
     buscas.push(corpo);
-    if (corpo.p_texto === "motori")
-      return json([{ ...vagaCozinheira, id: "22222222-2222-2222-2222-222222222222", titulo: "Motorista entregador" }]);
-    return json(/cozinh/.test(corpo.p_texto ?? "") || corpo.p_por_distancia ? [vagaCozinheira] : []);
+    const t = corpo.p_texto ?? "";
+    const vaga = (id: string, titulo: string, x: Record<string, unknown> = {}) => ({ ...vagaCozinheira, id: id.repeat(36).slice(0, 36), titulo, ...x });
+    if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
+    // a busca de texto também acha na descrição: o título de outra função não pode entrar
+    if (t === "porteiro") return json([vaga("4", "Auxiliar de escritório"), vaga("3", "Porteiro noturno")]);
+    // auxiliar de cozinha só longe (nas cidades em volta)
+    if (t === "auxiliar de cozinha")
+      return json(corpo.p_raio_km === 100 ? [vaga("5", "Auxiliar de cozinha", { cidade: "Trindade", bairro: "Centro", distancia_km: 24 })] : []);
+    if (/cozinh/.test(t) || (!t && corpo.p_por_distancia)) return json([vagaCozinheira]);
+    return json([]);
   }
   return json(null);
 }) as typeof fetch;
@@ -574,9 +581,9 @@ async function main() {
     historico: [...procurando, { de: "pessoa", texto: "sou motorista de app" }],
   });
   conferir(
-    corpo(r.msgs[0]).startsWith("Agora não achei vaga de motorista de app no ar. Olha as que mais se parecem:") &&
+    corpo(r.msgs[0]).startsWith("Agora não achei vaga de motorista de app. Olha as vagas de motorista:") &&
       corpo(r.msgs[0]).includes("*Motorista entregador*"),
-    "as parecidas, ditas como parecidas",
+    "sem a função inteira, a função mais curta, dita assim",
     corpo(r.msgs[0]),
   );
   // a primeira mensagem sem vaga nenhuma leva a apresentação
@@ -588,11 +595,55 @@ async function main() {
   r = await rodar("tem vaga de pedreiro?", { historico: [{ de: "pessoa", texto: "tem vaga de pedreiro?" }] });
   conferir(
     corpo(r.msgs[0]).startsWith(
-      "Oi, Raphael! 👋 Aqui é o Marcelo, do Publike.\n\nAgora não achei vaga de pedreiro no ar nessa região.",
+      "Oi, Raphael! 👋 Aqui é o Marcelo, do Publike.\n\nAgora não achei vaga de pedreiro no ar, nem perto de você nem nas cidades em volta.",
     ) && botao(r.msgs[0]) === "Ver vagas",
     "sem vaga na primeira mensagem: apresentação e Ver vagas",
     corpo(r.msgs[0]),
   );
+
+  // 22b. sem a função em lugar nenhum, as parecidas, ditas como oportunidades, só com o título da parecida
+  respostaIA = ia("Olha as vagas de vigilante:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "vigilante patrimonial", funcoes: ["vigilante patrimonial"], parecidas: ["porteiro"], categoria: "todas", cidade: "Aparecida de Goiânia", bairro: "", fora: "" },
+  });
+  r = await rodar("sou vigilante patrimonial, moro em aparecida", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou vigilante patrimonial, moro em aparecida" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).startsWith("Agora não achei vaga de vigilante patrimonial no ar. Separei outras vagas que podem combinar com a sua experiência.") &&
+      corpo(r.msgs[0]).includes("*Porteiro noturno*") &&
+      !corpo(r.msgs[0]).includes("escritório"),
+    "as parecidas, claras, sem a vaga de outra função",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    buscas.some((b) => b.p_texto === "vigilante patrimonial" && b.p_raio_km === 100) && buscas.some((b) => b.p_texto === "vigilante"),
+    "antes das parecidas, a função longe e a função mais curta",
+    buscas.map((b) => `${b.p_texto}/${b.p_raio_km}`),
+  );
+  // 22c. duas funções: a que não tem é dita; a outra, mesmo longe, vem antes de qualquer parecida
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "auxiliar de costura, auxiliar de cozinha", funcoes: ["auxiliar de costura", "auxiliar de cozinha"], parecidas: ["porteiro"], categoria: "todas", cidade: "", bairro: "Jardim América", fora: "" },
+  });
+  r = await rodar("Trabalho de auxiliar de costura, auxiliar de cozinha", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "Trabalho de auxiliar de costura, auxiliar de cozinha" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).startsWith(
+      "Agora não achei vaga de auxiliar de costura. Perto de você não achei vaga de auxiliar de cozinha, mas tem em outras cidades da região:",
+    ) &&
+      corpo(r.msgs[0]).includes("Centro, Trindade (a 24 km)") &&
+      !corpo(r.msgs[0]).includes("Porteiro"),
+    "a função pedida longe, antes das parecidas",
+    corpo(r.msgs[0]),
+  );
+  conferir(a.tituloDaFuncao("Costureiro(a)", "costureira") && !a.tituloDaFuncao("Auxiliar de escritório", "auxiliar de costura") && !a.tituloDaFuncao("Auxiliar de cozinha", "cozinheira"), "o título é da função");
+  conferir(a.funcaoCurta("vigilante patrimonial") === "vigilante" && a.funcaoCurta("auxiliar de cozinha") === null, "a função mais curta");
 
   // 19b. a cidade fora de onde o Publike funciona: ainda não está disponível, sem buscar
   respostaIA = ia("Olha as vagas de cozinheira em Manaus:", {

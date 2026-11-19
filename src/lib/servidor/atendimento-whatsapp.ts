@@ -120,6 +120,10 @@ export type MensagemDoAtendimento = {
 
 type Busca = {
   texto: string;
+  /** cada função que a pessoa disse, separada ("auxiliar de costura", "auxiliar de cozinha") */
+  funcoes: string[];
+  /** outras funções do mesmo ramo, para quando não há vaga da função */
+  parecidas: string[];
   categoria: string;
   cidade: string;
   bairro: string;
@@ -152,9 +156,11 @@ const ESQUEMA = {
       busca: {
         type: "object",
         additionalProperties: false,
-        required: ["texto", "categoria", "cidade", "bairro", "fora"],
+        required: ["texto", "funcoes", "parecidas", "categoria", "cidade", "bairro", "fora"],
         properties: {
           texto: { type: "string" },
+          funcoes: { type: "array", items: { type: "string" } },
+          parecidas: { type: "array", items: { type: "string" } },
           categoria: {
             type: "string",
             enum: [...CATEGORIAS.map((c) => c.slug), "todas"],
@@ -341,12 +347,66 @@ export function lugarDaBusca(cidade: string, bairro: string): Local | null {
   return c ? criarLocal(c, b, "busca") : null;
 }
 
+const REGRAS_DA_BUSCA =
+  `Preencha "busca.texto" com o que ela faz, como ela falou ("vigilante patrimonial", "auxiliar de costura e de cozinha"); "busca.funcoes" com cada função que ela disse, separada, no singular e com o nome que os anúncios usam (até 3: ["auxiliar de costura", "auxiliar de cozinha"]); "busca.parecidas" com até 4 outras funções que essa pessoa consegue fazer com a experiência que tem, do mesmo ramo, as mais próximas primeiro (vigilante: vigia, porteiro, controlador de acesso; auxiliar de costura: costureira, auxiliar de produção têxtil, arrematadeira; auxiliar de cozinha: ajudante de cozinha, cozinheira, auxiliar de padaria). Cuidado com as parecidas: elas aparecem quando não há vaga da função, como oportunidades que podem combinar com o perfil, então nunca ponha uma função só porque divide uma palavra (auxiliar de escritório não é parecida com auxiliar de costura) nem funções que pedem outra formação; na dúvida, deixe de fora;`;
+
+// --- As vagas da função (19/11/2026; Marcelo: "privilegiar a função solicitada, mesmo que mais longe, cidade e região"
+// e "se não tiver a profissão, exibir vagas semelhantes [...] deixar claro ao usuário [...] cuidado com essa lista") --
+//
+// A ordem: a função que a pessoa disse perto dela (o bairro, a região, a cidade); depois a mesma função nas cidades em
+// volta (até 100 km, da mais perto para a mais longe); depois a função mais curta ("vigilante patrimonial" vira
+// "vigilante"). Só sem nada da função entram as parecidas, que a IA escolhe do mesmo ramo, ditas como parecidas. A vaga
+// só entra se o título for da função ou da parecida (a busca de texto também acha a palavra na descrição).
+
+const PALAVRAS_VAZIAS = new Set("de da do das dos em e a o para com na no".split(" "));
+/** Palavras que sozinhas não dizem a função ("auxiliar" de costura não é "auxiliar" de escritório). */
+const PALAVRAS_GERAIS = new Set(
+  "auxiliar ajudante assistente operador operadora tecnico tecnica analista agente encarregado encarregada profissional servente".split(
+    " ",
+  ),
+);
+const palavrasDaFuncao = (f: string) => simples(f).split(" ").filter((p) => p.length >= 3 && !PALAVRAS_VAZIAS.has(p));
+
 /**
- * As vagas no ar que combinam com o que a pessoa disse, em linhas com o link: perto do lugar que ela disse (o bairro
- * primeiro, depois a região e a cidade) ou da localização que ela mandou; sem lugar, as mais novas.
+ * O título é da função: cada palavra dela está no título, pelo começo, sem as últimas letras ("costureira" acha
+ * "Costureiro(a)"; "cozinheira" não acha "Auxiliar de cozinha").
  */
-async function vagasEmTexto(
-  busca: { texto: string; categoria: string },
+export function tituloDaFuncao(titulo: string, funcao: string) {
+  const t = simples(titulo);
+  const ps = palavrasDaFuncao(funcao);
+  return ps.length > 0 && ps.every((p) => t.includes(p.slice(0, Math.max(5, p.length - 3))));
+}
+
+/** A função sem o complemento ("vigilante patrimonial" vira "vigilante"); null quando sobraria uma palavra geral. */
+export function funcaoCurta(funcao: string) {
+  const ps = palavrasDaFuncao(funcao);
+  return ps.length > 1 && !PALAVRAS_GERAIS.has(ps[0]) ? ps[0] : null;
+}
+
+/** "a", "a e b", "a, b e c". */
+const listaE = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} e ${xs.at(-1)}`);
+
+const unicos = (xs: (string | null | undefined)[], max: number) => {
+  const vistos = new Set<string>();
+  const r: string[] = [];
+  for (const x of xs) {
+    const t = (x ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+    if (!t || vistos.has(simples(t))) continue;
+    vistos.add(simples(t));
+    r.push(t);
+    if (r.length >= max) break;
+  }
+  return r;
+};
+
+type BuscaDeVagas = { texto: string; funcoes?: string[]; parecidas?: string[]; categoria: string };
+
+/**
+ * As vagas no ar para o que a pessoa disse, em linhas com o link, e a frase que as apresenta. Sem função (a
+ * localização que ela mandou), as mais perto. Sem nada, null.
+ */
+async function procurarVagas(
+  busca: BuscaDeVagas,
   onde: {
     local?: Local | null;
     ponto?: { lat: number; lng: number } | null;
@@ -354,9 +414,9 @@ async function vagasEmTexto(
   /** quantas vagas cabem nesta resposta (o que sobra das do dia) */
   max = 4,
 ) {
-  // a cidade, o bairro e a região só ordenam (o bairro primeiro, depois a região e a cidade); quem corta é o raio
-  const centro = onde.local ? pontoDoLocal(onde.local) : null;
-  const lugar = onde.ponto
+  const centro = onde.ponto ?? (onde.local ? pontoDoLocal(onde.local) : null);
+  // perto: o ponto que ela mandou, ou o bairro primeiro, depois a região e a cidade (quem corta é o raio)
+  const perto = onde.ponto
     ? { p_lat: onde.ponto.lat, p_lng: onde.ponto.lng, p_raio_km: 30, p_ordem: "perto", p_por_distancia: true }
     : onde.local && centro
       ? {
@@ -370,41 +430,143 @@ async function vagasEmTexto(
           p_regiao: onde.local.regiao,
         }
       : { p_raio_km: 60, p_ordem: "recentes" };
-  const tentar = async (texto: string | null, categoria: string | null) => {
+  // longe: as cidades em volta, da mais perto para a mais longe (sem lugar, em volta de Goiânia)
+  const longe = { ...(centro ? { p_lat: centro.lat, p_lng: centro.lng } : {}), p_raio_km: 100, p_ordem: "perto", p_por_distancia: true };
+  type Anuncio = { id: string; titulo: string; bairro: string | null; cidade: string | null; distancia_km?: number | null } & Parameters<
+    typeof valorDoAnuncio
+  >[0];
+  const tentar = async (texto: string | null, lugar: Record<string, unknown>, categoria: string | null = null) => {
     const { data, error } = await criarClientePublico().rpc("buscar_anuncios", {
       ...lugar,
       p_tipo: "vaga",
       p_texto: texto,
       p_categoria: categoria,
       p_limite: 20,
-    });
-    return error ? [] : (data ?? []);
+    } as never);
+    return (error ? [] : (data ?? [])) as unknown as Anuncio[];
   };
-  const texto = busca.texto.trim().slice(0, 60) || null;
-  const categoria = CATEGORIAS.some((c) => c.slug === busca.categoria) ? busca.categoria : null;
-  let lista = await tentar(texto, categoria);
-  if (!lista.length && categoria) lista = await tentar(texto, null);
-  // sem nada com a função inteira ("auxiliar de cozinha"), as que começam igual ("auxiliar"): são parecidas, não iguais
-  let parecidas = false;
-  if (!lista.length && texto && texto.length > 6) {
-    lista = await tentar(texto.slice(0, 6), null);
-    parecidas = lista.length > 0;
+
+  type Achada = { a: Anuncio; termo: string; parecida: boolean; longe: boolean };
+  const achadas: Achada[] = [];
+  const ids = new Set<string>();
+  // de cada termo, uma por vez (as duas funções que a pessoa disse aparecem), até caber
+  const juntar = async (termos: string[], lugar: Record<string, unknown>, parecida: boolean, eLonge: boolean) => {
+    if (achadas.length >= max || !termos.length) return;
+    const listas = await Promise.all(
+      termos.map(async (t) => ({ t, l: (await tentar(t, lugar)).filter((a) => tituloDaFuncao(a.titulo, t)) })),
+    );
+    for (let i = 0; achadas.length < max && listas.some((x) => x.l.length > i); i++)
+      for (const { t, l } of listas) {
+        const a = l[i];
+        if (!a || ids.has(a.id) || achadas.length >= max) continue;
+        ids.add(a.id);
+        achadas.push({ a, termo: t, parecida, longe: eLonge });
+      }
+  };
+
+  const funcoes = unicos(busca.funcoes?.length ? busca.funcoes : [busca.texto], 3);
+  if (!funcoes.length) {
+    // sem função: as mais perto (ou as mais novas)
+    const categoria = CATEGORIAS.some((c) => c.slug === busca.categoria) ? busca.categoria : null;
+    let l = await tentar(null, perto, categoria);
+    if (!l.length && categoria) l = await tentar(null, perto);
+    for (const a of l.slice(0, max)) achadas.push({ a, termo: "", parecida: false, longe: false });
+  } else {
+    await juntar(funcoes, perto, false, false);
+    await juntar(funcoes, longe, false, true);
+    // a função mais curta, só para as que não acharam nada
+    const semNada = funcoes.filter((f) => !achadas.some((x) => x.termo === f));
+    const curtas = unicos(
+      semNada.map(funcaoCurta).filter((c) => c && !funcoes.some((f) => simples(f) === simples(c))),
+      3,
+    );
+    await juntar(curtas, perto, false, false);
+    await juntar(curtas, longe, false, true);
+    if (!achadas.length) {
+      const parecidas = unicos(busca.parecidas ?? [], 4).filter(
+        (p) => !funcoes.concat(curtas).some((f) => simples(f) === simples(p)),
+      );
+      await juntar(parecidas, perto, true, false);
+      await juntar(parecidas, longe, true, true);
+    }
   }
-  if (!lista.length) return null;
-  const linha = (a: (typeof lista)[number]) => {
+  if (!achadas.length) return null;
+
+  // as de perto primeiro
+  achadas.sort((x, y) => Number(x.longe) - Number(y.longe));
+  const linha = ({ a, longe: eLonge }: Achada) => {
     const valor = valorDoAnuncio(a);
-    return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${formatarLugar(a.bairro, a.cidade)}\n${link(`/anuncio/${a.id}`)}`;
+    const km = eLonge && centro && a.distancia_km != null && a.distancia_km >= 1 ? ` (a ${Math.round(a.distancia_km)} km)` : "";
+    // longe, a cidade sempre aparece (Goiânia e Anápolis mostram só o bairro)
+    const lugar = formatarLugar(a.bairro ?? "", a.cidade ?? "");
+    const onde1 = eLonge && a.cidade && !lugar.includes(a.cidade) ? `${lugar}, ${a.cidade}` : lugar;
+    return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${onde1}${km}\n${link(`/anuncio/${a.id}`)}`;
   };
   // a mensagem com botão vai até 1.024 letras: com links longos, cabem menos vagas
-  let n = Math.min(Math.max(1, max), 4, lista.length);
-  while (n > 1 && lista.slice(0, n).map(linha).join("\n\n").length > 800) n--;
+  let n = Math.min(Math.max(1, max), 4, achadas.length);
+  while (n > 1 && achadas.slice(0, n).map(linha).join("\n\n").length > 760) n--;
+  const usadas = achadas.slice(0, n);
+  const perto1 = usadas.filter((x) => !x.longe);
+  const longe1 = usadas.filter((x) => x.longe);
+  const texto =
+    perto1.length && longe1.length
+      ? `${perto1.map(linha).join("\n\n")}\n\nUm pouco mais longe:\n\n${longe1.map(linha).join("\n\n")}`
+      : usadas.map(linha).join("\n\n");
+
+  // a frase que apresenta
+  const parecidas = usadas[0].parecida;
+  const achados = unicos(usadas.map((x) => x.termo), 3);
+  const semNada = funcoes.filter((f) => !usadas.some((x) => x.termo === f) && !achados.some((t) => simples(t) === simples(f)));
+  const aqui = onde.local ? " perto de você" : "";
+  let abertura: string | null;
+  if (!funcoes.length) abertura = null;
+  else if (parecidas)
+    abertura = `Agora não achei vaga de ${listaE(funcoes)} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
+  else {
+    const nao = semNada.length ? `Agora não achei vaga de ${listaE(semNada)}. ` : "";
+    abertura = !perto1.length
+      ? `${nao}${onde.local ? `Perto de você não achei vaga de ${listaE(achados)}, mas tem em outras cidades da região:` : `Olha as vagas de ${listaE(achados)}:`}`
+      : `${nao}Olha as vagas de ${listaE(achados)}${aqui}:`;
+    // tudo perto e da função que ela disse: vale a frase da IA
+    if (!semNada.length && !longe1.length && achados.every((t) => funcoes.includes(t))) abertura = null;
+  }
   const p = new URLSearchParams({ tipo: "vaga" });
-  if (texto) p.set("q", texto);
+  if (achados[0]) p.set("q", achados[0]);
   return {
-    texto: lista.slice(0, n).map(linha).join("\n\n"),
+    texto,
     quantas: n,
-    mais: lista.length > n ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
-    parecidas,
+    abertura,
+    mais: achadas.length > n || longe1.length ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
+  };
+}
+
+/**
+ * A resposta da busca: `abertura` (a frase que apresenta; null quando vale a da IA) e `texto` (as vagas e o depois);
+ * sem vaga nenhuma, só a abertura com o "não achei", e o botão das vagas.
+ */
+async function mensagemDaBusca(busca: Partial<Busca> | null | undefined, local: Local | null, restam: number) {
+  const texto = busca?.texto?.trim().slice(0, 40) ?? "";
+  const funcoes = unicos(busca?.funcoes?.length ? busca.funcoes : [texto], 3);
+  const vagas = await procurarVagas(
+    { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas" },
+    { local },
+    restam,
+  );
+  if (!vagas)
+    return {
+      abertura: `Agora não achei vaga${funcoes.length ? ` de ${listaE(funcoes)}` : ""} no ar${local ? ", nem perto de você nem nas cidades em volta" : ""}. Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`,
+      aberturaPadrao: "",
+      texto: "",
+      botao: LINKS.vagas as Botao,
+      quantas: 0,
+    };
+  return {
+    abertura: vagas.abertura,
+    /** a frase quando não vale a da IA (a busca de novo) */
+    aberturaPadrao: `Olha as vagas de ${listaE(funcoes)}${local ? " perto de você" : ""}:`,
+    texto: `${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}`,
+    botao: (vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null)) as Botao | null,
+    quantas: vagas.quantas,
   };
 }
 
@@ -546,10 +708,10 @@ O essencial do Publike
 
 O que fazer (campo "acao")
 - responder: o normal.
-- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. Preencha "busca.texto" com a função, no singular, como ela falou ("cozinheira", "motorista"); "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). Se a cidade que ela disse não está na lista (fica fora de onde o Publike funciona), deixe "busca.cidade" vazio e ponha o nome dela em "busca.fora", como ela escreveu; senão, "busca.fora" vazio. A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz e onde mora.
+- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). Se a cidade que ela disse não está na lista (fica fora de onde o Publike funciona), deixe "busca.cidade" vazio e ponha o nome dela em "busca.fora", como ela escreveu; senão, "busca.fora" vazio. A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz e onde mora.
 - equipe: a pessoa pede para falar com alguém, reclama, fala de pagamento, cobrança ou golpe, de problema na conta, de parceria ou de imprensa, ou você não sabe a resposta. Responda o que der (no golpe: não pague nada) e diga que vai pedir para alguém da equipe responder por aqui, no prazo que está em "Sobre esta conversa".
 - silencio: a mensagem não pede resposta, como "ok", "beleza", "👍" ou um "obrigado" depois que você já se despediu. Deixe "resposta" vazia.
-Fora de buscar_vagas, "busca" vai com texto, cidade, bairro e fora vazios e categoria "todas".
+Fora de buscar_vagas, "busca" vai com texto, cidade, bairro e fora vazios, funcoes e parecidas vazias e categoria "todas".
 
 O botão (campo "link")
 - vagas: ver as vagas no ar. publicar: publicar uma vaga. curriculo: fazer ou mudar o currículo. empresas: o que o Publike oferece a quem contrata, com os planos. ajuda: as perguntas e respostas do site. entrar: entrar na conta. nenhum: sem botão.
@@ -883,7 +1045,7 @@ export async function atenderConversa(
       );
     const restam = VAGAS_POR_DIA - (await vagasDeHoje());
     if (restam <= 0) return saida(`${ola}${ACABARAM_AS_DE_HOJE}`, { perfil: e.perfil ?? "trabalho", botao: LINKS.vagas });
-    const vagas = await vagasEmTexto({ texto: "", categoria: "todas" }, { ponto: m.local }, restam);
+    const vagas = await procurarVagas({ texto: "", categoria: "todas" }, { ponto: m.local }, restam);
     if (!vagas)
       return saida(
         `${ola}${aindaNaoDisponivel(null)}`,
@@ -957,7 +1119,7 @@ export async function atenderConversa(
 
   const perfil = plano.perfil === "trabalho" || plano.perfil === "contratar" ? plano.perfil : null;
   // o que a IA não deve escrever: os colchetes dos botões
-  let resposta = (plano.resposta ?? "")
+  const resposta = (plano.resposta ?? "")
     .replace(/\[bot(ão|ões)[^\]]*\]/gi, "")
     .trim()
     .slice(0, 1500);
@@ -989,22 +1151,14 @@ export async function atenderConversa(
     // a cidade fora de onde o Publike funciona: ainda não está disponível lá (sem as vagas daqui, que enganariam)
     const fora = plano.busca?.fora?.trim().slice(0, 40) ?? "";
     if (fora && !plano.busca?.cidade) return saida(`${ola}${aindaNaoDisponivel(fora)}`, { perfil: perfil ?? "trabalho" });
-    const busca = plano.busca?.texto?.trim().slice(0, 40) ?? "";
     const local = lugarDaBusca(plano.busca?.cidade ?? "", plano.busca?.bairro ?? "");
     const restam = VAGAS_POR_DIA - (await vagasDeHoje());
     if (restam <= 0) return saida(`${ola}${ACABARAM_AS_DE_HOJE}`, { perfil: perfil ?? "trabalho", botao: LINKS.vagas });
-    const vagas = await vagasEmTexto({ texto: busca, categoria: plano.busca?.categoria ?? "todas" }, { local }, restam);
-    // sem a frase da IA (ela apresenta vagas que não vieram), a apresentação vai junto, na primeira mensagem
-    const naoAchei = `Agora não achei vaga${busca ? ` de ${busca}` : ""} no ar${local ? " nessa região" : ""}.`;
-    if (!vagas)
-      return saida(`${ola}${naoAchei} Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`, {
-        perfil: perfil ?? "trabalho",
-        botao: LINKS.vagas,
-      });
-    resposta = `${vagas.parecidas ? `${ola}${naoAchei} Olha as que mais se parecem:` : resposta}\n\n${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}`;
-    return saida(resposta, {
+    const r = await mensagemDaBusca(plano.busca, local, restam);
+    // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
+    return saida(r.abertura === null ? `${resposta}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
       perfil: perfil ?? "trabalho",
-      botao: vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null),
+      botao: r.botao,
     });
   }
 
@@ -1017,4 +1171,112 @@ export async function atenderConversa(
     botao,
     menu: !botao && !perfil && semPerfil && !menuJaFoi,
   });
+}
+
+// --- Procurar de novo (19/11/2026; Marcelo: "revisite as conversas e veja se há possibilidade de enviar pra conversas
+// iniciadas") ----------------------------------------------------------------------------------------------------------
+// As conversas em que a última resposta foi "não achei vaga" (ou as parecidas da busca antiga) e a janela de 24 horas
+// está aberta: a busca nova roda de novo com o que a pessoa já disse. Admin › WhatsApp › Conversas mostra a mensagem de
+// cada uma antes, e só vai a que a equipe mandar.
+
+/** A última resposta foi a do "não achei" (ou as parecidas da busca antiga). */
+export const RESPOSTA_SEM_VAGA = /Agora não achei vaga|Olha as que mais se parecem/;
+
+const ESQUEMA_DA_BUSCA = {
+  nome: "busca_de_novo",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["busca"],
+    properties: { busca: ESQUEMA.schema.properties.busca },
+  },
+};
+
+async function conversaSemVaga(banco: ClienteBanco, chave: string, conversa: string) {
+  const { data, error } = await banco.rpc("servidor_whatsapp_conversa_ultima", { p_chave: chave, p_conversa: conversa });
+  if (error || !data) return null;
+  const u = data as unknown as { situacao: "robo" | "equipe"; historico: Mensagem[] };
+  const ultima = u.historico.at(-1);
+  return u.situacao === "robo" && ultima?.de === "robo" && RESPOSTA_SEM_VAGA.test(ultima.texto) ? u.historico : null;
+}
+
+export type BuscaDeNovo = { ok: true; texto: string; botao: Botao | null } | { ok: false; motivo: string };
+
+/** A mensagem da busca nova para a conversa (sem enviar). */
+export async function buscaDeNovo(conversa: string, nome: string | null): Promise<BuscaDeNovo> {
+  const acesso = acessoFila();
+  if (!acesso) return { ok: false, motivo: "Falta a chave do servidor." };
+  const { cliente: banco, chave } = acesso;
+  const historico = await conversaSemVaga(banco, chave, conversa);
+  if (!historico) return { ok: false, motivo: "A conversa andou: a última resposta já não é a do “não achei”." };
+  const teto = await tetoDoMes(banco, chave, conversa);
+  if (teto?.economico) return { ok: false, motivo: "O atendimento está no modo econômico (o teto do mês)." };
+  const enviadas = await banco.rpc("servidor_whatsapp_vagas_enviadas", { p_chave: chave, p_conversa: conversa });
+  const restam = VAGAS_POR_DIA - (enviadas.error ? 0 : Number(enviadas.data) || 0);
+  if (restam <= 0) return { ok: false, motivo: `A pessoa já recebeu as ${VAGAS_POR_DIA} vagas de hoje.` };
+  const modelo = await modeloDoAtendimento();
+  if (!modelo) return { ok: false, motivo: "A IA do atendimento está desligada." };
+  let busca: Busca;
+  try {
+    const { texto } = await chamarIA({
+      funcionalidade: "chat",
+      modelo,
+      sistema: `Você lê uma conversa do WhatsApp do Publike (vagas de emprego em ${ONDE_FUNCIONA}) com alguém que procura trabalho, e diz o que procurar para ela. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); "busca.bairro" com o bairro, como ela escreveu (senão vazio); "busca.fora" com a cidade que ela disse quando fica fora de onde o Publike funciona (senão vazio).`,
+      mensagem: transcricao(historico),
+      maxTokens: 300,
+      esquema: ESQUEMA_DA_BUSCA,
+      tempoLimite: 20_000,
+    });
+    busca = lerJson<{ busca: Busca }>(texto).busca;
+  } catch (erro) {
+    return { ok: false, motivo: `A IA não respondeu (${erro instanceof Error ? erro.message : "erro"}).` };
+  }
+  if (busca?.fora && !busca.cidade) return { ok: false, motivo: `A pessoa mora fora de onde o Publike funciona (${busca.fora}).` };
+  const local = lugarDaBusca(busca?.cidade ?? "", busca?.bairro ?? "");
+  const r = await mensagemDaBusca(busca, local, restam);
+  if (!r.quantas) return { ok: false, motivo: "Ainda não há vaga da função nem parecida." };
+  return {
+    ok: true,
+    texto: `${oi(primeiroNome(nome))} Procurei de novo as vagas para você, com mais cuidado.\n\n${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`,
+    botao: r.botao,
+  };
+}
+
+/** Envia a mensagem que a equipe viu (se a conversa não andou nesse meio-tempo). */
+export async function enviarBuscaDeNovo(
+  conversa: string,
+  numero: string,
+  texto: string,
+  botao: Botao | null,
+): Promise<{ ok: true } | { ok: false; erro: string }> {
+  const cfg = configMeta();
+  const acesso = acessoFila();
+  if (!cfg || !acesso) return { ok: false, erro: "Faltam as chaves do WhatsApp ou do servidor." };
+  const { cliente: banco, chave } = acesso;
+  if (!(await conversaSemVaga(banco, chave, conversa)))
+    return { ok: false, erro: "A conversa andou: a última resposta já não é a do “não achei”." };
+  const url = botao ? link(botao.caminho) : null;
+  let r = botao && url ? await enviarComLink(cfg, numero, caber(texto), { titulo: botao.titulo, url }) : await enviarTexto(cfg, numero, texto);
+  let marca = botao ? `[Botão: ${botao.titulo}]` : "";
+  if (!r.ok && botao) {
+    r = await enviarTexto(cfg, numero, url ? `${texto}\n\n${botao.titulo}: ${url}` : texto);
+    marca = "";
+  }
+  if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
+  await banco.rpc("servidor_whatsapp_conversa_saida", {
+    p_chave: chave,
+    p_conversa: conversa,
+    p_texto: marca ? `${texto}\n\n${marca}` : texto,
+    p_wamid: r.wamid,
+  });
+  return { ok: true };
+}
+
+/** O botão que pode ir junto: um dos links do atendimento ou "Ver mais vagas" de uma busca. */
+export function botaoValido(b: unknown): Botao | null {
+  if (!b || typeof b !== "object") return null;
+  const { titulo, caminho } = b as Botao;
+  if (typeof titulo !== "string" || typeof caminho !== "string") return null;
+  if (Object.values(LINKS).some((l) => l.titulo === titulo && l.caminho === caminho)) return { titulo, caminho };
+  return titulo === "Ver mais vagas" && /^\/\?tipo=vaga(&q=[^&#]{1,80})?$/.test(caminho) ? { titulo, caminho } : null;
 }

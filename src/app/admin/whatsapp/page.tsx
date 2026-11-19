@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
+import { BuscaDeNovo } from "@/components/admin/busca-de-novo";
 import { TetoDoMesWhatsapp } from "@/components/admin/teto-whatsapp-dados";
 import {
   diaDaMensagem,
@@ -1476,6 +1477,9 @@ function AbaConversas({
           <TetoDoMesWhatsapp />
         </Suspense>
       </Secao>
+
+      {/* as conversas que pararam no "não achei vaga": a busca nova, vista antes de ir */}
+      <BuscaDeNovo />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Numero rotulo="Conversas em 7 dias" valor={r.conversas_7_dias} />
