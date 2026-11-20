@@ -1026,7 +1026,15 @@ const MARCAS_DAS_PERGUNTAS = ["*1 de 3:*", "*2 de 3:*", "*3 de 3:*"];
 export const LEMBRETE_VAGA =
   "Ainda quer publicar a vaga? 😊 É grátis: mande a foto ou o texto dela, ou toque em *Montar a vaga comigo* que eu te faço 3 perguntas rápidas.";
 /** Os pedaços das mensagens em que dá para parar (o lembrete procura na última mensagem do robô). */
-const MARCAS_DA_VAGA = ["Vamos colocar sua vaga no ar", MANDAR_A_VAGA.slice(0, 32), ...MARCAS_DAS_PERGUNTAS];
+// "manda aqui mesmo" e "mandar aqui mesmo": a resposta de antes (a IA e o `paraQuemContrata`), que pedia a vaga de cara
+// (20/11/2026; Marcelo: "Pode", para o lembrete valer também a quem parou nela)
+const MARCAS_DA_VAGA = [
+  "Vamos colocar sua vaga no ar",
+  MANDAR_A_VAGA.slice(0, 32),
+  ...MARCAS_DAS_PERGUNTAS,
+  "manda aqui mesmo",
+  "mandar aqui mesmo",
+];
 
 /** A mensagem pronta do anúncio "Contratando" (ou parecida, curta): "Olá! Quero publicar uma vaga pelo WhatsApp." */
 export function querPublicarVaga(texto: string) {
