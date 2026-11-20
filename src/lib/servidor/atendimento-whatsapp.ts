@@ -648,7 +648,8 @@ async function procurarVagas(
     return lista.filter((a) => vagaDoJeito({ ...a, ...porId.get(a.id) }, jeitos));
   };
 
-  type Achada = { a: Anuncio; termo: string; parecida: boolean; longe: boolean; outras?: boolean };
+  /** `km`: das mais perto, de qualquer função (a distância vai na linha) */
+  type Achada = { a: Anuncio; termo: string; parecida: boolean; longe: boolean; outras?: boolean; km?: boolean };
   const achadas: Achada[] = [];
   const ids = new Set<string>(jaMandadas);
   // as da função que ficaram de fora por já terem ido: "já te mandei as vagas de..."
@@ -682,17 +683,34 @@ async function procurarVagas(
 
   const funcoes = unicos((busca.funcoes?.length ? busca.funcoes : [busca.texto]).map(funcaoSemJeito), 3);
   // sem função: as mais perto (ou as mais novas), do jeito pedido; com o jeito, também nas cidades em volta
+  // sem função: as vagas mais perto dela, de qualquer função, aumentando o raio até caber (20/11/2026; Marcelo, com a
+  // conversa em que a pessoa disse o bairro e "não sei qual vaga tá disponível" e o Publike perguntou a função duas
+  // vezes: "precisa entender e enviar vagas genéricas mais próximas e ir aumentando o raio"). Sem lugar, as mais novas.
+  const RAIOS_KM = [3, 8, 15, 30, 60, 100];
   const semFuncao = async () => {
     const categoria = CATEGORIAS.some((c) => c.slug === busca.categoria) ? busca.categoria : null;
-    let l = await tentar(null, perto, categoria);
-    if (!l.length && categoria) l = await tentar(null, perto);
-    for (const a of l.slice(0, max)) {
-      if (ids.has(a.id)) continue;
-      ids.add(a.id);
-      achadas.push({ a, termo: "", parecida: false, longe: false });
-    }
-    if (!achadas.length && jeitos.length && !onde.ponto)
-      for (const a of (await tentar(null, longe)).slice(0, max)) achadas.push({ a, termo: "", parecida: false, longe: true });
+    const juntarPerto = async (cat: string | null) => {
+      if (!centro) {
+        for (const a of (await tentar(null, perto, cat)).slice(0, max))
+          if (!ids.has(a.id) && achadas.length < max) {
+            ids.add(a.id);
+            achadas.push({ a, termo: "", parecida: false, longe: false });
+          }
+        return;
+      }
+      for (const raio of RAIOS_KM) {
+        if (achadas.length >= max) return;
+        const l = await tentar(null, { p_lat: centro.lat, p_lng: centro.lng, p_raio_km: raio, p_ordem: "perto", p_por_distancia: true }, cat);
+        for (const a of l) {
+          if (achadas.length >= max) break;
+          if (ids.has(a.id)) continue;
+          ids.add(a.id);
+          achadas.push({ a, termo: "", parecida: false, longe: (a.distancia_km ?? 0) > 15, km: true });
+        }
+      }
+    };
+    if (categoria) await juntarPerto(categoria);
+    if (!achadas.length) await juntarPerto(null);
   };
   // o nome equivalente → a função que a pessoa disse
   const equivalentes = new Map<string, string>();
@@ -751,12 +769,6 @@ async function procurarVagas(
     // quando tem vaga no ar), ditas assim
     if (!achadas.length && !repetidas) {
       await semFuncao();
-      if (!achadas.length)
-        for (const a of (await tentar(null, longe)).slice(0, max))
-          if (!ids.has(a.id)) {
-            ids.add(a.id);
-            achadas.push({ a, termo: "", parecida: true, longe: true });
-          }
       for (const x of achadas) {
         x.parecida = true;
         x.outras = !busca.jeito?.includes("qualquer");
@@ -767,9 +779,15 @@ async function procurarVagas(
 
   // as de perto primeiro
   achadas.sort((x, y) => Number(x.longe) - Number(y.longe));
-  const linha = ({ a, longe: eLonge }: Achada) => {
+  const linha = ({ a, longe: eLonge, km: comKm }: Achada) => {
     const valor = valorDoAnuncio(a);
-    const km = eLonge && centro && a.distancia_km != null && a.distancia_km >= 1 ? ` (a ${Math.round(a.distancia_km)} km)` : "";
+    const d = a.distancia_km;
+    const km =
+      (eLonge || comKm) && centro && d != null
+        ? d < 1
+          ? comKm ? " (a menos de 1 km)" : ""
+          : ` (a ${Math.round(d)} km)`
+        : "";
     // longe, a cidade sempre aparece (Goiânia e Anápolis mostram só o bairro)
     const lugar = formatarLugar(a.bairro ?? "", a.cidade ?? "");
     const onde1 = eLonge && a.cidade && !lugar.includes(a.cidade) ? `${lugar}, ${a.cidade}` : lugar;
@@ -804,14 +822,17 @@ async function procurarVagas(
   const pedido = nomeDoJeito(jeitosPedidos);
   const jeitoNao = semOJeito && pedido ? ` ${pedido}` : jeito1;
   let abertura: string | null;
+  const mais1 = jaMandadas.size ? "mais " : "";
   if (!funcoes.length && semOJeito && pedido)
-    abertura = `Agora não achei vagas ${pedido}. Olha as vagas no ar${aqui || " mais perto"}:`;
+    abertura = `Agora não achei vagas ${pedido}. Olha ${mais1 ? "mais " : "as "}vagas no ar${centro ? " mais perto de você, de todas as funções" : ""}:`;
   else if (!funcoes.length)
     abertura = doJeito
       ? !perto1.length && onde.local
         ? `Perto de você não achei vagas ${doJeito}, mas tem em outras cidades da região:`
         : `Olha as vagas ${doJeito}${aqui}:`
-      : null;
+      : centro
+        ? `Olha ${mais1 ? "mais " : "as "}vagas no ar mais perto de você, de todas as funções:`
+        : `Olha ${mais1 ? "mais " : "as "}vagas que entraram no ar agora há pouco, de todas as funções:`;
   else if (usadas[0].outras)
     abertura = `Agora não achei vaga de ${listaE(funcoes)}${jeitoNao} nem parecida. Olha as vagas no ar mais perto de você, de outras funções: abra e veja se alguma te interessa.`;
   else if (parecidas)
@@ -908,7 +929,9 @@ async function mensagemDaBusca(
   // só de outras funções: o currículo, para as empresas acharem a função dela e para o aviso da vaga que combina
   const curriculo = vagas.outras
     ? "\n\nE deixe o seu *currículo* no Publike: é grátis, leva uns 2 minutos, e você recebe o aviso quando entrar vaga que combina com você."
-    : "";
+    : !funcoes.length
+      ? `\n\n${local ? PEDIR_A_FUNCAO_DEPOIS : PEDIR_FUNCAO_E_BAIRRO_DEPOIS}`
+      : "";
   return {
     abertura: vagas.abertura,
     /** a frase quando não vale a da IA (a busca de novo) */
@@ -951,6 +974,12 @@ const PARA_QUEM_PROCURA = [
   "*Me conta o que você faz e o bairro onde mora.*",
   "Por exemplo: _sou cozinheira e moro no Jardim América_.",
 ].join("\n\n");
+
+/** Depois das vagas mais perto, de qualquer função: a função, para mandar só as dela (sem ser pergunta de novo). */
+export const PEDIR_A_FUNCAO_DEPOIS = "Se me disser o que você faz, eu separo só as vagas da sua função. 😊";
+/** O mesmo, sem saber onde ela mora (as vagas mais novas): a função e o bairro. */
+export const PEDIR_FUNCAO_E_BAIRRO_DEPOIS =
+  "Se me disser o que você faz e o bairro onde mora, eu separo as vagas da sua função mais perto de você. 😊";
 
 /** O "ok" de quem procura trabalho: a pergunta, clara, com um exemplo. */
 export const PEDIR_FUNCAO_E_BAIRRO =
@@ -1112,9 +1141,10 @@ O essencial do Publike
 
 O que fazer (campo "acao")
 - responder: o normal.
-- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). Se a cidade que ela disse não está na lista (fica fora de onde o Publike funciona), deixe "busca.cidade" vazio e ponha o nome dela em "busca.fora", como ela escreveu; senão, "busca.fora" vazio. A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz e onde mora.
+- buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). Se a cidade que ela disse não está na lista (fica fora de onde o Publike funciona), deixe "busca.cidade" vazio e ponha o nome dela em "busca.fora", como ela escreveu; senão, "busca.fora" vazio. A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois.
+- Sem a função: se ela procura trabalho e não disse o que faz, mas disse onde mora ou quer trabalhar, ou disse que não sabe, que topa o que tiver, perguntou que vagas tem, ou você já perguntou o que ela faz, use buscar_vagas com "busca.texto" e "busca.funcoes" vazios, "busca.jeito" com "qualquer" (mais o jeito que ela pediu), e a cidade e o bairro que ela disse: vão as vagas mais perto dela, de todas as funções, e o Publike pede a função depois, para filtrar. Só use responder para perguntar o que ela faz e onde mora quando ela ainda não disse nada disso; nunca pergunte a função duas vezes.
 - equipe: a pessoa pede para falar com alguém, reclama, fala de pagamento, cobrança ou golpe, de problema na conta, de parceria ou de imprensa, ou você não sabe a resposta. Responda o que der (no golpe: não pague nada) e diga que vai pedir para alguém da equipe responder por aqui, no prazo que está em "Sobre esta conversa".
-- silencio: a mensagem não pede resposta, como "ok", "beleza", "👍" ou um "obrigado" depois que você já se despediu. Deixe "resposta" vazia.
+- silencio: a mensagem não pede resposta, como "ok", "beleza", "👍" ou um "obrigado" depois que você já se despediu. Deixe "resposta" vazia. Mas "ok", "sim" e "pode ser" logo depois de uma pergunta sua são resposta: se você tinha perguntado o que ela faz ou oferecido as vagas, use buscar_vagas (sem a função, se ela não disse).
 Fora de buscar_vagas, "busca" vai com texto, cidade, bairro e fora vazios, funcoes, parecidas e jeito vazios e categoria "todas".
 
 O botão (campo "link")
@@ -1252,7 +1282,7 @@ export async function atenderConversa(
   // o "👍", o "ok" ou a figurinha depois de conversar não vão ter resposta: só "lida", sem o "digitando…"
   const conversando = e.historico.some((x) => x.de !== "pessoa");
   const semPergunta = !semBotoes(e.historico.findLast((x) => x.de !== "pessoa")?.texto ?? "").endsWith("?");
-  const pediuFuncao = /o que você faz e o bairro/i.test(e.historico.findLast((x) => x.de !== "pessoa")?.texto ?? "");
+  const pediuFuncao = perguntouAFuncao(e.historico.findLast((x) => x.de !== "pessoa")?.texto ?? "");
   const soReacao =
     conversando &&
     !(pediuFuncao && soConfirmacao(m.texto)) &&
@@ -1415,19 +1445,34 @@ export async function atenderConversa(
   )
     return;
 
-  // "ok" depois do "me conta o que você faz e o bairro": a pergunta de novo, clara (19/11/2026; Marcelo: "quando
-  // demonstrar confirmação, deve perguntar claramente")
+  // "ok" depois do "me conta o que você faz e o bairro": as vagas que entraram no ar, de todas as funções, e o pedido
+  // claro da função e do bairro depois (20/11/2026; Marcelo: "precisa entender e enviar vagas genéricas mais próximas
+  // e ir aumentando o raio"; antes, a pergunta de novo, de 19/11: "quando demonstrar confirmação, deve perguntar
+  // claramente")
   if (
     jaFalou &&
     /o que você faz e o bairro/i.test(minhaUltima) &&
     textos.every((t) => soConfirmacao(t) || soEmoji(t))
-  )
-    return saida(PEDIR_FUNCAO_E_BAIRRO, { perfil: e.perfil ?? "trabalho" });
+  ) {
+    const restam = VAGAS_POR_DIA - (await vagasDeHoje());
+    if (restam <= 0) return saida(PEDIR_FUNCAO_E_BAIRRO, { perfil: e.perfil ?? "trabalho" });
+    const r = await mensagemDaBusca(
+      { texto: "", funcoes: [], parecidas: [], categoria: "todas", jeito: ["qualquer"] } as Partial<Busca>,
+      null,
+      restam,
+      [],
+      vagasJaMandadas(e.historico),
+    );
+    if (!r.quantas) return saida(PEDIR_FUNCAO_E_BAIRRO, { perfil: e.perfil ?? "trabalho" });
+    return saida(`${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`, { perfil: e.perfil ?? "trabalho", botao: r.botao });
+  }
 
-  // "ok", "beleza", "👍" ou figurinha depois de conversar: não pedem resposta
+  // "ok", "beleza", "👍" ou figurinha depois de conversar: não pedem resposta. Depois de pedir a função (antes de mandar
+  // vaga), o "ok" é resposta: vai para a IA, que manda as vagas mais perto (a regra "Sem a função")
   if (
     jaFalou &&
     !minhaUltima.endsWith("?") &&
+    !perguntouAFuncao(minhaUltima) &&
     textos.every((t) => soConfirmacao(t) || soEmoji(t) || midiaDaMensagem(t) === "figurinha")
   )
     return;
@@ -1700,6 +1745,19 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
     texto: `${oi(primeiroNome(nome))} Procurei de novo as vagas para você, com mais cuidado.\n\n${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`,
     botao: r.botao,
   };
+}
+
+/**
+ * A última resposta pediu a função, antes de mandar vaga (o "ok" e o "sim" depois dela são resposta, e não só um "ok";
+ * 20/11/2026: "Beleza! Então me diz qual trabalho você faz ou procura..." e o "Ok" da pessoa ficou sem resposta).
+ */
+export function perguntouAFuncao(texto: string) {
+  return (
+    !/\/anuncio\//.test(texto) &&
+    /o que (você|vc) faz|qual (trabalho|função|funcao|vaga|serviço|servico) (você|vc) (faz|procura|quer)|que (trabalho|tipo de vaga) (você|vc) (faz|procura|quer)|(me )?(diz|diga|fala|fale|conta|conte) (qual|o que|que)/i.test(
+      texto,
+    )
+  );
 }
 
 /** As vagas que o Publike já mandou nesta conversa (os links /anuncio/<id> das respostas). */

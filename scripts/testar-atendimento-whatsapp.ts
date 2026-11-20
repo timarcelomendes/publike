@@ -42,6 +42,9 @@ let falharArquivo = false;
 let falaTranscrita = "Oi, tudo bem? Queria saber como funciona";
 let modeloEscolhido = "gpt-6-luna";
 let astronauta = false;
+// sem vaga nenhuma no ar (para o "não achei"); e as mais novas, sem lugar
+let semVagaNenhuma = false;
+let recentes = false;
 const vagaCozinheira = {
   id: "11111111-1111-1111-1111-111111111111",
   titulo: "Cozinheira",
@@ -95,6 +98,8 @@ globalThis.fetch = (async (url: any, init: any) => {
   if (u.includes("/rpc/ia_reserva")) return json(false);
   if (u.includes("/rpc/buscar_anuncios")) {
     buscas.push(corpo);
+    if (semVagaNenhuma) return json([]);
+    if (recentes && !corpo.p_texto && corpo.p_ordem === "recentes") return json([vagaCozinheira]);
     const t = corpo.p_texto ?? "";
     const vaga = (id: string, titulo: string, x: Record<string, unknown> = {}) => ({ ...vagaCozinheira, id: id.repeat(36).slice(0, 36), titulo, ...x });
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
@@ -658,7 +663,9 @@ async function main() {
     acao: "buscar_vagas",
     busca: { texto: "pedreiro", categoria: "todas", cidade: "Goiânia", bairro: "" },
   });
+  semVagaNenhuma = true;
   r = await rodar("tem vaga de pedreiro?", { historico: [{ de: "pessoa", texto: "tem vaga de pedreiro?" }] });
+  semVagaNenhuma = false;
   conferir(
     corpo(r.msgs[0]).startsWith(
       "Oi, Raphael! 👋 Aqui é o Marcelo, do Publike.\n\nAgora não achei vaga de pedreiro no ar, nem perto de você nem nas cidades em volta.",
@@ -918,6 +925,48 @@ async function main() {
     corpo(r.msgs[0]),
   );
   astronauta = false;
+  // 22b8. sem a função, com o bairro (20/11/2026: "precisa entender e enviar vagas genéricas mais próximas e ir
+  // aumentando o raio"): as mais perto, de todas as funções, do raio menor para o maior, e o pedido da função depois
+  respostaIA = ia("Olha as vagas perto do Parque Tremendão:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "", funcoes: [], parecidas: [], jeito: ["qualquer"], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  buscas.length = 0;
+  r = await rodar("🎤 moro no setor bueno, não sei qual vaga tá disponível", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "🎤 moro no setor bueno, não sei qual vaga tá disponível" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("Olha as vagas no ar mais perto de você, de todas as funções:") &&
+      corpo(r.msgs[0]).includes("*Cozinheira*") &&
+      corpo(r.msgs[0]).includes(a.PEDIR_A_FUNCAO_DEPOIS) &&
+      buscas[0]?.p_por_distancia === true && buscas[0]?.p_raio_km === 3,
+    "sem a função: as vagas mais perto, de todas as funções, começando pelo raio menor",
+    `${corpo(r.msgs[0])} ${JSON.stringify(buscas[0])}`,
+  );
+  // "Ok" depois de pedir a função com outras palavras (antes, ficava sem resposta): vai para a IA
+  r = await rodar("Ok", {
+    perfil: "trabalho",
+    historico: [
+      ...procurando,
+      { de: "pessoa", texto: "🎤 moro no setor bueno, não sei qual vaga tá disponível" },
+      { de: "robo", texto: "Beleza! Então me diz qual trabalho você faz ou procura, que eu já te mostro as vagas perto do Setor Bueno." },
+      { de: "pessoa", texto: "Ok" },
+    ],
+  });
+  conferir(
+    pedidosClaude.length + pedidosIA.length > 0 && corpo(r.msgs[0]).includes("*Cozinheira*"),
+    "ok depois de pedir a função: vai para a IA e manda as vagas",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.perguntouAFuncao("Beleza! Então me diz qual trabalho você faz ou procura, que eu já te mostro as vagas.") &&
+      !a.perguntouAFuncao(`Olha as vagas:\n\n• *Cozinheira*\nhttps://publike.org/anuncio/${"1".repeat(36)}\n\n${a.PEDIR_A_FUNCAO_DEPOIS}`) &&
+      !a.perguntouAFuncao("Por nada! Qualquer coisa, é só chamar."),
+    "pediu a função: só antes de mandar vaga",
+  );
+
   // 22c. duas funções: a que não tem é dita; a outra, mesmo longe, vem antes de qualquer parecida
   respostaIA = ia("Olha as vagas:", {
     perfil: "trabalho",
@@ -983,7 +1032,26 @@ async function main() {
       { de: "pessoa", texto: "Ok" },
     ],
   });
-  conferir(corpo(r.msgs[0]) === a.PEDIR_FUNCAO_E_BAIRRO, "ok de quem procura: pergunta o que faz e o bairro", corpo(r.msgs[0]));
+  conferir(corpo(r.msgs[0]) === a.PEDIR_FUNCAO_E_BAIRRO, "ok de quem procura, sem vaga no ar: pergunta o que faz e o bairro", corpo(r.msgs[0]));
+  // com vaga no ar (20/11/2026: "enviar vagas genéricas mais próximas"): as mais novas, e o pedido depois, sem perguntar
+  recentes = true;
+  r = await rodar("Ok", {
+    perfil: "trabalho",
+    historico: [
+      ...comeco,
+      { de: "pessoa", texto: "Procuro trabalho" },
+      { de: "robo", texto: "Que bom! 😊 Eu te mando as vagas por aqui, de graça.\n\n*Me conta o que você faz e o bairro onde mora.*" },
+      { de: "pessoa", texto: "Ok" },
+    ],
+  });
+  recentes = false;
+  conferir(
+    corpo(r.msgs[0]).startsWith("Olha as vagas que entraram no ar agora há pouco, de todas as funções:") &&
+      corpo(r.msgs[0]).includes("*Cozinheira*") &&
+      corpo(r.msgs[0]).includes(a.PEDIR_FUNCAO_E_BAIRRO_DEPOIS),
+    "ok de quem procura, com vaga no ar: as mais novas, e o pedido da função e do bairro depois",
+    corpo(r.msgs[0]),
+  );
 
   // 20. o teto do mês: quem procura trabalho, uma mensagem com o link; de novo no dia, nada; quem contrata, normal
   teto = { teto: 5000, enviadas: 5000, economico: true, respondida_hoje: false };
