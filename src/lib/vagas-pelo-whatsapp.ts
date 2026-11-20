@@ -121,6 +121,8 @@ export function respostaDasVagas(
   vagas: RascunhoConvite[],
   total = vagas.length,
   comeco = "",
+  /** o que a pessoa já disse e a leitura não guarda (o salário "a combinar", nas 3 perguntas): sai do "Faltou dizer" */
+  jaDisse: string[] = [],
 ): { texto: string; botao: string; lote: boolean } {
   const t = (k: ChaveTextoVagas, marcas?: Record<string, string | number>) => textoDasVagas(personalizados, k, marcas);
   const ola = comeco.trim();
@@ -134,7 +136,7 @@ export function respostaDasVagas(
   };
   if (vagas.length === 1) {
     const v = vagas[0];
-    const falta = faltaNaVaga(v);
+    const falta = faltaNaVaga(v).filter((f) => !jaDisse.includes(f));
     const faltou = falta.length ? `Faltou dizer ${juntarComE(falta)}: você completa quando conferir.` : "";
     const resumo = resumoDaVaga(v);
     // passou de 1.024 letras: sem os benefícios e o que a vaga pede (aparecem no publicar), e por fim cortado

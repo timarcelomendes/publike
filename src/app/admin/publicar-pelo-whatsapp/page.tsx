@@ -341,6 +341,9 @@ async function Conteudo({ periodo }: { periodo: Periodo }) {
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-end sm:text-right">
                     <Selo variante={st.variante}>{st.nome}</Selo>
                     <span className="text-ink-muted tabular-nums">{formatarDataHora(u.criado_em)}</span>
+                    {u.aberta_em && !u.publicada_em && (
+                      <span className="text-ink-muted tabular-nums">abriu o link em {formatarDataHora(u.aberta_em)}</span>
+                    )}
                     {u.publicada_em && (
                       <span className="text-ink-muted tabular-nums">no ar em {formatarDataHora(u.publicada_em)}</span>
                     )}

@@ -343,6 +343,38 @@ async function main() {
   respostaIA = ia("É grátis, sim!");
   r = await rodar("É pago?", { historico: [...montando, { de: "pessoa", texto: "É pago?" }] });
   conferir(pedidosIA.length + pedidosClaude.length > 0, "publicar vaga: a dúvida no meio vai para a IA");
+  // a resposta vaga ganha a pergunta de novo, uma vez (20/11/2026: "Por mês" e "Goiânia")
+  const naPergunta2 = [...montando, { de: "pessoa", texto: "Operadora de caixa" }, { de: "robo", texto: a.PERGUNTAS_DA_VAGA[1] }];
+  r = await rodar("Por mês", { historico: [...naPergunta2, { de: "pessoa", texto: "Por mês" }] });
+  conferir(corpo(r.msgs[0]) === a.DE_NOVO_SALARIO, "publicar vaga: salário sem o valor pergunta de novo", r.msgs);
+  r = await rodar("Por mês", {
+    historico: [...naPergunta2, { de: "pessoa", texto: "Por mês" }, { de: "robo", texto: a.DE_NOVO_SALARIO }, { de: "pessoa", texto: "Por mês" }],
+  });
+  conferir(corpo(r.msgs[0]) === a.PERGUNTAS_DA_VAGA[2], "publicar vaga: a segunda vez segue", r.msgs);
+  const naPergunta3 = [...naPergunta2, { de: "pessoa", texto: "A. Combinar" }, { de: "robo", texto: a.PERGUNTAS_DA_VAGA[2] }];
+  r = await rodar("Goiânia", { historico: [...naPergunta3, { de: "pessoa", texto: "Goiânia" }] });
+  conferir(corpo(r.msgs[0]) === a.DE_NOVO_LUGAR, "publicar vaga: só a cidade pergunta o bairro", r.msgs);
+  conferir(
+    !a.salarioVago("A. Combinar") && !a.salarioVago("1950") && a.salarioVago("Por mês") &&
+      a.lugarVago("Sim. Pôde me dizer onde fica. Sou de. Goiânia") && a.lugarVago("goiania") &&
+      !a.lugarVago("Setor Urias Magalhães") && !a.lugarVago("Campinas, Goiânia"),
+    "publicar vaga: o que é resposta vaga",
+  );
+  const preparada = [
+    ...naPergunta3,
+    { de: "pessoa", texto: "Goiânia" },
+    { de: "robo", texto: a.DE_NOVO_LUGAR },
+    { de: "pessoa", texto: "Setor Urias Magalhães" },
+    { de: "robo", texto: "Pronto! Preparei a sua vaga: *Operadora de caixa*\n\n[Botão: Conferir e publicar]" },
+  ];
+  const lida = a.textosDaVagaPreparada(preparada as any);
+  conferir(
+    lida?.texto === "Vaga de emprego para Operadora de caixa. Salário: A. Combinar. Local de trabalho: Goiânia Setor Urias Magalhães." &&
+      lida.jaDisse.includes("o salário"),
+    "publicar vaga: depois da vaga preparada, o texto para ler de novo",
+    lida,
+  );
+  conferir(a.textosDaVagaPreparada(naPergunta3 as any) === null, "publicar vaga: sem a vaga preparada, nada");
   conferir(a.querPublicarVaga("Olá! Quero publicar uma vaga pelo WhatsApp.") && !a.querPublicarVaga("Quero uma vaga de auxiliar"), "publicar vaga: a mensagem pronta");
   // os links de quem veio do anúncio contam no anúncio do Instagram, não no atendimento (19/11/2026: "parece que as
   // campanhas do Instagram não apareceram aqui")

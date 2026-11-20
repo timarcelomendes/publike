@@ -171,6 +171,9 @@ export function formatarLugar(bairro: string | null, cidade: string) {
 export function formatarTelefone(numero: string) {
   const d = numero.replace(/\D/g, "").replace(/^55/, "");
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  // celular guardado sem o 9 (como a Meta guarda o número do Publike, 556284771907): mostra com o 9, como as pessoas
+  // conhecem o número (20/11/2026: o publicar mostrava "(62) 8477-1907"); fixo começa de 2 a 5 e fica como está
+  if (d.length === 10 && /^[6-9]$/.test(d[2])) return `(${d.slice(0, 2)}) 9${d.slice(2, 6)}-${d.slice(6)}`;
   if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return numero;
 }

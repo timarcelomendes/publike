@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { MODO_DEMO } from "@/lib/config";
+import { formatarTelefone } from "@/lib/formato";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { conferirNumero, configMeta } from "./whatsapp";
 
@@ -25,10 +26,9 @@ export async function contatoDasVagasPeloWhatsapp(): Promise<{ numero: string; e
     const r = await conferirNumero(cfg);
     const digitos = r.ok ? (r.display_phone_number ?? "").replace(/\D/g, "") : "";
     if (!/^55[1-9][0-9][0-9]{8,9}$/.test(digitos)) return null;
-    const ddd = digitos.slice(2, 4);
-    const resto = digitos.slice(4);
-    const exibicao = `(${ddd}) ${resto.length === 9 ? `${resto.slice(0, 5)}-${resto.slice(5)}` : `${resto.slice(0, 4)}-${resto.slice(4)}`}`;
-    return { numero: digitos, exibicao };
+    // a Meta mostra o celular sem o 9 (556284771907): a exibição põe o 9, como as pessoas conhecem o número
+    // (20/11/2026: o publicar mostrava "(62) 8477-1907"); o link do wa.me segue com os dígitos da Meta
+    return { numero: digitos, exibicao: formatarTelefone(digitos) };
   } catch {
     return null;
   }

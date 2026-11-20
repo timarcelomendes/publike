@@ -117,6 +117,8 @@ export async function tentarVagaPeloWhatsapp(p: {
   comeco?: string;
   /** o texto da vaga montada nas 3 perguntas ("Montar a vaga comigo"): lê mesmo curto, sem a conferência de "parece vaga" */
   montada?: boolean;
+  /** o que a pessoa já disse e a leitura não guarda ("o salário", quando é a combinar): sai do "Faltou dizer" */
+  jaDisse?: string[];
 }): Promise<boolean> {
   if (!p.montada && !deveTentarVaga(p.textos, p.perfil)) return false;
   const config = await configVagasWhatsapp(p.banco, p.chave);
@@ -243,7 +245,7 @@ export async function tentarVagaPeloWhatsapp(p: {
     );
     return true;
   }
-  const resposta = respostaDasVagas(config.textos, vagas, lida.vagas.length, ola);
+  const resposta = respostaDasVagas(config.textos, vagas, lida.vagas.length, ola, p.jaDisse);
   await p.saida(resposta.texto, {
     perfil: "contratar",
     botao: { titulo: resposta.botao, caminho: caminhoDaVagaDoWhatsapp(links[0], resposta.lote) },

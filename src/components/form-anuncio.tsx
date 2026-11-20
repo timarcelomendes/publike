@@ -309,6 +309,10 @@ export function FormAnuncio({
   const [maxPasso, setMaxPasso] = useState(passos ? passoInicial : TOTAL_PASSOS);
   const [errosLocais, setErrosLocais] = useState<Record<string, string>>({});
   const [resumo, setResumo] = useState<{ nome: string; texto: string; passo: number }[]>([]);
+  // o que falta para publicar, à mostra no passo 5 (20/11/2026: a vaga preparada pelo WhatsApp abria no passo 5 sem o
+  // tipo de contratação e o bairro, e o Publicar voltava a pessoa para o passo 1; agora dá para completar ali mesmo)
+  const [faltasDoResumo, setFaltasDoResumo] = useState<Record<string, string>>({});
+  const [bairroDoResumo, setBairroDoResumo] = useState("");
   const topo = useRef<HTMLDivElement>(null);
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
   const [descricao, setDescricao] = useState(inicial.descricao);
@@ -502,6 +506,11 @@ export function FormAnuncio({
   /** O resumo do passo 5: uma linha por passo, com o que foi escrito. */
   function montarResumo() {
     const f = formulario.current ? new FormData(formulario.current) : new FormData();
+    if (passos) {
+      const faltas: Record<string, string> = {};
+      for (let n = 1; n < TOTAL_PASSOS; n++) Object.assign(faltas, faltaNoPasso(n, f, { vaga, agencia }));
+      setFaltasDoResumo(faltas);
+    }
     const t = (k: string) => {
       const v = f.get(k);
       return typeof v === "string" ? v.trim() : "";
@@ -1319,8 +1328,83 @@ export function FormAnuncio({
     </>
   );
 
+  // completar no passo 5: marca o tipo de contratação (o rádio do passo 1) ou escreve o bairro (o campo do passo 3)
+  function completarNoResumo(campo: "regime" | "bairro", valor: string) {
+    const f = formulario.current;
+    if (!f) return;
+    if (campo === "regime") {
+      const r = f.querySelector<HTMLInputElement>(`input[name="regime"][value="${valor}"]`);
+      r?.click();
+    } else trocarBairro(f.elements.namedItem("bairro"), valor);
+    window.requestAnimationFrame(() => setResumo(montarResumo()));
+  }
+
+  const faltaRegime = vaga && Boolean(faltasDoResumo.regime);
+  const faltaBairro = Boolean(faltasDoResumo.bairro);
+  const outrasFaltas = Object.keys(faltasDoResumo).filter((k) => k !== "regime" && k !== "bairro");
+  const caixaDoQueFalta = passos && passo === TOTAL_PASSOS && (faltaRegime || faltaBairro || outrasFaltas.length > 0) && (
+    <div role="group" aria-label="Falta pouco para publicar" className="flex flex-col gap-4 rounded-lg border border-terra bg-surface-100 p-4">
+      <p className="text-label">Falta pouco para publicar</p>
+      {faltaRegime && (
+        <div className="flex flex-col gap-2">
+          <span className="text-body-sm">Qual é o tipo de contratação?</span>
+          <span className="flex flex-wrap gap-2">
+            {REGIMES_PRINCIPAIS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => completarNoResumo("regime", r)}
+                className="min-h-10 rounded-pill border border-line bg-surface px-4 text-label hover:border-ink"
+              >
+                {REGIMES[r].nome}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
+      {faltaBairro && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="bairro-do-resumo" className="text-body-sm">
+            Em que bairro ou setor é o trabalho?
+          </label>
+          <span className="flex gap-2">
+            <input
+              id="bairro-do-resumo"
+              value={bairroDoResumo}
+              onChange={(e) => setBairroDoResumo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (bairroDoResumo.trim().length >= 2) completarNoResumo("bairro", bairroDoResumo.trim());
+                }
+              }}
+              placeholder="Ex.: Setor Bueno"
+              className="min-h-11 min-w-0 flex-1 rounded-md border border-line bg-surface px-3 text-body"
+            />
+            <button
+              type="button"
+              disabled={bairroDoResumo.trim().length < 2}
+              onClick={() => completarNoResumo("bairro", bairroDoResumo.trim())}
+              className="min-h-11 shrink-0 rounded-md border border-ink px-4 text-label disabled:opacity-40"
+            >
+              Usar este bairro
+            </button>
+          </span>
+        </div>
+      )}
+      {outrasFaltas.length > 0 && (
+        <ul className="flex flex-col gap-1 text-body-sm text-danger">
+          {outrasFaltas.map((k) => (
+            <li key={k}>{faltasDoResumo[k]}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   const conteudoDaPublicacao = (
     <>
+      {caixaDoQueFalta}
       {passos && resumo.length > 0 && (
         <ul
           aria-label="Resumo da vaga"

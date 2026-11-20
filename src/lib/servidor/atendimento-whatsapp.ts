@@ -1022,6 +1022,25 @@ export const PERGUNTAS_DA_VAGA = [
   "*3 de 3:* em que bairro e cidade é o trabalho?",
 ];
 const MARCAS_DAS_PERGUNTAS = ["*1 de 3:*", "*2 de 3:*", "*3 de 3:*"];
+// a resposta vaga ("por mês", só "Goiânia") ganha uma pergunta de novo, uma vez só, com o exemplo (20/11/2026: a Gardenia
+// respondeu "Por mês" e "Goiânia", e a vaga veio com "Faltou dizer o salário, o bairro e o horário" logo depois)
+export const DE_NOVO_SALARIO =
+  "*2 de 3:* qual é o valor do salário? Por exemplo: _1.800 por mês_, _100 por dia_ ou _a combinar_.";
+export const DE_NOVO_LUGAR = "*3 de 3:* e qual é o bairro ou setor do trabalho? Por exemplo: _Setor Bueno, Goiânia_.";
+const CIDADES_DA_REGIAO =
+  /\b(goi[aâ]nia|an[aá]polis|aparecida( de goi[aâ]nia)?|senador canedo|trindade|goianira|ner[oó]polis|bela vista( de goi[aâ]s)?|hidrol[aâ]ndia|inhumas|guap[oó]|abadia de goi[aâ]s|goi[aá]s|go)\b/gi;
+/** "por mês", "mensal": sem o valor e sem "a combinar" */
+export function salarioVago(texto: string) {
+  return !/\d/.test(texto) && !/combin|negoci|definir|comiss/i.test(texto);
+}
+/** só a cidade ("Goiânia", "Sou de Goiânia"), sem o bairro */
+export function lugarVago(texto: string) {
+  const resto = texto
+    .replace(CIDADES_DA_REGIAO, " ")
+    .replace(/\b(sim|sou|de|da|do|em|na|no|[eé]|fica|cidade|onde|aqui|me|dizer|pode|p[oô]de|o|a|ok|trabalho|vaga|centro-oeste)\b/gi, " ")
+    .replace(/[^\p{L}]/gu, "");
+  return resto.length < 3;
+}
 /** Para quem parou na entrada, no "pode mandar" ou numa das 3 perguntas, 2 horas depois (uma vez), com os 2 botões. */
 export const LEMBRETE_VAGA =
   "Ainda quer publicar a vaga? 😊 É grátis: mande a foto ou o texto dela, ou toque em *Montar a vaga comigo* que eu te faço 3 perguntas rápidas.";
@@ -1062,6 +1081,49 @@ export function respostasDaVaga(historico: Mensagem[], agora: string[]) {
   }
   if (!respostas[2]) respostas[2] = agora.join(" ").trim();
   return { cargo: respostas[0], salario: respostas[1], lugar: respostas[2] };
+}
+
+const BOTAO_DA_VAGA_PREPARADA = /\[Botão: (Conferir e publicar|Ver as vagas)\]/;
+
+/**
+ * A vaga escrita que já virou o link (a última mensagem do robô é a vaga preparada): o texto lido, para ler de novo com
+ * o que a pessoa contou depois. `null`: a última não é a vaga preparada, ou a vaga veio de foto ou arquivo.
+ */
+export function textosDaVagaPreparada(historico: Mensagem[]): { texto: string; jaDisse: string[] } | null {
+  let ultimaDoRobo = -1;
+  for (let i = historico.length - 1; i >= 0; i--)
+    if (historico[i].de !== "pessoa") {
+      ultimaDoRobo = i;
+      break;
+    }
+  if (ultimaDoRobo < 0 || !BOTAO_DA_VAGA_PREPARADA.test(historico[ultimaDoRobo].texto)) return null;
+  // onde a vaga começou: a pergunta 1, o "pode mandar" ou a entrada
+  let inicio = -1;
+  for (let i = ultimaDoRobo - 1; i >= 0; i--) {
+    const t = historico[i].texto;
+    if (historico[i].de === "pessoa") continue;
+    if (t.includes(MARCAS_DAS_PERGUNTAS[0]) || t.startsWith(MANDAR_A_VAGA.slice(0, 32)) || /vamos colocar sua vaga no ar/i.test(t)) {
+      inicio = i;
+      break;
+    }
+  }
+  if (inicio < 0) return null;
+  const trecho = historico.slice(inicio, ultimaDoRobo + 1);
+  if (trecho.some((m) => m.de === "pessoa" && /^\[a pessoa mandou/.test(m.texto))) return null;
+  // as mensagens depois da vaga preparada (já completando) também entram
+  const depois = historico.slice(ultimaDoRobo + 1).filter((m) => m.de === "pessoa").map((m) => m.texto.trim());
+  if (trecho.some((m) => m.de !== "pessoa" && m.texto.includes(MARCAS_DAS_PERGUNTAS[0]))) {
+    const r = respostasDaVaga(trecho, []);
+    return {
+      texto: [textoDaVagaMontada(r), ...depois].join(" "),
+      jaDisse: /combin|negoci|definir/i.test(r.salario) ? ["o salário"] : [],
+    };
+  }
+  const botoes = new Set(BOTOES_DA_VAGA.map((b) => b.titulo));
+  const escritos = trecho
+    .filter((m) => m.de === "pessoa" && !botoes.has(m.texto.trim()) && !querPublicarVaga(m.texto))
+    .map((m) => m.texto.trim());
+  return escritos.length ? { texto: [...escritos, ...depois].join("\n"), jaDisse: [] } : null;
 }
 
 /** O texto que o Publike lê como a vaga (o mesmo leitor da foto e do texto). */
@@ -1537,10 +1599,13 @@ export async function atenderConversa(
       !escrito.endsWith("?") &&
       (depoisDoMandar || !pareceVaga(escrito))
     ) {
+      if (passo === 1 && minhaUltima !== DE_NOVO_SALARIO && salarioVago(escrito))
+        return saida(DE_NOVO_SALARIO, { perfil: "contratar" });
+      if (passo === 2 && minhaUltima !== DE_NOVO_LUGAR && lugarVago(escrito))
+        return saida(DE_NOVO_LUGAR, { perfil: "contratar" });
       if (passo >= 0 && passo < 2) return saida(PERGUNTAS_DA_VAGA[passo + 1], { perfil: "contratar" });
-      const montada = depoisDoMandar
-        ? escrito
-        : textoDaVagaMontada(respostasDaVaga(e.historico.slice(0, e.historico.length - novas.length), textos));
+      const respostas = respostasDaVaga(e.historico.slice(0, e.historico.length - novas.length), textos);
+      const montada = depoisDoMandar ? escrito : textoDaVagaMontada(respostas);
       if (
         await tentarVagaPeloWhatsapp({
           cfg,
@@ -1553,6 +1618,7 @@ export async function atenderConversa(
           textos: [montada],
           saida,
           montada: true,
+          jaDisse: !depoisDoMandar && /combin|negoci|definir/i.test(respostas.salario) ? ["o salário"] : [],
         })
       )
         return;
@@ -1561,6 +1627,35 @@ export async function atenderConversa(
         { perfil: "contratar", botao: LINKS.publicar },
       );
     }
+  }
+
+  // o que a pessoa conta depois da vaga preparada ("Setor Urias Magalhães", "de manhã", "1950") entra na vaga: o Publike
+  // lê de novo com tudo e manda o link novo (20/11/2026: a Gardenia completou a vaga e a IA só respondeu "Anotado", com o
+  // botão do publicar em branco). Só a vaga escrita (com foto, a leitura precisaria da foto de novo: segue a IA).
+  {
+    const escrito = textos.join("\n").trim();
+    const textosDaVaga = textosDaVagaPreparada(e.historico.slice(0, e.historico.length - novas.length));
+    if (
+      textosDaVaga &&
+      escrito.length >= 3 &&
+      !midias.some(Boolean) &&
+      !escrito.endsWith("?") &&
+      !/^(ok|okay|obrigad|valeu|vlw|blz|beleza|certo|sim|t[aá]|top|show|perfeito|entendi)\b/i.test(escrito) &&
+      (await tentarVagaPeloWhatsapp({
+        cfg,
+        banco,
+        chave,
+        conversa: e.chave,
+        numero: m.numero,
+        wamid: m.wamid,
+        perfil: "contratar",
+        textos: [`${textosDaVaga.texto} Mais informações: ${escrito}`],
+        saida,
+        montada: true,
+        jaDisse: textosDaVaga.jaDisse,
+      }))
+    )
+      return;
   }
 
   // a foto, o PDF ou o texto de uma vaga (Publicar pelo WhatsApp, migração 20270806120000): o Publike lê, prepara a
