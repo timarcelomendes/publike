@@ -4530,6 +4530,7 @@ export type Database = {
       // p_numeros: o filtro dos números de teste, 'reais', 'teste' ou 'todos' (migração 20270720120000)
       admin_whatsapp: { Args: { p_numeros?: string }; Returns: Json };
       admin_whatsapp_resultados: { Args: { p_dias?: number; p_numeros?: string }; Returns: Json };
+      admin_whatsapp_sem_entrega: { Args: { p_dias?: number; p_numeros?: string }; Returns: Json };
       mudar_whatsapp_avisos: { Args: { p_desligados: string[] }; Returns: undefined };
       admin_salvar_whatsapp: {
         Args: {

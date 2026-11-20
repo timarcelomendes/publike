@@ -359,7 +359,8 @@
   "20270811120000_origem_anuncio_whatsapp",
   "20270812120000_email_empresas_enderecos_ruins",
   "20270813120000_whatsapp_lembretes",
-  "20270814120000_email_empresas_quem_anunciou"
+  "20270814120000_email_empresas_quem_anunciou",
+  "20270815120000_whatsapp_sem_entrega_no_celular"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3140,6 +3141,7 @@
   "f|public.admin_whatsapp_pedir_aceite()": "dbe0c307ae",
   "f|public.admin_whatsapp_resultados(p_dias integer, p_numeros text)": "d9b577cef0",
   "f|public.admin_whatsapp_salvar_modelos(p_modelos jsonb)": "ed8fd3c2e0",
+  "f|public.admin_whatsapp_sem_entrega(p_dias integer, p_numeros text)": "50cde3e929",
   "f|public.admin_whatsapp_teto()": "55339c025c",
   "f|public.admin_whatsapp_vagas(p_dias integer)": "c2775f3efa",
   "f|public.agendar_remocao(p_anuncio uuid, p_horas integer, p_nota text, p_so_sem_resposta boolean)": "d833edd36c",

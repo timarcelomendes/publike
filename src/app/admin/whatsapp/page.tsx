@@ -156,6 +156,21 @@ type Resultados = {
   }[];
 };
 
+/**
+ * admin_whatsapp_sem_entrega (migração 20270815120000): as que saíram há mais de 1 hora sem a entrega, separadas.
+ * Sem a migração, o aviso de antes (todas como "o webhook pode não estar chegando").
+ */
+type SemEntrega = {
+  /** nem o "saiu" a Meta avisou (a cobrada nula): o webhook pode não estar chegando */
+  sem_noticia: number;
+  /** a Meta avisou que saiu, mas o celular de quem recebe ainda não recebeu */
+  no_celular: number;
+  pessoas_no_celular: number;
+  ultima_no_celular: string | null;
+  /** a última notícia que chegou pelo webhook (entrega, leitura, resposta de botão ou mensagem recebida) */
+  ultima_noticia: string | null;
+};
+
 const ABAS = [
   { valor: "resultados", nome: "Resultados" },
   { valor: "conversas", nome: "Conversas" },
@@ -283,6 +298,8 @@ const explicado = (motivo: string) => (/^\d+:/.test(motivo) ? explicarErro(motiv
 type ErroWhatsapp = {
   chave: string;
   grave: boolean;
+  /** só para saber: aparece na aba Erros, mas não conta como erro nem como ponto de atenção (não há o que arrumar) */
+  info?: boolean;
   titulo: string;
   detalhe?: ReactNode;
   quantas?: number;
@@ -297,6 +314,7 @@ function errosDoWhatsapp(
   s: ReturnType<typeof situacaoWhatsapp>,
   local: boolean,
   p: ParametrosWhatsapp,
+  se: SemEntrega | null,
 ): ErroWhatsapp[] {
   const cfg = r.config;
   const erros: ErroWhatsapp[] = [];
@@ -437,14 +455,35 @@ function errosDoWhatsapp(
     });
   }
 
-  if (res.sem_entrega > 0)
+  // saíram há mais de 1 hora sem a entrega (20/11/2026, Marcelo: "nao achei nada" em Ligação e teste: eram 2 avisos
+  // para uma pessoa cujo celular nunca recebeu, e o webhook chegava normal). Com a migração 20270815120000, separa:
+  // nem o "saiu" a Meta avisou (o webhook) e "saiu, mas o celular não recebeu" (não há o que arrumar).
+  const semNoticia = se ? se.sem_noticia : res.sem_entrega;
+  if (semNoticia > 0)
     erros.push({
       chave: "sem-entrega",
       grave: false,
-      titulo: "Saíram há mais de 1 hora e a Meta não disse se entregou",
-      detalhe: "O webhook pode não estar chegando. Confira o webhook da conta em Ligação e teste.",
-      quantas: res.sem_entrega,
+      titulo: se
+        ? "Saíram há mais de 1 hora e a Meta não deu notícia"
+        : "Saíram há mais de 1 hora e a Meta não disse se entregou",
+      detalhe: se
+        ? `Nem que a mensagem saiu a Meta avisou: o webhook pode não estar chegando.${
+            se.ultima_noticia ? ` A última notícia da Meta chegou em ${formatarDataHora(se.ultima_noticia)}.` : ""
+          } Confira o webhook da conta em Ligação e teste.`
+        : "O webhook pode não estar chegando. Confira o webhook da conta em Ligação e teste.",
+      quantas: semNoticia,
       aba: "ligacao",
+    });
+  if (se && se.no_celular > 0)
+    erros.push({
+      chave: "sem-entrega-celular",
+      grave: false,
+      info: true,
+      titulo: `Saíram, mas ainda não chegaram no celular de ${plural(se.pessoas_no_celular, "pessoa", "pessoas")}`,
+      detalhe:
+        "A Meta avisou que saíram, então o webhook está chegando. O celular pode estar desligado ou sem internet, ou o número não está mais em uso: a Meta continua tentando entregar, e não há nada para arrumar aqui.",
+      quantas: se.no_celular,
+      quando: se.ultima_no_celular ?? undefined,
     });
 
   const venceram = res.descartes.filter((x) => x.motivo.startsWith("venceu")).reduce((n, x) => n + x.quantas, 0);
@@ -458,7 +497,9 @@ function errosDoWhatsapp(
       aba: "parametros",
     });
 
-  return erros.sort((a, b) => Number(b.grave) - Number(a.grave));
+  // os erros primeiro, depois os pontos de atenção e, no fim, o que é só para saber
+  const peso = (e: ErroWhatsapp) => (e.grave ? 2 : e.info ? 0 : 1);
+  return erros.sort((a, b) => peso(b) - peso(a));
 }
 
 async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conversa: NaConversa }) {
@@ -474,7 +515,7 @@ async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conv
       c.rpc("admin_whatsapp_cobradas_por_modelo", comFiltro ? { p_dias: dias, p_numeros: vista.numeros } : { p_dias: dias }),
     ]);
   // o pedido do aceite a quem contrata (migração 20270726120000): só na aba dele
-  const [lidas, agora, dPedidos, dConversas, dAberta] = await Promise.all([
+  const [lidas, agora, dPedidos, dConversas, dAberta, dSemEntrega] = await Promise.all([
     ler(true),
     agoraDaRequisicao(),
     aba === "aceite" ? c.rpc("admin_whatsapp_pedidos") : Promise.resolve(null),
@@ -483,7 +524,10 @@ async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conv
     aba === "conversas" && conversa.aberta
       ? c.rpc("admin_whatsapp_conversa", { p_conversa: conversa.aberta })
       : Promise.resolve(null),
+    // as que saíram sem a entrega, separadas (migração 20270815120000; sem ela, o aviso de antes)
+    c.rpc("admin_whatsapp_sem_entrega", { p_dias: dias, p_numeros: vista.numeros }),
   ]);
+  const semEntrega = dSemEntrega.error || !dSemEntrega.data ? null : (dSemEntrega.data as unknown as SemEntrega);
   const conversas = dConversas.error || !dConversas.data ? null : (dConversas.data as unknown as Conversas);
   const aberta = dAberta && !dAberta.error && dAberta.data ? (dAberta.data as unknown as ConversaAberta) : null;
   const pedidos = dPedidos && !dPedidos.error && dPedidos.data ? (dPedidos.data as unknown as Pedidos) : null;
@@ -501,8 +545,10 @@ async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conv
   // Admin aberto no computador (16/11/2026: "aqui ele olha local?"): as chaves são as do .env.local, não as da Vercel
   const local = !process.env.VERCEL;
   const p = parametrosWhatsapp(r?.config ?? {});
-  const erros = r ? errosDoWhatsapp(r, res, s, local, p) : [];
+  const erros = r ? errosDoWhatsapp(r, res, s, local, p, semEntrega) : [];
   const graves = erros.filter((e) => e.grave).length;
+  // o que é só para saber (info) não conta no topo nem no número da aba
+  const pontos = erros.filter((e) => !e.grave && !e.info).length;
 
   const ligados = r ? MODELOS.filter((m) => !r.config.tipos_desligados.includes(m.aviso)) : [];
   const prontos = r
@@ -549,11 +595,11 @@ async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conv
                 : `${prontos} de ${ligados.length} modelos dos avisos ligados aprovados`}
             </Situacao>
             {/* sem os resultados, os erros do período não foram vistos: não dá para dizer "nenhum" */}
-            <Situacao ok={Boolean(res) && erros.length === 0}>
-              {erros.length > 0
+            <Situacao ok={Boolean(res) && graves + pontos === 0}>
+              {graves + pontos > 0
                 ? [
                     graves > 0 && plural(graves, "erro", "erros"),
-                    erros.length > graves && plural(erros.length - graves, "ponto de atenção", "pontos de atenção"),
+                    pontos > 0 && plural(pontos, "ponto de atenção", "pontos de atenção"),
                   ]
                     .filter(Boolean)
                     .join(" e ")
@@ -587,13 +633,13 @@ async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conv
                   {conversas?.resumo.com_a_equipe}
                 </span>
               )}
-              {a.valor === "erros" && erros.length > 0 && (
+              {a.valor === "erros" && graves + pontos > 0 && (
                 <span
                   className={`min-w-6 rounded-pill px-1.5 text-center text-caption leading-6 tabular-nums ${
                     graves > 0 ? "border border-danger text-danger" : "bg-surface-300 text-ink"
                   }`}
                 >
-                  {erros.length}
+                  {graves + pontos}
                 </span>
               )}
             </Link>
@@ -1214,7 +1260,9 @@ function AbaErros({
               className={`flex flex-col gap-1.5 rounded-lg border bg-surface-200 p-4 sm:p-5 ${e.grave ? "border-danger" : "border-line"}`}
             >
               <p className="flex items-start gap-2">
-                <Selo variante={e.grave ? "perigo" : "aviso"}>{e.grave ? "Erro" : "Atenção"}</Selo>
+                <Selo variante={e.grave ? "perigo" : e.info ? "neutro" : "aviso"}>
+                  {e.grave ? "Erro" : e.info ? "Para saber" : "Atenção"}
+                </Selo>
                 <span className="min-w-0 pt-0.5 text-label break-words text-ink">{e.titulo}</span>
               </p>
               {e.detalhe && <p className="max-w-3xl text-body-sm break-words text-ink-muted">{e.detalhe}</p>}
