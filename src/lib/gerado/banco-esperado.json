@@ -357,7 +357,8 @@
   "20270809120000_whatsapp_mensagem_so_empresas",
   "20270810120000_convites_manter_contato",
   "20270811120000_origem_anuncio_whatsapp",
-  "20270812120000_email_empresas_enderecos_ruins"
+  "20270812120000_email_empresas_enderecos_ruins",
+  "20270813120000_whatsapp_lembretes"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3769,6 +3770,7 @@
   "f|public.servidor_whatsapp_conversa_saida(p_chave text, p_conversa text, p_texto text, p_wamid text, p_perfil text, p_equipe boolean, p_motivo text)": "99c2ceac83",
   "f|public.servidor_whatsapp_conversa_ultima(p_chave text, p_conversa text)": "690ad0490f",
   "f|public.servidor_whatsapp_leitura(p_chave text, p_conversa text, p_numero text, p_fonte text, p_resultado text, p_empresa text, p_motivo text, p_ms integer, p_vagas jsonb, p_midias text[])": "d38cc799d2",
+  "f|public.servidor_whatsapp_lembretes(p_chave text, p_marca_pergunta text, p_marca_sempre text)": "44542b9963",
   "f|public.servidor_whatsapp_marcar(p_chave text, p_id bigint, p_situacao text, p_modelo text, p_wamid text, p_motivo text, p_tentar_em_minutos integer)": "47d933ec31",
   "f|public.servidor_whatsapp_midia(p_chave text, p_wamid text, p_numero text, p_tipo text, p_midia text, p_mime text, p_legenda text)": "5b01e3f257",
   "f|public.servidor_whatsapp_midias_da_vez(p_chave text, p_conversa text)": "d223c24efa",

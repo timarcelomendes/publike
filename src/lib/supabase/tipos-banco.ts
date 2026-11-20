@@ -4406,6 +4406,8 @@ export type Database = {
       servidor_email_empresas_invalido: { Args: { p_chave: string; p_id: number; p_motivo: string }; Returns: undefined };
       servidor_email_empresas_ler_devolvidos: { Args: { p_chave: string }; Returns: boolean };
       servidor_email_empresas_voltaram: { Args: { p_chave: string; p_itens: Json }; Returns: number };
+      // os lembretes do atendimento do WhatsApp (migração 20270813120000)
+      servidor_whatsapp_lembretes: { Args: { p_chave: string; p_marca_pergunta: string; p_marca_sempre: string }; Returns: Json };
       admin_email_empresas_copia: { Args: Record<string, never>; Returns: Json };
       painel_no_site_indicadores: { Args: { p_dias?: number }; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };

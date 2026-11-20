@@ -474,7 +474,7 @@ async function main() {
   );
 
   // 13b. até 3 vagas por dia (migração 20270807120000): já foram 2, vai 1 e o aviso; já foram 3, nenhuma busca
-  vagasJaEnviadas = 2;
+  vagasJaEnviadas = a.VAGAS_POR_DIA - 1;
   r = await rodar("sou cozinheira, moro no setor bueno", {
     perfil: "trabalho",
     historico: [...procurando, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
@@ -486,14 +486,14 @@ async function main() {
     "a última vaga do dia, com Ver vagas",
     corpo(r.msgs[0]),
   );
-  vagasJaEnviadas = 3;
+  vagasJaEnviadas = a.VAGAS_POR_DIA;
   r = await rodar("tem de auxiliar de cozinha também?", {
     perfil: "trabalho",
     historico: [...procurando, { de: "pessoa", texto: "tem de auxiliar de cozinha também?" }],
   });
   conferir(
     buscas.length === 0 &&
-      corpo(r.msgs[0]).startsWith("Hoje eu já te mandei 3 vagas") &&
+      corpo(r.msgs[0]).startsWith("Hoje eu já te mandei bastante vaga") &&
       botao(r.msgs[0]) === "Ver as vagas no site" &&
       JSON.stringify(r.msgs[0]).includes("q=cozinheira"),
     "passou de 3 no dia: amanhã tem mais, e o site já na busca do que ela pediu",
@@ -721,6 +721,26 @@ async function main() {
     historico: [...procurando, { de: "pessoa", texto: "auxiliar de cozinha e moro na Zn sp freguesia do ó" }],
   });
   conferir(corpo(r.msgs[0]).includes("ainda não está disponível em SP") && !corpo(r.msgs[0]).includes("/anuncio/"), "mora em SP: sem as vagas de Goiânia", corpo(r.msgs[0]));
+  // 22a5. o anúncio para quem procura emprego: a pergunta direto, sem o menu (20/11/2026)
+  conferir(
+    a.anuncioDeVagas({ tipo: "ad", titulo: "publike.br", texto: "Procurando emprego? Pede vaga pelo WhatsApp." }) &&
+      !a.anuncioDeVagas({ tipo: "ad", titulo: "publike.br", texto: "Contratando? Agora a vaga vai pro ar pelo WhatsApp." }) &&
+      !a.anuncioDeVagas({ tipo: "ad", titulo: "publike.br", texto: null }),
+    "o anúncio de vagas pelo texto",
+  );
+  r = await rodar("Olá! Posso ter mais informações sobre isso?", {
+    origem: { tipo: "ad", titulo: "publike.br", texto: "Procurando emprego? Pede vaga pelo WhatsApp." },
+    historico: [{ de: "pessoa", texto: "Olá! Posso ter mais informações sobre isso?" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Me conta o que você faz e o bairro onde mora.*") && !r.msgs[0]?.interactive?.action?.buttons,
+    "anúncio de vagas: a pergunta direto, sem o menu",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.LEMBRETE_PERGUNTA.includes("o que você faz e o bairro") && a.LEMBRETE_PERGUNTA.slice(0, 24) !== a.LEMBRETE_SEMPRE.slice(0, 24),
+    "os lembretes: a pergunta e o sempre, com começos diferentes",
+  );
   // 22b1. a equipe devolveu com os botões: os três botões do começo de novo, sem a IA (19/11/2026: "dar uma opção pra
   // voltar pra IA com botões novamente")
   respostaIA = ia("não devia ser chamada", { perfil: null, acao: "responder" });
@@ -811,7 +831,7 @@ async function main() {
     { payload: "a:trabalho", retomada: true },
   );
   conferir(
-    entradas[0]?.p_texto === "" && entradas[0]?.p_wamid === null && r.msgs.length === 1 && corpo(r.msgs[0]).includes("até 3 vagas por dia"),
+    entradas[0]?.p_texto === "" && entradas[0]?.p_wamid === null && r.msgs.length === 1 && corpo(r.msgs[0]).includes("Eu te mando as vagas por aqui"),
     "devolvida: responde a última da pessoa sem repetir a mensagem",
     `${JSON.stringify(entradas[0]?.p_texto)} ${corpo(r.msgs[0])}`,
   );

@@ -42,6 +42,7 @@ import { ajustarImpulsos } from "@/lib/servidor/impulso-ajuste";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura";
 import { enviarWhatsappPendentes } from "@/lib/servidor/whatsapp";
+import { enviarLembretesWhatsapp } from "@/lib/servidor/atendimento-whatsapp";
 import { cancelarPedidosNaoPagos } from "@/lib/servidor/pagamentos";
 import { convidarPelosPacotes } from "@/lib/servidor/convite-do-pacote";
 import { enviarEmailAsEmpresas } from "@/lib/servidor/email-empresas";
@@ -174,6 +175,8 @@ export async function GET(request: Request) {
     puladas: 0,
     motivo: `WhatsApp: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300),
   }));
+  // os lembretes do atendimento do WhatsApp (migração 20270813120000): o erro não derruba a fila
+  const lembretesWhatsapp = await enviarLembretesWhatsapp().catch(() => ({ enviados: 0, falhas: 0 }));
 
   const problemas = [
     emails.motivo,
@@ -253,6 +256,7 @@ export async function GET(request: Request) {
       talentos: talentos.avisados,
       convites_do_pacote: convitesDoPacote.convidados,
       email_empresas: { enviados: emailEmpresas.enviados, motivo: emailEmpresas.motivo ?? null },
+      lembretes_whatsapp: lembretesWhatsapp,
       resumo_receita: resumoReceita.recontado ?? false,
       consultasSalario: consultasSalario.contas,
       buscasTalentos: buscasTalentos.avisadas,

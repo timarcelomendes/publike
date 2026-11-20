@@ -95,7 +95,9 @@ const ESPERA = { texto: 5000, botao: 800 };
 type Mensagem = { de: "pessoa" | "robo" | "equipe"; texto: string };
 
 /** Quantas vagas o atendimento manda por dia a cada pessoa (de Brasília); o resto fica no botão do site. */
-export const VAGAS_POR_DIA = 3;
+// 3 por dia até 20/11/2026; com poucas vagas no ar, o limite cortava quem refinava a busca (Marcelo: "não sei se o
+// limite de vagas está fazendo sentido, hoje que temos poucas"). O custo fica no teto do mês (o modo econômico).
+export const VAGAS_POR_DIA = 12;
 
 type Entrada = {
   chave: string;
@@ -791,7 +793,7 @@ function boasVindas(nome: string | null, comeco: string, doAnuncio = false) {
 // pergunta no fim, com o botão Ver vagas competindo com ela. Agora, curta: só a pergunta, com o exemplo, sem botão (as
 // vagas vêm na resposta, com o link de cada uma e o "Curtir" para se candidatar).
 const PARA_QUEM_PROCURA = [
-  `Que bom! 😊 Eu te mando até ${VAGAS_POR_DIA} vagas por dia por aqui, de graça.`,
+  "Que bom! 😊 Eu te mando as vagas por aqui, de graça.",
   "*Me conta o que você faz e o bairro onde mora.*",
   "Por exemplo: _sou cozinheira e moro no Jardim América_.",
 ].join("\n\n");
@@ -910,7 +912,7 @@ export function aindaNaoDisponivel(cidade: string | null) {
 }
 
 /** As vagas de hoje acabaram: amanhã tem mais, e o site tem todas. */
-const ACABARAM_AS_DE_HOJE = `Hoje eu já te mandei ${VAGAS_POR_DIA} vagas por aqui. Amanhã eu mando mais! Enquanto isso, todas as vagas no ar estão no botão abaixo.`;
+const ACABARAM_AS_DE_HOJE = "Hoje eu já te mandei bastante vaga por aqui. Amanhã eu mando mais! Enquanto isso, todas as vagas no ar estão no botão abaixo.";
 
 /** Depois da lista: como se candidatar e, se as do dia acabaram, que amanhã tem mais. */
 function depoisDasVagas(sobram: number) {
@@ -1287,6 +1289,10 @@ export async function atenderConversa(
     (t) => soCumprimento(t) || soEmoji(t) || midiaDaMensagem(t) === "figurinha" || (!jaFalou && pedidoGeral(t)),
   );
   if (soOi) {
+    // veio do anúncio para quem procura emprego (o texto do anúncio diz): a pergunta direto, sem o menu (20/11/2026;
+    // nas conversas, 1 em cada 7 parava no menu)
+    if (!jaFalou && doAnuncio && anuncioDeVagas(e.origem))
+      return saida(`${oi(nome, comeco)} ${PARA_QUEM_PROCURA.replace(/^Que bom! 😊 /, "")}`, { perfil: "trabalho" });
     if (!jaFalou) return saida(boasVindas(nome, comeco, doAnuncio), { menu: semPerfil });
     const deNovo = /^(Oi|Bom dia|Boa tarde|Boa noite|Estou por aqui)\b/.test(minhaUltima);
     return saida(
@@ -1516,6 +1522,78 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
 }
 
 /** Envia a mensagem que a equipe viu (se a conversa não andou nesse meio-tempo). */
+/** O anúncio de clique para o WhatsApp é para quem procura emprego (o título ou o texto dele), e não para quem contrata. */
+export function anuncioDeVagas(o: Entrada["origem"]) {
+  const t = simples(`${o?.titulo ?? ""} ${o?.texto ?? ""}`);
+  return /\b(emprego|procurando trabalho|procura trabalho|pede vaga|vaga pra voce|vagas pra voce|vagas perto)\b/.test(t) && !/\bcontrat/.test(t);
+}
+
+// --- Os lembretes (20/11/2026; migração 20270813120000) ----------------------------------------------------------
+
+/** Para quem parou no "me conta o que você faz e o bairro", 2 horas depois (uma vez). */
+export const LEMBRETE_PERGUNTA =
+  "Ainda procurando trabalho? 😊 *Me conta o que você faz e o bairro onde mora*, que eu te mando as vagas. Por exemplo: _sou cozinheira e moro no Jardim América_.";
+/** Para quem procura trabalho, perto do fim das 24 horas (uma vez). */
+export const LEMBRETE_SEMPRE =
+  "Uma dica: sempre que quiser ver vagas, é só me chamar aqui no WhatsApp e dizer o que você procura. Entram vagas novas todo dia. 😊";
+const marca = (t: string) => t.slice(0, 24);
+
+/** Manda, da parte do atendimento, uma mensagem numa conversa e guarda (com o botão, se for). */
+async function mandarDoRobo(
+  cfg: ConfigMeta,
+  banco: ClienteBanco,
+  chave: string,
+  conversa: string,
+  numero: string,
+  texto: string,
+  botao: Botao | null,
+): Promise<{ ok: true } | { ok: false; erro: string }> {
+  const url = botao ? link(botao.caminho) : null;
+  let r = botao && url ? await enviarComLink(cfg, numero, caber(texto), { titulo: botao.titulo, url }) : await enviarTexto(cfg, numero, texto);
+  let marcaDoBotao = botao ? `[Botão: ${botao.titulo}]` : "";
+  if (!r.ok && botao) {
+    r = await enviarTexto(cfg, numero, url ? `${texto}\n\n${botao.titulo}: ${url}` : texto);
+    marcaDoBotao = "";
+  }
+  if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
+  await banco.rpc("servidor_whatsapp_conversa_saida", {
+    p_chave: chave,
+    p_conversa: conversa,
+    p_texto: marcaDoBotao ? `${texto}\n\n${marcaDoBotao}` : texto,
+    p_wamid: r.wamid,
+  });
+  return { ok: true };
+}
+
+/** O /api/filas: os lembretes que estão na hora (até 30 por vez). */
+export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; falhas: number }> {
+  const cfg = configMeta();
+  const acesso = acessoFila();
+  if (!cfg || !acesso) return { enviados: 0, falhas: 0 };
+  const { cliente: banco, chave } = acesso;
+  const { data, error } = await banco.rpc("servidor_whatsapp_lembretes", {
+    p_chave: chave,
+    p_marca_pergunta: marca(LEMBRETE_PERGUNTA),
+    p_marca_sempre: marca(LEMBRETE_SEMPRE),
+  });
+  // sem a migração: nada
+  if (error) return { enviados: 0, falhas: 0 };
+  let enviados = 0;
+  let falhas = 0;
+  for (const l of (data ?? []) as unknown as { chave: string; numero: string; tipo: "pergunta" | "sempre" }[]) {
+    const r =
+      l.tipo === "pergunta"
+        ? await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, LEMBRETE_PERGUNTA, null)
+        : await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, LEMBRETE_SEMPRE, LINKS.vagas);
+    if (r.ok) enviados++;
+    else {
+      falhas++;
+      console.error(`Publike: o lembrete do WhatsApp (${l.tipo}) não saiu:`, r.erro);
+    }
+  }
+  return { enviados, falhas };
+}
+
 export async function enviarBuscaDeNovo(
   conversa: string,
   numero: string,
@@ -1528,21 +1606,7 @@ export async function enviarBuscaDeNovo(
   const { cliente: banco, chave } = acesso;
   if (!(await conversaSemVaga(banco, chave, conversa)))
     return { ok: false, erro: "A conversa andou: a última resposta já não é a do “não achei”." };
-  const url = botao ? link(botao.caminho) : null;
-  let r = botao && url ? await enviarComLink(cfg, numero, caber(texto), { titulo: botao.titulo, url }) : await enviarTexto(cfg, numero, texto);
-  let marca = botao ? `[Botão: ${botao.titulo}]` : "";
-  if (!r.ok && botao) {
-    r = await enviarTexto(cfg, numero, url ? `${texto}\n\n${botao.titulo}: ${url}` : texto);
-    marca = "";
-  }
-  if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
-  await banco.rpc("servidor_whatsapp_conversa_saida", {
-    p_chave: chave,
-    p_conversa: conversa,
-    p_texto: marca ? `${texto}\n\n${marca}` : texto,
-    p_wamid: r.wamid,
-  });
-  return { ok: true };
+  return mandarDoRobo(cfg, banco, chave, conversa, numero, texto, botao);
 }
 
 /** O botão que pode ir junto: um dos links do atendimento ou "Ver mais vagas" de uma busca. */
