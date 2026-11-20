@@ -47,9 +47,10 @@ export async function conversasSemVaga(): Promise<ConversaSemVaga[]> {
   const todas = ((data as unknown as { lista: NaLista[] }).lista ?? []).filter(
     (x) => x.situacao === "robo" && x.ultima?.de === "robo",
   );
-  // o "não achei" já se vê na última; a resposta que repetiu vagas (20/11/2026) pede a conversa inteira
+  // o "não achei" já se vê na última; a resposta que repetiu vagas (20/11/2026) pede a conversa inteira (a lista traz
+  // só o começo da última, sem os links)
   const repetidas = await conversasParaProcurarDeNovo(
-    todas.filter((x) => !RESPOSTA_SEM_VAGA.test(x.ultima?.texto ?? "") && /\/anuncio\//.test(x.ultima?.texto ?? "")).map((x) => x.chave),
+    todas.filter((x) => !RESPOSTA_SEM_VAGA.test(x.ultima?.texto ?? "") && /\bvagas?\b/i.test(x.ultima?.texto ?? "")).map((x) => x.chave),
   );
   const lista = todas.filter((x) => RESPOSTA_SEM_VAGA.test(x.ultima?.texto ?? "") || repetidas.has(x.chave));
   const abertas = await Promise.all(lista.map(async (x) => ((await numeroAberto(c, x.chave)) ? x : null)));
