@@ -9,6 +9,7 @@ import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { caminhoDaVagaDoWhatsapp, respostaDasVagas, textoDasVagas, type ChaveTextoVagas } from "@/lib/vagas-pelo-whatsapp";
+import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
 import { baixarFotoOuPdf, configMeta, enviarComBotoes, enviarComLink, marcarLidaDigitando, type ConfigMeta } from "./whatsapp";
 
@@ -288,7 +289,7 @@ export async function confirmarVagaPublicada(token: string) {
       ? `\n\n${v.restantes === 1 ? "Ainda falta 1 vaga" : `Ainda faltam ${v.restantes} vagas`} do seu anúncio: é só voltar ao link e publicar.`
       : "";
   const texto = `${t("no_ar", { titulo: v.titulo })}${restantes}`;
-  const url = comOrigem(`${SITE_URL}/anuncio/${v.anuncio_id}`, "whatsapp", "publicar-pelo-whatsapp");
+  const url = comOrigem(`${urlDosEmails() ?? SITE_URL}/anuncio/${v.anuncio_id}`, "whatsapp", "publicar-pelo-whatsapp");
   const r = await enviarComLink(cfg, v.numero, texto, { titulo: "Ver a vaga", url });
   if (!r.ok) {
     console.error("Publike: o \"está no ar\" do WhatsApp não saiu:", r.erro);

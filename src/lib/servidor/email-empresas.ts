@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/config";
 import { enderecosQueVoltaram, motivoDeEmailRuim } from "@/lib/email-ruim";
 import { emailValido } from "@/lib/email-valido";
 import { linkDeSairUmToque, montarEmailEmpresas } from "@/lib/email-empresas";
+import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
 import { textoDoErro } from "./falhas";
 
@@ -242,6 +243,9 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
   const smtp = configSmtpCampanha();
   const acesso = acessoFila();
   if (!smtp || !acesso) return { enviados: 0 };
+  // sem endereço público (o computador), o botão do e-mail iria para localhost: daqui não sai (20/11/2026)
+  if (!urlDosEmails() && !/^(localhost|127\.)/i.test(smtp.servidor))
+    return { enviados: 0, motivo: "Daqui não sai o e-mail às empresas: sem endereço público, os links iriam quebrados." };
   const { cliente, chave } = acesso;
   // os avisos de não entregue (a cada 30 minutos): o endereço que voltou não sai de novo
   await lerDevolvidos(smtp, cliente, chave).catch((e) => console.error("Publike: avisos de não entregue:", textoDoErro(e)));
@@ -286,7 +290,7 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
   };
   const email = montarEmailEmpresas(
     { assunto: p.assunto, texto: p.texto, remetenteNome: p.remetente_nome },
-    { empresa: p.nome, token: p.token, site: SITE_URL, vaga: p.vaga, onde: p.onde },
+    { empresa: p.nome, token: p.token, site: urlDosEmails() ?? SITE_URL, vaga: p.vaga, onde: p.onde },
   );
   const transporte = nodemailer.createTransport({
     host: smtp.servidor,
@@ -314,7 +318,7 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
       date: new Date(),
       messageId: `<${randomUUID()}@publike.org>`,
       headers: {
-        "List-Unsubscribe": `<${linkDeSairUmToque(SITE_URL, p.token)}>`,
+        "List-Unsubscribe": `<${linkDeSairUmToque(urlDosEmails() ?? SITE_URL, p.token)}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     })

@@ -6,6 +6,7 @@ import { comOrigem } from "@/lib/origem";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { fraseDaEntrevista } from "@/lib/whatsapp";
 import { atenderConversa } from "./atendimento-whatsapp";
+import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
 
 // O WhatsApp oficial (a API de nuvem da Meta; claude/plano-whatsapp-oficial.md, migração 20270619120000). O banco põe
@@ -55,7 +56,7 @@ export function situacaoWhatsapp() {
     conta: /^\d{5,30}$/.test(env("WHATSAPP_WABA_ID")),
     segredo: Boolean(env("WHATSAPP_APP_SECRET")),
     webhook: env("WHATSAPP_WEBHOOK_TOKEN").length >= 12,
-    enderecoWebhook: `${SITE_URL}/api/whatsapp/webhook`,
+    enderecoWebhook: `${urlDosEmails() ?? SITE_URL}/api/whatsapp/webhook`,
   };
 }
 
@@ -312,11 +313,25 @@ type ErroMeta = {
 };
 type RespostaMeta<T> = { ok: true; dados: T } | { ok: false; status: number; erro: ErroMeta | null; texto: string };
 
+/**
+ * O computador sem endereço público não manda nada pela Meta de verdade (20/11/2026: 7 mensagens do "Procurar de novo"
+ * saíram do Admin do computador do Marcelo, ligado ao banco e ao WhatsApp do site, com os links em localhost:3000, que
+ * não abrem no celular de ninguém). Ler (GET) pode; mandar, cadastrar ou ligar (POST), não. Com a Meta falsa dos
+ * testes (WHATSAPP_GRAPH_URL), pode. No computador, PUBLIKE_URL_PUBLICA=https://publike.org libera, e os links saem
+ * com ele.
+ */
+export function bloqueioDaMeta(cfg: ConfigMeta): string | null {
+  if (!cfg.base.startsWith("https://graph.facebook.com/") || urlDosEmails()) return null;
+  return `Daqui não sai pelo WhatsApp de verdade: o site aqui é ${SITE_URL}, e os links chegariam quebrados para quem recebe. Mande pelo Admin no ar (publike.org).`;
+}
+
 async function graph<T>(
   cfg: ConfigMeta,
   caminho: string,
   init?: { metodo?: "GET" | "POST"; corpo?: unknown },
 ): Promise<RespostaMeta<T>> {
+  const bloqueio = init?.metodo === "POST" ? bloqueioDaMeta(cfg) : null;
+  if (bloqueio) return { ok: false, status: 0, erro: null, texto: bloqueio };
   try {
     const r = await fetch(`${cfg.base}/${caminho}`, {
       method: init?.metodo ?? "GET",

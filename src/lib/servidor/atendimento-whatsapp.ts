@@ -13,6 +13,7 @@ import { chaveBairro, chavesDaRegiao, criarLocal, pontoDoLocal, type Local } fro
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
+import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
 import {
   baixarMidia,
@@ -193,7 +194,8 @@ const ESQUEMA = {
 };
 
 /** Os links do site, já com a origem (o Admin conta quem chegou pelo WhatsApp e as contas que vieram dele). */
-const link = (caminho: string) => comOrigem(`${SITE_URL}${caminho}`, "whatsapp", "atendimento");
+// o endereço público (no computador, PUBLIKE_URL_PUBLICA; sem ele, a Meta de verdade nem recebe: `bloqueioDaMeta`)
+const link = (caminho: string) => comOrigem(`${urlDosEmails() ?? SITE_URL}${caminho}`, "whatsapp", "atendimento");
 const DO_ATENDIMENTO = "utm_source=whatsapp&utm_campaign=atendimento";
 
 /**
