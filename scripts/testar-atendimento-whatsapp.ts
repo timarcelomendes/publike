@@ -97,6 +97,8 @@ globalThis.fetch = (async (url: any, init: any) => {
     const t = corpo.p_texto ?? "";
     const vaga = (id: string, titulo: string, x: Record<string, unknown> = {}) => ({ ...vagaCozinheira, id: id.repeat(36).slice(0, 36), titulo, ...x });
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
+    // o mesmo trabalho com outro nome: assistente administrativo não tem, auxiliar administrativo tem
+    if (t === "auxiliar administrativo") return json([vaga("8", "Auxiliar Administrativo")]);
     // a busca de texto também acha na descrição: o título de outra função não pode entrar
     if (t === "porteiro") return json([vaga("4", "Auxiliar de escritório"), vaga("3", "Porteiro noturno")]);
     // a área de um cargo de liderança: só o título de liderança entra
@@ -826,6 +828,31 @@ async function main() {
       !a.repetiuVagas([{ de: "pessoa", texto: "oi" }, { de: "robo", texto: jaFoi }]) &&
       !a.repetiuVagas([{ de: "robo", texto: jaFoi }, { de: "pessoa", texto: "Tem mais vagas" }]),
     "a resposta que repetiu vagas entra no procurar de novo",
+  );
+  // 22b4. assistente e auxiliar são o mesmo trabalho (20/11/2026: "tem auxiliar administrativo que é correlato de
+  // assistente"): vem como a função, antes das parecidas da IA
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "assistente administrativo", funcoes: ["assistente financeiro", "assistente administrativo"], parecidas: ["porteiro"], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("sou assistente financeiro e administrativo, moro no setor bueno", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou assistente financeiro e administrativo, moro no setor bueno" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Auxiliar Administrativo*") &&
+      !corpo(r.msgs[0]).includes("Porteiro") &&
+      corpo(r.msgs[0]).includes("mesmo tipo de trabalho") &&
+      !corpo(r.msgs[0]).includes("Separei outras vagas"),
+    "assistente administrativo: as de auxiliar administrativo, como o mesmo trabalho",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.funcoesEquivalentes("assistente administrativo").join("|") === "auxiliar administrativo" &&
+      a.funcoesEquivalentes("ajudante de cozinha").join("|") === "assistente de cozinha|auxiliar de cozinha" &&
+      a.funcoesEquivalentes("motorista").length === 0,
+    "os nomes do mesmo trabalho",
   );
   // 22c. duas funções: a que não tem é dita; a outra, mesmo longe, vem antes de qualquer parecida
   respostaIA = ia("Olha as vagas:", {

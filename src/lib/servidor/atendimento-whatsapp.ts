@@ -418,6 +418,21 @@ export function funcaoCurta(funcao: string) {
   return ps.length > 1 && !PALAVRAS_GERAIS.has(ps[0]) ? ps[0] : null;
 }
 
+/**
+ * O mesmo trabalho com outro nome: assistente, auxiliar e ajudante ("assistente administrativo" combina com "auxiliar
+ * administrativo"; 20/11/2026, Marcelo: "tem auxiliar administrativo que é correlato de assistente").
+ */
+const MESMO_NIVEL = ["assistente", "auxiliar", "ajudante"];
+export function funcoesEquivalentes(funcao: string) {
+  const partes = funcao.trim().split(/\s+/);
+  const primeira = simples(partes[0] ?? "");
+  if (partes.length < 2 || !MESMO_NIVEL.includes(primeira)) return [];
+  const resto = partes.slice(1).join(" ");
+  // "ajudante administrativo" não existe: o ajudante só vale para o trabalho de mão (cozinha, obra, carga)
+  const outras = MESMO_NIVEL.filter((n) => n !== primeira && (n !== "ajudante" || !/administrativ|financeir|escritori|contab|fiscal|rh|recursos humanos|comercial|vendas/i.test(simples(resto))));
+  return outras.map((n) => `${n} ${resto}`);
+}
+
 /** Os níveis de liderança: "supervisor de logística" combina com "coordenador de logística" (19/11/2026). */
 const NIVEIS = "gerente coordenador coordenadora supervisor supervisora encarregado encarregada lider chefe gestor gestora diretor diretora".split(
   " ",
@@ -633,12 +648,23 @@ async function procurarVagas(
     if (!achadas.length && jeitos.length && !onde.ponto)
       for (const a of (await tentar(null, longe)).slice(0, max)) achadas.push({ a, termo: "", parecida: false, longe: true });
   };
+  // o nome equivalente → a função que a pessoa disse
+  const equivalentes = new Map<string, string>();
   if (!funcoes.length) await semFuncao();
   else {
     await juntar(funcoes, perto, false, false);
     await juntar(funcoes, longe, false, true);
-    // a função mais curta, só para as que não acharam nada
-    const semNada = funcoes.filter((f) => !achadas.some((x) => x.termo === f));
+    // o mesmo trabalho com outro nome (assistente, auxiliar, ajudante), para as que não acharam nada
+    for (const f of funcoes.filter((f) => !achadas.some((x) => x.termo === f)))
+      for (const e of funcoesEquivalentes(f))
+        if (!funcoes.some((g) => simples(g) === simples(e)) && !equivalentes.has(e)) equivalentes.set(e, f);
+    const eqs = [...equivalentes.keys()].slice(0, 4);
+    await juntar(eqs, perto, false, false);
+    await juntar(eqs, longe, false, true);
+    // a função mais curta, só para as que não acharam nada (nem com o outro nome)
+    const semNada = funcoes.filter(
+      (f) => !achadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f),
+    );
     const curtas = unicos(
       semNada.map(funcaoCurta).filter((c) => c && !funcoes.some((f) => simples(f) === simples(c))),
       3,
@@ -710,7 +736,7 @@ async function procurarVagas(
     const nao = semNada.length ? `Agora não achei vaga de ${listaE(semNada)}${jeito1}. ` : "";
     abertura = !perto1.length
       ? `${nao}${onde.local ? `Perto de você não achei vaga de ${listaE(achados)}${jeito1}, mas tem em outras cidades da região:` : `Olha as vagas de ${listaE(achados)}${jeito1}:`}`
-      : `${nao}Olha as vagas de ${listaE(achados)}${jeito1}${aqui}:`;
+      : `${nao}Olha as vagas de ${listaE(achados)}${jeito1}${aqui}${achados.some((t) => equivalentes.has(t)) ? ", que é o mesmo tipo de trabalho" : ""}:`;
     // mais vagas, depois das que já foram
     if (repetidas && !semNada.length)
       abertura = !perto1.length && onde.local
