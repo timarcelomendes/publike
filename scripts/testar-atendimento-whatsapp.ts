@@ -41,6 +41,7 @@ let falharInterativo = false;
 let falharArquivo = false;
 let falaTranscrita = "Oi, tudo bem? Queria saber como funciona";
 let modeloEscolhido = "gpt-6-luna";
+let astronauta = false;
 const vagaCozinheira = {
   id: "11111111-1111-1111-1111-111111111111",
   titulo: "Cozinheira",
@@ -99,6 +100,11 @@ globalThis.fetch = (async (url: any, init: any) => {
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
     // o mesmo trabalho com outro nome: assistente administrativo não tem, auxiliar administrativo tem
     if (t === "auxiliar administrativo") return json([vaga("8", "Auxiliar Administrativo")]);
+    // serviços gerais só com carteira (o banco filtra o regime)
+    if (t === "auxiliar de serviços gerais")
+      return json(corpo.p_regime && corpo.p_regime !== "clt" ? [] : [vaga("9", "Auxiliar de Serviços Gerais", { regime: "clt" })]);
+    // a mesma área: faxineira não tem; limpeza tem
+    if (t === "limpeza") return json([vaga("a", "Auxiliar de limpeza")]);
     // a busca de texto também acha na descrição: o título de outra função não pode entrar
     if (t === "porteiro") return json([vaga("4", "Auxiliar de escritório"), vaga("3", "Porteiro noturno")]);
     // a área de um cargo de liderança: só o título de liderança entra
@@ -106,7 +112,9 @@ globalThis.fetch = (async (url: any, init: any) => {
     // auxiliar de cozinha só longe (nas cidades em volta)
     if (t === "auxiliar de cozinha")
       return json(corpo.p_raio_km === 100 ? [vaga("5", "Auxiliar de cozinha", { cidade: "Trindade", bairro: "Centro", distancia_km: 24 })] : []);
-    if (/cozinh/.test(t) || (!t && corpo.p_por_distancia)) return json([vagaCozinheira]);
+    if (/cozinh/.test(t) || (!t && corpo.p_por_distancia && corpo.p_raio_km !== 100)) return json([vagaCozinheira]);
+    // as mais perto de qualquer função, só para quem disse uma função que não existe aqui
+    if (!t && astronauta) return json([vagaCozinheira]);
     return json([]);
   }
   return json(null);
@@ -854,6 +862,62 @@ async function main() {
       a.funcoesEquivalentes("motorista").length === 0,
     "os nomes do mesmo trabalho",
   );
+  // 22b5. o jeito que não tem (20/11/2026: "Tem vagas de auxiliar de serviços gerais"): solta o jeito e diz
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "auxiliar de serviços gerais", funcoes: ["auxiliar de serviços gerais"], parecidas: [], jeito: ["diaria"], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("auxiliar de serviços gerais de diária", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "auxiliar de serviços gerais de diária, moro no setor bueno" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Auxiliar de Serviços Gerais*") &&
+      corpo(r.msgs[0]).includes("Agora não achei vaga de auxiliar de serviços gerais de diária") &&
+      !corpo(r.msgs[0]).includes("currículo"),
+    "sem vaga de diária: as de serviços gerais com carteira, dizendo que de diária não tem",
+    corpo(r.msgs[0]),
+  );
+  // 22b6. a mesma área, pela lista do Publike: faxineira vê limpeza
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "faxineira", funcoes: ["faxineira"], parecidas: [], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("sou faxineira", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou faxineira, moro no setor bueno" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Auxiliar de limpeza*") && corpo(r.msgs[0]).includes("Separei outras vagas"),
+    "faxineira: as vagas da mesma área (limpeza)",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.termosDaArea("faxineira").includes("serviços gerais") && a.termosDaArea("astronauta").length === 0,
+    "os termos da área",
+  );
+  // 22b7. nada da função nem parecido: as vagas mais perto, de outras funções, ditas assim
+  astronauta = true;
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "astronauta", funcoes: ["astronauta"], parecidas: [], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("sou astronauta", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou astronauta, moro no setor bueno" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Cozinheira*") &&
+      corpo(r.msgs[0]).includes("nem parecida. Olha as vagas no ar mais perto de você, de outras funções") &&
+      corpo(r.msgs[0]).includes("currículo") &&
+      botao(r.msgs[0]) === "Fazer meu currículo",
+    "sem nada da função: as mais perto, de outras funções",
+    corpo(r.msgs[0]),
+  );
+  astronauta = false;
   // 22c. duas funções: a que não tem é dita; a outra, mesmo longe, vem antes de qualquer parecida
   respostaIA = ia("Olha as vagas:", {
     perfil: "trabalho",

@@ -433,6 +433,35 @@ export function funcoesEquivalentes(funcao: string) {
   return outras.map((n) => `${n} ${resto}`);
 }
 
+/**
+ * A mesma área, pela lista do Publike (20/11/2026; Marcelo: "seja assertivo, olhe bem essa feature e torne ela bem
+ * poderosa, é o nosso maior funil de pessoas"): quem faz um trabalho da área vê as vagas da área, ditas como parecidas,
+ * antes das parecidas da IA. A chave lê a função sem acento; os termos são buscados no título das vagas.
+ */
+const AREAS: { chave: RegExp; termos: string[] }[] = [
+  { chave: /servicos gerais|\basg\b|limpeza|faxin|zelad|conservacao|copeir|diarista|camareir|higieniz/, termos: ["serviços gerais", "limpeza", "zelador", "copeira", "camareira", "faxineira"] },
+  { chave: /cozinh|chapeir|pizzai|salgadeir|confeit|padari|padeir|churrasq|acougu|lanche/, termos: ["cozinha", "padaria", "chapeiro", "confeiteira", "salgadeira", "açougue"] },
+  { chave: /garcom|garconete|bar\b|barman|cumim|recepcao de restaurante/, termos: ["garçom", "atendente", "cozinha", "copeira"] },
+  { chave: /vendedor|vendas|loja|balconista|balcao|promotor|consultor|comercial|representante/, termos: ["vendedor", "vendas", "loja", "balcão", "promotor", "comercial"] },
+  { chave: /\bcaixa\b|operador de caixa|frente de caixa/, termos: ["operador de caixa", "caixa", "atendente", "repositor"] },
+  { chave: /estoqu|deposito|armazem|conferente|separador|repositor|carga|descarga|movimentador|logistica|almoxarif|expedicao/, termos: ["estoque", "depósito", "armazém", "conferente", "repositor", "movimentador", "logística"] },
+  { chave: /porteir|portaria|vigia|vigilante|controlador de acesso|seguranca/, termos: ["portaria", "porteiro", "vigia", "controlador de acesso"] },
+  { chave: /administrativ|escritorio|recepcion|secretari|financeir|faturamento|cobranca|\brh\b|recursos humanos|departamento pessoal/, termos: ["administrativo", "escritório", "recepcionista", "departamento pessoal", "financeiro", "recursos humanos"] },
+  { chave: /contab|fiscal|contador/, termos: ["contábil", "fiscal", "departamento pessoal", "administrativo"] },
+  { chave: /producao|montador|montagem|operador de maquina|industria|fabrica|linha de producao/, termos: ["produção", "montagem", "montador", "operador"] },
+  { chave: /manutencao|eletricist|encanador|pedreiro|servente|obra|pintor|mecanic|instalador|marceneir|serralheir/, termos: ["manutenção", "eletricista", "instalador", "servente", "pedreiro", "obra"] },
+  { chave: /manicure|pedicure|cabelei|estetic|maquiad|depilad|barbeir|nail|sobrancelh|lash/, termos: ["manicure", "esteticista", "cabeleireiro", "maquiador", "estética"] },
+  { chave: /motorista|entregador|motoboy|condutor|frentista/, termos: ["motorista", "entregador", "motoboy", "frentista"] },
+  { chave: /atendente|atendimento|recepc|telemarketing|sac\b/, termos: ["atendente", "recepcionista", "atendimento", "balcão"] },
+  { chave: /baba|cuidador|cuidadora|acompanhante de idoso|domestic/, termos: ["babá", "cuidador", "doméstica", "serviços gerais"] },
+];
+
+/** Os termos da área de uma função ("faxineira" → serviços gerais, limpeza, zelador...). */
+export function termosDaArea(funcao: string) {
+  const f = simples(funcao);
+  return AREAS.filter((a) => a.chave.test(f)).flatMap((a) => a.termos);
+}
+
 /** Os níveis de liderança: "supervisor de logística" combina com "coordenador de logística" (19/11/2026). */
 const NIVEIS = "gerente coordenador coordenadora supervisor supervisora encarregado encarregada lider chefe gestor gestora diretor diretora".split(
   " ",
@@ -582,9 +611,19 @@ async function procurarVagas(
   type Anuncio = { id: string; titulo: string; bairro: string | null; cidade: string | null; distancia_km?: number | null } & Parameters<
     typeof valorDoAnuncio
   >[0];
-  const jeitos = (busca.jeito ?? []).filter((j) => j !== "qualquer");
-  const regime = jeitos.includes("diaria") ? "diaria" : jeitos.includes("freelance") ? "freelance" : null;
+  // o jeito pedido; sem vaga nenhuma desse jeito, a busca solta o jeito e diz isso (20/11/2026; Marcelo, com "auxiliar
+  // de serviços gerais de diária" sem resposta e duas vagas de auxiliar de serviços gerais com carteira no ar)
+  const jeitosPedidos = (busca.jeito ?? []).filter((j) => j !== "qualquer");
+  let jeitos = jeitosPedidos;
+  let semOJeito = false;
+  const soltarOJeito = () => {
+    if (semOJeito || !jeitos.length) return false;
+    jeitos = [];
+    semOJeito = true;
+    return true;
+  };
   const tentar = async (texto: string | null, lugar: Record<string, unknown>, categoria: string | null = null) => {
+    const regime = jeitos.includes("diaria") ? "diaria" : jeitos.includes("freelance") ? "freelance" : null;
     const { data, error } = await criarClientePublico().rpc("buscar_anuncios", {
       ...lugar,
       p_tipo: "vaga",
@@ -607,7 +646,7 @@ async function procurarVagas(
     return lista.filter((a) => vagaDoJeito({ ...a, ...porId.get(a.id) }, jeitos));
   };
 
-  type Achada = { a: Anuncio; termo: string; parecida: boolean; longe: boolean };
+  type Achada = { a: Anuncio; termo: string; parecida: boolean; longe: boolean; outras?: boolean };
   const achadas: Achada[] = [];
   const ids = new Set<string>(jaMandadas);
   // as da função que ficaram de fora por já terem ido: "já te mandei as vagas de..."
@@ -650,45 +689,71 @@ async function procurarVagas(
   };
   // o nome equivalente → a função que a pessoa disse
   const equivalentes = new Map<string, string>();
-  if (!funcoes.length) await semFuncao();
-  else {
+  // a função que ela disse, perto e nas cidades em volta, e o mesmo trabalho com outro nome (assistente, auxiliar,
+  // ajudante), para as que não acharam nada
+  const daFuncao = async () => {
     await juntar(funcoes, perto, false, false);
     await juntar(funcoes, longe, false, true);
-    // o mesmo trabalho com outro nome (assistente, auxiliar, ajudante), para as que não acharam nada
     for (const f of funcoes.filter((f) => !achadas.some((x) => x.termo === f)))
       for (const e of funcoesEquivalentes(f))
         if (!funcoes.some((g) => simples(g) === simples(e)) && !equivalentes.has(e)) equivalentes.set(e, f);
     const eqs = [...equivalentes.keys()].slice(0, 4);
     await juntar(eqs, perto, false, false);
     await juntar(eqs, longe, false, true);
-    // a função mais curta, só para as que não acharam nada (nem com o outro nome)
-    const semNada = funcoes.filter(
-      (f) => !achadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f),
-    );
+  };
+  // sem a função: a função mais curta, o mesmo cargo em outro nível, a mesma área e as parecidas da IA
+  const vizinhas = async () => {
+    const semNada = funcoes.filter((f) => !achadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f));
     const curtas = unicos(
       semNada.map(funcaoCurta).filter((c) => c && !funcoes.some((f) => simples(f) === simples(c))),
       3,
     );
     await juntar(curtas, perto, false, false);
     await juntar(curtas, longe, false, true);
-    if (!achadas.length) {
-      // o mesmo cargo em outro nível da mesma área ("supervisor de logística": coordenador, gerente, encarregado de
-      // logística), antes das parecidas da IA (19/11/2026; Marcelo: "Tem vaga pra coordenador de logística")
-      const areas = unicos(funcoes.map(areaDaLideranca), 3);
-      await juntar(areas, perto, true, false, tituloDeLideranca);
-      await juntar(areas, longe, true, true, tituloDeLideranca);
+    if (achadas.length) return;
+    // o mesmo cargo em outro nível da mesma área ("supervisor de logística": coordenador, gerente, encarregado de
+    // logística), antes das parecidas (19/11/2026; Marcelo: "Tem vaga pra coordenador de logística")
+    const areas = unicos(funcoes.map(areaDaLideranca), 3);
+    await juntar(areas, perto, true, false, tituloDeLideranca);
+    await juntar(areas, longe, true, true, tituloDeLideranca);
+    if (achadas.length) return;
+    // a mesma área, pela lista do Publike (faxineira → serviços gerais, limpeza, zelador...), antes das da IA
+    const ja = new Set([...funcoes, ...curtas, ...equivalentes.keys()].map(simples));
+    const daArea = unicos(funcoes.flatMap(termosDaArea), 6).filter((t) => !ja.has(simples(t)));
+    await juntar(daArea, perto, true, false);
+    await juntar(daArea, longe, true, true);
+    if (achadas.length) return;
+    const parecidas = unicos(busca.parecidas ?? [], 4).filter((p) => !ja.has(simples(p)) && !daArea.some((t) => simples(t) === simples(p)));
+    await juntar(parecidas, perto, true, false);
+    await juntar(parecidas, longe, true, true);
+  };
+  if (!funcoes.length) {
+    await semFuncao();
+    if (!achadas.length && soltarOJeito()) await semFuncao();
+  } else {
+    // a função primeiro, com o jeito e depois sem ele: "auxiliar de serviços gerais" com carteira vem antes de uma
+    // parecida de diária
+    await daFuncao();
+    if (!achadas.length && soltarOJeito()) await daFuncao();
+    if (!achadas.length) await vizinhas();
+    if (!achadas.length && soltarOJeito()) {
+      await daFuncao();
+      if (!achadas.length) await vizinhas();
     }
-    if (!achadas.length) {
-      const parecidas = unicos(busca.parecidas ?? [], 4).filter(
-        (p) => !funcoes.concat(curtas).some((f) => simples(f) === simples(p)),
-      );
-      await juntar(parecidas, perto, true, false);
-      await juntar(parecidas, longe, true, true);
-    }
-    // "o que tiver": sem a função nem as parecidas, as mais perto
-    if (!achadas.length && busca.jeito?.includes("qualquer")) {
+    // nada da função nem parecido: as vagas mais perto, de outras funções (é o nosso maior funil: ninguém sai sem vaga
+    // quando tem vaga no ar), ditas assim
+    if (!achadas.length && !repetidas) {
       await semFuncao();
-      for (const x of achadas) x.parecida = true;
+      if (!achadas.length)
+        for (const a of (await tentar(null, longe)).slice(0, max))
+          if (!ids.has(a.id)) {
+            ids.add(a.id);
+            achadas.push({ a, termo: "", parecida: true, longe: true });
+          }
+      for (const x of achadas) {
+        x.parecida = true;
+        x.outras = !busca.jeito?.includes("qualquer");
+      }
     }
   }
   if (!achadas.length) return repetidas ? { jaForam: true as const } : null;
@@ -721,19 +786,30 @@ async function procurarVagas(
   const aqui = onde.local ? " perto de você" : "";
   const doJeito = nomeDoJeito(jeitos);
   const jeito1 = doJeito ? ` ${doJeito}` : "";
+  // o jeito que ela pediu e não tinha ("de diária"): entra no "não achei"
+  const pedido = nomeDoJeito(jeitosPedidos);
+  const jeitoNao = semOJeito && pedido ? ` ${pedido}` : jeito1;
   let abertura: string | null;
-  if (!funcoes.length)
+  if (!funcoes.length && semOJeito && pedido)
+    abertura = `Agora não achei vagas ${pedido}. Olha as vagas no ar${aqui || " mais perto"}:`;
+  else if (!funcoes.length)
     abertura = doJeito
       ? !perto1.length && onde.local
         ? `Perto de você não achei vagas ${doJeito}, mas tem em outras cidades da região:`
         : `Olha as vagas ${doJeito}${aqui}:`
       : null;
+  else if (usadas[0].outras)
+    abertura = `Agora não achei vaga de ${listaE(funcoes)}${jeitoNao} nem parecida. Olha as vagas no ar mais perto de você, de outras funções: abra e veja se alguma te interessa.`;
   else if (parecidas)
     abertura = repetidas
       ? `As vagas de ${listaE(funcoes)}${jeito1} que estão no ar eu já te mandei. Separei outras que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`
-      : `Agora não achei vaga de ${listaE(funcoes)}${jeito1} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
+      : `Agora não achei vaga de ${listaE(funcoes)}${jeitoNao} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
   else {
-    const nao = semNada.length ? `Agora não achei vaga de ${listaE(semNada)}${jeito1}. ` : "";
+    const nao = semNada.length
+      ? `Agora não achei vaga de ${listaE(semNada)}${jeitoNao}. `
+      : semOJeito && pedido
+        ? `Agora não achei vaga de ${listaE(achados)} ${pedido}. `
+        : "";
     abertura = !perto1.length
       ? `${nao}${onde.local ? `Perto de você não achei vaga de ${listaE(achados)}${jeito1}, mas tem em outras cidades da região:` : `Olha as vagas de ${listaE(achados)}${jeito1}:`}`
       : `${nao}Olha as vagas de ${listaE(achados)}${jeito1}${aqui}${achados.some((t) => equivalentes.has(t)) ? ", que é o mesmo tipo de trabalho" : ""}:`;
@@ -743,7 +819,7 @@ async function procurarVagas(
         ? `Perto de você, as vagas de ${listaE(achados)}${jeito1} eu já te mandei. Olha mais nas cidades da região:`
         : `Olha mais vagas de ${listaE(achados)}${jeito1}${aqui}:`;
     // tudo perto, da função que ela disse e sem jeito: vale a frase da IA
-    else if (!semNada.length && !longe1.length && !doJeito && achados.every((t) => funcoes.includes(t))) abertura = null;
+    else if (!semNada.length && !longe1.length && !doJeito && !semOJeito && achados.every((t) => funcoes.includes(t))) abertura = null;
   }
   const p = new URLSearchParams({ tipo: "vaga" });
   if (achados[0]) p.set("q", achados[0]);
@@ -751,6 +827,8 @@ async function procurarVagas(
     texto,
     quantas: n,
     abertura,
+    /** só vagas de outras funções: o currículo vai junto */
+    outras: Boolean(usadas[0].outras),
     mais: achadas.length > n || longe1.length ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
   };
 }
@@ -813,12 +891,16 @@ async function mensagemDaBusca(
       quantas: 0,
     };
   }
+  // só de outras funções: o currículo, para as empresas acharem a função dela e para o aviso da vaga que combina
+  const curriculo = vagas.outras
+    ? "\n\nE deixe o seu *currículo* no Publike: é grátis, leva uns 2 minutos, e você recebe o aviso quando entrar vaga que combina com você."
+    : "";
   return {
     abertura: vagas.abertura,
     /** a frase quando não vale a da IA (a busca de novo) */
     aberturaPadrao: `Olha as vagas de ${listaE(funcoes)}${local ? " perto de você" : ""}:`,
-    texto: `${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}`,
-    botao: (vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null)) as Botao | null,
+    texto: `${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}${curriculo}`,
+    botao: (vagas.outras ? LINKS.curriculo : (vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null))) as Botao | null,
     quantas: vagas.quantas,
   };
 }
