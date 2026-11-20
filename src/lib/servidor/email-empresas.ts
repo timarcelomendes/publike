@@ -1,9 +1,11 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { promises as dns } from "node:dns";
 import { ImapFlow } from "imapflow";
 import nodemailer from "nodemailer";
 import MailComposer from "nodemailer/lib/mail-composer";
 import { SITE_URL } from "@/lib/config";
+import { enderecosQueVoltaram, motivoDeEmailRuim } from "@/lib/email-ruim";
 import { emailValido } from "@/lib/email-valido";
 import { linkDeSairUmToque, montarEmailEmpresas } from "@/lib/email-empresas";
 import { acessoFila } from "./filas";
@@ -137,19 +139,137 @@ type Proximo = {
   remetente_email: string;
 };
 
+// --- Os endereços ruins (20/11/2026; Marcelo: "os e-mails estão vindo muitos ruins"; migração 20270812120000) -----
+
+/** O domínio recebe e-mail? false: com certeza não (não existe, ou não tem MX nem endereço); null: não deu para saber. */
+const dominiosConferidos = new Map<string, boolean | null>();
+// o DNS daqui responde? Sem ele, todo domínio pareceria não existir: na dúvida, nenhum é marcado
+let dnsResponde: Promise<boolean> | null = null;
+async function dominioRecebe(dominio: string): Promise<boolean | null> {
+  if (dominiosConferidos.has(dominio)) return dominiosConferidos.get(dominio)!;
+  dnsResponde ??= dns
+    .resolveMx("gmail.com")
+    .then((m) => m.length > 0)
+    .catch(() => false);
+  if (!(await dnsResponde)) {
+    dnsResponde = null;
+    return null;
+  }
+  const comPrazo = <T,>(pr: Promise<T>) =>
+    Promise.race([pr, new Promise<never>((_, nao) => setTimeout(() => nao(Object.assign(new Error("prazo"), { code: "ETIMEOUT" })), 5000))]);
+  const naoExiste = (e: unknown) => ["ENOTFOUND", "ENODATA"].includes(String((e as { code?: string })?.code));
+  let r: boolean | null;
+  try {
+    const mx = await comPrazo(dns.resolveMx(dominio));
+    // "MX 0 ." é o domínio dizendo que não recebe e-mail (RFC 7505)
+    r = mx.some((m) => m.exchange && m.exchange !== ".");
+  } catch (e) {
+    if (!naoExiste(e)) r = null;
+    else {
+      // sem MX, o e-mail vai para o endereço do próprio domínio (RFC 5321); sem nenhum dos dois, não recebe
+      try {
+        r = (await comPrazo(dns.resolve4(dominio))).length > 0;
+      } catch (e2) {
+        r = naoExiste(e2) ? false : null;
+      }
+    }
+  }
+  dominiosConferidos.set(dominio, r);
+  return r;
+}
+
+/** Por que o endereço não deve sair (de mentira ou domínio que não recebe), ou null. Na dúvida, sai. */
+export async function motivoParaNaoMandar(email: string): Promise<string | null> {
+  if (!emailValido(email)) return "Endereço de e-mail inválido.";
+  const mentira = motivoDeEmailRuim(email);
+  if (mentira) return mentira;
+  const dominio = email.trim().toLowerCase().split("@")[1];
+  return (await dominioRecebe(dominio)) === false ? `o domínio ${dominio} não recebe e-mail` : null;
+}
+
+async function lerDevolvidos(smtp: ConfigCampanha, cliente: NonNullable<ReturnType<typeof acessoFila>>["cliente"], chave: string) {
+  const { data: agora, error } = await cliente.rpc("servidor_email_empresas_ler_devolvidos", { p_chave: chave });
+  if (error || !agora) return;
+  const servidor = (process.env.CAMPANHA_IMAP_SERVIDOR || "").trim() || "imap.secureserver.net";
+  if (servidor.toLowerCase() === "nao") return;
+  const porta = Number(process.env.CAMPANHA_IMAP_PORTA || 993) || 993;
+  const caixa = new ImapFlow({
+    host: servidor,
+    port: porta,
+    secure: porta === 993,
+    auth: { user: smtp.usuario, pass: smtp.senha },
+    logger: false,
+    disableAutoIdle: true,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
+  caixa.on("error", () => {});
+  const itens: { email: string; motivo: string }[] = [];
+  try {
+    await caixa.connect();
+    const trava = await caixa.getMailboxLock("INBOX", { readOnly: true });
+    try {
+      const desde = new Date(Date.now() - 7 * 86_400_000);
+      const uids = new Set<number>();
+      for (const de of ["mailer-daemon", "postmaster"]) {
+        const achou = await caixa.search({ since: desde, from: de }, { uid: true });
+        for (const u of achou || []) uids.add(u);
+      }
+      const lista = [...uids].slice(-100);
+      if (lista.length)
+        for await (const m of caixa.fetch(lista, { source: true }, { uid: true })) {
+          if (m.source) itens.push(...enderecosQueVoltaram(m.source.toString("utf8").slice(0, 60_000)));
+        }
+    } finally {
+      trava.release();
+    }
+  } catch (e) {
+    console.error("Publike: não deu para ler os avisos de não entregue:", textoDoErro(e));
+    return;
+  } finally {
+    await caixa.logout().catch(() => {});
+  }
+  if (!itens.length) return;
+  const { error: e2 } = await cliente.rpc("servidor_email_empresas_voltaram", { p_chave: chave, p_itens: itens.slice(0, 200) });
+  if (e2) console.error("Publike: não deu para marcar os e-mails que voltaram:", e2.message);
+}
+
 export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motivo?: string; copia?: boolean }> {
   const smtp = configSmtpCampanha();
   const acesso = acessoFila();
   if (!smtp || !acesso) return { enviados: 0 };
   const { cliente, chave } = acesso;
-  const { data, error } = await cliente.rpc("servidor_email_empresas_pegar", { p_chave: chave });
-  if (error) {
-    // sem a migração: nada
-    if (error.code === "PGRST202") return { enviados: 0 };
-    console.error("Publike: falha ao ler o e-mail às empresas:", error.message);
-    return { enviados: 0, motivo: "Não foi possível ler a fila do e-mail às empresas." };
+  // os avisos de não entregue (a cada 30 minutos): o endereço que voltou não sai de novo
+  await lerDevolvidos(smtp, cliente, chave).catch((e) => console.error("Publike: avisos de não entregue:", textoDoErro(e)));
+  // o próximo endereço bom: os ruins viram "invalido" sem gastar o envio do dia (até 10 por vez)
+  let p: Proximo | null = null;
+  for (let i = 0; i < 10; i++) {
+    const { data, error } = await cliente.rpc("servidor_email_empresas_pegar", { p_chave: chave });
+    if (error) {
+      // sem a migração: nada
+      if (error.code === "PGRST202") return { enviados: 0 };
+      console.error("Publike: falha ao ler o e-mail às empresas:", error.message);
+      return { enviados: 0, motivo: "Não foi possível ler a fila do e-mail às empresas." };
+    }
+    const proximo = data as Proximo | null;
+    if (!proximo) return { enviados: 0 };
+    const ruim = await motivoParaNaoMandar(proximo.email);
+    if (!ruim) {
+      p = proximo;
+      break;
+    }
+    const { error: e1 } = await cliente.rpc("servidor_email_empresas_invalido", {
+      p_chave: chave,
+      p_id: proximo.id,
+      p_motivo: ruim,
+    });
+    if (e1) {
+      // sem a migração 20270812120000: como antes
+      await cliente.rpc("servidor_email_empresas_marcar", { p_chave: chave, p_id: proximo.id, p_ok: false, p_erro: ruim });
+      return { enviados: 0 };
+    }
   }
-  const p = data as Proximo | null;
   if (!p) return { enviados: 0 };
 
   const marcar = async (ok: boolean, erro?: string) => {
@@ -161,10 +281,6 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
     });
     if (e) console.error(`Publike: não deu para marcar o e-mail às empresas ${p.id}:`, e.message);
   };
-  if (!emailValido(p.email)) {
-    await marcar(false, "Endereço de e-mail inválido.");
-    return { enviados: 0 };
-  }
   const email = montarEmailEmpresas(
     { assunto: p.assunto, texto: p.texto, remetenteNome: p.remetente_nome },
     { empresa: p.nome, token: p.token, site: SITE_URL },

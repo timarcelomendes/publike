@@ -42,6 +42,11 @@ type Resumo = {
     sim: number;
     nao: number;
     falharam: number;
+    // os endereços ruins (migração 20270812120000)
+    invalidos?: number;
+    voltaram?: number;
+    enviados_7d?: number;
+    voltaram_7d?: number;
   };
   por_publico: Partial<
     Record<PublicoEmailEmpresas, { na_fila: number; enviados: number; sim: number; nao: number; disponiveis: number }>
@@ -80,6 +85,8 @@ const SITUACAO: Record<string, { nome: string; variante: VarianteSelo }> = {
   falhou: { nome: "Falhou", variante: "perigo" },
   sim: { nome: "Disse sim", variante: "match" },
   nao: { nome: "Não quer", variante: "contorno" },
+  invalido: { nome: "Endereço ruim", variante: "contorno" },
+  voltou: { nome: "Voltou", variante: "perigo" },
 };
 
 const pct = (parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "—");
@@ -207,6 +214,26 @@ async function Conteudo() {
           <Numero rotulo="Não querem" valor={n.nao} detalhe={`${pct(n.nao, n.enviados)} dos enviados`} />
           <Numero rotulo="Falharam" valor={n.falharam} alerta={n.falharam > 0} />
         </div>
+        {/* os endereços ruins (20/11/2026): o que não saiu e o que voltou como "não existe" */}
+        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-6">
+          <Numero
+            rotulo="Endereços ruins"
+            valor={n.invalidos ?? 0}
+            detalhe="não saíram: de mentira ou domínio sem e-mail"
+          />
+          <Numero
+            rotulo="Voltaram"
+            valor={n.voltaram ?? 0}
+            detalhe={`${pct(n.voltaram_7d ?? 0, n.enviados_7d ?? 0)} dos enviados em 7 dias`}
+            alerta={(n.enviados_7d ?? 0) >= 20 && (n.voltaram_7d ?? 0) / Math.max(n.enviados_7d ?? 1, 1) > 0.05}
+          />
+        </div>
+        {(n.enviados_7d ?? 0) >= 20 && (n.voltaram_7d ?? 0) / Math.max(n.enviados_7d ?? 1, 1) > 0.05 && (
+          <p className="mt-3 text-body-sm text-danger">
+            Mais de 5% dos e-mails da semana voltaram. Acima disso, o Gmail e o Outlook passam a desconfiar da caixa:
+            vale diminuir o número por dia ou parar e revisar a base antes de seguir.
+          </p>
+        )}
       </Secao>
 
       <Secao

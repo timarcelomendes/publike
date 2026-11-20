@@ -4402,6 +4402,10 @@ export type Database = {
       };
       admin_email_empresas_parada: { Args: Record<string, never>; Returns: Json };
       servidor_email_empresas_copia: { Args: { p_chave: string; p_erro: string | null }; Returns: undefined };
+      // os endereços ruins (migração 20270812120000)
+      servidor_email_empresas_invalido: { Args: { p_chave: string; p_id: number; p_motivo: string }; Returns: undefined };
+      servidor_email_empresas_ler_devolvidos: { Args: { p_chave: string }; Returns: boolean };
+      servidor_email_empresas_voltaram: { Args: { p_chave: string; p_itens: Json }; Returns: number };
       admin_email_empresas_copia: { Args: Record<string, never>; Returns: Json };
       painel_no_site_indicadores: { Args: { p_dias?: number }; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
