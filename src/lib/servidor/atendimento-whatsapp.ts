@@ -1090,9 +1090,10 @@ const BOTAO_DA_VAGA_PREPARADA = /\[Botão: (Conferir e publicar|Ver as vagas)\]/
  * o que a pessoa contou depois. `null`: a última não é a vaga preparada, ou a vaga veio de foto ou arquivo.
  */
 export function textosDaVagaPreparada(historico: Mensagem[]): { texto: string; jaDisse: string[] } | null {
+  // a equipe pode ter escrito depois da vaga preparada ("me diz o bairro que eu completo"): conta a última do robô
   let ultimaDoRobo = -1;
   for (let i = historico.length - 1; i >= 0; i--)
-    if (historico[i].de !== "pessoa") {
+    if (historico[i].de === "robo") {
       ultimaDoRobo = i;
       break;
     }

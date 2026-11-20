@@ -375,6 +375,10 @@ async function main() {
     lida,
   );
   conferir(a.textosDaVagaPreparada(naPergunta3 as any) === null, "publicar vaga: sem a vaga preparada, nada");
+  conferir(
+    a.textosDaVagaPreparada([...preparada, { de: "equipe", texto: "Me diz o bairro que eu completo." }] as any)?.texto === lida?.texto,
+    "publicar vaga: a mensagem da equipe depois da vaga preparada não atrapalha",
+  );
   conferir(a.querPublicarVaga("Olá! Quero publicar uma vaga pelo WhatsApp.") && !a.querPublicarVaga("Quero uma vaga de auxiliar"), "publicar vaga: a mensagem pronta");
   // os links de quem veio do anúncio contam no anúncio do Instagram, não no atendimento (19/11/2026: "parece que as
   // campanhas do Instagram não apareceram aqui")
