@@ -1508,7 +1508,29 @@ async function conversaSemVaga(banco: ClienteBanco, chave: string, conversa: str
   if (error || !data) return null;
   const u = data as unknown as { situacao: "robo" | "equipe"; historico: Mensagem[] };
   const ultima = u.historico.at(-1);
-  return u.situacao === "robo" && ultima?.de === "robo" && RESPOSTA_SEM_VAGA.test(ultima.texto) ? u.historico : null;
+  return u.situacao === "robo" && ultima?.de === "robo" && (RESPOSTA_SEM_VAGA.test(ultima.texto) || repetiuVagas(u.historico))
+    ? u.historico
+    : null;
+}
+
+/**
+ * A última resposta mandou de novo só vagas que já tinham ido (antes de 20/11/2026, o "Tem mais vagas" repetia a
+ * busca): a conversa entra no "Procurar de novo", e a busca nova pula as que já foram.
+ */
+export function repetiuVagas(historico: { de: string; texto: string }[]) {
+  const ultima = historico.at(-1);
+  if (!ultima || ultima.de === "pessoa") return false;
+  const agora = vagasJaMandadas([ultima]);
+  const antes = vagasJaMandadas(historico.slice(0, -1));
+  return agora.size > 0 && [...agora].every((id) => antes.has(id));
+}
+
+/** Das conversas da lista, as que entram no "Procurar de novo" (pela conversa inteira). */
+export async function conversasParaProcurarDeNovo(chaves: string[]) {
+  const acesso = acessoFila();
+  if (!acesso) return new Set<string>();
+  const ok = await Promise.all(chaves.map(async (c) => ((await conversaSemVaga(acesso.cliente, acesso.chave, c)) ? c : null)));
+  return new Set(ok.filter((x): x is string => x !== null));
 }
 
 export type BuscaDeNovo = { ok: true; texto: string; botao: Botao | null } | { ok: false; motivo: string };
@@ -1519,7 +1541,8 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
   if (!acesso) return { ok: false, motivo: "Falta a chave do servidor." };
   const { cliente: banco, chave } = acesso;
   const historico = await conversaSemVaga(banco, chave, conversa);
-  if (!historico) return { ok: false, motivo: "A conversa andou: a última resposta já não é a do “não achei”." };
+  if (!historico)
+    return { ok: false, motivo: "A conversa andou: a última resposta já não é a do “não achei” nem a das vagas repetidas." };
   const teto = await tetoDoMes(banco, chave, conversa);
   if (teto?.economico) return { ok: false, motivo: "O atendimento está no modo econômico (o teto do mês)." };
   const enviadas = await banco.rpc("servidor_whatsapp_vagas_enviadas", { p_chave: chave, p_conversa: conversa });
@@ -1544,7 +1567,11 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
   }
   if (busca?.fora && !busca.cidade) return { ok: false, motivo: `A pessoa mora fora de onde o Publike funciona (${busca.fora}).` };
   const local = lugarDaBusca(busca?.cidade ?? "", busca?.bairro ?? "");
-  const r = await mensagemDaBusca(busca, local, restam);
+  const jaForam = vagasJaMandadas(historico);
+  const r = await mensagemDaBusca(busca, local, restam, [], jaForam);
+  // todas as da função já foram (a resposta que repetiu): diz isso, com a pergunta de outra função
+  if (!r.quantas && jaForam.size && repetiuVagas(historico))
+    return { ok: true, texto: `${oi(primeiroNome(nome))} ${r.abertura}`, botao: r.botao };
   if (!r.quantas) return { ok: false, motivo: "Ainda não há vaga da função nem parecida." };
   return {
     ok: true,

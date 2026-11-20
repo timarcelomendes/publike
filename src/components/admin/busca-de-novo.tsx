@@ -47,9 +47,10 @@ export function BuscaDeNovo() {
       <div className="flex flex-col gap-1">
         <h3 className="text-label">Procurar de novo nas conversas sem vaga</h3>
         <p className="text-body-sm text-ink-muted">
-          {itens.length === 1 ? "1 conversa parou" : `${itens.length} conversas pararam`} no “não achei vaga” e ainda
-          {itens.length === 1 ? " está" : " estão"} na janela de 24 horas. A busca nova procura a função também nas
-          cidades em volta e, sem ela, vagas parecidas, ditas como parecidas. Veja a mensagem de cada uma antes de mandar.
+          {itens.length === 1 ? "1 conversa parou" : `${itens.length} conversas pararam`} no “não achei vaga” ou numa
+          resposta que repetiu vagas já mandadas, e ainda {itens.length === 1 ? "está" : "estão"} na janela de 24 horas. A
+          busca nova procura a função também nas cidades em volta, pula as vagas que já foram e, sem a função, manda
+          vagas parecidas, ditas como parecidas. Veja a mensagem de cada uma antes de mandar.
         </p>
       </div>
       {!vendo ? (

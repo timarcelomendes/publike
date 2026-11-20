@@ -3,6 +3,7 @@
 import {
   botaoValido,
   buscaDeNovo,
+  conversasParaProcurarDeNovo,
   enviarBuscaDeNovo,
   RESPOSTA_SEM_VAGA,
   type BuscaDeNovo,
@@ -43,9 +44,14 @@ export async function conversasSemVaga(): Promise<ConversaSemVaga[]> {
   if (!c) return [];
   const { data, error } = await c.rpc("admin_whatsapp_conversas", { p_filtro: "todas" });
   if (error || !data) return [];
-  const lista = ((data as unknown as { lista: NaLista[] }).lista ?? []).filter(
-    (x) => x.situacao === "robo" && x.ultima?.de === "robo" && RESPOSTA_SEM_VAGA.test(x.ultima.texto),
+  const todas = ((data as unknown as { lista: NaLista[] }).lista ?? []).filter(
+    (x) => x.situacao === "robo" && x.ultima?.de === "robo",
   );
+  // o "não achei" já se vê na última; a resposta que repetiu vagas (20/11/2026) pede a conversa inteira
+  const repetidas = await conversasParaProcurarDeNovo(
+    todas.filter((x) => !RESPOSTA_SEM_VAGA.test(x.ultima?.texto ?? "") && /\/anuncio\//.test(x.ultima?.texto ?? "")).map((x) => x.chave),
+  );
+  const lista = todas.filter((x) => RESPOSTA_SEM_VAGA.test(x.ultima?.texto ?? "") || repetidas.has(x.chave));
   const abertas = await Promise.all(lista.map(async (x) => ((await numeroAberto(c, x.chave)) ? x : null)));
   return abertas.filter((x) => x !== null).map((x) => ({ chave: x.chave, nome: x.nome, final: x.final }));
 }

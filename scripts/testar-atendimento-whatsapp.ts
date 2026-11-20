@@ -821,6 +821,12 @@ async function main() {
     a.vagasJaMandadas([{ de: "robo", texto: jaFoi }, { de: "pessoa", texto: "/anuncio/" + "9".repeat(36) }]).size === 1,
     "as vagas já mandadas: só as das respostas do Publike",
   );
+  conferir(
+    a.repetiuVagas([{ de: "robo", texto: jaFoi }, { de: "pessoa", texto: "Tem mais vagas" }, { de: "robo", texto: jaFoi }]) &&
+      !a.repetiuVagas([{ de: "pessoa", texto: "oi" }, { de: "robo", texto: jaFoi }]) &&
+      !a.repetiuVagas([{ de: "robo", texto: jaFoi }, { de: "pessoa", texto: "Tem mais vagas" }]),
+    "a resposta que repetiu vagas entra no procurar de novo",
+  );
   // 22c. duas funções: a que não tem é dita; a outra, mesmo longe, vem antes de qualquer parecida
   respostaIA = ia("Olha as vagas:", {
     perfil: "trabalho",
