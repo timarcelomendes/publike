@@ -12,6 +12,11 @@ export const PUBLICOS_EMAIL_EMPRESAS = {
     nome: "Abriram perto",
     ajuda: "Empresas abertas na região nos últimos 90 dias, sem conta no Publike (o MEI fica de fora).",
   },
+  // migração 20270814120000: postas uma a uma no Admin, com a vaga que anunciaram em outro lugar
+  vagas: {
+    nome: "Quem anunciou vaga",
+    ajuda: "Empresas que anunciaram vaga em outro lugar, postas uma a uma, com o texto que cita a vaga.",
+  },
 } as const;
 export type PublicoEmailEmpresas = keyof typeof PUBLICOS_EMAIL_EMPRESAS;
 
@@ -25,19 +30,43 @@ export const linkDeSairUmToque = (site: string, token: string) => `${site}/api/e
 const escapar = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** O nome da empresa no lugar de {empresa}. */
-export function comEmpresa(texto: string, empresa: string) {
-  return texto.replace(/\{empresa\}/g, empresa.trim() || "sua empresa");
+/** Onde a vaga foi vista, como entra no texto ({onde}): "no Indeed", "no Instagram"... */
+export const ONDE_VIU = [
+  "no Indeed",
+  "no LinkedIn",
+  "no InfoJobs",
+  "na Catho",
+  "no Instagram",
+  "no Facebook",
+  "num grupo de vagas",
+  "no site de vocês",
+] as const;
+
+// "AUXILIAR DE COZINHA" e "Auxiliar de cozinha" viram "auxiliar de cozinha"; "Analista de TI" fica "analista de TI"
+const minuscula = (t: string) => (t === t.toUpperCase() ? t.toLowerCase() : t.charAt(0).toLowerCase() + t.slice(1));
+
+/** O nome da empresa no lugar de {empresa}; a vaga no de {vaga} e onde ela foi vista no de {onde} (com o espaço). */
+export function comEmpresa(texto: string, empresa: string, vaga?: string | null, onde?: string | null) {
+  return texto
+    .replace(/\{empresa\}/g, empresa.trim() || "sua empresa")
+    .replace(/\{vaga\}/g, minuscula((vaga ?? "").trim()) || "vocês")
+    .replace(/\{onde\}/g, onde?.trim() ? ` ${onde.trim()}` : "");
 }
 
 /** O e-mail pronto: o assunto, o texto puro e o HTML. */
 export function montarEmailEmpresas(
   { assunto, texto, remetenteNome }: { assunto: string; texto: string; remetenteNome: string },
-  { empresa, token, site }: { empresa: string; token: string; site: string },
+  {
+    empresa,
+    token,
+    site,
+    vaga,
+    onde,
+  }: { empresa: string; token: string; site: string; vaga?: string | null; onde?: string | null },
 ) {
   const sim = linkDaResposta(site, token);
   const sair = linkDaResposta(site, token, true);
-  const corpo = comEmpresa(texto, empresa).trim();
+  const corpo = comEmpresa(texto, empresa, vaga, onde).trim();
   // a assinatura: o primeiro nome do remetente ("Marcelo, do Publike" vira "Marcelo")
   const quem = remetenteNome.split(",")[0].trim() || "Equipe";
   const paragrafos = corpo.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
@@ -55,5 +84,5 @@ ${quem}
 Publike · ${site.replace(/^https?:\/\//, "")}
 
 Não quer receber? ${sair}`;
-  return { assunto: comEmpresa(assunto, empresa), texto: textoPuro, html };
+  return { assunto: comEmpresa(assunto, empresa, vaga, onde), texto: textoPuro, html };
 }

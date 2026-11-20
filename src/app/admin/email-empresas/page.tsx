@@ -3,7 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ConfigEmailEmpresas, FilaDoPublico } from "@/components/admin/email-empresas";
+import {
+  ConfigEmailEmpresas,
+  FilaDoPublico,
+  PorVagaEmailEmpresas,
+  TextoVagasEmailEmpresas,
+} from "@/components/admin/email-empresas";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
@@ -62,6 +67,10 @@ type Resumo = {
     telefone: string | null;
     observacao: string | null;
     respondeu_em: string;
+    // de quem anunciou vaga (migração 20270814120000)
+    vaga?: string | null;
+    onde?: string | null;
+    link_vaga?: string | null;
   }[];
   ultimos: {
     id: number;
@@ -89,6 +98,24 @@ const SITUACAO: Record<string, { nome: string; variante: VarianteSelo }> = {
   voltou: { nome: "Voltou", variante: "perigo" },
 };
 
+/** Quem anunciou vaga em outro lugar (migração 20270814120000; sem ela, a seção não aparece). */
+type Vagas = {
+  assunto: string;
+  texto: string;
+  lista: {
+    id: number;
+    nome: string;
+    email: string;
+    vaga: string;
+    onde: string | null;
+    link_vaga: string | null;
+    situacao: string;
+    erro: string | null;
+    criado_em: string;
+    enviado_em: string | null;
+  }[];
+};
+
 const pct = (parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "—");
 
 export default function EmailEmpresas() {
@@ -103,13 +130,16 @@ async function Conteudo() {
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/email-empresas"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const [{ data, error }, { data: dParada }, { data: dCopia }] = await Promise.all([
+  const [{ data, error }, { data: dParada }, { data: dCopia }, { data: dVagas }] = await Promise.all([
     c.rpc("admin_email_empresas"),
     // por que o envio parou (migração 20270727120000; sem ela, nada)
     c.rpc("admin_email_empresas_parada"),
     // a última cópia em "Enviados" (migração 20270729120000; sem ela, nada)
     c.rpc("admin_email_empresas_copia"),
+    // quem anunciou vaga (migração 20270814120000; sem ela, nada)
+    c.rpc("admin_email_empresas_vagas"),
   ]);
+  const vagas = (dVagas ?? null) as Vagas | null;
   const parada = (dParada ?? null) as { motivo: string; em: string | null; ate: string | null; desligado: boolean } | null;
   const copia = (dCopia ?? null) as { erro: string | null; em: string } | null;
   const caixa = situacaoSmtpCampanha();
@@ -259,6 +289,20 @@ async function Conteudo() {
                   <span className="text-ink-muted"> · {PUBLICOS_EMAIL_EMPRESAS[s.publico]?.nome ?? s.publico}</span>
                 </span>
                 <span className="break-all text-ink-muted">{s.email}</span>
+                {s.vaga && (
+                  <span>
+                    Vaga: {s.vaga}
+                    {s.onde ? ` (vista ${s.onde})` : ""}
+                    {s.link_vaga && (
+                      <>
+                        {" · "}
+                        <a href={s.link_vaga} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                          o anúncio
+                        </a>
+                      </>
+                    )}
+                  </span>
+                )}
                 {s.link_vagas && (
                   <span className="break-all">
                     Vagas:{" "}
@@ -281,7 +325,9 @@ async function Conteudo() {
         descricao="Escolha quantos de cada público entram na fila. Cada endereço recebe uma vez só; quem pediu para sair, nunca mais. Sai primeiro quem é do Publike, depois as agências e as que abriram perto; entre as contas do Publike, quem entrou no site em mais dias dos últimos 30."
       >
         <ul className="flex flex-col divide-y divide-line">
-          {(Object.keys(PUBLICOS_EMAIL_EMPRESAS) as PublicoEmailEmpresas[]).map((p) => {
+          {(Object.keys(PUBLICOS_EMAIL_EMPRESAS) as PublicoEmailEmpresas[])
+            .filter((p) => p !== "vagas")
+            .map((p) => {
             const x = r.por_publico[p] ?? { na_fila: 0, enviados: 0, sim: 0, nao: 0, disponiveis: 0 };
             return (
               <li key={p} className="grid gap-x-6 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
@@ -308,6 +354,53 @@ async function Conteudo() {
           </p>
         )}
       </Secao>
+
+      {vagas && (
+        <Secao
+          titulo="Quem anunciou vaga"
+          descricao="Empresas que anunciaram vaga em outro lugar, uma a uma. O e-mail cita a vaga e oferece publicar de graça, pelo WhatsApp ou pelo site. Só o endereço da empresa (o pessoal fica de fora), cada endereço uma vez só, e sai antes dos outros públicos, dentro do limite do dia. A vaga posta há mais de 30 dias sai da fila sozinha."
+        >
+          <PorVagaEmailEmpresas />
+          {vagas.lista.length > 0 && (
+            <ul className="flex flex-col divide-y divide-line">
+              {vagas.lista.map((v) => {
+                const st =
+                  v.situacao === "na_fila"
+                    ? { nome: "Na fila", variante: "neutro" as const }
+                    : (SITUACAO[v.situacao] ?? { nome: v.situacao, variante: "contorno" as const });
+                return (
+                  <li key={v.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2.5 text-body-sm">
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-label">{v.nome}</span>
+                      <span className="text-ink-muted">
+                        {v.vaga}
+                        {v.onde ? `, vista ${v.onde}` : ""}
+                      </span>
+                      <span className="break-all text-ink-muted">{v.email}</span>
+                      {v.erro && <span className="text-danger">{v.erro}</span>}
+                    </span>
+                    <span className="flex flex-col items-end gap-1 text-right">
+                      <Selo variante={st.variante}>{st.nome}</Selo>
+                      <span className="text-ink-muted tabular-nums">
+                        {formatarDataHora(v.enviado_em ?? v.criado_em)}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <details className="rounded-md border border-line p-4">
+            <summary className="cursor-pointer text-label">O texto deste e-mail</summary>
+            <div className="mt-4">
+              <TextoVagasEmailEmpresas
+                inicial={{ assunto: vagas.assunto, texto: vagas.texto }}
+                remetenteNome={r.config.remetente_nome}
+              />
+            </div>
+          </details>
+        </Secao>
+      )}
 
       <Secao titulo="O e-mail" descricao="Nasce desligado: confira a prévia, salve o texto e ligue quando quiser começar.">
         <ConfigEmailEmpresas inicial={r.config} caixaPronta={caixaPronta} />

@@ -4409,6 +4409,13 @@ export type Database = {
       // os lembretes do atendimento do WhatsApp (migração 20270813120000)
       servidor_whatsapp_lembretes: { Args: { p_chave: string; p_marca_pergunta: string; p_marca_sempre: string }; Returns: Json };
       admin_email_empresas_copia: { Args: Record<string, never>; Returns: Json };
+      // quem anunciou vaga em outro lugar (migração 20270814120000)
+      admin_email_empresas_vaga_por: {
+        Args: { p_nome: string; p_email: string; p_vaga: string; p_onde: string | null; p_link: string | null };
+        Returns: Json;
+      };
+      admin_email_empresas_vagas: { Args: Record<string, never>; Returns: Json };
+      admin_email_empresas_vagas_salvar: { Args: { p_assunto: string; p_texto: string }; Returns: undefined };
       painel_no_site_indicadores: { Args: { p_dias?: number }; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
       meu_endereco_de_cobranca: { Args: Record<string, never>; Returns: Json };

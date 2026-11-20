@@ -137,6 +137,9 @@ type Proximo = {
   texto: string;
   remetente_nome: string;
   remetente_email: string;
+  /** de quem anunciou vaga (migração 20270814120000) */
+  vaga?: string | null;
+  onde?: string | null;
 };
 
 // --- Os endereços ruins (20/11/2026; Marcelo: "os e-mails estão vindo muitos ruins"; migração 20270812120000) -----
@@ -283,7 +286,7 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
   };
   const email = montarEmailEmpresas(
     { assunto: p.assunto, texto: p.texto, remetenteNome: p.remetente_nome },
-    { empresa: p.nome, token: p.token, site: SITE_URL },
+    { empresa: p.nome, token: p.token, site: SITE_URL, vaga: p.vaga, onde: p.onde },
   );
   const transporte = nodemailer.createTransport({
     host: smtp.servidor,

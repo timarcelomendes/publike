@@ -1,9 +1,15 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { porNaFilaEmailEmpresas, salvarEmailEmpresas, tirarDaFilaEmailEmpresas } from "@/lib/acoes/email-empresas";
+import {
+  porNaFilaEmailEmpresas,
+  porVagaEmailEmpresas,
+  salvarEmailEmpresas,
+  salvarTextoVagasEmailEmpresas,
+  tirarDaFilaEmailEmpresas,
+} from "@/lib/acoes/email-empresas";
 import { chamarAcao } from "@/lib/acao-segura";
-import { montarEmailEmpresas, type PublicoEmailEmpresas } from "@/lib/email-empresas";
+import { montarEmailEmpresas, ONDE_VIU, type PublicoEmailEmpresas } from "@/lib/email-empresas";
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada } from "../ui/campo";
 
@@ -223,6 +229,177 @@ export function FilaDoPublico({
         )}
       </div>
       <Mensagem r={resposta} />
+    </div>
+  );
+}
+
+/**
+ * Quem anunciou vaga em outro lugar (migração 20270814120000): uma empresa por vez, com a vaga e onde ela foi vista.
+ * Só o endereço da empresa; o pessoal (gmail, hotmail...) fica de fora no banco.
+ */
+export function PorVagaEmailEmpresas() {
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [vaga, setVaga] = useState("");
+  const [onde, setOnde] = useState("");
+  const [link, setLink] = useState("");
+  const [pendente, iniciar] = useTransition();
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const mudou = (f: (v: string) => void) => (e: { target: { value: string } }) => {
+    f(e.target.value);
+    setResposta(null);
+  };
+
+  function por() {
+    iniciar(async () => {
+      const r = await chamarAcao(() => porVagaEmailEmpresas({ nome, email, vaga, onde, link }));
+      if (r.ok) {
+        setNome("");
+        setEmail("");
+        setVaga("");
+        setLink("");
+      }
+      setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Na fila." } : { ok: false, texto: r.erro });
+    });
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        por();
+      }}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Campo rotulo="Empresa" nome="vaga-empresa">
+          <input id="vaga-empresa" value={nome} maxLength={120} onChange={mudou(setNome)} className={classesEntrada} />
+        </Campo>
+        <Campo rotulo="E-mail da empresa" nome="vaga-email" ajuda="O e-mail pessoal (gmail, hotmail...) fica de fora.">
+          <input
+            id="vaga-email"
+            type="email"
+            inputMode="email"
+            value={email}
+            onChange={mudou(setEmail)}
+            className={classesEntrada}
+          />
+        </Campo>
+        <Campo rotulo="Cargo da vaga" nome="vaga-cargo" ajuda="Como entra no texto: “Vi a vaga de auxiliar de cozinha…”">
+          <input id="vaga-cargo" value={vaga} maxLength={80} onChange={mudou(setVaga)} className={classesEntrada} />
+        </Campo>
+        <Campo rotulo="Onde viu" nome="vaga-onde" ajuda="Opcional. Escolha ou escreva (“no jornal”).">
+          <input
+            id="vaga-onde"
+            list="vaga-onde-opcoes"
+            value={onde}
+            maxLength={60}
+            onChange={mudou(setOnde)}
+            className={classesEntrada}
+          />
+          <datalist id="vaga-onde-opcoes">
+            {ONDE_VIU.map((o) => (
+              <option key={o} value={o} />
+            ))}
+          </datalist>
+        </Campo>
+      </div>
+      <Campo rotulo="Link da vaga" nome="vaga-link" ajuda="Opcional. Fica para a equipe publicar se a empresa disser sim.">
+        <input id="vaga-link" inputMode="url" value={link} onChange={mudou(setLink)} className={classesEntrada} />
+      </Campo>
+      <div className="flex flex-wrap items-center gap-3">
+        <Botao type="submit" variante="secundario" disabled={pendente}>
+          {pendente ? "Pondo na fila…" : "Pôr na fila"}
+        </Botao>
+        <Mensagem r={resposta} />
+      </div>
+    </form>
+  );
+}
+
+/** O texto de quem anunciou vaga, com a prévia ({empresa}, {vaga} e {onde}). */
+export function TextoVagasEmailEmpresas({
+  inicial,
+  remetenteNome,
+}: {
+  inicial: { assunto: string; texto: string };
+  remetenteNome: string;
+}) {
+  const [assunto, setAssunto] = useState(inicial.assunto);
+  const [texto, setTexto] = useState(inicial.texto);
+  const [pendente, iniciar] = useTransition();
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const previa = useMemo(
+    () =>
+      montarEmailEmpresas(
+        { assunto, texto, remetenteNome },
+        {
+          empresa: "Padaria Exemplo",
+          token: "0".repeat(64),
+          site: "https://publike.org",
+          vaga: "Auxiliar de cozinha",
+          onde: "no Instagram",
+        },
+      ),
+    [assunto, texto, remetenteNome],
+  );
+
+  function salvar() {
+    iniciar(async () => {
+      const r = await chamarAcao(() => salvarTextoVagasEmailEmpresas({ assunto, texto }));
+      setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Salvo." } : { ok: false, texto: r.erro });
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Campo rotulo="Assunto" nome="vagas-assunto" ajuda="{empresa} e {vaga} viram o nome da empresa e o cargo.">
+        <input
+          id="vagas-assunto"
+          value={assunto}
+          maxLength={150}
+          onChange={(e) => {
+            setAssunto(e.target.value);
+            setResposta(null);
+          }}
+          className={classesEntrada}
+        />
+      </Campo>
+      <Campo
+        rotulo="Texto"
+        nome="vagas-texto"
+        ajuda="{onde} vira “no Instagram” (ou some, se ficar em branco). O botão “Sim, podem publicar”, a assinatura e o “Não quero receber” entram sozinhos no fim."
+      >
+        <textarea
+          id="vagas-texto"
+          rows={14}
+          maxLength={3000}
+          value={texto}
+          onChange={(e) => {
+            setTexto(e.target.value);
+            setResposta(null);
+          }}
+          className={classesEntrada}
+        />
+      </Campo>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-label">Como chega (Padaria Exemplo, auxiliar de cozinha, vista no Instagram)</h3>
+        <p className="text-body-sm">
+          <span className="text-ink-muted">Assunto:</span> {previa.assunto}
+        </p>
+        <iframe
+          title="Prévia do e-mail de quem anunciou vaga"
+          srcDoc={previa.html}
+          sandbox=""
+          className="h-[36rem] w-full rounded-md border border-line bg-white"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Botao variante="secundario" disabled={pendente} onClick={salvar}>
+          {pendente ? "Salvando…" : "Salvar o texto"}
+        </Botao>
+        <Mensagem r={resposta} />
+      </div>
     </div>
   );
 }

@@ -104,3 +104,43 @@ export async function tirarDaFilaEmailEmpresas(publico: PublicoEmailEmpresas | n
   refresh();
   return { ok: true, mensagem: `${Number(data) || 0} saíram da fila.` };
 }
+
+// ------------------------------------------------------------------ Quem anunciou vaga (migração 20270814120000)
+
+/** Uma empresa que anunciou vaga em outro lugar entra na fila (só o endereço da empresa, uma vez só). */
+export async function porVagaEmailEmpresas(d: {
+  nome: string;
+  email: string;
+  vaga: string;
+  onde: string;
+  link: string;
+}): Promise<Feito> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const link = d.link.trim();
+  if (link && !/^https?:\/\/\S+\.\S+/i.test(link))
+    return { ok: false, erro: "Confira o link da vaga (começa com https://)." };
+  const { data, error } = await c.rpc("admin_email_empresas_vaga_por", {
+    p_nome: d.nome,
+    p_email: d.email,
+    p_vaga: d.vaga,
+    p_onde: d.onde.trim() || null,
+    p_link: link || null,
+  });
+  if (error) return { ok: false, erro: error.message };
+  const r = (data ?? {}) as { ok?: boolean; mensagem?: string; erro?: string };
+  if (!r.ok) return { ok: false, erro: r.erro ?? "Não entrou na fila." };
+  refresh();
+  return { ok: true, mensagem: r.mensagem };
+}
+
+export async function salvarTextoVagasEmailEmpresas(d: { assunto: string; texto: string }): Promise<Feito> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  if (!d.texto.includes("{vaga}") && !d.assunto.includes("{vaga}"))
+    return { ok: false, erro: "Use {vaga} no assunto ou no texto: este e-mail cita a vaga que a empresa anunciou." };
+  const { error } = await c.rpc("admin_email_empresas_vagas_salvar", { p_assunto: d.assunto, p_texto: d.texto });
+  if (error) return { ok: false, erro: error.message };
+  refresh();
+  return { ok: true, mensagem: "Salvo." };
+}
