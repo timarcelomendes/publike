@@ -126,7 +126,7 @@ async function Conteudo({ token }: { token: string }) {
             <li>
               {/* só fala em celular quando a entrada pelo código por SMS está ligada (LOGIN_CELULAR) */}
               {LOGIN_CELULAR
-                ? "Entre com o número do seu celular (chega um código por SMS)."
+                ? "Entre com o número do seu celular (chega um código no WhatsApp)."
                 : `${comoEntrarPeloConvite()}: na primeira vez, a conta é criada na hora.`}
             </li>
             <li>

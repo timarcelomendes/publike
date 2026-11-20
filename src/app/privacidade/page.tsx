@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 // com a entrada pelo celular ligada, o provedor do SMS recebe o número (só para mandar o código de entrar)
-const SMS = LOGIN_CELULAR ? "o Twilio (que manda o código por SMS para entrar com o celular), " : "";
+const SMS = LOGIN_CELULAR ? "a Meta (que manda pelo WhatsApp o código para entrar com o celular), " : "";
 
 export default function Privacidade() {
   return (

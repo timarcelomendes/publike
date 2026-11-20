@@ -98,6 +98,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
         erroInicial={erro}
         redes={redes}
         celular={LOGIN_CELULAR}
+        preferirCelular={primeiro(sp.de) === "whatsapp"}
         cabecalho={<CabecalhoEntrar />}
         emailInicial={emailInicial}
       />

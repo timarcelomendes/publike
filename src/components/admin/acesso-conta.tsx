@@ -81,7 +81,7 @@ export function AcessoDaConta({
             nome="telefone_login"
             opcional
             erro={erros.telefone_login}
-            ajuda="Para entrar com o código por SMS."
+            ajuda="Para entrar com o código no WhatsApp."
           >
             <input
               {...ligarCampo("telefone_login", erros.telefone_login, true)}

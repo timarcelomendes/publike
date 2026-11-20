@@ -55,8 +55,13 @@ function traduzir(erro: ErroAuth) {
   if (codigo === "otp_expired" || msg.includes("expired") || msg.includes("invalid") && msg.includes("token")) {
     return "Código errado ou vencido. Confira ou peça um novo.";
   }
-  if (codigo === "phone_provider_disabled" || codigo === "sms_send_failed" || msg.includes("sms") || msg.includes("phone provider")) {
+  // o código vai pelo WhatsApp (o gancho /api/auth/codigo-whatsapp): fora das 24 horas da Meta, o pedido de um "oi" antes
+  if (msg.includes("mande antes um oi")) return erro?.message ?? "";
+  if (codigo === "phone_provider_disabled" || msg.includes("phone provider")) {
     return "O login por celular ainda não está ativado. Entre com seu e-mail.";
+  }
+  if (codigo === "sms_send_failed" || codigo?.startsWith("hook") || msg.includes("sms") || msg.includes("hook")) {
+    return "Não consegui mandar o código no WhatsApp agora. Tente de novo em instantes ou entre com seu e-mail.";
   }
   if (codigo === "provider_disabled" || msg.includes("provider is not enabled") || msg.includes("unsupported provider")) {
     return "Esse jeito de entrar ainda não está ativado. Tente outro.";
@@ -97,6 +102,7 @@ export function FormEntrar({
   erroInicial,
   redes,
   celular: comCelular,
+  preferirCelular = false,
   cabecalho,
   emailInicial,
 }: {
@@ -111,12 +117,16 @@ export function FormEntrar({
   erroInicial?: string;
   redes: BotaoRede[];
   celular: boolean;
+  /** veio da vaga preparada pelo WhatsApp: abre no código pelo WhatsApp (os outros abrem no e-mail) */
+  preferirCelular?: boolean;
   /** Título do cartão: aparece só enquanto a pessoa escolhe como entrar. */
   cabecalho?: ReactNode;
 }) {
   const supabase = useMemo(() => criarClienteNavegador(), []);
   // "senha": quem criou uma senha em Meu perfil (é opcional; o link no e-mail continua valendo)
-  const [modo, setModo] = useState<"celular" | "email" | "senha">(comCelular && !emailInicial ? "celular" : "email");
+  const [modo, setModo] = useState<"celular" | "email" | "senha">(
+    comCelular && preferirCelular && !emailInicial ? "celular" : "email",
+  );
   const [etapa, setEtapa] = useState<"pedir" | "codigo" | "email-enviado">("pedir");
   const [celular, setCelular] = useState("");
   const [codigo, setCodigo] = useState("");
@@ -476,7 +486,7 @@ export function FormEntrar({
         {reenvios >= 2 && (
           <p className="text-body-sm text-ink-muted">
             Ainda nada? Confira se o endereço está certo
-            {comCelular ? " ou entre com o celular, pelo código por SMS" : ""}.
+            {comCelular ? " ou entre com o celular, pelo código no WhatsApp" : ""}.
           </p>
         )}
         <Botao
@@ -501,7 +511,7 @@ export function FormEntrar({
     return (
       <form onSubmit={confirmarCodigo} className="flex flex-col gap-4">
         <p className="text-body text-ink">
-          Mandamos um código por SMS para <strong>{celular}</strong>.
+          Mandamos um código no seu WhatsApp, para <strong>{celular}</strong>.
         </p>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="codigo" className="text-label">
@@ -593,7 +603,7 @@ export function FormEntrar({
               placeholder="(62) 99999-0000"
               className={classesEntrada}
             />
-            <p className="text-body-sm text-ink-muted">Você recebe um código por SMS.</p>
+            <p className="text-body-sm text-ink-muted">Você recebe um código no WhatsApp, na conversa com o Publike.</p>
           </div>
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
           <Botao type="submit" variante="primario" disabled={carregando || verificando} className="min-h-12">

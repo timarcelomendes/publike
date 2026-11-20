@@ -457,7 +457,8 @@ export function PublicarAnuncio({
   function seguirParaEntrar() {
     const f = formulario();
     if (f) guardarRascunho(f);
-    router.push(`/entrar?next=${encodeURIComponent("/publicar?continuar=1")}`);
+    // veio da vaga preparada pelo WhatsApp: o entrar abre no código pelo WhatsApp (com o login por celular ligado)
+    router.push(`/entrar?next=${encodeURIComponent("/publicar?continuar=1")}${convite?.de === "whatsapp" ? "&de=whatsapp" : ""}`);
   }
 
   if (aviso === "publicando") {

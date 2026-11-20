@@ -114,7 +114,7 @@ async function Conteudo({ token }: { token: string }) {
           <p className="text-body">
             {/* só fala em celular quando a entrada pelo código por SMS está ligada (LOGIN_CELULAR) */}
             {LOGIN_CELULAR
-              ? "Entre com o número do seu celular (chega um código por SMS)."
+              ? "Entre com o número do seu celular (chega um código no WhatsApp)."
               : `${comoEntrarPeloConvite()}.`}{" "}
             Se ainda não tem conta no Publike, ela é criada na hora, de graça.
           </p>

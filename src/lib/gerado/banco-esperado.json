@@ -361,7 +361,8 @@
   "20270813120000_whatsapp_lembretes",
   "20270814120000_email_empresas_quem_anunciou",
   "20270815120000_whatsapp_sem_entrega_no_celular",
-  "20270816120000_whatsapp_lembrete_vaga"
+  "20270816120000_whatsapp_lembrete_vaga",
+  "20270817120000_whatsapp_codigo_de_acesso"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3779,6 +3780,7 @@
   "f|public.servidor_video_guardar_ia(p_chave text, p_id uuid, p_transcricoes jsonb, p_resumo jsonb)": "adc68d151f",
   "f|public.servidor_video_prazos(p_chave text, p_agora timestamp with time zone)": "02153e456d",
   "f|public.servidor_whatsapp_aceite_pela_vaga(p_chave text, p_conversa text, p_vaga uuid)": "01ba270c7c",
+  "f|public.servidor_whatsapp_codigo(p_chave text, p_numero text)": "36e60adc50",
   "f|public.servidor_whatsapp_config(p_chave text)": "940efaf897",
   "f|public.servidor_whatsapp_conversa_entrada(p_chave text, p_numero text, p_texto text, p_nome text, p_origem jsonb, p_payload text, p_wamid text)": "9687d930b1",
   "f|public.servidor_whatsapp_conversa_saida(p_chave text, p_conversa text, p_texto text, p_wamid text, p_perfil text, p_equipe boolean, p_motivo text)": "99c2ceac83",
