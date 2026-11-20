@@ -142,6 +142,8 @@ type Busca = {
   bairro: string;
   /** a cidade que a pessoa disse, quando fica fora de onde o Publike funciona ("Manaus"); senão vazio */
   fora: string;
+  /** o jeito de trabalho que ela pediu: primeiro emprego, PCD, diária, home office... (`JEITOS`) */
+  jeito?: string[];
 };
 
 type Plano = {
@@ -169,11 +171,12 @@ const ESQUEMA = {
       busca: {
         type: "object",
         additionalProperties: false,
-        required: ["texto", "funcoes", "parecidas", "categoria", "cidade", "bairro", "fora"],
+        required: ["texto", "funcoes", "parecidas", "jeito", "categoria", "cidade", "bairro", "fora"],
         properties: {
           texto: { type: "string" },
           funcoes: { type: "array", items: { type: "string" } },
           parecidas: { type: "array", items: { type: "string" } },
+          jeito: { type: "array", items: { type: "string", enum: ["sem_experiencia", "pcd", "diaria", "freelance", "remoto", "meio_periodo", "fim_de_semana", "qualquer"] } },
           categoria: {
             type: "string",
             enum: [...CATEGORIAS.map((c) => c.slug), "todas"],
@@ -378,7 +381,7 @@ export function lugarDaBusca(cidade: string, bairro: string): Local | null {
 }
 
 const REGRAS_DA_BUSCA =
-  `Preencha "busca.texto" com o que ela faz, como ela falou ("vigilante patrimonial", "auxiliar de costura e de cozinha"); "busca.funcoes" com cada função que ela disse, separada, no singular e com o nome que os anúncios usam (até 3: ["auxiliar de costura", "auxiliar de cozinha"]); "busca.parecidas" com até 4 outras funções que essa pessoa consegue fazer com a experiência que tem, do mesmo ramo, as mais próximas primeiro (vigilante: vigia, porteiro, controlador de acesso; auxiliar de costura: costureira, auxiliar de produção têxtil, arrematadeira; auxiliar de cozinha: ajudante de cozinha, cozinheira, auxiliar de padaria; cargo de liderança: o mesmo cargo em outro nível da mesma área, como supervisor de logística: coordenador de logística, encarregado de logística, gerente de logística). Cuidado com as parecidas: elas aparecem quando não há vaga da função, como oportunidades que podem combinar com o perfil, então nunca ponha uma função só porque divide uma palavra (auxiliar de escritório não é parecida com auxiliar de costura) nem funções que pedem outra formação; na dúvida, deixe de fora;`;
+  `Preencha "busca.texto" com o que ela faz, como ela falou ("vigilante patrimonial", "auxiliar de costura e de cozinha"); "busca.funcoes" com cada função que ela disse, separada, no singular e com o nome que os anúncios usam (até 3: ["auxiliar de costura", "auxiliar de cozinha"]); "busca.parecidas" com até 4 outras funções que essa pessoa consegue fazer com a experiência que tem, do mesmo ramo, as mais próximas primeiro (vigilante: vigia, porteiro, controlador de acesso; auxiliar de costura: costureira, auxiliar de produção têxtil, arrematadeira; auxiliar de cozinha: ajudante de cozinha, cozinheira, auxiliar de padaria; cargo de liderança: o mesmo cargo em outro nível da mesma área, como supervisor de logística: coordenador de logística, encarregado de logística, gerente de logística). Cuidado com as parecidas: elas aparecem quando não há vaga da função, como oportunidades que podem combinar com o perfil, então nunca ponha uma função só porque divide uma palavra (auxiliar de escritório não é parecida com auxiliar de costura) nem funções que pedem outra formação; na dúvida, deixe de fora; "busca.jeito" com o jeito de trabalho que ela pediu, se pediu: "sem_experiencia" (primeiro emprego, nunca trabalhou, sem experiência), "pcd" (pessoa com deficiência), "diaria", "freelance", "remoto" (home office), "meio_periodo", "fim_de_semana" e "qualquer" (topa o que tiver, outras áreas, o que aparecer); senão, []. O jeito não é função: "primeiro emprego", "PCD", "diária" e "home office" vão em "busca.jeito", nunca em "busca.funcoes" (em "atendimento home office", a função é "atendimento");`;
 
 // --- As vagas da função (19/11/2026; Marcelo: "privilegiar a função solicitada, mesmo que mais longe, cidade e região"
 // e "se não tiver a profissão, exibir vagas semelhantes [...] deixar claro ao usuário [...] cuidado com essa lista") --
@@ -448,7 +451,83 @@ const unicos = (xs: (string | null | undefined)[], max: number) => {
   return r;
 };
 
-type BuscaDeVagas = { texto: string; funcoes?: string[]; parecidas?: string[]; categoria: string };
+// --- O jeito de trabalho (20/11/2026; Marcelo: "entender melhor as nuances de vagas e sugerir algo correlacionado"):
+// nas conversas, "primeiro emprego", "sou PCD", "diária", "home office", "o que tiver" viravam a função buscada e davam
+// "não achei". Agora são filtros: a vaga precisa aceitar sem experiência, ser para PCD, de diária, remota... e
+// "qualquer" traz as vagas mais perto quando a função não tem.
+
+export const JEITOS = {
+  sem_experiencia: "que aceitam sem experiência",
+  pcd: "para PCD",
+  diaria: "de diária",
+  freelance: "de freelance",
+  remoto: "home office",
+  meio_periodo: "de meio período",
+  fim_de_semana: "de fim de semana",
+  qualquer: "",
+} as const;
+export type Jeito = keyof typeof JEITOS;
+const ehJeito = (x: unknown): x is Jeito => typeof x === "string" && x in JEITOS;
+
+const PALAVRAS_DO_JEITO: [Jeito, RegExp][] = [
+  ["sem_experiencia", /\b(primeiro emprego|primeira vaga|primeiro trabalho|sem experiencia|nunca trabalhei)\b/g],
+  ["pcd", /\b(pcd|pne|deficiencia|deficiente|cadeirante)\b/g],
+  ["diaria", /\b(diarias?|bicos?)\b/g],
+  ["freelance", /\b(freelancer|freelance|freela)\b/g],
+  ["remoto", /\b(home ?office|remoto|remota|trabalhar de casa|de casa pela internet)\b/g],
+  ["meio_periodo", /\b(meio periodo|meio expediente|part ?time)\b/g],
+  ["fim_de_semana", /\b(fins? de semana|finais de semana|sabado e domingo)\b/g],
+  ["qualquer", /\b(qualquer (coisa|area|vaga|servico|funcao|trabalho)|o que tiver|o que aparecer|o que der|outras areas|qualquer uma)\b/g],
+];
+
+/** O jeito de trabalho que o texto pede ("sou PCD em busca do primeiro emprego" → pcd, sem_experiencia). */
+export function jeitoDoTexto(texto: string): Jeito[] {
+  const t = simples(texto);
+  return PALAVRAS_DO_JEITO.filter(([, r]) => new RegExp(r.source).test(t)).map(([j]) => j);
+}
+
+/** A função sem o jeito ("atendimento home office" → "atendimento"); null quando só sobra o jeito ("primeiro emprego"). */
+export function funcaoSemJeito(funcao: string) {
+  const original = simples(funcao);
+  if (!PALAVRAS_DO_JEITO.some(([, r]) => new RegExp(r.source).test(original))) return funcao.trim() || null;
+  let t = original;
+  for (const [, r] of PALAVRAS_DO_JEITO) t = t.replace(new RegExp(r.source, "g"), " ");
+  t = t
+    .replace(/\b(exatamente|vaga|vagas|trabalho|emprego|busca|procuro|de|do|da|em|com|e|ou|para|no|na)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return t.length >= 3 ? t : null;
+}
+
+type Vinda = { experiencia?: string | null; pcd?: string | null; modelo?: string | null; jornada?: string | null; regime?: string | null };
+/** A vaga aceita o jeito pedido. */
+export function vagaDoJeito(a: Vinda, jeitos: readonly Jeito[]) {
+  return jeitos.every((j) => {
+    switch (j) {
+      case "sem_experiencia":
+        return !a.experiencia || a.experiencia === "sem";
+      case "pcd":
+        return a.pcd === "tambem" || a.pcd === "exclusiva";
+      case "diaria":
+        return a.regime === "diaria";
+      case "freelance":
+        return a.regime === "freelance";
+      case "remoto":
+        return a.modelo === "remoto" || a.modelo === "hibrido";
+      case "meio_periodo":
+        return a.jornada === "meio_periodo";
+      case "fim_de_semana":
+        return a.jornada === "fim_de_semana";
+      default:
+        return true;
+    }
+  });
+}
+
+/** "que aceitam sem experiência e para PCD" (sem o "qualquer"). */
+const nomeDoJeito = (jeitos: readonly Jeito[]) => listaE(jeitos.map((j) => JEITOS[j]).filter(Boolean));
+
+type BuscaDeVagas = { texto: string; funcoes?: string[]; parecidas?: string[]; categoria: string; jeito?: Jeito[] };
 
 /**
  * As vagas no ar para o que a pessoa disse, em linhas com o link, e a frase que as apresenta. Sem função (a
@@ -484,15 +563,29 @@ async function procurarVagas(
   type Anuncio = { id: string; titulo: string; bairro: string | null; cidade: string | null; distancia_km?: number | null } & Parameters<
     typeof valorDoAnuncio
   >[0];
+  const jeitos = (busca.jeito ?? []).filter((j) => j !== "qualquer");
+  const regime = jeitos.includes("diaria") ? "diaria" : jeitos.includes("freelance") ? "freelance" : null;
   const tentar = async (texto: string | null, lugar: Record<string, unknown>, categoria: string | null = null) => {
     const { data, error } = await criarClientePublico().rpc("buscar_anuncios", {
       ...lugar,
       p_tipo: "vaga",
       p_texto: texto,
       p_categoria: categoria,
-      p_limite: 20,
+      p_regime: regime,
+      p_limite: jeitos.length ? 60 : 20,
     } as never);
-    return (error ? [] : (data ?? [])) as unknown as Anuncio[];
+    const lista = (error ? [] : (data ?? [])) as unknown as (Anuncio & Vinda)[];
+    if (!jeitos.length || !lista.length) return lista;
+    // o que a busca não traz (a experiência, PCD, o modelo e a jornada), para o filtro do jeito
+    const { data: mais } = await criarClientePublico()
+      .from("anuncios")
+      .select("id, experiencia, pcd, modelo, jornada")
+      .in(
+        "id",
+        lista.map((a) => a.id),
+      );
+    const porId = new Map(((mais ?? []) as ({ id: string } & Vinda)[]).map((x) => [x.id, x]));
+    return lista.filter((a) => vagaDoJeito({ ...a, ...porId.get(a.id) }, jeitos));
   };
 
   type Achada = { a: Anuncio; termo: string; parecida: boolean; longe: boolean };
@@ -519,14 +612,22 @@ async function procurarVagas(
       }
   };
 
-  const funcoes = unicos(busca.funcoes?.length ? busca.funcoes : [busca.texto], 3);
-  if (!funcoes.length) {
-    // sem função: as mais perto (ou as mais novas)
+  const funcoes = unicos((busca.funcoes?.length ? busca.funcoes : [busca.texto]).map(funcaoSemJeito), 3);
+  // sem função: as mais perto (ou as mais novas), do jeito pedido; com o jeito, também nas cidades em volta
+  const semFuncao = async () => {
     const categoria = CATEGORIAS.some((c) => c.slug === busca.categoria) ? busca.categoria : null;
     let l = await tentar(null, perto, categoria);
     if (!l.length && categoria) l = await tentar(null, perto);
-    for (const a of l.slice(0, max)) achadas.push({ a, termo: "", parecida: false, longe: false });
-  } else {
+    for (const a of l.slice(0, max)) {
+      if (ids.has(a.id)) continue;
+      ids.add(a.id);
+      achadas.push({ a, termo: "", parecida: false, longe: false });
+    }
+    if (!achadas.length && jeitos.length && !onde.ponto)
+      for (const a of (await tentar(null, longe)).slice(0, max)) achadas.push({ a, termo: "", parecida: false, longe: true });
+  };
+  if (!funcoes.length) await semFuncao();
+  else {
     await juntar(funcoes, perto, false, false);
     await juntar(funcoes, longe, false, true);
     // a função mais curta, só para as que não acharam nada
@@ -550,6 +651,11 @@ async function procurarVagas(
       );
       await juntar(parecidas, perto, true, false);
       await juntar(parecidas, longe, true, true);
+    }
+    // "o que tiver": sem a função nem as parecidas, as mais perto
+    if (!achadas.length && busca.jeito?.includes("qualquer")) {
+      await semFuncao();
+      for (const x of achadas) x.parecida = true;
     }
   }
   if (!achadas.length) return null;
@@ -580,17 +686,24 @@ async function procurarVagas(
   const achados = unicos(usadas.map((x) => x.termo), 3);
   const semNada = funcoes.filter((f) => !usadas.some((x) => x.termo === f) && !achados.some((t) => simples(t) === simples(f)));
   const aqui = onde.local ? " perto de você" : "";
+  const doJeito = nomeDoJeito(jeitos);
+  const jeito1 = doJeito ? ` ${doJeito}` : "";
   let abertura: string | null;
-  if (!funcoes.length) abertura = null;
+  if (!funcoes.length)
+    abertura = doJeito
+      ? !perto1.length && onde.local
+        ? `Perto de você não achei vagas ${doJeito}, mas tem em outras cidades da região:`
+        : `Olha as vagas ${doJeito}${aqui}:`
+      : null;
   else if (parecidas)
-    abertura = `Agora não achei vaga de ${listaE(funcoes)} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
+    abertura = `Agora não achei vaga de ${listaE(funcoes)}${jeito1} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
   else {
-    const nao = semNada.length ? `Agora não achei vaga de ${listaE(semNada)}. ` : "";
+    const nao = semNada.length ? `Agora não achei vaga de ${listaE(semNada)}${jeito1}. ` : "";
     abertura = !perto1.length
-      ? `${nao}${onde.local ? `Perto de você não achei vaga de ${listaE(achados)}, mas tem em outras cidades da região:` : `Olha as vagas de ${listaE(achados)}:`}`
-      : `${nao}Olha as vagas de ${listaE(achados)}${aqui}:`;
-    // tudo perto e da função que ela disse: vale a frase da IA
-    if (!semNada.length && !longe1.length && achados.every((t) => funcoes.includes(t))) abertura = null;
+      ? `${nao}${onde.local ? `Perto de você não achei vaga de ${listaE(achados)}${jeito1}, mas tem em outras cidades da região:` : `Olha as vagas de ${listaE(achados)}${jeito1}:`}`
+      : `${nao}Olha as vagas de ${listaE(achados)}${jeito1}${aqui}:`;
+    // tudo perto, da função que ela disse e sem jeito: vale a frase da IA
+    if (!semNada.length && !longe1.length && !doJeito && achados.every((t) => funcoes.includes(t))) abertura = null;
   }
   const p = new URLSearchParams({ tipo: "vaga" });
   if (achados[0]) p.set("q", achados[0]);
@@ -606,22 +719,40 @@ async function procurarVagas(
  * A resposta da busca: `abertura` (a frase que apresenta; null quando vale a da IA) e `texto` (as vagas e o depois);
  * sem vaga nenhuma, só a abertura com o "não achei", e o botão das vagas.
  */
-async function mensagemDaBusca(busca: Partial<Busca> | null | undefined, local: Local | null, restam: number) {
+async function mensagemDaBusca(
+  busca: Partial<Busca> | null | undefined,
+  local: Local | null,
+  restam: number,
+  /** o que a pessoa escreveu: o jeito de trabalho que a IA não marcou ("primeiro emprego", "sou PCD") */
+  textos: string[] = [],
+) {
   const texto = busca?.texto?.trim().slice(0, 40) ?? "";
-  const funcoes = unicos(busca?.funcoes?.length ? busca.funcoes : [texto], 3);
+  const jeito = [...new Set([...(busca?.jeito ?? []).filter(ehJeito), ...jeitoDoTexto(`${texto} ${textos.join(" ")}`)])];
+  const funcoes = unicos((busca?.funcoes?.length ? busca.funcoes : [texto]).map(funcaoSemJeito), 3);
   const vagas = await procurarVagas(
-    { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas" },
+    { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas", jeito },
     { local },
     restam,
   );
-  if (!vagas)
+  if (!vagas) {
+    // sem vaga (20/11/2026; Marcelo: "a gente pode sugerir acessar a plataforma quando não tem vagas"): o currículo,
+    // que as empresas acham por função e que faz o Publike avisar quando entrar vaga que combina, e as vagas do site
+    const doJeito = nomeDoJeito(jeito.filter((j) => j !== "qualquer"));
+    const qual = `${funcoes.length ? ` de ${listaE(funcoes)}` : ""}${doJeito ? `${funcoes.length ? "" : "s"} ${doJeito}` : ""}`;
+    const q = new URLSearchParams({ tipo: "vaga" });
+    if (funcoes[0]) q.set("q", funcoes[0]);
     return {
-      abertura: `Agora não achei vaga${funcoes.length ? ` de ${listaE(funcoes)}` : ""} no ar${local ? ", nem perto de você nem nas cidades em volta" : ""}. Entram vagas novas todo dia: as que estão no ar agora ficam no botão abaixo.`,
+      abertura: [
+        `Agora não achei vaga${qual} no ar${local ? ", nem perto de você nem nas cidades em volta" : ""}. Entram vagas novas todo dia.`,
+        "Enquanto isso, deixe o seu *currículo* no Publike: é grátis e leva uns 2 minutos. As empresas da região procuram candidatos por função e chamam direto, e você recebe o aviso quando entrar vaga que combina com você.",
+        `Ver todas as vagas no ar: ${link(`/?${q}`)}`,
+      ].join("\n\n"),
       aberturaPadrao: "",
       texto: "",
-      botao: LINKS.vagas as Botao,
+      botao: LINKS.curriculo as Botao,
       quantas: 0,
     };
+  }
   return {
     abertura: vagas.abertura,
     /** a frase quando não vale a da IA (a busca de novo) */
@@ -739,6 +870,38 @@ async function tetoDoMes(banco: ClienteBanco, chave: string, conversa: string) {
   return data as unknown as { teto: number; enviadas: number; economico: boolean; respondida_hoje: boolean };
 }
 
+// Quem mora fora (20/11/2026, revendo as conversas): "auxiliar de cozinha e moro na Zn sp freguesia do ó" recebeu as
+// vagas de Goiânia, porque a IA não marcou "busca.fora". Antes de mandar vagas, a conferência daqui: depois de "moro",
+// "sou de", "estou em"..., um estado, uma capital de fora ou a sigla de outro estado ("Natal RN", "Lages SC", "zn sp").
+const LUGARES_DE_FORA = [
+  "Acre", "Alagoas", "Amapá", "Amazonas", "Bahia", "Ceará", "Distrito Federal", "Brasília", "Espírito Santo",
+  "Maranhão", "Mato Grosso do Sul", "Mato Grosso", "Minas Gerais", "Minas", "Paraíba", "Paraná", "Pernambuco", "Piauí",
+  "Rio de Janeiro", "Rio Grande do Norte", "Rio Grande do Sul", "Rondônia", "Roraima", "Santa Catarina", "São Paulo",
+  "Sergipe", "Tocantins", "Rio Branco", "Maceió", "Macapá", "Manaus", "Salvador", "Fortaleza", "São Luís", "Cuiabá",
+  "Campo Grande", "Belo Horizonte", "Belém", "João Pessoa", "Curitiba", "Recife", "Teresina", "Porto Alegre",
+  "Porto Velho", "Boa Vista", "Florianópolis", "Aracaju", "Uberlândia", "Campinas", "Guarulhos", "Imperatriz",
+  "Campina Grande", "Feira de Santana", "Joinville", "Londrina",
+]
+  .map((nome) => ({ nome, chave: simples(nome) }))
+  .sort((a, b) => b.chave.length - a.chave.length);
+// sem as que são palavras ("se", "pé", "cê", "má", "pá", "és")
+const SIGLAS_DE_FORA = "ac al ap am ba df mt ms mg pb pr pi rj rn rs ro rr sc sp".split(" ");
+const DEPOIS_DE = /\b(?:moro|morando|resido|vivo|sou de|sou do|sou da|estou em|estou no|estou na)\b/;
+
+/** O lugar fora de onde o Publike funciona que a pessoa disse ("moro na zn sp" → "SP"); senão null. */
+export function lugarDeFora(texto: string) {
+  const t = simples(texto);
+  const m = DEPOIS_DE.exec(t);
+  if (!m) return null;
+  const depois = ` ${t.slice(m.index + m[0].length).replace(/[^a-z0-9 ]/g, " ")} `;
+  // mora numa cidade daqui: não é de fora ("sou de Minas, moro em Goiânia")
+  if (CIDADES.some((c) => depois.includes(` ${simples(c)} `))) return null;
+  const lugar = LUGARES_DE_FORA.find(({ chave }) => depois.includes(` ${chave} `));
+  if (lugar) return lugar.nome;
+  const sigla = SIGLAS_DE_FORA.find((s) => depois.includes(` ${s} `));
+  return sigla ? sigla.toUpperCase() : null;
+}
+
 /** Fora de onde o Publike funciona (a cidade que a pessoa disse, ou a localização sem vaga perto). */
 export function aindaNaoDisponivel(cidade: string | null) {
   return cidade
@@ -796,7 +959,7 @@ O que fazer (campo "acao")
 - buscar_vagas: a pessoa procura trabalho e disse o que faz ou que vaga quer ("sou cozinheira", "tem vaga de motorista?"), agora ou antes na conversa. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); e "busca.bairro" com o bairro, como ela escreveu (senão vazio). Se a cidade que ela disse não está na lista (fica fora de onde o Publike funciona), deixe "busca.cidade" vazio e ponha o nome dela em "busca.fora", como ela escreveu; senão, "busca.fora" vazio. A "resposta" é só uma frase curta que apresenta as vagas, como "Olha as vagas de motorista perto do Jardim América:"; a lista vai logo depois. Se ela só disse que procura emprego, sem dizer o quê, use responder e pergunte o que ela faz e onde mora.
 - equipe: a pessoa pede para falar com alguém, reclama, fala de pagamento, cobrança ou golpe, de problema na conta, de parceria ou de imprensa, ou você não sabe a resposta. Responda o que der (no golpe: não pague nada) e diga que vai pedir para alguém da equipe responder por aqui, no prazo que está em "Sobre esta conversa".
 - silencio: a mensagem não pede resposta, como "ok", "beleza", "👍" ou um "obrigado" depois que você já se despediu. Deixe "resposta" vazia.
-Fora de buscar_vagas, "busca" vai com texto, cidade, bairro e fora vazios, funcoes e parecidas vazias e categoria "todas".
+Fora de buscar_vagas, "busca" vai com texto, cidade, bairro e fora vazios, funcoes, parecidas e jeito vazios e categoria "todas".
 
 O botão (campo "link")
 - vagas: ver as vagas no ar. publicar: publicar uma vaga. curriculo: fazer ou mudar o currículo. empresas: o que o Publike oferece a quem contrata, com os planos. ajuda: as perguntas e respostas do site. entrar: entrar na conta. nenhum: sem botão.
@@ -1249,12 +1412,22 @@ export async function atenderConversa(
 
   if (plano.acao === "buscar_vagas") {
     // a cidade fora de onde o Publike funciona: ainda não está disponível lá (sem as vagas daqui, que enganariam)
-    const fora = plano.busca?.fora?.trim().slice(0, 40) ?? "";
+    const jaDisseFora = respostas.some((x) => /ainda não está disponível|funciona só em/i.test(x.texto));
+    const fora = (plano.busca?.fora?.trim() || (jaDisseFora ? "" : lugarDeFora(textos.join(" "))) || "").slice(0, 40);
     if (fora && !plano.busca?.cidade) return saida(`${ola}${aindaNaoDisponivel(fora)}`, { perfil: perfil ?? "trabalho" });
     const local = lugarDaBusca(plano.busca?.cidade ?? "", plano.busca?.bairro ?? "");
     const restam = VAGAS_POR_DIA - (await vagasDeHoje());
-    if (restam <= 0) return saida(`${ola}${ACABARAM_AS_DE_HOJE}`, { perfil: perfil ?? "trabalho", botao: LINKS.vagas });
-    const r = await mensagemDaBusca(plano.busca, local, restam);
+    if (restam <= 0) {
+      // no site, já na busca do que ela pediu
+      const funcao = funcaoSemJeito(plano.busca?.funcoes?.[0] ?? plano.busca?.texto ?? "");
+      const q = new URLSearchParams({ tipo: "vaga" });
+      if (funcao) q.set("q", funcao);
+      return saida(`${ola}${ACABARAM_AS_DE_HOJE}`, {
+        perfil: perfil ?? "trabalho",
+        botao: funcao ? { titulo: "Ver as vagas no site", caminho: `/?${q}` } : LINKS.vagas,
+      });
+    }
+    const r = await mensagemDaBusca(plano.busca, local, restam, textos);
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
     return saida(r.abertura === null ? `${resposta}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
       perfil: perfil ?? "trabalho",

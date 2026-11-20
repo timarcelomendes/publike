@@ -492,9 +492,12 @@ async function main() {
     historico: [...procurando, { de: "pessoa", texto: "tem de auxiliar de cozinha também?" }],
   });
   conferir(
-    buscas.length === 0 && corpo(r.msgs[0]).startsWith("Hoje eu já te mandei 3 vagas") && botao(r.msgs[0]) === "Ver vagas",
-    "passou de 3 no dia: amanhã tem mais, e o site",
-    corpo(r.msgs[0]),
+    buscas.length === 0 &&
+      corpo(r.msgs[0]).startsWith("Hoje eu já te mandei 3 vagas") &&
+      botao(r.msgs[0]) === "Ver as vagas no site" &&
+      JSON.stringify(r.msgs[0]).includes("q=cozinheira"),
+    "passou de 3 no dia: amanhã tem mais, e o site já na busca do que ela pediu",
+    JSON.stringify(r.msgs[0]).slice(0, 300),
   );
   vagasJaEnviadas = 0;
 
@@ -649,8 +652,11 @@ async function main() {
   conferir(
     corpo(r.msgs[0]).startsWith(
       "Oi, Raphael! 👋 Aqui é o Marcelo, do Publike.\n\nAgora não achei vaga de pedreiro no ar, nem perto de você nem nas cidades em volta.",
-    ) && botao(r.msgs[0]) === "Ver vagas",
-    "sem vaga na primeira mensagem: apresentação e Ver vagas",
+    ) &&
+      botao(r.msgs[0]) === "Fazer meu currículo" &&
+      corpo(r.msgs[0]).includes("deixe o seu *currículo*") &&
+      corpo(r.msgs[0]).includes("Ver todas as vagas no ar: https://publike.org/?tipo=vaga&q=pedreiro"),
+    "sem vaga na primeira mensagem: apresentação, o currículo e as vagas do site",
     corpo(r.msgs[0]),
   );
 
@@ -676,6 +682,45 @@ async function main() {
     "antes das parecidas, a função longe e a função mais curta",
     buscas.map((b) => `${b.p_texto}/${b.p_raio_km}`),
   );
+  // 22a3. o jeito de trabalho (20/11/2026; Marcelo: "entender melhor as nuances de vagas"): "primeiro emprego" e "PCD"
+  // não são função; viram filtro
+  conferir(
+    JSON.stringify(a.jeitoDoTexto("Sou PCD em busca do primeiro emprego, o que der pra mim eu faço")) ===
+      JSON.stringify(["sem_experiencia", "pcd", "qualquer"]) &&
+      a.funcaoSemJeito("primeiro emprego") === null &&
+      a.funcaoSemJeito("diária exatamente") === null &&
+      a.funcaoSemJeito("atendimento home office") === "atendimento" &&
+      a.funcaoSemJeito("auxiliar de cozinha") === "auxiliar de cozinha" &&
+      a.vagaDoJeito({ experiencia: "sem", pcd: "tambem" }, ["sem_experiencia", "pcd"]) &&
+      !a.vagaDoJeito({ experiencia: "1_ano" }, ["sem_experiencia"]) &&
+      a.vagaDoJeito({ modelo: "remoto" }, ["remoto"]) &&
+      !a.vagaDoJeito({ modelo: "presencial" }, ["remoto"]),
+    "o jeito de trabalho: do texto, fora da função e o filtro da vaga",
+    [a.jeitoDoTexto("Sou PCD em busca do primeiro emprego, o que der pra mim eu faço"), a.funcaoSemJeito("atendimento home office")],
+  );
+  // 22a4. mora fora e a IA não marcou: sem as vagas daqui (20/11/2026, revendo as conversas)
+  conferir(
+    a.lugarDeFora("auxiliar de cozinha e moro na Zn sp freguesia do ó") === "SP" &&
+      a.lugarDeFora("Moro em natal rn rua coração de maria") === "RN" &&
+      a.lugarDeFora("Sou Comprador, moro Santa Helena, Lages SC") === "SC" &&
+      a.lugarDeFora("Desculpa eu moro no Rio de Janeiro") === "Rio de Janeiro" &&
+      a.lugarDeFora("moro em Aparecida de Goiânia, vou a pé se for perto") === null &&
+      a.lugarDeFora("sou de Minas mas moro em Goiânia") === null &&
+      a.lugarDeFora("moro no setor bueno, se tiver vaga me avisa") === null &&
+      a.lugarDeFora("sou cozinheira") === null,
+    "o lugar de fora, depois de moro/sou de",
+    [a.lugarDeFora("auxiliar de cozinha e moro na Zn sp freguesia do ó"), a.lugarDeFora("moro em Aparecida de Goiânia, vou a pé se for perto")],
+  );
+  respostaIA = ia("Olha as vagas de auxiliar de cozinha:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "auxiliar de cozinha", funcoes: ["auxiliar de cozinha"], parecidas: [], jeito: [], categoria: "todas", cidade: "", bairro: "", fora: "" },
+  });
+  r = await rodar("auxiliar de cozinha e moro na Zn sp freguesia do ó", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "auxiliar de cozinha e moro na Zn sp freguesia do ó" }],
+  });
+  conferir(corpo(r.msgs[0]).includes("ainda não está disponível em SP") && !corpo(r.msgs[0]).includes("/anuncio/"), "mora em SP: sem as vagas de Goiânia", corpo(r.msgs[0]));
   // 22b1. a equipe devolveu com os botões: os três botões do começo de novo, sem a IA (19/11/2026: "dar uma opção pra
   // voltar pra IA com botões novamente")
   respostaIA = ia("não devia ser chamada", { perfil: null, acao: "responder" });
