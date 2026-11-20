@@ -1165,6 +1165,11 @@ ${textoDaAjuda()}`;
  */
 function contexto(e: Entrada, jaFalou: boolean, agora: Date, vagasPorAqui = false) {
   const nome = primeiroNome(e.nome);
+  // já perguntou o que ela faz, e ainda não mandou vaga: não perguntar de novo (20/11/2026)
+  const minhas = e.historico.filter((x) => x.de !== "pessoa");
+  const jaPerguntou =
+    minhas.some((x) => perguntouAFuncao(x.texto) || /o que você faz e o bairro/i.test(x.texto)) &&
+    !minhas.some((x) => /\/anuncio\//.test(x.texto));
   const anuncio = [e.origem?.titulo, e.origem?.texto].filter(Boolean).join(" — ");
   return [
     "Sobre esta conversa:",
@@ -1184,6 +1189,9 @@ function contexto(e: Entrada, jaFalou: boolean, agora: Date, vagasPorAqui = fals
         ? `- Esta é a sua primeira resposta, mas ela já foi cumprimentada pelo anúncio: ao tocar nele, recebeu do Publike "${BOAS_VINDAS_DO_ANUNCIO}". Não comece com "Oi" e não se apresente: responda direto ao que ela mandou.`
         : "- Esta é a sua primeira mensagem para ela.",
     `- Se passar a conversa para a equipe, alguém responde por aqui ${quandoAEquipeResponde(agora)}.`,
+    jaPerguntou
+      ? "- Você já perguntou o que ela faz. Não pergunte de novo: se ela ainda não disse a função, use buscar_vagas sem a função (vão as vagas mais perto dela, de todas as funções), com a cidade e o bairro que ela disse."
+      : null,
     vagasPorAqui
       ? "- Quem quer publicar uma vaga pode mandar aqui mesmo, nesta conversa, a foto do anúncio, o PDF ou o texto da vaga (o cargo, o salário, o horário e o bairro): o Publike lê, prepara a vaga e manda o link para a pessoa conferir e publicar. Diga isso quando a pessoa quiser publicar, em vez de mandar para o site."
       : null,
@@ -1587,10 +1595,36 @@ export async function atenderConversa(
 
   const perfil = plano.perfil === "trabalho" || plano.perfil === "contratar" ? plano.perfil : null;
   // o que a IA não deve escrever: os colchetes dos botões
-  const resposta = (plano.resposta ?? "")
+  let resposta = (plano.resposta ?? "")
     .replace(/\[bot(ão|ões)[^\]]*\]/gi, "")
     .trim()
     .slice(0, 1500);
+
+  // a função já foi perguntada, nenhuma vaga foi ainda, e a IA ia perguntar de novo (ou ficar quieta depois do "ok"):
+  // as vagas mais perto, de todas as funções, com o lugar que a conversa diz (20/11/2026; Marcelo, com a conversa em que
+  // a pessoa disse o bairro e "não sei qual vaga tá disponível": "precisa entender e enviar vagas genéricas mais
+  // próximas e ir aumentando o raio"; a regra "Sem a função" nem sempre basta)
+  const jaPerguntou = respostas.some((x) => perguntouAFuncao(x.texto) || /o que você faz e o bairro/i.test(x.texto));
+  if (
+    (perfil ?? e.perfil) === "trabalho" &&
+    jaPerguntou &&
+    !respostas.some((x) => /\/anuncio\//.test(x.texto)) &&
+    ((plano.acao === "responder" && perguntouAFuncao(resposta)) || (plano.acao === "silencio" && perguntouAFuncao(minhaUltima)))
+  ) {
+    const lida = await buscaDaConversa(e.historico, modelo);
+    const busca: Busca = lida ?? {
+      texto: "",
+      funcoes: [],
+      parecidas: [],
+      categoria: "todas",
+      jeito: [],
+      cidade: "",
+      bairro: "",
+      fora: "",
+    };
+    plano = { ...plano, acao: "buscar_vagas", perfil: "trabalho", busca: { ...busca, jeito: [...new Set([...(busca.jeito ?? []), "qualquer" as const])] } };
+    resposta = "";
+  }
 
   if (plano.acao === "silencio") {
     // sem responder, guarda o que a IA entendeu da pessoa
@@ -1603,7 +1637,8 @@ export async function atenderConversa(
       });
     return;
   }
-  if (!resposta)
+  // a busca sem a frase da IA (a rede de segurança) segue com a nossa
+  if (!resposta && plano.acao !== "buscar_vagas")
     return saida(passarParaEquipe("Para te ajudar direitinho,", agora), {
       equipe: true,
       motivo: "a IA não soube responder",
@@ -1634,7 +1669,7 @@ export async function atenderConversa(
     }
     const r = await mensagemDaBusca(plano.busca, local, restam, textos, vagasJaMandadas(e.historico));
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
-    return saida(r.abertura === null ? `${resposta}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
+    return saida(r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
       perfil: perfil ?? "trabalho",
       botao: r.botao,
     });
@@ -1700,6 +1735,25 @@ export async function conversasParaProcurarDeNovo(chaves: string[]) {
   return new Set(ok.filter((x): x is string => x !== null));
 }
 
+/** A busca que a conversa pede (a função, a cidade e o bairro que a pessoa disse), pela IA; null se a IA falhar. */
+async function buscaDaConversa(historico: Mensagem[], modelo: string): Promise<Busca | null> {
+  try {
+    const { texto } = await chamarIA({
+      funcionalidade: "chat",
+      modelo,
+      sistema: `Você lê uma conversa do WhatsApp do Publike (vagas de emprego em ${ONDE_FUNCIONA}) com alguém que procura trabalho, e diz o que procurar para ela. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); "busca.bairro" com o bairro, como ela escreveu (senão vazio); "busca.fora" com a cidade que ela disse quando fica fora de onde o Publike funciona (senão vazio). Se ela não disse a função, "busca.texto" e "busca.funcoes" ficam vazios.`,
+      mensagem: transcricao(historico),
+      maxTokens: 300,
+      esquema: ESQUEMA_DA_BUSCA,
+      tempoLimite: 20_000,
+    });
+    return lerJson<{ busca: Busca }>(texto).busca ?? null;
+  } catch (erro) {
+    console.error("Publike: a IA não leu a busca da conversa:", erro instanceof Error ? erro.message : erro);
+    return null;
+  }
+}
+
 export type BuscaDeNovo = { ok: true; texto: string; botao: Botao | null } | { ok: false; motivo: string };
 
 /** A mensagem da busca nova para a conversa (sem enviar). */
@@ -1717,21 +1771,8 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
   if (restam <= 0) return { ok: false, motivo: `A pessoa já recebeu as ${VAGAS_POR_DIA} vagas de hoje.` };
   const modelo = await modeloDoAtendimento();
   if (!modelo) return { ok: false, motivo: "A IA do atendimento está desligada." };
-  let busca: Busca;
-  try {
-    const { texto } = await chamarIA({
-      funcionalidade: "chat",
-      modelo,
-      sistema: `Você lê uma conversa do WhatsApp do Publike (vagas de emprego em ${ONDE_FUNCIONA}) com alguém que procura trabalho, e diz o que procurar para ela. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); "busca.bairro" com o bairro, como ela escreveu (senão vazio); "busca.fora" com a cidade que ela disse quando fica fora de onde o Publike funciona (senão vazio).`,
-      mensagem: transcricao(historico),
-      maxTokens: 300,
-      esquema: ESQUEMA_DA_BUSCA,
-      tempoLimite: 20_000,
-    });
-    busca = lerJson<{ busca: Busca }>(texto).busca;
-  } catch (erro) {
-    return { ok: false, motivo: `A IA não respondeu (${erro instanceof Error ? erro.message : "erro"}).` };
-  }
+  const busca = await buscaDaConversa(historico, modelo);
+  if (!busca) return { ok: false, motivo: "A IA não respondeu." };
   if (busca?.fora && !busca.cidade) return { ok: false, motivo: `A pessoa mora fora de onde o Publike funciona (${busca.fora}).` };
   const local = lugarDaBusca(busca?.cidade ?? "", busca?.bairro ?? "");
   const jaForam = vagasJaMandadas(historico);

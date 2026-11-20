@@ -960,6 +960,35 @@ async function main() {
     "ok depois de pedir a função: vai para a IA e manda as vagas",
     corpo(r.msgs[0]),
   );
+  // a IA ia perguntar a função de novo (a conversa do ww, 20/11/2026): a rede de segurança manda as vagas mais perto
+  respostaIA = ia("Beleza! Me diz só qual trabalho você faz ou procura, que eu já te mostro as vagas da região.", {
+    perfil: "trabalho",
+    acao: "responder",
+    busca: { texto: "", funcoes: [], parecidas: [], jeito: [], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("Ok", {
+    perfil: "trabalho",
+    historico: [
+      ...procurando,
+      { de: "pessoa", texto: "🎤 moro no setor bueno, não sei qual vaga tá disponível" },
+      { de: "robo", texto: "Entendi! Me fala só uma coisa: qual trabalho você faz ou procura? Aí eu já mostro as vagas da região." },
+      { de: "pessoa", texto: "Sim" },
+      { de: "robo", texto: "Beleza! Então me diz qual trabalho você faz ou procura, que eu já te mostro as vagas perto do Setor Bueno." },
+      { de: "pessoa", texto: "Ok" },
+    ],
+  });
+  conferir(
+    corpo(r.msgs[0]).startsWith("Olha as vagas no ar mais perto de você, de todas as funções:") &&
+      corpo(r.msgs[0]).includes("*Cozinheira*") &&
+      !corpo(r.msgs[0]).includes("Me diz só qual trabalho"),
+    "a IA ia perguntar a função de novo: vão as vagas mais perto",
+    corpo(r.msgs[0]),
+  );
+  // o contexto diz que já perguntou
+  conferir(
+    JSON.stringify(pedidosClaude.concat(pedidosIA)).includes("Você já perguntou o que ela faz"),
+    "o contexto avisa a IA que a função já foi perguntada",
+  );
   conferir(
     a.perguntouAFuncao("Beleza! Então me diz qual trabalho você faz ou procura, que eu já te mostro as vagas.") &&
       !a.perguntouAFuncao(`Olha as vagas:\n\n• *Cozinheira*\nhttps://publike.org/anuncio/${"1".repeat(36)}\n\n${a.PEDIR_A_FUNCAO_DEPOIS}`) &&
