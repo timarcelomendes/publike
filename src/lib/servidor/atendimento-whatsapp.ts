@@ -543,6 +543,8 @@ async function procurarVagas(
   } = {},
   /** quantas vagas cabem nesta resposta (o que sobra das do dia) */
   max = 4,
+  /** as vagas já mandadas nesta conversa: não vão de novo ("Tem mais vagas", 20/11/2026) */
+  jaMandadas: ReadonlySet<string> = new Set(),
 ) {
   const centro = onde.ponto ?? (onde.local ? pontoDoLocal(onde.local) : null);
   // perto: o ponto que ela mandou, ou o bairro primeiro, depois a região e a cidade (quem corta é o raio)
@@ -592,7 +594,9 @@ async function procurarVagas(
 
   type Achada = { a: Anuncio; termo: string; parecida: boolean; longe: boolean };
   const achadas: Achada[] = [];
-  const ids = new Set<string>();
+  const ids = new Set<string>(jaMandadas);
+  // as da função que ficaram de fora por já terem ido: "já te mandei as vagas de..."
+  let repetidas = 0;
   // de cada termo, uma por vez (as duas funções que a pessoa disse aparecem), até caber
   const juntar = async (
     termos: string[],
@@ -608,6 +612,7 @@ async function procurarVagas(
     for (let i = 0; achadas.length < max && listas.some((x) => x.l.length > i); i++)
       for (const { t, l } of listas) {
         const a = l[i];
+        if (a && !parecida && jaMandadas.has(a.id)) repetidas++;
         if (!a || ids.has(a.id) || achadas.length >= max) continue;
         ids.add(a.id);
         achadas.push({ a, termo: t, parecida, longe: eLonge });
@@ -660,7 +665,7 @@ async function procurarVagas(
       for (const x of achadas) x.parecida = true;
     }
   }
-  if (!achadas.length) return null;
+  if (!achadas.length) return repetidas ? { jaForam: true as const } : null;
 
   // as de perto primeiro
   achadas.sort((x, y) => Number(x.longe) - Number(y.longe));
@@ -698,14 +703,21 @@ async function procurarVagas(
         : `Olha as vagas ${doJeito}${aqui}:`
       : null;
   else if (parecidas)
-    abertura = `Agora não achei vaga de ${listaE(funcoes)}${jeito1} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
+    abertura = repetidas
+      ? `As vagas de ${listaE(funcoes)}${jeito1} que estão no ar eu já te mandei. Separei outras que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`
+      : `Agora não achei vaga de ${listaE(funcoes)}${jeito1} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
   else {
     const nao = semNada.length ? `Agora não achei vaga de ${listaE(semNada)}${jeito1}. ` : "";
     abertura = !perto1.length
       ? `${nao}${onde.local ? `Perto de você não achei vaga de ${listaE(achados)}${jeito1}, mas tem em outras cidades da região:` : `Olha as vagas de ${listaE(achados)}${jeito1}:`}`
       : `${nao}Olha as vagas de ${listaE(achados)}${jeito1}${aqui}:`;
+    // mais vagas, depois das que já foram
+    if (repetidas && !semNada.length)
+      abertura = !perto1.length && onde.local
+        ? `Perto de você, as vagas de ${listaE(achados)}${jeito1} eu já te mandei. Olha mais nas cidades da região:`
+        : `Olha mais vagas de ${listaE(achados)}${jeito1}${aqui}:`;
     // tudo perto, da função que ela disse e sem jeito: vale a frase da IA
-    if (!semNada.length && !longe1.length && !doJeito && achados.every((t) => funcoes.includes(t))) abertura = null;
+    else if (!semNada.length && !longe1.length && !doJeito && achados.every((t) => funcoes.includes(t))) abertura = null;
   }
   const p = new URLSearchParams({ tipo: "vaga" });
   if (achados[0]) p.set("q", achados[0]);
@@ -727,6 +739,8 @@ async function mensagemDaBusca(
   restam: number,
   /** o que a pessoa escreveu: o jeito de trabalho que a IA não marcou ("primeiro emprego", "sou PCD") */
   textos: string[] = [],
+  /** as vagas que já foram nesta conversa */
+  jaMandadas: ReadonlySet<string> = new Set(),
 ) {
   const texto = busca?.texto?.trim().slice(0, 40) ?? "";
   const jeito = [...new Set([...(busca?.jeito ?? []).filter(ehJeito), ...jeitoDoTexto(`${texto} ${textos.join(" ")}`)])];
@@ -735,7 +749,25 @@ async function mensagemDaBusca(
     { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas", jeito },
     { local },
     restam,
+    jaMandadas,
   );
+  if (vagas && "jaForam" in vagas) {
+    // "Tem mais vagas" (20/11/2026; Marcelo: "precisa responder melhor algumas perguntas"): todas as da função já foram,
+    // e nem parecida tem. Diz isso, em vez do "não achei", e abre o caminho: outra função, o currículo e o site.
+    const q = new URLSearchParams({ tipo: "vaga" });
+    if (funcoes[0]) q.set("q", funcoes[0]);
+    return {
+      abertura: [
+        `Essas que te mandei são todas as vagas de ${listaE(funcoes)} no ar${local ? " perto de você e nas cidades em volta" : ""} agora. Entram vagas novas todo dia: é só me chamar de novo.`,
+        "Quer ver de outra função? Me conta qual. 😊",
+        "E se ainda não deixou o seu *currículo* no Publike, deixe: é grátis, leva uns 2 minutos, e você recebe o aviso quando entrar vaga que combina com você.",
+      ].join("\n\n"),
+      aberturaPadrao: "",
+      texto: "",
+      botao: LINKS.curriculo as Botao,
+      quantas: 0,
+    };
+  }
   if (!vagas) {
     // sem vaga (20/11/2026; Marcelo: "a gente pode sugerir acessar a plataforma quando não tem vagas"): o currículo,
     // que as empresas acham por função e que faz o Publike avisar quando entrar vaga que combina, e as vagas do site
@@ -1315,7 +1347,7 @@ export async function atenderConversa(
     const restam = VAGAS_POR_DIA - (await vagasDeHoje());
     if (restam <= 0) return saida(`${ola}${ACABARAM_AS_DE_HOJE}`, { perfil: e.perfil ?? "trabalho", botao: LINKS.vagas });
     const vagas = await procurarVagas({ texto: "", categoria: "todas" }, { ponto: m.local }, restam);
-    if (!vagas)
+    if (!vagas || "jaForam" in vagas)
       return saida(
         `${ola}${aindaNaoDisponivel(null)}`,
         { perfil: e.perfil ?? "trabalho", botao: LINKS.vagas },
@@ -1433,7 +1465,7 @@ export async function atenderConversa(
         botao: funcao ? { titulo: "Ver as vagas no site", caminho: `/?${q}` } : LINKS.vagas,
       });
     }
-    const r = await mensagemDaBusca(plano.busca, local, restam, textos);
+    const r = await mensagemDaBusca(plano.busca, local, restam, textos, vagasJaMandadas(e.historico));
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
     return saida(r.abertura === null ? `${resposta}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
       perfil: perfil ?? "trabalho",
@@ -1519,6 +1551,14 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
     texto: `${oi(primeiroNome(nome))} Procurei de novo as vagas para você, com mais cuidado.\n\n${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`,
     botao: r.botao,
   };
+}
+
+/** As vagas que o Publike já mandou nesta conversa (os links /anuncio/<id> das respostas). */
+export function vagasJaMandadas(historico: { de: string; texto: string }[]) {
+  const ids = new Set<string>();
+  for (const m of historico)
+    if (m.de !== "pessoa") for (const x of m.texto.matchAll(/\/anuncio\/([0-9a-f-]{36})/g)) ids.add(x[1]);
+  return ids;
 }
 
 /** Envia a mensagem que a equipe viu (se a conversa não andou nesse meio-tempo). */

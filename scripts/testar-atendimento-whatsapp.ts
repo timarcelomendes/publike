@@ -781,6 +781,46 @@ async function main() {
       !a.tituloDeLideranca("Auxiliar de logística", "logística"),
     "a área e o título de liderança",
   );
+  // 22b3. "Tem mais vagas" (20/11/2026; Marcelo: "precisa responder melhor algumas perguntas"): as que já foram não vão
+  // de novo; sem outra da função, diz que essas são todas, sem o "não achei"
+  const jaFoi = `Olha as vagas de motorista perto de você:\n\n• *Motorista entregador* · Setor Bueno\nhttps://publike.org/anuncio/${"2".repeat(36)}`;
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "motorista", funcoes: ["motorista"], parecidas: [], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("Tem mais vagas", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou motorista e moro no setor bueno" }, { de: "robo", texto: jaFoi }, { de: "pessoa", texto: "Tem mais vagas" }],
+  });
+  conferir(
+    !corpo(r.msgs[0]).includes("Motorista entregador") &&
+      corpo(r.msgs[0]).includes("Essas que te mandei são todas as vagas de motorista") &&
+      !corpo(r.msgs[0]).includes("Agora não achei"),
+    "tem mais vagas: a que já foi não vai de novo, e diz que são todas",
+    corpo(r.msgs[0]),
+  );
+  // com parecida: as outras, dizendo que as da função já foram
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "motorista", funcoes: ["motorista"], parecidas: ["porteiro"], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("Tem outras?", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou motorista e moro no setor bueno" }, { de: "robo", texto: jaFoi }, { de: "pessoa", texto: "Tem outras?" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Porteiro noturno*") &&
+      !corpo(r.msgs[0]).includes("Motorista entregador") &&
+      corpo(r.msgs[0]).includes("As vagas de motorista que estão no ar eu já te mandei"),
+    "tem mais vagas: as parecidas, dizendo que as da função já foram",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.vagasJaMandadas([{ de: "robo", texto: jaFoi }, { de: "pessoa", texto: "/anuncio/" + "9".repeat(36) }]).size === 1,
+    "as vagas já mandadas: só as das respostas do Publike",
+  );
   // 22c. duas funções: a que não tem é dita; a outra, mesmo longe, vem antes de qualquer parecida
   respostaIA = ia("Olha as vagas:", {
     perfil: "trabalho",
