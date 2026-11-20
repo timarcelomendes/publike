@@ -7,6 +7,9 @@ import { useEffect, useId, useRef, useState } from "react";
 /** O "Mais" do cabeçalho da vaga: o que se usa de vez em quando, fora do caminho. */
 export function MaisDaVaga({ id, noAr }: { id: string; noAr: boolean }) {
   const [aberto, setAberto] = useState(false);
+  // de que lado o quadro abre: para a direita do botão, se couber na tela; senão, para a esquerda (19/11/2026, no
+  // celular o "Mais" desce para a linha de baixo, à esquerda, e o quadro abria cortado)
+  const [paraDireita, setParaDireita] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const idMenu = useId();
 
@@ -32,7 +35,11 @@ export function MaisDaVaga({ id, noAr }: { id: string; noAr: boolean }) {
         type="button"
         aria-expanded={aberto}
         aria-controls={idMenu}
-        onClick={() => setAberto((a) => !a)}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setParaDireita(r.left + 256 + 16 <= window.innerWidth);
+          setAberto((a) => !a);
+        }}
         className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300"
       >
         Mais
@@ -41,7 +48,7 @@ export function MaisDaVaga({ id, noAr }: { id: string; noAr: boolean }) {
       {aberto && (
         <div
           id={idMenu}
-          className="absolute right-0 z-30 mt-2 flex w-64 flex-col rounded-md border border-line bg-surface-200 p-1.5 shadow-card"
+          className={`absolute ${paraDireita ? "left-0" : "right-0"} z-30 mt-2 flex w-64 max-w-[calc(100vw-2rem)] flex-col rounded-md border border-line bg-surface-200 p-1.5 shadow-card`}
         >
           {noAr && (
             <Link href={`/painel/anuncio/${id}/convidar`} className={item} onClick={() => setAberto(false)}>

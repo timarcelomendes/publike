@@ -246,7 +246,12 @@ const GENERICAS = new Set(
     "engenheiro engenheira engenharia " +
     // o tipo do estudo ou do setor, não a função (o relatório do Admin, 11/11/2026): "Ciências biológicas" não é
     // "Ciências contábeis", "Departamento pessoal" não é "Departamento contábil", "Gestão comercial" não é "Gestão de pessoas"
-    "ciencia ciencias gestao departamento"
+    "ciencia ciencias gestao departamento " +
+    // o que o título diz da vaga, não a função (19/11/2026, Marcelo: "o match não está fazendo sentido"):
+    // "Esteticista com experiência em injetáveis" dava "área parecida: transporte e logística" a almoxarife e gerente
+    // de logística, porque "experiência" e "expedição" começam com as mesmas 4 letras
+    "experiencia experiencias experiente urgente contratando contratamos contratacao imediata imediato inicio " +
+    "carteira assinada salario beneficios registro"
   ).split(" "),
 );
 

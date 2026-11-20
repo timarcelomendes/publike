@@ -78,6 +78,9 @@ const V10 = vaga("Estágio em Direito", { experiencia: "sem", descricao: "Não �
 // os falsos positivos do relatório do Admin (11/11/2026)
 const V11 = vaga("Estágio em ciências contábeis", { titulo: "Estagio na área de ciências contábeis" });
 const V12 = vaga("Departamento Contábil", {});
+// "experiência" no título não é função (19/11/2026, Marcelo: "o match não está fazendo sentido"): dava "área parecida:
+// transporte e logística" a quem foi almoxarife, porque "experiência" e "expedição" começam com "expe"
+const V20 = vaga("Esteticista com experiência em injetáveis", { cbo: "322130", experiencia: "2_anos" });
 const V13 = vaga("Auxiliar Fiscal", {});
 const V14 = vaga("Auxiliar administrativo", {});
 
@@ -135,6 +138,8 @@ const casos: [V, ReturnType<typeof P>, string, number | null, number | null, boo
   [V11, contabeis, "Ciências contábeis", 76, 76, true],
   [V12, cursoDeDP, "curso de departamento pessoal", 40, null, false],
   [V12, auxiliarDeDP, "auxiliar de departamento pessoal (área parecida)", 76, 76, true],
+  [V20, P({ experiencias: [exp("Almoxarife", "2018-01", "2024-01")] }), "almoxarife na vaga de esteticista", 20, 20, false],
+  [V20, P({ experiencias: [exp("Esteticista", "2019-01", null)] }), "esteticista na vaga de esteticista", 92, 92, true],
   [V13, pedreiro, "pedreiro", 40, 40, false],
   [V13, primeiro, "primeiro emprego", 40, null, false],
   [V14, primeiro, "primeiro emprego", 79, 79, false],
