@@ -284,17 +284,66 @@ async function main() {
     "do anúncio: as boas-vindas sem o Oi de novo",
     r.msgs,
   );
-  respostaIA = ia("Pode mandar aqui mesmo a foto do cartaz, o print ou o texto da vaga.");
+  // quem chega para publicar vaga (20/11/2026; 17 de 23 paravam na primeira resposta): o texto curto e os 3 botões,
+  // sem IA; do anúncio, sem o Oi de novo
   r = await rodar("Olá! Quero publicar uma vaga pelo WhatsApp.", {
     origem: doAnuncio,
     historico: [{ de: "pessoa", texto: "Olá! Quero publicar uma vaga pelo WhatsApp." }],
   });
   conferir(
-    JSON.stringify([...pedidosIA, ...pedidosClaude]).includes("já foi cumprimentada pelo anúncio") &&
-      !JSON.stringify([...pedidosIA, ...pedidosClaude]).includes("Esta é a sua primeira mensagem para ela"),
-    "do anúncio: a IA sabe que a pessoa já foi cumprimentada",
+    r.msgs.length === 1 &&
+      corpo(r.msgs[0]).startsWith("Raphael, vamos colocar sua vaga no ar, é grátis.") &&
+      corpo(r.msgs[0]).includes("📸 Se a vaga já está escrita") &&
+      JSON.stringify(r.msgs[0]?.interactive?.action?.buttons?.map((b: any) => b.reply.title)) ===
+        JSON.stringify(["Mandar foto ou texto", "Montar a vaga comigo", "Procuro emprego"]),
+    "publicar vaga: a entrada com os 3 botões, sem o Oi de novo",
+    r.msgs,
   );
-  conferir(r.msgs.length === 1 && !corpo(r.msgs[0]).includes("Aqui é o Marcelo"), "do anúncio: a IA responde direto", r.msgs);
+  conferir(pedidosIA.length + pedidosClaude.length === 0, "publicar vaga: a entrada sem IA");
+  r = await rodar("Olá! Quero publicar uma vaga pelo WhatsApp.", {
+    historico: [{ de: "pessoa", texto: "Olá! Quero publicar uma vaga pelo WhatsApp." }],
+  });
+  conferir(
+    corpo(r.msgs[0]).startsWith("Oi, Raphael! 👋 Aqui é o Marcelo, do Publike. Vamos colocar sua vaga no ar"),
+    "publicar vaga: sem anúncio, com o Oi e a apresentação",
+    corpo(r.msgs[0]),
+  );
+  const entradaDaVaga = [
+    { de: "pessoa", texto: "Olá! Quero publicar uma vaga pelo WhatsApp." },
+    { de: "robo", texto: `Raphael, ${a.ENTRADA_DA_VAGA}\n\n[Botões: Mandar foto ou texto · Montar a vaga comigo · Procuro emprego]` },
+  ];
+  r = await rodar("Mandar foto ou texto", { historico: [...entradaDaVaga, { de: "pessoa", texto: "Mandar foto ou texto" }] }, { payload: "a:vaga-mandar" });
+  conferir(corpo(r.msgs[0]) === a.MANDAR_A_VAGA && saidas[0]?.p_perfil === "contratar", "publicar vaga: o pode mandar", r.msgs);
+  r = await rodar("Procuro emprego", { historico: [...entradaDaVaga, { de: "pessoa", texto: "Procuro emprego" }] }, { payload: "a:trabalho" });
+  conferir(corpo(r.msgs[0]).includes("procura trabalho") || saidas[0]?.p_perfil === "trabalho", "publicar vaga: procuro emprego vai para a busca", r.msgs);
+  r = await rodar("Montar a vaga comigo", { historico: [...entradaDaVaga, { de: "pessoa", texto: "Montar a vaga comigo" }] }, { payload: "a:vaga-montar" });
+  conferir(corpo(r.msgs[0]) === a.PERGUNTAS_DA_VAGA[0], "publicar vaga: a pergunta 1", r.msgs);
+  const montando = [
+    ...entradaDaVaga,
+    { de: "pessoa", texto: "Montar a vaga comigo" },
+    { de: "robo", texto: a.PERGUNTAS_DA_VAGA[0] },
+  ];
+  r = await rodar("Auxiliar de cozinha", { historico: [...montando, { de: "pessoa", texto: "Auxiliar de cozinha" }] });
+  conferir(corpo(r.msgs[0]) === a.PERGUNTAS_DA_VAGA[1] && pedidosIA.length + pedidosClaude.length === 0, "publicar vaga: a pergunta 2, sem IA", r.msgs);
+  const montando2 = [
+    ...montando,
+    { de: "pessoa", texto: "Auxiliar de cozinha" },
+    { de: "robo", texto: a.PERGUNTAS_DA_VAGA[1] },
+    { de: "pessoa", texto: "1800" },
+    { de: "robo", texto: a.PERGUNTAS_DA_VAGA[2] },
+  ];
+  r = await rodar("Setor Bueno, Goiânia", { historico: [...montando2, { de: "pessoa", texto: "Setor Bueno, Goiânia" }] });
+  // nesta bateria o Publicar pelo WhatsApp fica desligado: vai o site, com o botão
+  conferir(corpo(r.msgs[0]).startsWith("Anotei!") && botao(r.msgs[0]) === "Publicar vaga grátis", "publicar vaga: sem a leitura, o site", r.msgs);
+  conferir(
+    a.textoDaVagaMontada(a.respostasDaVaga(montando2 as any, ["Setor Bueno, Goiânia"])) ===
+      "Vaga de emprego para Auxiliar de cozinha. Salário: 1800. Local de trabalho: Setor Bueno, Goiânia.",
+    "publicar vaga: as 3 respostas viram o texto da vaga",
+  );
+  respostaIA = ia("É grátis, sim!");
+  r = await rodar("É pago?", { historico: [...montando, { de: "pessoa", texto: "É pago?" }] });
+  conferir(pedidosIA.length + pedidosClaude.length > 0, "publicar vaga: a dúvida no meio vai para a IA");
+  conferir(a.querPublicarVaga("Olá! Quero publicar uma vaga pelo WhatsApp.") && !a.querPublicarVaga("Quero uma vaga de auxiliar"), "publicar vaga: a mensagem pronta");
   // os links de quem veio do anúncio contam no anúncio do Instagram, não no atendimento (19/11/2026: "parece que as
   // campanhas do Instagram não apareceram aqui")
   r = await rodar(

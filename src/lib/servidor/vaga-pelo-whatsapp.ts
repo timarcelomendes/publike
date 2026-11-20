@@ -115,8 +115,10 @@ export async function tentarVagaPeloWhatsapp(p: {
   saida: Saida;
   /** a apresentação, na primeira mensagem para a pessoa ("Oi, Rita! 👋 Aqui é o Marcelo, do Publike.\n\n") */
   comeco?: string;
+  /** o texto da vaga montada nas 3 perguntas ("Montar a vaga comigo"): lê mesmo curto, sem a conferência de "parece vaga" */
+  montada?: boolean;
 }): Promise<boolean> {
-  if (!deveTentarVaga(p.textos, p.perfil)) return false;
+  if (!p.montada && !deveTentarVaga(p.textos, p.perfil)) return false;
   const config = await configVagasWhatsapp(p.banco, p.chave);
   if (!config) return false;
   const t = (k: ChaveTextoVagas, marcas?: Record<string, string | number>) => textoDasVagas(config.textos, k, marcas);
@@ -135,7 +137,8 @@ export async function tentarVagaPeloWhatsapp(p: {
   const pdfs = midias.filter((m) => m.tipo === "pdf").slice(0, MAX_PDFS);
   const legendas = midias.map((m) => m.legenda).filter((l): l is string => Boolean(l?.trim()));
   const escrito = [...p.textos.filter((x) => !x.startsWith("[a pessoa mandou")), ...legendas].join("\n").trim();
-  const comTexto = config.texto && escrito.length >= 20 && (fotos.length + pdfs.length > 0 || pareceVaga(escrito));
+  const comTexto =
+    config.texto && (p.montada ? escrito.length > 0 : escrito.length >= 20 && (fotos.length + pdfs.length > 0 || pareceVaga(escrito)));
   if (!fotos.length && !pdfs.length && !comTexto) return false;
   const fonte = pdfs.length ? "pdf" : fotos.length ? "foto" : "texto";
   const lidas = [...fotos, ...pdfs].map((m) => m.wamid);

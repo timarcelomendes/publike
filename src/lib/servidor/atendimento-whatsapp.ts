@@ -7,6 +7,7 @@ import { formatarLugar, valorDoAnuncio } from "@/lib/formato";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { chamarIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
 import { falaDisponivel, transcrever } from "@/lib/ia/transcrever";
+import { pareceVaga } from "@/lib/leitura-de-vagas";
 import { comOrigem } from "@/lib/origem";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
 import { chaveBairro, chavesDaRegiao, criarLocal, pontoDoLocal, type Local } from "@/lib/regioes";
@@ -999,6 +1000,67 @@ function paraQuemContrata(porAqui: boolean) {
   ].join("\n\n");
 }
 
+// --- Quem chega para publicar vaga (20/11/2026; Marcelo: "percebi que as pessoas que entram para publicar vagas
+// costumam nao seguir"). Nos 10 dias antes, 17 de 23 conversas que começaram com "Quero publicar uma vaga pelo
+// WhatsApp" (a mensagem pronta do anúncio "Contratando") pararam na primeira resposta, que pedia de cara a foto, o PDF
+// ou o texto com cargo, salário, horário e bairro. Agora: o texto curto com os 3 botões; "Montar a vaga comigo" faz 3
+// perguntas, uma de cada vez, e o Publike lê as respostas como uma vaga; quem parou recebe 1 lembrete 2 horas depois.
+
+/** Os botões da entrada de quem quer publicar ("Procuro emprego" é o mesmo do menu: a migração marca "trabalho"). */
+const BOTOES_DA_VAGA = [
+  { id: "a:vaga-mandar", titulo: "Mandar foto ou texto" },
+  { id: "a:vaga-montar", titulo: "Montar a vaga comigo" },
+  { id: "a:trabalho", titulo: "Procuro emprego" },
+];
+export const ENTRADA_DA_VAGA =
+  "Vamos colocar sua vaga no ar, é grátis.\n\n📸 Se a vaga já está escrita (cartaz, print, PDF ou texto), é só mandar.\n✍️ Se não está, eu te faço 3 perguntas rápidas e monto com você.";
+export const MANDAR_A_VAGA =
+  "Pode mandar aqui a foto do cartaz, o print, o PDF ou o texto da vaga. O Publike lê, monta a vaga e eu te mando o link para conferir e publicar.";
+export const PERGUNTAS_DA_VAGA = [
+  "Vamos lá! *1 de 3:* qual é o cargo da vaga? Por exemplo: _auxiliar de cozinha_, _vendedora_, _motorista_.",
+  "*2 de 3:* qual é o salário? Pode ser por mês, por dia ou _a combinar_.",
+  "*3 de 3:* em que bairro e cidade é o trabalho?",
+];
+const MARCAS_DAS_PERGUNTAS = ["*1 de 3:*", "*2 de 3:*", "*3 de 3:*"];
+/** Para quem parou na entrada, no "pode mandar" ou numa das 3 perguntas, 2 horas depois (uma vez), com os 2 botões. */
+export const LEMBRETE_VAGA =
+  "Ainda quer publicar a vaga? 😊 É grátis: mande a foto ou o texto dela, ou toque em *Montar a vaga comigo* que eu te faço 3 perguntas rápidas.";
+/** Os pedaços das mensagens em que dá para parar (o lembrete procura na última mensagem do robô). */
+const MARCAS_DA_VAGA = ["Vamos colocar sua vaga no ar", MANDAR_A_VAGA.slice(0, 32), ...MARCAS_DAS_PERGUNTAS];
+
+/** A mensagem pronta do anúncio "Contratando" (ou parecida, curta): "Olá! Quero publicar uma vaga pelo WhatsApp." */
+export function querPublicarVaga(texto: string) {
+  return texto.trim().length <= 90 && /\bquero (publicar|anunciar|divulgar) (uma |a )?vaga\b/i.test(texto);
+}
+
+/** Em qual das 3 perguntas a conversa está (pela última resposta do robô): 0, 1, 2, ou -1 fora delas. */
+export function perguntaDaVaga(minhaUltima: string) {
+  return MARCAS_DAS_PERGUNTAS.findIndex((m) => minhaUltima.includes(m));
+}
+
+/** As 3 respostas (cargo, salário, lugar): o que a pessoa escreveu depois de cada pergunta; a última vem em `agora`. */
+export function respostasDaVaga(historico: Mensagem[], agora: string[]) {
+  const respostas: string[] = ["", "", ""];
+  let i = -1;
+  for (const m of historico) {
+    if (m.de !== "pessoa") {
+      const k = perguntaDaVaga(m.texto);
+      // a pergunta 1 de novo (tocou em "Montar a vaga comigo" outra vez): recomeça
+      if (k === 0) respostas.fill("");
+      i = k;
+      continue;
+    }
+    if (i >= 0) respostas[i] = [respostas[i], m.texto.trim()].filter(Boolean).join(" ");
+  }
+  if (!respostas[2]) respostas[2] = agora.join(" ").trim();
+  return { cargo: respostas[0], salario: respostas[1], lugar: respostas[2] };
+}
+
+/** O texto que o Publike lê como a vaga (o mesmo leitor da foto e do texto). */
+export function textoDaVagaMontada(r: { cargo: string; salario: string; lugar: string }) {
+  return `Vaga de emprego para ${r.cargo}. Salário: ${r.salario || "a combinar"}. Local de trabalho: ${r.lugar}.`;
+}
+
 /** O modo econômico (o teto do mês): uma mensagem só por dia para quem procura trabalho, com o botão das vagas. */
 export const ECONOMICO_TRABALHO =
   "As vagas perto de você estão no botão abaixo: escolha o bairro, veja o salário e se candidate com um toque, de graça.";
@@ -1037,7 +1099,7 @@ export async function retomarConversa(conversa: string, numero: string, opcoes: 
     return;
   }
   if (!u.wamid || ultima.de !== "pessoa") return;
-  const botao = MENU.find((b) => b.titulo === ultima.texto.trim());
+  const botao = [...MENU, ...BOTOES_DA_VAGA].find((b) => b.titulo === ultima.texto.trim());
   if (botao?.id === "a:equipe") return;
   await atenderConversa(
     cfg,
@@ -1329,25 +1391,28 @@ export async function atenderConversa(
       motivo?: string;
       menu?: boolean;
       botao?: Botao | null;
+      /** outros botões de resposta no lugar do menu (os da entrada de quem quer publicar vaga) */
+      botoes?: { id: string; titulo: string }[];
     } = {},
   ) => {
     const texto = comCampanhaDoAnuncio(textoDaResposta, campanha);
     const url = extra.botao ? comCampanhaDoAnuncio(link(extra.botao.caminho), campanha) : null;
-    let r = extra.menu
-      ? await enviarComBotoes(cfg, m.numero, caber(texto), MENU)
+    const botoes = extra.botoes ?? (extra.menu ? MENU : null);
+    let r = botoes
+      ? await enviarComBotoes(cfg, m.numero, caber(texto), botoes)
       : extra.botao && url
         ? await enviarComLink(cfg, m.numero, caber(texto), {
             titulo: extra.botao.titulo,
             url,
           })
         : await enviarTexto(cfg, m.numero, texto);
-    let marca = extra.menu
-      ? `[Botões: ${MENU.map((b) => b.titulo).join(" · ")}]`
+    let marca = botoes
+      ? `[Botões: ${botoes.map((b) => b.titulo).join(" · ")}]`
       : extra.botao
         ? `[Botão: ${extra.botao.titulo}]`
         : "";
     // a mensagem com botão não saiu: vai o texto, com o link escrito
-    if (!r.ok && (extra.menu || extra.botao)) {
+    if (!r.ok && (botoes || extra.botao)) {
       console.error("Publike: a mensagem com botão do atendimento não saiu:", r.erro);
       r = await enviarTexto(cfg, m.numero, extra.botao && url ? `${texto}\n\n${extra.botao.titulo}: ${url}` : texto);
       marca = "";
@@ -1408,7 +1473,12 @@ export async function atenderConversa(
   // o teto do mês (migração 20270808120000): no modo econômico, quem procura trabalho recebe uma mensagem só por dia,
   // com o link das vagas, sem a IA; quem contrata segue normal (é quem traz vaga nova)
   const teto = await tetoDoMes(banco, chave, e.chave);
-  if (teto?.economico && e.perfil !== "contratar" && m.payload !== "a:contratar") {
+  // quem chega para publicar vaga (a mensagem pronta, os botões dela ou as 3 perguntas) segue normal, como quem contrata
+  const daVaga =
+    Boolean(m.payload?.startsWith("a:vaga-")) ||
+    (!jaFalou && textos.some(querPublicarVaga)) ||
+    perguntaDaVaga(minhaUltima) >= 0;
+  if (teto?.economico && e.perfil !== "contratar" && m.payload !== "a:contratar" && !daVaga) {
     // a foto ou o texto de uma vaga é de quem contrata: o Publicar pelo WhatsApp responde normal
     if (
       deveTentarVaga(textos, e.perfil) &&
@@ -1432,6 +1502,57 @@ export async function atenderConversa(
       // pelo WhatsApp, o caminho é mandar a vaga aqui mesmo: o botão do site fica para quem prefere
       botao: LINKS.publicar,
     });
+  }
+
+  // quem chega para publicar vaga (20/11/2026): a entrada com os 3 botões, o "pode mandar" e as 3 perguntas
+  if (!jaFalou && !midias.some(Boolean) && textos.some(querPublicarVaga))
+    return saida(
+      // quem veio do anúncio já recebeu o "Oi! 👋 Aqui é o Marcelo" da Meta: sem o Oi de novo
+      doAnuncio
+        ? `${nome ? `${nome}, v` : "V"}${ENTRADA_DA_VAGA.slice(1)}`
+        : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike. ${ENTRADA_DA_VAGA}`,
+      { botoes: BOTOES_DA_VAGA },
+    );
+  if (m.payload === "a:vaga-mandar") return saida(MANDAR_A_VAGA, { perfil: "contratar" });
+  if (m.payload === "a:vaga-montar") return saida(PERGUNTAS_DA_VAGA[0], { perfil: "contratar" });
+  {
+    const passo = perguntaDaVaga(minhaUltima);
+    // respondeu a pergunta com o texto: a foto, o arquivo ou a vaga inteira escrita seguem pelo caminho normal (a
+    // leitura), e a dúvida ("é pago?") vai para a IA
+    const escrito = textos.join("\n").trim();
+    // depois do "pode mandar", o texto que vier é a vaga (mesmo curto: "auxiliar de cozinha, 1.800, Setor Bueno")
+    const depoisDoMandar = minhaUltima.startsWith(MANDAR_A_VAGA.slice(0, 32));
+    if (
+      (passo >= 0 || depoisDoMandar) &&
+      escrito &&
+      !midias.some(Boolean) &&
+      !escrito.endsWith("?") &&
+      (depoisDoMandar || !pareceVaga(escrito))
+    ) {
+      if (passo >= 0 && passo < 2) return saida(PERGUNTAS_DA_VAGA[passo + 1], { perfil: "contratar" });
+      const montada = depoisDoMandar
+        ? escrito
+        : textoDaVagaMontada(respostasDaVaga(e.historico.slice(0, e.historico.length - novas.length), textos));
+      if (
+        await tentarVagaPeloWhatsapp({
+          cfg,
+          banco,
+          chave,
+          conversa: e.chave,
+          numero: m.numero,
+          wamid: m.wamid,
+          perfil: "contratar",
+          textos: [montada],
+          saida,
+          montada: true,
+        })
+      )
+        return;
+      return saida(
+        "Anotei! Para terminar, é só publicar pelo site: toque em *Publicar vaga grátis* e cole o cargo, o salário e o bairro. Leva 1 minutinho.",
+        { perfil: "contratar", botao: LINKS.publicar },
+      );
+    }
   }
 
   // a foto, o PDF ou o texto de uma vaga (Publicar pelo WhatsApp, migração 20270806120000): o Publike lê, prepara a
@@ -1835,12 +1956,17 @@ async function mandarDoRobo(
   numero: string,
   texto: string,
   botao: Botao | null,
+  botoes?: { id: string; titulo: string }[],
 ): Promise<{ ok: true } | { ok: false; erro: string }> {
   const url = botao ? link(botao.caminho) : null;
-  let r = botao && url ? await enviarComLink(cfg, numero, caber(texto), { titulo: botao.titulo, url }) : await enviarTexto(cfg, numero, texto);
-  let marcaDoBotao = botao ? `[Botão: ${botao.titulo}]` : "";
-  if (!r.ok && botao) {
-    r = await enviarTexto(cfg, numero, url ? `${texto}\n\n${botao.titulo}: ${url}` : texto);
+  let r = botoes?.length
+    ? await enviarComBotoes(cfg, numero, caber(texto), botoes)
+    : botao && url
+      ? await enviarComLink(cfg, numero, caber(texto), { titulo: botao.titulo, url })
+      : await enviarTexto(cfg, numero, texto);
+  let marcaDoBotao = botoes?.length ? `[Botões: ${botoes.map((b) => b.titulo).join(" · ")}]` : botao ? `[Botão: ${botao.titulo}]` : "";
+  if (!r.ok && (botao || botoes?.length)) {
+    r = await enviarTexto(cfg, numero, botao && url ? `${texto}\n\n${botao.titulo}: ${url}` : texto);
     marcaDoBotao = "";
   }
   if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
@@ -1864,10 +1990,25 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
     p_marca_pergunta: marca(LEMBRETE_PERGUNTA),
     p_marca_sempre: marca(LEMBRETE_SEMPRE),
   });
-  // sem a migração: nada
-  if (error) return { enviados: 0, falhas: 0 };
   let enviados = 0;
   let falhas = 0;
+  // quem chegou para publicar vaga e parou (migração 20270816120000; sem ela, nada)
+  const { data: daVaga, error: erroDaVaga } = await banco.rpc("servidor_whatsapp_lembrete_vaga", {
+    p_chave: chave,
+    p_marcas: MARCAS_DA_VAGA,
+    p_marca_lembrete: marca(LEMBRETE_VAGA),
+  });
+  if (!erroDaVaga)
+    for (const l of (daVaga ?? []) as unknown as { chave: string; numero: string }[]) {
+      const r = await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, LEMBRETE_VAGA, null, BOTOES_DA_VAGA.slice(0, 2));
+      if (r.ok) enviados++;
+      else {
+        falhas++;
+        console.error("Publike: o lembrete do WhatsApp (vaga) não saiu:", r.erro);
+      }
+    }
+  // sem a migração: nada
+  if (error) return { enviados, falhas };
   for (const l of (data ?? []) as unknown as { chave: string; numero: string; tipo: "pergunta" | "sempre" }[]) {
     const r =
       l.tipo === "pergunta"
