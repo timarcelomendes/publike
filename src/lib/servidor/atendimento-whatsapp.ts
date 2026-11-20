@@ -651,6 +651,8 @@ async function procurarVagas(
   const ids = new Set<string>(jaMandadas);
   // as da função que ficaram de fora por já terem ido: "já te mandei as vagas de..."
   let repetidas = 0;
+  // as funções (as que ela disse) que só tinham vagas que já foram
+  const funcoesRepetidas = new Set<string>();
   // de cada termo, uma por vez (as duas funções que a pessoa disse aparecem), até caber
   const juntar = async (
     termos: string[],
@@ -666,7 +668,10 @@ async function procurarVagas(
     for (let i = 0; achadas.length < max && listas.some((x) => x.l.length > i); i++)
       for (const { t, l } of listas) {
         const a = l[i];
-        if (a && !parecida && jaMandadas.has(a.id)) repetidas++;
+        if (a && !parecida && jaMandadas.has(a.id)) {
+          repetidas++;
+          funcoesRepetidas.add(equivalentes.get(t) ?? t);
+        }
         if (!a || ids.has(a.id) || achadas.length >= max) continue;
         ids.add(a.id);
         achadas.push({ a, termo: t, parecida, longe: eLonge });
@@ -782,7 +787,14 @@ async function procurarVagas(
   // a frase que apresenta
   const parecidas = usadas[0].parecida;
   const achados = unicos(usadas.map((x) => x.termo), 3);
-  const semNada = funcoes.filter((f) => !usadas.some((x) => x.termo === f) && !achados.some((t) => simples(t) === simples(f)));
+  const semNada = funcoes.filter(
+    (f) =>
+      !usadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f) &&
+      !achados.some((t) => simples(t) === simples(f)) &&
+      !funcoesRepetidas.has(f),
+  );
+  // as da função que já foram, quando a função não aparece de novo agora
+  const jaForam = funcoes.filter((f) => funcoesRepetidas.has(f) && !usadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f));
   const aqui = onde.local ? " perto de você" : "";
   const doJeito = nomeDoJeito(jeitos);
   const jeito1 = doJeito ? ` ${doJeito}` : "";
@@ -805,16 +817,16 @@ async function procurarVagas(
       ? `As vagas de ${listaE(funcoes)}${jeito1} que estão no ar eu já te mandei. Separei outras que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`
       : `Agora não achei vaga de ${listaE(funcoes)}${jeitoNao} no ar. Separei outras vagas que podem combinar com a sua experiência. Elas não são de ${listaE(funcoes)}: abra e veja se encaixam no seu perfil.`;
   else {
-    const nao = semNada.length
+    const nao = (jaForam.length ? `As vagas de ${listaE(jaForam)} eu já te mandei. ` : "") + (semNada.length
       ? `Agora não achei vaga de ${listaE(semNada)}${jeitoNao}. `
       : semOJeito && pedido
         ? `Agora não achei vaga de ${listaE(achados)} ${pedido}. `
-        : "";
+        : "");
     abertura = !perto1.length
       ? `${nao}${onde.local ? `Perto de você não achei vaga de ${listaE(achados)}${jeito1}, mas tem em outras cidades da região:` : `Olha as vagas de ${listaE(achados)}${jeito1}:`}`
       : `${nao}Olha as vagas de ${listaE(achados)}${jeito1}${aqui}${achados.some((t) => equivalentes.has(t)) ? ", que é o mesmo tipo de trabalho" : ""}:`;
     // mais vagas, depois das que já foram
-    if (repetidas && !semNada.length)
+    if (repetidas && !semNada.length && !jaForam.length)
       abertura = !perto1.length && onde.local
         ? `Perto de você, as vagas de ${listaE(achados)}${jeito1} eu já te mandei. Olha mais nas cidades da região:`
         : `Olha mais vagas de ${listaE(achados)}${jeito1}${aqui}:`;
