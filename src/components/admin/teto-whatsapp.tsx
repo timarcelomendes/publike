@@ -45,9 +45,11 @@ export function TetoWhatsapp({ teto, enviadas }: { teto: number; enviadas: numbe
         <span className="text-label">Teto de respostas por mês</span>
         <input inputMode="numeric" className={classesEntrada} value={n} onChange={(ev) => setN(ev.target.value)} />
         <span className="text-caption text-ink-muted">
-          A Meta cobra cada resposta depois das 1.000 grátis do mês. Com 80% do teto, chega um e-mail. No teto, quem
-          procura trabalho recebe uma mensagem só por dia, com o link das vagas e sem a IA; quem contrata segue normal. 0
-          desliga o teto.
+          Desde 1º/10/2026, a Meta cobra cada mensagem que o Publike manda (cerca de US$ 0,0068 no Brasil), menos nas 72
+          horas depois de a pessoa chegar por um anúncio de clique para o WhatsApp. Contam as respostas do robô e da equipe
+          e os códigos de entrar pelo WhatsApp (os códigos saem mesmo no teto). Com 80% do teto, chega um e-mail. No teto,
+          quem procura trabalho recebe uma mensagem só por dia, com o link das vagas e sem a IA; quem contrata segue normal.
+          0 desliga o teto.
         </span>
       </label>
       <div>

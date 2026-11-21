@@ -364,7 +364,8 @@
   "20270816120000_whatsapp_lembrete_vaga",
   "20270817120000_whatsapp_codigo_de_acesso",
   "20270818120000_whatsapp_entrar_conta_existente",
-  "20270819120000_whatsapp_juntar_conta_nova"
+  "20270819120000_whatsapp_juntar_conta_nova",
+  "20270820120000_whatsapp_teto_preco_novo"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
