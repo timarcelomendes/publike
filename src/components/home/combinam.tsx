@@ -76,6 +76,47 @@ export async function CombinamComVoce() {
   );
 }
 
+/**
+ * Logo depois de salvar o currículo (21/11/2026; Marcelo: "quando o currículo subir, já olha o perfil do candidato e
+ * sugira as vagas também"): as vagas que combinam com ele, a mesma conta do bloco da home, sem o X. Sem nenhuma, nada
+ * (o aviso do "salvo" já oferece o alerta de vagas e o "Ver vagas perto de mim").
+ */
+export async function VagasQueCombinamAgora({
+  perfil,
+}: {
+  perfil: { id: string; cidade: string | null; bairro: string | null };
+}) {
+  const vagas = await vagasQueCombinamComigo(perfil);
+  if (!vagas.length) return null;
+  return (
+    <section aria-labelledby="combinam-agora" className="rounded-lg border border-line bg-surface-200 p-4 shadow-card">
+      <h2 id="combinam-agora" className="flex items-center gap-2 text-h3">
+        <Sparkles aria-hidden className="size-5 shrink-0 text-cerrado-text" />
+        Vagas que combinam com o seu currículo
+      </h2>
+      <p className="mt-1 text-body-sm text-ink-muted">Abra a vaga e toque em Curtir para se candidatar.</p>
+      <ul className="mt-3 flex flex-col gap-1">
+        {vagas.map((v) => (
+          <li key={v.id}>
+            <Link href={`/anuncio/${v.id}`} className={ITEM}>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-label">{v.titulo}</span>
+                <span className="block truncate text-body-sm text-ink-muted">
+                  {v.quem} · {formatarLugar(v.bairro, v.cidade)}
+                </span>
+              </span>
+              <Nota nota={v.nota} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Link href="/?tipo=vaga&ordem=combina" className="mt-2 inline-block text-label underline underline-offset-2">
+        Ver todas as que combinam
+      </Link>
+    </section>
+  );
+}
+
 const ITEM =
   "flex min-h-14 items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-surface-300 focus-visible:outline-2 focus-visible:outline-focus";
 

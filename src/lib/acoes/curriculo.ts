@@ -13,6 +13,8 @@ import { limparCurriculos } from "@/lib/servidor/arquivos";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { registrarFalha, textoDoErro, vigiar, type Vigia } from "@/lib/servidor/falhas";
 import { processarFilas } from "@/lib/servidor/filas";
+import { mandarVagasDoCurriculo } from "@/lib/servidor/atendimento-whatsapp";
+import { vagasQueCombinamComigo } from "@/lib/servidor/combinam-home";
 import { lerArquivoDoCurriculo, type LeituraDoArquivo } from "@/lib/servidor/ler-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
@@ -128,7 +130,18 @@ async function salvar(formData: FormData, vigia: Vigia): Promise<EstadoForm> {
   } catch (e) {
     console.warn("Publike: não deu para apagar os PDFs antigos do currículo:", e);
   }
-  if (jaTinha === 0) await marcarConversao("curriculo");
+  if (jaTinha === 0) {
+    await marcarConversao("curriculo");
+    // o primeiro currículo de quem veio da conversa do WhatsApp: as vagas que combinam, lá também (21/11/2026)
+    const lugar = { id: usuario.id, cidade: perfil?.cidade ?? null, bairro: bairro?.ok ? bairro.bairro : (perfil?.bairro ?? null) };
+    after(async () => {
+      const [vagas, contato] = await Promise.all([
+        vagasQueCombinamComigo(lugar),
+        supabase.from("contatos").select("whatsapp").eq("perfil_id", usuario.id).maybeSingle(),
+      ]);
+      await mandarVagasDoCurriculo([usuario.telefone, contato.data?.whatsapp], vagas);
+    });
+  }
   // os avisos do match (para a pessoa e para quem publicou) saem já
   if (aceitas?.length) after(processarFilas);
 

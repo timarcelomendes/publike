@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CaminhoDaCurtida } from "@/components/caminho-curtida";
 import { CurriculoNoMercado } from "@/components/curriculo-no-mercado";
+import { VagasQueCombinamAgora } from "@/components/home/combinam";
 import { AvisarBusca } from "@/components/explorar/avisar-busca";
 import { FormCurriculo } from "@/components/form-curriculo";
 import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
@@ -302,6 +303,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
             </Link>
           </p>
         </Aviso>
+      )}
+      {primeiro(sp.salvo) === "1" && curriculo && (
+        <Suspense fallback={<Esqueleto className="h-40 w-full rounded-lg" />}>
+          <VagasQueCombinamAgora perfil={{ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }} />
+        </Suspense>
       )}
       {curriculo && whatsapp?.pode && !whatsapp.aceito && (
         <div className="rounded-lg border border-line bg-surface-200 p-4">

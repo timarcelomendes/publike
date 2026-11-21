@@ -72,18 +72,37 @@ export const BOAS_VINDAS_DO_ANUNCIO = `Oi! 👋 Aqui é o ${QUEM_ATENDE}, do Pub
 export const veioDoAnuncio = (o: { tipo?: string | null; link?: string | null; titulo?: string | null } | null) =>
   Boolean(o && (o.tipo || o.link || o.titulo));
 
-/** Os botões de quando ainda não se sabe o que a pessoa quer (o toque volta no webhook como `a:<id>`). */
+/**
+ * Os botões de quando ainda não se sabe o que a pessoa quer (o toque volta no webhook como `a:<id>`). O WhatsApp aceita
+ * só 3 por mensagem (21/11/2026; Marcelo: "uma opção pra quem tem currículo e quer mostrar"): o "Falar com a equipe" foi
+ * para a mensagem seguinte (`BOTAO_DA_EQUIPE`) e continua valendo quem escreve "equipe".
+ */
 const MENU = [
+  { id: "a:trabalho", titulo: "Procuro emprego" },
+  { id: "a:curriculo", titulo: "Tenho currículo" },
+  { id: "a:contratar", titulo: "Quero contratar" },
+];
+const BOTAO_DA_EQUIPE = { id: "a:equipe", titulo: "Falar com a equipe" };
+/** Os nomes de antes, para a conversa que a equipe devolve com o último toque (o histórico guarda o nome). */
+const BOTOES_DE_ANTES = [
   { id: "a:trabalho", titulo: "Procuro trabalho" },
   { id: "a:contratar", titulo: "Quero contratar" },
-  { id: "a:equipe", titulo: "Falar com a equipe" },
+  BOTAO_DA_EQUIPE,
 ];
+/** Quem escreve só "equipe", "atendente", "falar com alguém"...: a equipe, sem passar pela IA. */
+export function pedeAEquipe(texto: string) {
+  const t = texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+  return /^(quero |queria |posso |pode |preciso )?(falar|conversar)? ?(com )?(a |o |uma |um |alguem da )?(equipe|atendente|atendimento|pessoa|humano|alguem)( do publike| de verdade)?( por favor)?$/.test(t);
+}
+/** O lembrete da equipe nas mensagens com o botão do site (que não pode ter outro botão junto). */
+const EQUIPE_POR_ESCRITO = "Se quiser falar com a equipe, é só escrever *equipe*.";
 
 /** Os botões que abrem o site (o nome vai até 20 letras). A IA escolhe um pelo nome. */
 const LINKS = {
   vagas: { titulo: "Ver vagas", caminho: "/?tipo=vaga" },
   publicar: { titulo: "Publicar vaga grátis", caminho: "/publicar" },
   curriculo: { titulo: "Fazer meu currículo", caminho: "/perfil/curriculo" },
+  enviarCurriculo: { titulo: "Enviar meu currículo", caminho: "/perfil/curriculo" },
   empresas: { titulo: "Para empresas", caminho: "/empresas" },
   ajuda: { titulo: "Ver a Ajuda", caminho: "/ajuda" },
   entrar: { titulo: "Entrar no Publike", caminho: "/entrar" },
@@ -198,6 +217,15 @@ const ESQUEMA = {
 // o endereço público (no computador, PUBLIKE_URL_PUBLICA; sem ele, a Meta de verdade nem recebe: `bloqueioDaMeta`)
 const link = (caminho: string) => comOrigem(`${urlDosEmails() ?? SITE_URL}${caminho}`, "whatsapp", "atendimento");
 const DO_ATENDIMENTO = "utm_source=whatsapp&utm_campaign=atendimento";
+/**
+ * O link curto da vaga (21/11/2026; Marcelo: "deixe os links das vagas encurtado"): publike.org/w/ e os 8 primeiros
+ * caracteres do id (src/app/w/[codigo]/route.ts põe a origem do atendimento). `comCampanhaDoAnuncio` acrescenta a letra
+ * da campanha de quem veio do anúncio.
+ */
+/** O código da vaga no link curto e nas vagas que já foram: os 8 primeiros caracteres do id. */
+export const codigoDaVaga = (id: string) => id.slice(0, 8).toLowerCase();
+export const linkDaVaga = (id: string) => `${urlDosEmails() ?? SITE_URL}/w/${id.slice(0, 8).toLowerCase()}`;
+const LETRA_DA_CAMPANHA: Record<string, string> = { "ig-whatsapp": "i", "fb-whatsapp": "f", "meta-whatsapp": "m" };
 
 /**
  * A campanha dos links de quem chegou por um anúncio de clique para o WhatsApp (19/11/2026; Marcelo: "parece que as
@@ -213,7 +241,11 @@ export function campanhaDoAnuncio(o: Entrada["origem"]) {
 
 /** Troca, no texto ou no link, a campanha do atendimento pela do anúncio. */
 export const comCampanhaDoAnuncio = (t: string, campanha: string | null) =>
-  campanha ? t.replaceAll(DO_ATENDIMENTO, `utm_source=meta-ads&utm_campaign=${campanha}`) : t;
+  campanha
+    ? t
+        .replaceAll(DO_ATENDIMENTO, `utm_source=meta-ads&utm_campaign=${campanha}`)
+        .replace(/(\/w\/[0-9a-f]{8})(?![0-9a-z])/g, `$1${LETRA_DA_CAMPANHA[campanha] ?? "m"}`)
+    : t;
 
 // --- Ler a mensagem ---------------------------------------------------------------------------------------------
 
@@ -710,12 +742,12 @@ async function procurarVagas(
     for (let i = 0; achadas.length < max && listas.some((x) => x.l.length > i); i++)
       for (const { t, l } of listas) {
         const a = l[i];
-        if (a && !parecida && jaMandadas.has(a.id)) {
+        if (a && !parecida && jaMandadas.has(codigoDaVaga(a.id))) {
           repetidas++;
           funcoesRepetidas.add(equivalentes.get(t) ?? t);
         }
-        if (!a || ids.has(a.id) || achadas.length >= max) continue;
-        ids.add(a.id);
+        if (!a || ids.has(codigoDaVaga(a.id)) || achadas.length >= max) continue;
+        ids.add(codigoDaVaga(a.id));
         achadas.push({ a, termo: t, parecida, longe: eLonge });
       }
   };
@@ -731,8 +763,8 @@ async function procurarVagas(
     const juntarPerto = async (cat: string | null) => {
       if (!centro) {
         for (const a of (await tentar(null, perto, cat)).slice(0, max))
-          if (!ids.has(a.id) && achadas.length < max) {
-            ids.add(a.id);
+          if (!ids.has(codigoDaVaga(a.id)) && achadas.length < max) {
+            ids.add(codigoDaVaga(a.id));
             achadas.push({ a, termo: "", parecida: false, longe: false });
           }
         return;
@@ -742,8 +774,8 @@ async function procurarVagas(
         const l = await tentar(null, { p_lat: centro.lat, p_lng: centro.lng, p_raio_km: raio, p_ordem: "perto", p_por_distancia: true }, cat);
         for (const a of l) {
           if (achadas.length >= max) break;
-          if (ids.has(a.id)) continue;
-          ids.add(a.id);
+          if (ids.has(codigoDaVaga(a.id))) continue;
+          ids.add(codigoDaVaga(a.id));
           achadas.push({ a, termo: "", parecida: false, longe: (a.distancia_km ?? 0) > 15, km: true });
         }
       }
@@ -831,7 +863,7 @@ async function procurarVagas(
     // longe, a cidade sempre aparece (Goiânia e Anápolis mostram só o bairro)
     const lugar = formatarLugar(a.bairro ?? "", a.cidade ?? "");
     const onde1 = eLonge && a.cidade && !lugar.includes(a.cidade) ? `${lugar}, ${a.cidade}` : lugar;
-    return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${onde1}${km}\n${link(`/anuncio/${a.id}`)}`;
+    return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${onde1}${km}\n${linkDaVaga(a.id)}`;
   };
   // a mensagem com botão vai até 1.024 letras: com links longos, cabem menos vagas
   let n = Math.min(Math.max(1, max), 4, achadas.length);
@@ -999,12 +1031,22 @@ function boasVindas(nome: string | null, comeco: string, doAnuncio = false) {
   return [
     // quem veio do anúncio já recebeu o "Oi! 👋 Aqui é o Marcelo" da Meta (`BOAS_VINDAS_DO_ANUNCIO`)
     doAnuncio ? null : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.`,
-    `O Publike é um site *grátis* de vagas de emprego perto de casa, em ${ONDE_FUNCIONA}:\n• quem procura trabalho se candidata pelo celular e acompanha cada passo: se a empresa viu, se aceitou e quando é a entrevista;\n• quem contrata publica a vaga de graça e recebe os candidatos organizados.`,
-    "Como posso te ajudar?",
+    // o que cada caminho ganha, na ordem dos botões (21/11/2026; Marcelo: "dar uma opção para o usuário entender que
+    // vale a pena, isso leva ele pra plataforma")
+    `O Publike é *grátis*, em ${ONDE_FUNCIONA}. Como posso te ajudar?`,
+    "💼 *Procura emprego?* Eu te mando aqui as vagas perto da sua casa.\n📄 *Já tem currículo?* Deixe no Publike: as empresas da região procuram candidatos pela função e chamam direto, e você fica sabendo de cada vaga nova que combina com você.\n📢 *Vai contratar?* Me manda a foto do anúncio que eu deixo a vaga pronta, de graça.",
   ]
     .filter(Boolean)
     .join("\n\n");
 }
+
+/** O "Tenho currículo": o ganho e o botão do site, onde a pessoa entra pelo WhatsApp e manda o PDF ou a foto. */
+export const PARA_QUEM_TEM_CURRICULO = [
+  "Ótimo! Com o seu currículo no Publike:",
+  "• as empresas da região te acham pela função e chamam direto;\n• você recebe o aviso de cada vaga nova que combina com você;\n• e se candidata com um toque, sem preencher nada de novo.",
+  "É grátis e leva uns 2 minutos: toque no botão abaixo, entre com o seu WhatsApp e mande o PDF ou uma foto do currículo. O Publike preenche tudo para você conferir.",
+  EQUIPE_POR_ESCRITO,
+].join("\n\n");
 
 // "Procuro trabalho" (19/11/2026; Marcelo: "As pessoas estão parando aqui"): antes, o passo a passo em três itens e a
 // pergunta no fim, com o botão Ver vagas competindo com ela. Agora, curta: só a pergunta, com o exemplo, sem botão (as
@@ -1209,7 +1251,7 @@ export async function retomarConversa(conversa: string, numero: string, opcoes: 
     return;
   }
   if (!u.wamid || ultima.de !== "pessoa") return;
-  const botao = [...MENU, ...BOTOES_DA_VAGA].find((b) => b.titulo === ultima.texto.trim());
+  const botao = [...MENU, ...BOTOES_DE_ANTES, ...BOTOES_DA_VAGA].find((b) => b.titulo === ultima.texto.trim());
   if (botao?.id === "a:equipe") return;
   await atenderConversa(
     cfg,
@@ -1298,7 +1340,7 @@ Como responder
 - *negrito* do WhatsApp em no máximo duas palavras. No máximo um emoji, e só se combinar. Sem títulos, sem markdown, sem listas com hífen ou asterisco.
 - Sem pressa de vender: não termine toda mensagem com uma pergunta nem convidando a publicar vaga, procurar vaga ou fazer currículo. Ofereça o próximo passo só quando ele ajudar a pessoa a resolver o que ela falou, e uma vez só.
 - Não escreva links nem endereços de site. Quando a pessoa precisar abrir o site, escolha o botão no campo "link": ele vai junto da mensagem, e no texto você pode dizer "é só tocar no botão abaixo".
-- Não repita o que você já disse na conversa. Não pergunte se a pessoa procura trabalho ou quer contratar: quando ainda não se sabe, a mensagem já vai com os botões "Procuro trabalho" e "Quero contratar".
+- Não repita o que você já disse na conversa. Não pergunte se a pessoa procura trabalho ou quer contratar: quando ainda não se sabe, a mensagem já vai com os botões "Procuro emprego", "Tenho currículo" e "Quero contratar".
 - As mensagens que começam com 🎤 vieram em áudio e foram passadas para texto (pode haver palavra trocada): responda normalmente, por escrito.
 
 O que nunca fazer
@@ -1550,8 +1592,8 @@ export async function atenderConversa(
   const daOferta = await respostaDaOferta(banco, chave, e.chave, m.payload);
   if (daOferta) return saida(daOferta, { perfil: "contratar" });
 
-  // o botão "Falar com a equipe"
-  if (e.pediu_equipe)
+  // o botão "Falar com a equipe" ou quem escreveu só "equipe"
+  if (e.pediu_equipe || (!m.payload && pedeAEquipe(m.texto)))
     return saida(passarParaEquipe("Certo!", agora), {
       equipe: true,
       motivo: "a pessoa pediu",
@@ -1588,7 +1630,7 @@ export async function atenderConversa(
     Boolean(m.payload?.startsWith("a:vaga-")) ||
     (!jaFalou && textos.some(querPublicarVaga)) ||
     perguntaDaVaga(minhaUltima) >= 0;
-  if (teto?.economico && e.perfil !== "contratar" && m.payload !== "a:contratar" && !daVaga) {
+  if (teto?.economico && e.perfil !== "contratar" && m.payload !== "a:contratar" && m.payload !== "a:curriculo" && !daVaga) {
     // a foto ou o texto de uma vaga é de quem contrata: o Publicar pelo WhatsApp responde normal
     if (
       deveTentarVaga(textos, e.perfil) &&
@@ -1603,11 +1645,14 @@ export async function atenderConversa(
   }
 
   // os botões do começo, com texto pronto
+  // a pergunta, e a equipe num botão (o menu tem só 3; a conversa continua aqui mesmo)
   if (novas.length <= 1 && m.payload === "a:trabalho")
-    return saida(PARA_QUEM_PROCURA, { perfil: "trabalho" });
+    return saida(PARA_QUEM_PROCURA, { perfil: "trabalho", botoes: [BOTAO_DA_EQUIPE] });
+  if (novas.length <= 1 && m.payload === "a:curriculo")
+    return saida(PARA_QUEM_TEM_CURRICULO, { perfil: "trabalho", botao: LINKS.enviarCurriculo });
   if (novas.length <= 1 && m.payload === "a:contratar") {
     const porAqui = Boolean(await configVagasWhatsapp(banco, chave));
-    return saida(paraQuemContrata(porAqui), {
+    return saida(`${paraQuemContrata(porAqui)}\n\n${EQUIPE_POR_ESCRITO}`, {
       perfil: "contratar",
       // pelo WhatsApp, o caminho é mandar a vaga aqui mesmo: o botão do site fica para quem prefere
       botao: LINKS.publicar,
@@ -2065,11 +2110,15 @@ export function perguntouAFuncao(texto: string) {
   );
 }
 
-/** As vagas que o Publike já mandou nesta conversa (os links /anuncio/<id> das respostas). */
+/**
+ * As vagas que o Publike já mandou nesta conversa, pelo código (os 8 primeiros caracteres do id): os links /anuncio/<id>
+ * de antes e os curtos /w/<código> (21/11/2026).
+ */
 export function vagasJaMandadas(historico: { de: string; texto: string }[]) {
   const ids = new Set<string>();
   for (const m of historico)
-    if (m.de !== "pessoa") for (const x of m.texto.matchAll(/\/anuncio\/([0-9a-f-]{36})/g)) ids.add(x[1]);
+    if (m.de !== "pessoa")
+      for (const x of m.texto.matchAll(/\/(?:anuncio\/([0-9a-f]{8})[0-9a-f-]{28}|w\/([0-9a-f]{8}))/g)) ids.add(x[1] ?? x[2]);
   return ids;
 }
 
@@ -2188,4 +2237,51 @@ export function botaoValido(b: unknown): Botao | null {
   if (typeof titulo !== "string" || typeof caminho !== "string") return null;
   if (Object.values(LINKS).some((l) => l.titulo === titulo && l.caminho === caminho)) return { titulo, caminho };
   return titulo === "Ver mais vagas" && /^\/\?tipo=vaga(&q=[^&#]{1,80})?$/.test(caminho) ? { titulo, caminho } : null;
+}
+
+/**
+ * Logo depois do primeiro currículo salvo (21/11/2026; Marcelo: "quando o currículo subir, já olha o perfil do
+ * candidato e sugira as vagas também"): quem conversou com o Publike nas últimas 23 horas (a janela em que a Meta deixa
+ * mandar mensagem livre) recebe no WhatsApp as vagas que mais combinam com o currículo, até 3, com o link de cada uma.
+ * Fora da janela, sem vaga, no modo econômico do mês ou sem a Meta: nada sai. Nunca lança (vai no `after`).
+ */
+export async function mandarVagasDoCurriculo(
+  numeros: (string | null | undefined)[],
+  vagas: { id: string; titulo: string; quem: string; bairro: string | null; cidade: string; nota: number }[],
+  /** só nos testes: a Meta e o banco de mentira */
+  teste?: { cfg: ConfigMeta; banco: ClienteBanco; chave: string },
+): Promise<"enviada" | "sem_vaga" | "fora_da_janela" | "economico" | "desligado" | "falhou"> {
+  try {
+    if (!vagas.length) return "sem_vaga";
+    const cfg = teste?.cfg ?? configMeta();
+    const acesso = teste ? { cliente: teste.banco, chave: teste.chave } : acessoFila();
+    if (!cfg || !acesso) return "desligado";
+    const { cliente: banco, chave } = acesso;
+    let alvo: { conversa: string; numero: string } | null = null;
+    for (const n of [...new Set(numeros.map((x) => (x ?? "").replace(/\D/g, "")).filter(Boolean))]) {
+      const { data, error } = await banco.rpc("servidor_whatsapp_codigo", { p_chave: chave, p_numero: n });
+      const c = (error ? null : data) as { conversa: string | null; numero: string | null; na_janela: boolean } | null;
+      if (c?.conversa && c.numero && c.na_janela) {
+        alvo = { conversa: c.conversa, numero: c.numero };
+        break;
+      }
+    }
+    if (!alvo) return "fora_da_janela";
+    if ((await tetoDoMes(banco, chave, alvo.conversa))?.economico) return "economico";
+    const lista = vagas
+      .slice(0, 3)
+      .map((v) => `*${v.titulo}* · ${v.quem}\n📍 ${formatarLugar(v.bairro ?? "", v.cidade)} · ${v.nota}% de match\n${linkDaVaga(v.id)}`)
+      .join("\n\n");
+    const texto = [
+      "Pronto, seu currículo está no Publike! 🎉 Olha as vagas que mais combinam com você agora:",
+      lista,
+      "É só abrir e tocar em *Curtir* para se candidatar.",
+    ].join("\n\n");
+    const r = await mandarDoRobo(cfg, banco, chave, alvo.conversa, alvo.numero, texto, null);
+    if (!r.ok) console.error("Publike: as vagas do currículo não saíram pelo WhatsApp:", r.erro);
+    return r.ok ? "enviada" : "falhou";
+  } catch (e) {
+    console.error("Publike: as vagas do currículo pelo WhatsApp falharam:", e instanceof Error ? e.message : e);
+    return "falhou";
+  }
 }

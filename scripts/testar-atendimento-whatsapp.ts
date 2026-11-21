@@ -246,7 +246,7 @@ async function main() {
     busca: { texto: "", categoria: "todas", cidade: "", bairro: "" },
     ...x,
   });
-  const comBotoes = (t: string) => `${t}\n\n[Botões: Procuro trabalho · Quero contratar · Falar com a equipe]`;
+  const comBotoes = (t: string) => `${t}\n\n[Botões: Procuro emprego · Tenho currículo · Quero contratar]`;
   const comeco = [
     { de: "pessoa", texto: "Olá" },
     { de: "robo", texto: comBotoes("Oi, Raphael! 👋 Aqui é o Marcelo, do Publike.") },
@@ -268,7 +268,7 @@ async function main() {
     "chama pelo nome e é o Marcelo",
   );
   conferir(
-    saidas[0]?.p_texto.endsWith("[Botões: Procuro trabalho · Quero contratar · Falar com a equipe]"),
+    saidas[0]?.p_texto.endsWith("[Botões: Procuro emprego · Tenho currículo · Quero contratar]"),
     "guarda os botões",
   );
 
@@ -426,12 +426,28 @@ async function main() {
     { payload: "a:trabalho" },
   );
   // curta, só a pergunta, sem botão que tire a pessoa da conversa (19/11/2026: "As pessoas estão parando aqui")
+  // e a equipe num botão de resposta (21/11/2026: o menu ficou com 3, e a equipe veio para cá)
   conferir(
-    r.msgs[0]?.type === "text" &&
+    r.msgs[0]?.interactive?.action?.buttons?.length === 1 &&
+      r.msgs[0]?.interactive?.action?.buttons?.[0]?.reply?.title === "Falar com a equipe" &&
       corpo(r.msgs[0]).includes("*Me conta o que você faz e o bairro onde mora.*") &&
       corpo(r.msgs[0]).length < 220 &&
       saidas[0]?.p_perfil === "trabalho",
-    "Procuro trabalho: só a pergunta, curta, sem botão",
+    "Procuro emprego: só a pergunta, curta, com o botão da equipe",
+    r.msgs[0],
+  );
+  r = await rodar(
+    "Tenho currículo",
+    { historico: [...comeco, { de: "pessoa", texto: "Tenho currículo" }] },
+    { payload: "a:curriculo" },
+  );
+  conferir(
+    botao(r.msgs[0]) === "Enviar meu currículo" &&
+      corpo(r.msgs[0]).includes("as empresas da região te acham pela função") &&
+      corpo(r.msgs[0]).includes("escrever *equipe*") &&
+      saidas[0]?.p_perfil === "trabalho" &&
+      pedidosIA.length === 0,
+    "Tenho currículo: o ganho, o botão do site e a equipe por escrito",
     corpo(r.msgs[0]),
   );
   r = await rodar(
@@ -440,6 +456,7 @@ async function main() {
     { payload: "a:contratar" },
   );
   conferir(botao(r.msgs[0]) === "Publicar vaga grátis", "Quero contratar: Publicar vaga grátis");
+  conferir(corpo(r.msgs[0]).includes("escrever *equipe*"), "Quero contratar: a equipe por escrito");
 
   // 5. "Oi" de novo
   r = await rodar("oi", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "oi" }] });
@@ -569,7 +586,7 @@ async function main() {
     buscas[0],
   );
   conferir(
-    corpo(r.msgs[0]).includes("*Cozinheira*") && corpo(r.msgs[0]).includes("/anuncio/1111"),
+    corpo(r.msgs[0]).includes("*Cozinheira*") && corpo(r.msgs[0]).includes("/w/11111111"),
     "a vaga com o link",
   );
 
@@ -651,6 +668,13 @@ async function main() {
     "Falar com a equipe, de noite",
     corpo(r.msgs[0]),
   );
+  // quem escreve "equipe" (o menu não tem mais o botão; 21/11/2026)
+  r = await rodar("Equipe", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "Equipe" }] });
+  conferir(saidas[0]?.p_equipe === true && pedidosIA.length === 0, "escreveu equipe: passa para a equipe, sem IA");
+  for (const t of ["equipe", "Falar com atendente", "quero falar com alguém", "falar com uma pessoa"])
+    conferir(a.pedeAEquipe(t), `pede a equipe: ${t}`);
+  for (const t of ["sou atendente e moro no Centro", "tem vaga de atendente?", "a equipe é boa?"])
+    conferir(!a.pedeAEquipe(t), `não pede a equipe: ${t}`);
   respostaIA = ia(
     "O Publike nunca cobra de quem procura trabalho: não pague nada. Vou pedir para alguém da equipe te responder por aqui.",
     { perfil: "trabalho", acao: "equipe" },
@@ -1194,6 +1218,46 @@ async function main() {
   conferir(r.msgs.length === 0, "teto: a segunda no mesmo dia fica sem resposta", r.msgs.map(corpo));
   r = await rodar("Quero contratar", { historico: [{ de: "pessoa", texto: "Quero contratar" }] }, { payload: "a:contratar" });
   conferir(r.msgs.length === 1 && corpo(r.msgs[0]).includes("Para contratar"), "teto: quem contrata segue normal", corpo(r.msgs[0]));
+  teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
+
+  // 21. o primeiro currículo de quem conversou nas últimas horas: as vagas que combinam, pelo WhatsApp (21/11/2026)
+  const vagasDoCv = [
+    { id: "v1", titulo: "Cozinheira", quem: "Restaurante Sabor", bairro: "Setor Bueno", cidade: "Goiânia", nota: 92 },
+    { id: "v2", titulo: "Auxiliar de cozinha", quem: "Padaria Sol", bairro: "Jardim América", cidade: "Goiânia", nota: 81 },
+    { id: "v3", titulo: "Chapeira", quem: "Lanchonete Boa", bairro: "Centro", cidade: "Goiânia", nota: 74 },
+    { id: "v4", titulo: "Copeira", quem: "Hotel X", bairro: "Centro", cidade: "Goiânia", nota: 70 },
+  ];
+  let janela: any = { conversa: "c1", numero: "556299990000", na_janela: true };
+  const bancoCv: any = {
+    rpc: async (nome: string, args: any) => {
+      if (nome === "servidor_whatsapp_codigo") return { data: janela, error: null };
+      if (nome === "servidor_whatsapp_teto") return { data: teto, error: null };
+      saidas.push({ nome, ...args });
+      return { data: null, error: null };
+    },
+  };
+  enviados = [];
+  saidas = [];
+  let rcv = await a.mandarVagasDoCurriculo(["62999990000", null], vagasDoCv, { cfg, banco: bancoCv, chave: "k" });
+  const msgCv = corpo(enviados[0]);
+  console.log("\n--- a mensagem das vagas do currículo ---\n" + msgCv + "\n---\n");
+  conferir(
+    rcv === "enviada" && enviados.length === 1 && msgCv.startsWith("Pronto, seu currículo está no Publike!") &&
+      (msgCv.match(/\/w\//g) ?? []).length === 3 && saidas.some((x) => x.nome === "servidor_whatsapp_conversa_saida"),
+    "currículo salvo: até 3 vagas no WhatsApp, guardadas na conversa",
+    msgCv,
+  );
+  janela = { conversa: "c1", numero: "556299990000", na_janela: false };
+  enviados = [];
+  rcv = await a.mandarVagasDoCurriculo(["62999990000"], vagasDoCv, { cfg, banco: bancoCv, chave: "k" });
+  conferir(rcv === "fora_da_janela" && enviados.length === 0, "currículo salvo fora das 24 horas: nada sai");
+  rcv = await a.mandarVagasDoCurriculo(["62999990000"], [], { cfg, banco: bancoCv, chave: "k" });
+  conferir(rcv === "sem_vaga", "currículo salvo sem vaga que combina: nada sai");
+  janela = { conversa: "c1", numero: "556299990000", na_janela: true };
+  teto = { teto: 5000, enviadas: 5000, economico: true, respondida_hoje: false };
+  enviados = [];
+  rcv = await a.mandarVagasDoCurriculo(["62999990000"], vagasDoCv, { cfg, banco: bancoCv, chave: "k" });
+  conferir(rcv === "economico" && enviados.length === 0, "currículo salvo no modo econômico: nada sai");
   teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);
