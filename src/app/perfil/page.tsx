@@ -9,7 +9,7 @@ import { WhatsappDeAcesso } from "@/components/whatsapp-de-acesso";
 import { TrocarEmail } from "@/components/trocar-email";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { LOGIN_CELULAR, MODO_DEMO } from "@/lib/config";
-import { aceitePendente, obterMeuPerfil } from "@/lib/dados";
+import { aceitePendente, ehModerador, obterMeuPerfil, possoVerPainelNoSite } from "@/lib/dados";
 import { PAPEIS_EQUIPE } from "@/lib/equipe";
 import { caminhoSeguro, formatarTelefone, primeiro } from "@/lib/formato";
 import { contatoDasVagasPeloWhatsapp } from "@/lib/servidor/numero-do-publike";
@@ -71,7 +71,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   const proximo = caminhoSeguro(primeiro(sp.next), "");
   // Entrar pelo WhatsApp (migração 20270818120000): só para a própria conta (quem age por uma agência liga o próprio
   // login lá na conta dele) e com o login pelo celular ligado
-  const comWhatsappDeAcesso = LOGIN_CELULAR && Boolean(perfil) && Boolean(conta) && usuario.id === usuario.pessoaId;
+  // a conta da equipe do Publike ou da moderação entra só com o e-mail (o banco recusa; o cartão nem aparece)
+  const comWhatsappDeAcesso =
+    LOGIN_CELULAR &&
+    Boolean(perfil) &&
+    Boolean(conta) &&
+    usuario.id === usuario.pessoaId &&
+    !(conta?.email ?? "").toLowerCase().endsWith("@publike.org") &&
+    !(await ehModerador()) &&
+    !(await possoVerPainelNoSite());
   // o "mande antes um oi": o número como a Meta mostra ou, sem o Publicar pelo WhatsApp no site, o oficial
   const linkDoOiDoPublike = comWhatsappDeAcesso ? linkDoOi((await contatoDasVagasPeloWhatsapp())?.numero) : null;
 

@@ -346,6 +346,6 @@ export async function respostaDaOferta(
     p_vaga: m[1],
   });
   return !erroLogin && (login as { ligou?: boolean } | null)?.ligou
-    ? `${combinado}\n\nE, da próxima vez, você entra no Publike com um código que chega aqui no WhatsApp, sem e-mail. Para desligar, é em Meu perfil.`
+    ? `${combinado}\n\nE este WhatsApp ficou vinculado à sua conta: da próxima vez, você entra no Publike com um código que chega aqui, sem e-mail. Para desvincular, é em Meu perfil.`
     : combinado;
 }

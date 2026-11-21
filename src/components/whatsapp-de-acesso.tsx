@@ -122,18 +122,18 @@ export function WhatsappDeAcesso({
           <p className="mt-1 text-body-sm text-ink-muted">
             {atual ? (
               <>
-                Você entra também com o WhatsApp <strong className="text-ink">{atual}</strong>: na tela de entrar, o
-                código chega na conversa com o Publike.
+                O WhatsApp <strong className="text-ink">{atual}</strong> está vinculado a esta conta. Para entrar por ele,
+                toque em “Prefiro entrar com o WhatsApp” na tela de entrar: o código chega na conversa com o Publike.
               </>
             ) : (
-              "Opcional. Ligue o seu WhatsApp e entre com um código que chega na conversa com o Publike, sem e-mail e sem senha."
+              "Opcional. Vincule o seu WhatsApp a esta conta para entrar com um código que chega na conversa com o Publike, sem e-mail e sem senha."
             )}
           </p>
         </div>
       </div>
 
       {pronto && atual && (
-        <Aviso tipo="sucesso" titulo="WhatsApp ligado.">
+        <Aviso tipo="sucesso" titulo="WhatsApp vinculado a esta conta.">
           Da próxima vez, na tela de entrar, toque em “Prefiro entrar com o WhatsApp”.
         </Aviso>
       )}
@@ -143,10 +143,10 @@ export function WhatsappDeAcesso({
           <div className="flex flex-col gap-3">
             {confirmandoDesligar ? (
               <>
-                <p className="text-body-sm">Desligar? Você continua entrando com o e-mail.</p>
+                <p className="text-body-sm">Desvincular o WhatsApp desta conta? Você continua entrando com o e-mail.</p>
                 <div className="flex flex-wrap gap-2">
                   <Botao type="button" variante="perigo" disabled={carregando} onClick={desligar}>
-                    {carregando ? "Desligando…" : "Desligar o WhatsApp"}
+                    {carregando ? "Desvinculando…" : "Desvincular o WhatsApp"}
                   </Botao>
                   <Botao type="button" variante="secundario" disabled={carregando} onClick={() => setConfirmandoDesligar(false)}>
                     Manter
@@ -155,7 +155,7 @@ export function WhatsappDeAcesso({
               </>
             ) : (
               <Botao type="button" variante="secundario" className="self-start" onClick={() => setConfirmandoDesligar(true)}>
-                Desligar o WhatsApp
+                Desvincular o WhatsApp
               </Botao>
             )}
           </div>
@@ -210,7 +210,7 @@ export function WhatsappDeAcesso({
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
           <div className="flex flex-wrap gap-2">
             <Botao type="submit" disabled={carregando}>
-              {carregando ? "Conferindo…" : "Ligar o WhatsApp"}
+              {carregando ? "Conferindo…" : "Vincular o WhatsApp"}
             </Botao>
             <Botao type="button" variante="secundario" disabled={carregando} onClick={() => void pedir()}>
               Mandar de novo

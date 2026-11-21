@@ -24,7 +24,7 @@ export const FORA_DA_JANELA = MANDE_UM_OI;
  * mensagem do Auth (`ehForaDaJanela` em src/components/form-entrar.tsx).
  */
 export const STATUS_FORA_DA_JANELA = 403;
-export const TROCA_PELO_PERFIL = "Para ligar o WhatsApp à sua conta, use Meu perfil, no Publike.";
+export const TROCA_PELO_PERFIL = "Para vincular o WhatsApp à sua conta, use Meu perfil, no Publike.";
 export const EQUIPE_SO_COM_EMAIL = "Conta da equipe do Publike: entre com o e-mail.";
 const NAO_PASSE = "Não passe este código para ninguém: o Publike nunca pede ele por mensagem.";
 
@@ -42,7 +42,7 @@ export function textoDoCodigo(codigo: string, extra: { conta?: string | null; de
         ? `de uma conta com o e-mail ${extra.declaradas[0]}`
         : `de contas com os e-mails ${extra.declaradas.join(" e ")}`;
     partes.push(
-      `Atenção: este WhatsApp está no cadastro ${quais}. Se a conta é sua, entre por ela com o e-mail e, depois, ligue este WhatsApp em Meu perfil. Com o código acima, você cria uma conta nova.`,
+      `Atenção: este WhatsApp está no cadastro ${quais}. Se a conta é sua, entre por ela com o e-mail e, depois, vincule este WhatsApp em Meu perfil. Com o código acima, você cria uma conta nova.`,
     );
   }
   partes.push(`Digite no site para continuar. ${NAO_PASSE}`);
@@ -51,7 +51,7 @@ export function textoDoCodigo(codigo: string, extra: { conta?: string | null; de
 
 /** A mensagem do código de ligar o WhatsApp à conta (Meu perfil › Entrar também pelo WhatsApp). */
 export function textoDoCodigoDeLigar(codigo: string) {
-  return `Seu código para ligar este WhatsApp à sua conta do Publike: *${codigo}*\n\nDigite no site para confirmar. Depois, você entra no Publike com um código que chega aqui. ${NAO_PASSE}`;
+  return `Seu código para vincular este WhatsApp à sua conta do Publike: *${codigo}*\n\nDigite no site para confirmar. Depois, você entra no Publike com um código que chega aqui. ${NAO_PASSE}`;
 }
 
 /**

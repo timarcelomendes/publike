@@ -24,15 +24,15 @@ const ERROS: Record<string, string> = {
   numero_invalido: "Confira o número, com DDD. Ex.: (62) 99999-0000.",
   // a conta da equipe do Publike ou da moderação (e a suspensa ou apagada) entra só com o e-mail
   conta_invalida: "Esta conta não pode entrar pelo WhatsApp: entre com o e-mail.",
-  ja_tem: "Esta conta já entra por um WhatsApp.",
-  ja_tem_outro: "Esta conta já entra por outro WhatsApp.",
-  numero_em_uso: "Esse WhatsApp já entra em outra conta do Publike. Se ela é sua, entre por ela.",
+  ja_tem: "Esta conta já tem um WhatsApp vinculado.",
+  ja_tem_outro: "Esta conta já tem outro WhatsApp vinculado.",
+  numero_em_uso: "Esse WhatsApp já está vinculado a outra conta do Publike. Se ela é sua, entre por ela.",
   muitos_pedidos: "Muitos códigos pedidos seguidos. Espere uma hora e tente de novo.",
   fora_da_janela: MANDE_UM_OI,
   codigo_vencido: "O código venceu. Peça um novo.",
   codigo_errado: "Código errado. Confira e tente de novo.",
   muitas_tentativas: "Muitas tentativas erradas. Peça um código novo.",
-  sem_email: "Para desligar, a conta precisa entrar também com um e-mail confirmado.",
+  sem_email: "Para desvincular, a conta precisa entrar também com um e-mail confirmado.",
 };
 
 const DESLIGADO = "O entrar pelo WhatsApp não está ligado agora.";
@@ -110,7 +110,7 @@ export async function confirmarCodigoParaLigar(numero: string, codigo: string): 
       erro:
         erro === "codigo_errado" && typeof r.restam === "number"
           ? `Código errado. ${r.restam === 1 ? "Resta 1 tentativa" : `Restam ${r.restam} tentativas`}.`
-          : (ERROS[erro] ?? "Não deu para ligar agora."),
+          : (ERROS[erro] ?? "Não deu para vincular agora."),
       restam: r.restam,
     };
   }
@@ -129,7 +129,7 @@ export async function desligarWhatsappDoLogin(): Promise<ResultadoWhatsappDeAces
     p_chave: acesso.chave,
     p_usuario: usuario.id,
   });
-  if (error) return { ok: false, erro: "Não deu para desligar agora. Tente de novo em instantes." };
+  if (error) return { ok: false, erro: "Não deu para desvincular agora. Tente de novo em instantes." };
   if (data === "sem_email") return { ok: false, erro: ERROS.sem_email };
   refresh();
   return { ok: true };

@@ -175,7 +175,7 @@ async function main() {
   conferir(
     nova.includes("Atenção: este WhatsApp está no cadastro de uma conta com o e-mail m•••@gmail.com.") &&
       nova.includes("entre por ela com o e-mail") &&
-      nova.includes("ligue este WhatsApp em Meu perfil") &&
+      nova.includes("vincule este WhatsApp em Meu perfil") &&
       nova.includes("Com o código acima, você cria uma conta nova."),
     "conta nova: avisa da conta com o número no cadastro",
     nova,
@@ -233,7 +233,7 @@ async function main() {
 
   // 5. a mensagem do código de ligar
   const ligar = c.textoDoCodigoDeLigar("246810");
-  conferir(ligar.includes("*246810*") && ligar.includes("ligar este WhatsApp à sua conta") && ligar.includes("Não passe"), "código de ligar: o texto", ligar);
+  conferir(ligar.includes("*246810*") && ligar.includes("vincular este WhatsApp à sua conta") && ligar.includes("Não passe"), "código de ligar: o texto", ligar);
 
   // 6. a impressão do código de ligar: sem o segredo, null; com ele, muda com a pessoa, o número e o código
   conferir(c.impressaoDoCodigoDeLigar("u1", "5562982028335", "123456") === null, "impressão: sem o segredo, null");
