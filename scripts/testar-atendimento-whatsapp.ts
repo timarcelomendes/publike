@@ -109,6 +109,8 @@ globalThis.fetch = (async (url: any, init: any) => {
     const t = corpo.p_texto ?? "";
     const vaga = (id: string, titulo: string, x: Record<string, unknown> = {}) => ({ ...vagaCozinheira, id: id.repeat(36).slice(0, 36), titulo, ...x });
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
+    // atendimento ao público não está em título nenhum; atendente está
+    if (t === "atendente") return json([vaga("7", "Atendente de loja"), vaga("e", "Atendente de balcão")]);
     // garçom de freela: um anúncio de quem procura (fica fora) e uma vaga de verdade
     if (t === "garçom" && corpo.p_regime === "freelance")
       return json([vaga("5", "Sou garçom freelancer, responsável e pontual", { regime: "freelance" }), vaga("6", "Garçom para eventos", { regime: "freelance" })]);
@@ -1349,6 +1351,30 @@ async function main() {
       !a.pareceQuemProcura("Garçom para eventos") &&
       !a.pareceQuemProcura("Sorveteria contrata atendente"),
     "o anúncio de quem procura trabalho",
+  );
+
+  // atendente é atendimento ao público (21/11/2026): as de atendente, como o mesmo trabalho, sem o "não achei"
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "atendimento ao público", funcoes: ["atendimento ao público"], parecidas: [], jeito: [], categoria: "todas", cidade: "Goiânia", bairro: "Setor Oeste", fora: "" },
+  });
+  r = await rodar("atendimento ao público, setor oeste", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "atendimento ao público, setor oeste" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Atendente de loja*") &&
+      !corpo(r.msgs[0]).includes("não achei") &&
+      corpo(r.msgs[0]).includes("mesmo tipo de trabalho"),
+    "atendimento ao público: as de atendente, como o mesmo trabalho",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.funcoesEquivalentes("atendimento ao público").includes("atendente") &&
+      a.funcoesEquivalentes("atendente").includes("atendimento ao público") &&
+      !a.funcoesEquivalentes("atendente de caixa").includes("atendente"),
+    "atendente e atendimento ao público são o mesmo trabalho",
   );
 
   // o link curto de quem veio do anúncio: a letra da campanha antes do código (21/11/2026: no fim, ficava estranho)

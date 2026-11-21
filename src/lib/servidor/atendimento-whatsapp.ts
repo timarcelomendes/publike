@@ -485,6 +485,9 @@ const MESMO_TRABALHO: { chave: RegExp; nomes: string[] }[] = [
   { chave: /^(porteiro|porteira|agente de portaria|controlador de acesso|controladora de acesso)( noturno| diurno)?$/, nomes: ["porteiro", "agente de portaria", "controlador de acesso"] },
   { chave: /^(coletor de lixo|coletor|gari|ajudante de coleta)$/, nomes: ["coletor", "gari", "ajudante de coleta"] },
   { chave: /^(operador de caixa|operadora de caixa|caixa|atendente de caixa|frente de caixa)$/, nomes: ["operador de caixa", "caixa", "atendente de caixa"] },
+  // 21/11/2026 (Marcelo: "atendente é atendimento ao público"; "Agora não achei vaga de atendimento ao público" com
+  // vagas de atendente no ar)
+  { chave: /^(atendente|atendimento|atendimento ao (publico|cliente)|atendente de (loja|balcao|atendimento)|balconista)$/, nomes: ["atendente", "atendimento ao público", "atendente de loja", "atendente de balcão", "balconista"] },
 ];
 export function funcoesEquivalentes(funcao: string) {
   const partes = funcao.trim().split(/\s+/);
