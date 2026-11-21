@@ -626,6 +626,40 @@ export function FormEntrar({
         </>
       )}
 
+      {modo !== "celular" && (
+        // quem prefere senha escolhe aqui, no mesmo e-mail (21/11/2026: "tem gente que gosta de senha, deixe uma opção
+        // mais elegante")
+        <div role="radiogroup" aria-label="Como entrar com o e-mail" className="grid grid-cols-2 gap-1 rounded-pill border border-line bg-surface-200 p-1">
+          {(
+            [
+              ["email", "Link no e-mail", Mail],
+              ["senha", "E-mail e senha", KeyRound],
+            ] as const
+          ).map(([qual, rotulo, Icone]) => (
+            <button
+              key={qual}
+              type="button"
+              role="radio"
+              aria-checked={modo === qual}
+              onClick={() => {
+                setModo(qual);
+                setErro(null);
+                if (qual === "email") {
+                  setSenha("");
+                  setPediuSenhaNova(false);
+                }
+              }}
+              className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-pill px-3 text-body-sm font-medium transition-colors ${
+                modo === qual ? "bg-surface-100 text-ink shadow-card" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <Icone aria-hidden className="size-4" />
+              {rotulo}
+            </button>
+          ))}
+        </div>
+      )}
+
       {modo === "celular" ? (
         <form onSubmit={pedirCodigo} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -722,18 +756,6 @@ export function FormEntrar({
           >
             Esqueci a senha
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setModo("email");
-              setSenha("");
-              setErro(null);
-              setPediuSenhaNova(false);
-            }}
-            className="min-h-11 text-label text-terra-text underline"
-          >
-            Receber o link no e-mail
-          </button>
         </form>
       ) : (
         <form onSubmit={pedirLink} className="flex flex-col gap-4">
@@ -758,16 +780,6 @@ export function FormEntrar({
             <Mail aria-hidden />
             {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber link de acesso"}
           </Botao>
-          <button
-            type="button"
-            onClick={() => {
-              setModo("senha");
-              setErro(null);
-            }}
-            className="min-h-11 text-label text-terra-text underline"
-          >
-            Entrar com senha
-          </button>
         </form>
       )}
       {verificacao}
