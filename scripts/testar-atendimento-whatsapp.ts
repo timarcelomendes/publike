@@ -58,6 +58,7 @@ const vagaCozinheira = {
 const json = (x: unknown, status = 200) =>
   new Response(JSON.stringify(x), { status, headers: { "content-type": "application/json" } });
 
+let semAprendiz = true;
 globalThis.fetch = (async (url: any, init: any) => {
   const u = String(url);
   const corpo = typeof init?.body === "string" ? JSON.parse(init.body) : null;
@@ -100,6 +101,10 @@ globalThis.fetch = (async (url: any, init: any) => {
     buscas.push(corpo);
     if (semVagaNenhuma) return json([]);
     if (recentes && !corpo.p_texto && corpo.p_ordem === "recentes") return json([vagaCozinheira]);
+    // os programas vão pelo regime (21/11/2026): estágio tem, jovem aprendiz não
+    if (corpo.p_regime === "estagio")
+      return json([{ ...vagaCozinheira, id: "e".repeat(8) + vagaCozinheira.id.slice(8), titulo: "Estágio em Direito", regime: "estagio" }]);
+    if (corpo.p_regime === "aprendiz" || corpo.p_regime === "trainee") return json(semAprendiz ? [] : [{ ...vagaCozinheira, id: "f".repeat(8) + vagaCozinheira.id.slice(8), titulo: "Auxiliar administrativo", regime: "aprendiz" }]);
     const t = corpo.p_texto ?? "";
     const vaga = (id: string, titulo: string, x: Record<string, unknown> = {}) => ({ ...vagaCozinheira, id: id.repeat(36).slice(0, 36), titulo, ...x });
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
@@ -1219,6 +1224,34 @@ async function main() {
   r = await rodar("Quero contratar", { historico: [{ de: "pessoa", texto: "Quero contratar" }] }, { payload: "a:contratar" });
   conferir(r.msgs.length === 1 && corpo(r.msgs[0]).includes("Para contratar"), "teto: quem contrata segue normal", corpo(r.msgs[0]));
   teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
+
+  // jovem aprendiz (21/11/2026): sem vaga de aprendiz, as de estágio, ditas assim; com vaga de aprendiz, pelo regime
+  respostaIA = ia("Vou ver as vagas de jovem aprendiz.", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "jovem aprendiz", funcoes: ["jovem aprendiz"], jeito: ["sem_experiencia"], categoria: "todas", cidade: "", bairro: "" },
+  });
+  r = await rodar("Me interessei na vaga de jovem aprendiz", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "Me interessei na vaga de jovem aprendiz" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("Agora não tem vaga de jovem aprendiz no ar. Olha as de estágio, que também são para quem está começando") &&
+      corpo(r.msgs[0]).includes("*Estágio em Direito*") && !corpo(r.msgs[0]).includes("sem experiência"),
+    "jovem aprendiz sem vaga: as de estágio",
+    corpo(r.msgs[0]),
+  );
+  semAprendiz = false;
+  r = await rodar("Me interessei na vaga de jovem aprendiz", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "Me interessei na vaga de jovem aprendiz" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Auxiliar administrativo*") && !corpo(r.msgs[0]).includes("Estágio"),
+    "jovem aprendiz: a vaga de aprendiz pelo regime, mesmo sem a palavra no título",
+    corpo(r.msgs[0]),
+  );
+  semAprendiz = true;
 
   // o link curto de quem veio do anúncio: a letra da campanha antes do código (21/11/2026: no fim, ficava estranho)
   conferir(

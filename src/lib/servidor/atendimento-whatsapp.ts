@@ -518,6 +518,21 @@ const AREAS: { chave: RegExp; termos: string[] }[] = [
 ];
 
 /** Os termos da área de uma função ("faxineira" → serviços gerais, limpeza, zelador...). */
+/**
+ * Os programas de quem está começando (21/11/2026; Marcelo, com "Me interessei na vaga de jovem aprendiz" sem resposta
+ * e vagas de estágio no ar: "não pode ter esse problema"): jovem aprendiz, estágio e trainee são o regime da vaga, nem
+ * sempre o título. A busca vai pelo regime e, sem vaga do programa pedido, oferece os outros, ditos pelo nome.
+ */
+export type Programa = "aprendiz" | "estagio" | "trainee";
+export const NOME_DO_PROGRAMA: Record<Programa, string> = { aprendiz: "jovem aprendiz", estagio: "estágio", trainee: "trainee" };
+export function programaDe(funcao: string): Programa | null {
+  const f = simples(funcao);
+  if (/\baprendiz/.test(f)) return "aprendiz";
+  if (/\bestagi/.test(f)) return "estagio";
+  if (/\btrainee\b/.test(f)) return "trainee";
+  return null;
+}
+
 export function termosDaArea(funcao: string) {
   const f = simples(funcao);
   return AREAS.filter((a) => a.chave.test(f)).flatMap((a) => a.termos);
@@ -695,8 +710,14 @@ async function procurarVagas(
     semOJeito = true;
     return true;
   };
-  const tentar = async (texto: string | null, lugar: Record<string, unknown>, categoria: string | null = null) => {
-    const regime = jeitos.includes("diaria") ? "diaria" : jeitos.includes("freelance") ? "freelance" : null;
+  const tentar = async (
+    texto: string | null,
+    lugar: Record<string, unknown>,
+    categoria: string | null = null,
+    /** o programa (jovem aprendiz, estágio, trainee): a busca pelo regime da vaga */
+    programa: Programa | null = null,
+  ) => {
+    const regime = programa ?? (jeitos.includes("diaria") ? "diaria" : jeitos.includes("freelance") ? "freelance" : null);
     const { data, error } = await criarClientePublico().rpc("buscar_anuncios", {
       ...lugar,
       p_tipo: "vaga",
@@ -824,7 +845,37 @@ async function procurarVagas(
     await juntar(parecidas, perto, true, false);
     await juntar(parecidas, longe, true, true);
   };
-  if (!funcoes.length) {
+  // jovem aprendiz, estágio, trainee: pelo regime; sem vaga do programa pedido, os outros programas
+  let outroPrograma: Programa | null = null;
+  const programas = funcoes.map((f) => ({ f, p: programaDe(f) })).filter((x): x is { f: string; p: Programa } => Boolean(x.p));
+  if (funcoes.length && programas.length === funcoes.length) {
+    // o programa já é de quem está começando: o "sem experiência" não corta nada
+    jeitos = jeitos.filter((j) => j !== "sem_experiencia");
+    const doPrograma = async (p: Programa, termo: string, parecida: boolean) => {
+      for (const [lugar, eLonge] of [[perto, false], [longe, true]] as const)
+        for (const a of await tentar(null, lugar, null, p)) {
+          if (achadas.length >= max) return;
+          if (ids.has(codigoDaVaga(a.id))) {
+            if (!parecida && jaMandadas.has(codigoDaVaga(a.id))) repetidas++;
+            continue;
+          }
+          ids.add(codigoDaVaga(a.id));
+          achadas.push({ a, termo, parecida, longe: eLonge });
+        }
+    };
+    for (const { f, p } of programas) await doPrograma(p, f, false);
+    if (!achadas.length && !repetidas)
+      for (const p of (["aprendiz", "estagio", "trainee"] as const).filter((x) => !programas.some((y) => y.p === x))) {
+        await doPrograma(p, NOME_DO_PROGRAMA[p], true);
+        if (achadas.length) {
+          outroPrograma = p;
+          break;
+        }
+      }
+  }
+  if (achadas.length || (programas.length && repetidas)) {
+    // achou pelo programa (ou as do programa já foram todas)
+  } else if (!funcoes.length) {
     await semFuncao();
     if (!achadas.length && soltarOJeito()) await semFuncao();
   } else {
@@ -905,6 +956,8 @@ async function procurarVagas(
       : centro
         ? `Olha ${mais1 ? "mais " : "as "}vagas no ar mais perto de você, de todas as funções:`
         : `Olha ${mais1 ? "mais " : "as "}vagas que entraram no ar agora há pouco, de todas as funções:`;
+  else if (outroPrograma)
+    abertura = `Agora não tem vaga de ${listaE(funcoes)} no ar. Olha as de ${NOME_DO_PROGRAMA[outroPrograma]}, que também são para quem está começando:`;
   else if (usadas[0].outras)
     abertura = `Agora não achei vaga de ${listaE(funcoes)}${jeitoNao} nem parecida. Olha as vagas no ar mais perto de você, de outras funções: abra e veja se alguma te interessa.`;
   else if (parecidas)
