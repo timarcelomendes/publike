@@ -116,6 +116,16 @@ const SEGREDOS = [
     ],
   },
   {
+    // o código de entrar pelo WhatsApp (20/11/2026): o Supabase pede o segredo no formato "v1,whsec_<base64>"
+    valor: "sms",
+    nome: "SUPABASE_SMS_HOOK_SECRET (entrar com o código pelo WhatsApp)",
+    passos: [
+      "No Supabase (Authentication › Auth Hooks › Send SMS hook, tipo HTTPS, URL https://publike.org/api/auth/codigo-whatsapp), cole este valor em Secret e clique em Create hook (ou Update hook).",
+      "Na Vercel (Settings › Environment Variables), crie SUPABASE_SMS_HOOK_SECRET em Production com este mesmo valor e NEXT_PUBLIC_LOGIN_CELULAR com o valor true. Faça um Redeploy.",
+      "Para conferir: abra https://publike.org/api/auth/codigo-whatsapp no navegador (diz se o segredo está na Vercel). Por último, ligue o Phone em Sign In / Providers.",
+    ],
+  },
+  {
     valor: "outro",
     nome: "Outro segredo",
     passos: ["Cole o valor no lugar que pediu o segredo (só o valor, sem o nome na frente)."],
@@ -123,8 +133,10 @@ const SEGREDOS = [
 ] as const;
 
 /** 32 bytes aleatórios em base64url, gerados no navegador: nada passa pelo servidor nem fica guardado. */
-function segredoNovo() {
+function segredoNovo(tipo?: string) {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
+  // o gancho do Supabase (Standard Webhooks) quer o base64 comum, com o "v1,whsec_" na frente
+  if (tipo === "sms") return `v1,whsec_${btoa(String.fromCharCode(...bytes))}`;
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
@@ -161,7 +173,7 @@ export function GeradorDeSegredo() {
         <Botao
           type="button"
           onClick={() => {
-            setValor(segredoNovo());
+            setValor(segredoNovo(tipo));
             setCopiado(false);
           }}
         >
