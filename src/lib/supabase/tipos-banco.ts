@@ -2888,6 +2888,14 @@ export type Database = {
       servidor_perguntar_se_respondeu: { Args: { p_chave: string; p_limite?: number }; Returns: number };
       // o aviso do vencimento da vaga (migração 20270529120000)
       servidor_avisar_vencimentos: { Args: { p_chave: string; p_limite?: number }; Returns: number };
+      // Procuradas sem vaga (migração 20270822120000)
+      servidor_procura_sem_vaga: {
+        Args: { p_chave: string; p_funcoes: string[]; p_cidade: string | null; p_regiao: string | null; p_quem: string; p_origem?: string };
+        Returns: number;
+      };
+      servidor_avisar_procuradas: { Args: { p_chave: string; p_limite?: number; p_agora?: boolean }; Returns: number };
+      admin_procuradas: { Args: { p_dias?: number | null }; Returns: Json };
+      admin_procuradas_config: { Args: { p_ligado: boolean | null; p_minimo: number | null; p_dias: number | null }; Returns: undefined };
       minhas_perguntas_de_resposta: {
         Args: Record<string, never>;
         Returns: { anuncio_id: string; titulo: string; empresa_nome: string; perguntas: number }[];

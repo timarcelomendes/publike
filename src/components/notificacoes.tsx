@@ -146,6 +146,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   copia_aberta: QrCode,
   rota_pergunta: QrCode,
   interesse_local: Store,
+  procura_na_regiao: UserSearch,
 };
 
 type Notificacao = {

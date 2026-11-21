@@ -578,6 +578,26 @@ export async function perguntarConquistas(limite = 100): Promise<{ perguntas: nu
 }
 
 /**
+ * Procuradas sem vaga (migração 20270822120000): uma vez por semana, com o envio ligado no Admin, a empresa que já
+ * anunciou a função e as agências ficam sabendo das funções procuradas sem vaga. `agora`: o "Mandar agora" do Admin.
+ */
+export async function avisarProcuradas(agora = false): Promise<{ avisos: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisos: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_procuradas", {
+    p_chave: acesso.chave,
+    p_limite: 50,
+    p_agora: agora,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { avisos: 0 };
+    console.error("Publike: falha ao avisar as procuradas sem vaga:", error.message);
+    return { avisos: 0, motivo: "Não foi possível avisar as procuradas sem vaga." };
+  }
+  return { avisos: Number(data ?? 0) };
+}
+
+/**
  * O vencimento da vaga (migração 20270529120000): para quem publicou, 2 dias antes, no dia e 7 dias depois (se não
  * renovou), das 8h às 20h. Sem a migração, nada (e sem `motivo`).
  */

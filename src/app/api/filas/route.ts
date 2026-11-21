@@ -21,6 +21,7 @@ import {
   perguntarConquistas,
   perguntarSeRespondeu,
   avisarVencimentos,
+  avisarProcuradas,
   perguntarRotas,
   liberarContatosParados,
   removerAgendados,
@@ -88,6 +89,8 @@ export async function GET(request: Request) {
   const respondeu = await comTempo(() => perguntarSeRespondeu());
   // a vaga que vai sair do ar (2 dias antes), saiu (no dia) e continua fora (7 dias depois): o lembrete de renovar
   const vencimentos = await comTempo(() => avisarVencimentos());
+  // procuraram e não acharam vaga: a empresa que já anunciou a função e as agências (uma vez por semana)
+  const procuradas = await comTempo(() => avisarProcuradas());
   // a rota do currículo: uma semana depois de entregar, "Alguém te chamou?" (migração 20270606120000)
   const rotas = await comTempo(() => perguntarRotas());
   // 7 dias depois do match (ou de ir para Contratado): "Deu certo?" para a pessoa e "Começou? Chamaria de novo?" para
@@ -190,6 +193,7 @@ export async function GET(request: Request) {
     lembretes.motivo,
     respondeu.motivo,
     vencimentos.motivo,
+    procuradas.motivo,
     rotas.motivo,
     conquistas.motivo,
     curriculos.motivo,
@@ -243,6 +247,7 @@ export async function GET(request: Request) {
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       te_respondeu: respondeu.perguntas,
       vencimentos: vencimentos.avisos,
+      procuradas: procuradas.avisos,
       rotas_perguntadas: rotas.perguntas,
       conquistas: conquistas.perguntas,
       curriculos_lembrados: curriculos.lembradas,

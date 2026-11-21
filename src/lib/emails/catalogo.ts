@@ -63,6 +63,8 @@ const QUEM: Record<string, QuemRecebe[]> = {
   copia_aberta: ["procura"],
   rota_pergunta: ["procura"],
   interesse_local: ["contrata"],
+  // procuraram e não acharam vaga (migração 20270822120000)
+  procura_na_regiao: ["contrata"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],

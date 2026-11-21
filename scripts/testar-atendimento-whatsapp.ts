@@ -59,6 +59,7 @@ const json = (x: unknown, status = 200) =>
   new Response(JSON.stringify(x), { status, headers: { "content-type": "application/json" } });
 
 let semAprendiz = true;
+let procuras: any[] = [];
 globalThis.fetch = (async (url: any, init: any) => {
   const u = String(url);
   const corpo = typeof init?.body === "string" ? JSON.parse(init.body) : null;
@@ -213,6 +214,11 @@ async function main() {
       if (nome === "servidor_whatsapp_vagas_enviadas") return { data: vagasJaEnviadas, error: null };
       // o teto do mês (migração 20270808120000)
       if (nome === "servidor_whatsapp_teto") return { data: teto, error: null };
+      // as funções sem vaga (migração 20270822120000)
+      if (nome === "servidor_procura_sem_vaga") {
+        procuras.push(args);
+        return { data: 1, error: null };
+      }
       saidas.push({ nome, ...args });
       return { data: null, error: null };
     },
@@ -1260,10 +1266,18 @@ async function main() {
     acao: "buscar_vagas",
     busca: { texto: "jovem aprendiz", funcoes: ["jovem aprendiz"], jeito: ["sem_experiencia"], categoria: "todas", cidade: "", bairro: "" },
   });
+  procuras = [];
   r = await rodar("Me interessei na vaga de jovem aprendiz", {
     perfil: "trabalho",
     historico: [...procurando, { de: "pessoa", texto: "Me interessei na vaga de jovem aprendiz" }],
   });
+  await new Promise((x) => setTimeout(x, 20));
+  conferir(
+    procuras.length === 1 && procuras[0].p_funcoes.join("|") === "jovem aprendiz" && procuras[0].p_quem === "557799255259" && procuras[0].p_origem === "whatsapp",
+    "anota a função sem vaga (só a função, a cidade e a conversa)",
+    procuras,
+  );
+  procuras = [];
   conferir(
     corpo(r.msgs[0]).includes("Agora não tem vaga de jovem aprendiz no ar. Olha as de estágio, que também são para quem está começando") &&
       corpo(r.msgs[0]).includes("*Estágio em Direito*") && !corpo(r.msgs[0]).includes("sem experiência"),
@@ -1275,6 +1289,8 @@ async function main() {
     perfil: "trabalho",
     historico: [...procurando, { de: "pessoa", texto: "Me interessei na vaga de jovem aprendiz" }],
   });
+  await new Promise((x) => setTimeout(x, 20));
+  conferir(procuras.length === 0, "com vaga, não anota nada", procuras);
   conferir(
     corpo(r.msgs[0]).includes("*Auxiliar administrativo*") && !corpo(r.msgs[0]).includes("Estágio"),
     "jovem aprendiz: a vaga de aprendiz pelo regime, mesmo sem a palavra no título",

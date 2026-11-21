@@ -682,6 +682,8 @@ async function procurarVagas(
   max = 4,
   /** as vagas já mandadas nesta conversa: não vão de novo ("Tem mais vagas", 20/11/2026) */
   jaMandadas: ReadonlySet<string> = new Set(),
+  /** as funções que ela disse e não tinham vaga no ar (Admin › Procuradas sem vaga, migração 20270822120000) */
+  anotarSemVaga?: (funcoes: string[]) => void,
 ) {
   const centro = onde.ponto ?? (onde.local ? pontoDoLocal(onde.local) : null);
   // perto: o ponto que ela mandou, ou o bairro primeiro, depois a região e a cidade (quem corta é o raio)
@@ -903,6 +905,7 @@ async function procurarVagas(
       }
     }
   }
+  if (!achadas.length && !repetidas) anotarSemVaga?.(funcoes);
   if (!achadas.length) return repetidas ? { jaForam: true as const } : null;
 
   // as de perto primeiro
@@ -953,6 +956,7 @@ async function procurarVagas(
       !achados.some((t) => simples(t) === simples(f)) &&
       !funcoesRepetidas.has(f),
   );
+  if (semNada.length) anotarSemVaga?.(semNada);
   // as da função que já foram, quando a função não aparece de novo agora
   const jaForam = funcoes.filter((f) => funcoesRepetidas.has(f) && !usadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f));
   const aqui = onde.local ? " perto de você" : "";
@@ -1022,6 +1026,7 @@ async function mensagemDaBusca(
   textos: string[] = [],
   /** as vagas que já foram nesta conversa */
   jaMandadas: ReadonlySet<string> = new Set(),
+  anotarSemVaga?: (funcoes: string[]) => void,
 ) {
   const texto = busca?.texto?.trim().slice(0, 40) ?? "";
   const jeito = [...new Set([...(busca?.jeito ?? []).filter(ehJeito), ...jeitoDoTexto(`${texto} ${textos.join(" ")}`)])];
@@ -1031,6 +1036,7 @@ async function mensagemDaBusca(
     { local },
     restam,
     jaMandadas,
+    anotarSemVaga,
   );
   if (vagas && "jaForam" in vagas) {
     // "Tem mais vagas" (20/11/2026; Marcelo: "precisa responder melhor algumas perguntas"): todas as da função já foram,
@@ -1330,6 +1336,24 @@ export async function retomarConversa(conversa: string, numero: string, opcoes: 
     { wamid: u.wamid, numero, texto: ultima.texto, payload: botao?.id ?? null, nome: null, origem: null },
     { retomada: true, espera: { texto: 0, botao: 0 } },
   );
+}
+
+/**
+ * As funções que a pessoa procurou e não tinham vaga no ar (migração 20270822120000): só a função, a cidade e a região;
+ * a conversa vai só para o banco contar pessoas sem repetir (ele guarda uma impressão). Sem a migração, nada.
+ */
+async function anotarProcuraSemVaga(banco: ClienteBanco, chave: string, conversa: string, funcoes: string[], local: Local | null) {
+  const fs = unicos(funcoes.map((f) => f.trim()).filter((f) => f.length >= 3), 3);
+  if (!fs.length) return;
+  const { error } = await banco.rpc("servidor_procura_sem_vaga", {
+    p_chave: chave,
+    p_funcoes: fs,
+    p_cidade: local?.cidade ?? null,
+    p_regiao: local?.regiao ?? null,
+    p_quem: conversa,
+    p_origem: "whatsapp",
+  });
+  if (error && error.code !== "PGRST202") console.error("Publike: não deu para anotar a procura sem vaga:", error.message);
 }
 
 /** O teto do mês (migração 20270808120000); sem a migração ou com erro, null (segue normal). */
@@ -2046,7 +2070,9 @@ export async function atenderConversa(
         botao: funcao ? { titulo: "Ver as vagas no site", caminho: `/?${q}` } : LINKS.vagas,
       });
     }
-    const r = await mensagemDaBusca(plano.busca, local, restam, textos, vagasJaMandadas(e.historico));
+    const r = await mensagemDaBusca(plano.busca, local, restam, textos, vagasJaMandadas(e.historico), (fs) =>
+      void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+    );
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
     return saida(r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
       perfil: perfil ?? "trabalho",
