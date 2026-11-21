@@ -12,6 +12,7 @@ import {
   caminhoDeHoje,
   caminhoDosProgramas,
   caminhoDoBairro,
+  caminhoDeAnunciar,
   cidadeDoSlug,
   CIDADES_PRINCIPAIS,
   descricaoDaBusca,
@@ -249,8 +250,9 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
         <MapPin aria-hidden />
         Ver no mapa, perto de casa
       </BotaoLink>
-      <BotaoLink href={vaga ? "/publicar" : "/painel/servicos"}>
-        {vaga ? "Publicar vaga grátis" : "Oferecer meus serviços"}
+      {/* quem contrata vai para a página de anunciar na cidade (o link que dá força a ela na busca), que publica */}
+      <BotaoLink href={vaga ? caminhoDeAnunciar(cidade) : "/painel/servicos"}>
+        {vaga ? `Anunciar vaga grátis em ${cidade}` : "Oferecer meus serviços"}
       </BotaoLink>
     </div>
   );

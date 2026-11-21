@@ -31,6 +31,7 @@ import { CAMINHO_DOCUMENTACAO } from "@/lib/api-publica";
 import { SITE_URL } from "@/lib/config";
 import { LIMITES_CONTA, REGIMES } from "@/lib/constantes";
 import { formatarNumero } from "@/lib/formato";
+import { caminhoDeAnunciar, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { CIDADES_ATENDIDAS, ONDE_FUNCIONA } from "@/lib/pracas";
 import { GRATIS_PADRAO } from "@/lib/recursos-pagos";
 import { limitesDaApi, type LimitesDaApi } from "@/lib/servidor/limites-da-api";
@@ -39,7 +40,7 @@ import { contatoDasVagasPeloWhatsapp } from "@/lib/servidor/numero-do-publike";
 import { TEXTO_PRONTO_DO_WHATSAPP } from "@/lib/vagas-pelo-whatsapp";
 
 export const metadata: Metadata = {
-  title: "Para empresas: publique sua vaga grátis",
+  title: "Anunciar vaga de emprego grátis: publique e contrate perto",
   description: `Loja, comércio do bairro ou empresa média: publique a vaga de graça e contrate gente que mora perto, em ${ONDE_FUNCIONA}. Você escolhe com quem conversar.`,
   alternates: { canonical: "/empresas" },
 };
@@ -413,6 +414,18 @@ export default async function Empresas() {
               </span>
             </p>
           )}
+          <p className="mt-4 max-w-2xl text-body-sm text-ink-muted">
+            Anunciar vaga grátis em{" "}
+            {CIDADES_PRINCIPAIS.map((c, i) => (
+              <span key={c}>
+                {i > 0 && (i === CIDADES_PRINCIPAIS.length - 1 ? " e " : ", ")}
+                <Link href={caminhoDeAnunciar(c)} className="text-ink underline underline-offset-2 hover:text-terra-text">
+                  {c}
+                </Link>
+              </span>
+            ))}
+            .
+          </p>
           <p className="mt-6 flex max-w-2xl items-start gap-2 text-body-sm text-ink-muted">
             <CalendarClock aria-hidden className="mt-0.5 size-4 shrink-0 text-terra-text" />
             <span>

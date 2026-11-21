@@ -65,6 +65,14 @@ export function caminhoDeHoje(cidade: string) {
   return `/vagas/${slugDaCidade(cidade)}/${SLUG_HOJE}`;
 }
 
+/**
+ * Para quem contrata (21/11/2026; Marcelo: "quero que o orgânico funcione melhor para pessoas que publicam vagas"):
+ * /anunciar-vaga/goiania, a página da busca "anunciar vaga de emprego grátis em Goiânia" e das IAs.
+ */
+export function caminhoDeAnunciar(cidade: string) {
+  return `/anunciar-vaga/${slugDaCidade(cidade)}`;
+}
+
 /** "em Goiânia", "em Aparecida de Goiânia". */
 export function emCidade(cidade: string) {
   return `em ${cidade}`;

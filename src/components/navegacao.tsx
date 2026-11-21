@@ -5,7 +5,7 @@ import { BarraInferiorAtiva } from "./barra-inferior-ativa";
 import { BarraInferiorBase } from "./barra-inferior-base";
 import { BotaoInstalarApp } from "./instalar-app";
 import { RedesDoPublike } from "./redes-do-publike";
-import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
+import { caminhoDaBusca, caminhoDeAnunciar, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloSlug } from "@/lib/funcoes-das-paginas";
 import { Container, LARGO_NO_PAINEL, Logo } from "./ui/basicos";
 import { navegacaoDaConta } from "@/lib/servidor/navegacao";
@@ -141,6 +141,17 @@ export function Rodape() {
             ))}
           </nav>
         ))}
+        <nav aria-label="Anunciar vaga por cidade">
+          <span className="text-ink">Anunciar vaga grátis em</span>{" "}
+          {CIDADES_PRINCIPAIS.map((c, i) => (
+            <span key={c}>
+              {i > 0 && <span className="text-ink-muted"> · </span>}
+              <Link href={caminhoDeAnunciar(c)} className={link}>
+                {c}
+              </Link>
+            </span>
+          ))}
+        </nav>
         <nav aria-label="Vagas por função">
           <span className="text-ink">Vagas por função em Goiânia:</span>{" "}
           {FUNCOES_DO_RODAPE.map((f, i) => (

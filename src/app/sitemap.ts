@@ -7,6 +7,7 @@ import { noticiasPublicadas } from "@/lib/servidor/noticias";
 import {
   caminhoDaBusca,
   caminhoDasRecentes,
+  caminhoDeAnunciar,
   caminhoDeHoje,
   caminhoDosProgramas,
   caminhoDoBairro,
@@ -160,6 +161,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/gratis`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/empresas`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/empresas/fim-da-6x1`, changeFrequency: "monthly", priority: 0.6 },
+    ...CIDADES_PRINCIPAIS.map((c) => ({
+      url: `${SITE_URL}${caminhoDeAnunciar(c)}`,
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    })),
     { url: `${SITE_URL}/profissionais`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/privacidade`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/cookies`, changeFrequency: "yearly", priority: 0.2 },

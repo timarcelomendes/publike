@@ -5,11 +5,13 @@ import { formatarMoeda } from "@/lib/formato";
 import {
   caminhoDaBusca,
   caminhoDasRecentes,
+  caminhoDeAnunciar,
   caminhoDeHoje,
   caminhoDosProgramas,
   CIDADES_PRINCIPAIS,
 } from "@/lib/paginas-busca";
 import { ONDE_FUNCIONA, PRACAS } from "@/lib/pracas";
+import { contatoDasVagasPeloWhatsapp } from "@/lib/servidor/numero-do-publike";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { quantasVagas, resumoDoDia } from "@/lib/servidor/vagas-hoje";
 
@@ -37,6 +39,8 @@ export async function GET() {
   // os números do dia: as cidades principais com vaga no ar (a de cada praça primeiro)
   const resumos = (await Promise.all(CIDADES_PRINCIPAIS.map((c) => resumoDoDia(c)))).filter((r) => r.total > 0);
   const daPraca = resumos.filter((r) => PRACAS.some((p) => p.cidade === r.cidade));
+  // o WhatsApp de publicar vaga (sem ele ligado, nada)
+  const contato = await contatoDasVagasPeloWhatsapp();
   const principal = daPraca[0] ?? resumos[0];
   const link = (caminho: string) => `${SITE_URL}${caminho}`;
   const { noAr } = LIMITES_CONTA.comum;
@@ -77,7 +81,14 @@ export async function GET() {
         ]
       : []),
     `- **Tem vaga de estágio e jovem aprendiz?** Sim: [estágio e jovem aprendiz em ${PRACAS[0].cidade}](${link(caminhoDosProgramas(PRACAS[0].cidade))}).`,
-    `- **Como uma empresa publica uma vaga?** Em [Para empresas](${link("/empresas")}): cria a conta, publica e recebe os candidatos de perto, de graça.`,
+    `- **Como uma empresa publica uma vaga?** Em [Para empresas](${link("/empresas")}): cria a conta, publica e recebe os candidatos de perto, de graça.${contato ? ` Ou manda a foto do cartaz, o print ou o texto da vaga para o WhatsApp do Publike, ${contato.exibicao} (https://wa.me/${contato.numero}): a vaga volta pronta para conferir e publicar.` : ""}`,
+    "",
+    "## Para quem contrata",
+    "",
+    `- **Onde anunciar vaga de emprego grátis em Goiânia e região?** No Publike: publicar a vaga, ver todos os candidatos e conversar no WhatsApp é grátis, sem plano e sem pagar por currículo (até ${noAr} vagas no ar por conta). Quem mora perto vê primeiro, com a distância e o tempo de ônibus.`,
+    "- **Como os candidatos chegam?** Quem tem interesse curte a vaga. A empresa vê o perfil, o currículo e a nota de quanto a pessoa combina, e aceita quem quiser; aceitou, o WhatsApp dos dois aparece.",
+    "- **Que vagas dá para anunciar?** Com carteira assinada, temporária, intermitente, diária, freela, estágio, jovem aprendiz, comissão, autônomo e PJ.",
+    ...CIDADES_PRINCIPAIS.map((c) => `- [Anunciar vaga de emprego grátis em ${c}](${link(caminhoDeAnunciar(c))})`),
     "",
     "## Vagas por cidade",
     "",
