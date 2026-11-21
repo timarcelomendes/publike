@@ -4,6 +4,7 @@ import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_CHEGADA, COOKIE_ENTRADA, COOKIE_ORIGEM } from "@/lib/origem";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
 import { criarPerfilSozinho } from "@/lib/servidor/perfil-sozinho";
+import { destinoParaJuntar } from "@/lib/servidor/juntar-whatsapp";
 
 // Depois de entrar: quem ainda não tem perfil com WhatsApp vai completar;
 // os outros seguem para onde estavam indo.
@@ -24,6 +25,11 @@ export async function GET(request: NextRequest) {
     chegada: cookie(COOKIE_CHEGADA) ?? url.searchParams.get("chegada"),
     entrada: cookie(COOKIE_ENTRADA) ?? url.searchParams.get("entrada"),
   });
+
+  // conta nova pelo WhatsApp com o número no cadastro de outra conta: a pergunta de juntar antes (o cookie da prova vai
+  // nesta resposta, gravado pelo cookies() do servidor)
+  const juntar = await destinoParaJuntar(proximo);
+  if (juntar) return NextResponse.redirect(`${base}${juntar}`);
 
   const perfil = await obterMeuPerfil();
   // conta nova pela rede (Google, LinkedIn), procurando trabalho: o perfil nasce sozinho, sem a tela do cadastro

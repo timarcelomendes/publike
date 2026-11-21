@@ -83,8 +83,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
   const emailPedido = primeiro(sp.email)?.trim().slice(0, 200);
   const emailInicial = emailValido(emailPedido) ? emailPedido : undefined;
 
+  // vindo do "Sim, entrar na minha conta e vincular" (/entrar/juntar): entra na conta que já existia, sem o WhatsApp
+  const juntando = proximo.startsWith("/entrar/juntar");
+
   return (
     <Colunas ctx={ctx}>
+      {juntando && (
+        <Aviso tipo="info" titulo="Entre na conta que já existia" className="mb-6">
+          Use o link no e-mail, a senha ou o Google dessa conta. Depois, é só confirmar para vincular o WhatsApp a ela.
+        </Aviso>
+      )}
       {primeiro(sp.acesso) === "1" && emailInicial && (
         <Aviso tipo="sucesso" titulo="Pronto: o e-mail ficou ligado à conta" className="mb-6">
           Agora toque em receber o link: ele chega em {emailInicial} e entra na conta da empresa.
@@ -97,7 +105,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
         entrada={entrada && FORMATO_DA_ENTRADA.test(entrada) ? entrada : undefined}
         erroInicial={erro}
         redes={redes}
-        celular={LOGIN_CELULAR}
+        celular={LOGIN_CELULAR && !juntando}
         preferirCelular={primeiro(sp.de) === "whatsapp"}
         cabecalho={<CabecalhoEntrar />}
         emailInicial={emailInicial}

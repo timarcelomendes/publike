@@ -363,7 +363,8 @@
   "20270815120000_whatsapp_sem_entrega_no_celular",
   "20270816120000_whatsapp_lembrete_vaga",
   "20270817120000_whatsapp_codigo_de_acesso",
-  "20270818120000_whatsapp_entrar_conta_existente"
+  "20270818120000_whatsapp_entrar_conta_existente",
+  "20270819120000_whatsapp_juntar_conta_nova"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2645,6 +2646,7 @@
   "f|privado.conta_do_cnpj(p_cnpj text)": "5d769e01e9",
   "f|privado.conta_do_numero_whatsapp(p_chave text)": "d366ee57d2",
   "f|privado.conta_do_testador(p_email text)": "2be50be0a8",
+  "f|privado.conta_nova_do_whatsapp_vazia(p_usuario uuid)": "bc8c66171d",
   "f|privado.contar_resumo_receita()": "44ce1290af",
   "f|privado.contas_do_convite(p_modelo text)": "70e846ce4d",
   "f|privado.contas_fora_dos_numeros()": "e8bf677765",
@@ -3806,6 +3808,8 @@
   "f|public.servidor_whatsapp_conversa_entrada(p_chave text, p_numero text, p_texto text, p_nome text, p_origem jsonb, p_payload text, p_wamid text)": "9687d930b1",
   "f|public.servidor_whatsapp_conversa_saida(p_chave text, p_conversa text, p_texto text, p_wamid text, p_perfil text, p_equipe boolean, p_motivo text)": "99c2ceac83",
   "f|public.servidor_whatsapp_conversa_ultima(p_chave text, p_conversa text)": "690ad0490f",
+  "f|public.servidor_whatsapp_juntar(p_chave text, p_nova uuid, p_numero text, p_conta uuid)": "04ff655ac2",
+  "f|public.servidor_whatsapp_juntar_info(p_chave text, p_usuario uuid)": "e8ddf7e095",
   "f|public.servidor_whatsapp_leitura(p_chave text, p_conversa text, p_numero text, p_fonte text, p_resultado text, p_empresa text, p_motivo text, p_ms integer, p_vagas jsonb, p_midias text[])": "d38cc799d2",
   "f|public.servidor_whatsapp_lembrete_vaga(p_chave text, p_marcas text[], p_marca_lembrete text)": "06cc3b8057",
   "f|public.servidor_whatsapp_lembretes(p_chave text, p_marca_pergunta text, p_marca_sempre text)": "44542b9963",

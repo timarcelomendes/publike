@@ -21,6 +21,7 @@ import { registrarOrigemDaConta } from "@/lib/servidor/origem";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarPerfilSozinho } from "@/lib/servidor/perfil-sozinho";
+import { destinoParaJuntar } from "@/lib/servidor/juntar-whatsapp";
 import { atualizarCabecalho } from "@/lib/servidor/atualizar-cabecalho";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
@@ -228,7 +229,7 @@ export async function sair() {
 }
 
 /** Depois do login por celular: completa o perfil se faltar, senão segue. */
-export async function irDepoisDoLogin(proximo: string) {
+export async function irDepoisDoLogin(proximo: string, opcoes?: { semJuntar?: boolean }) {
   const destino = caminhoSeguro(proximo, "/");
   const usuario = await obterUsuario();
   if (!usuario) redirect(`/entrar?next=${encodeURIComponent(destino)}`);
@@ -245,6 +246,10 @@ export async function irDepoisDoLogin(proximo: string) {
     // já serviram: quem entra de novo depois não conta outra vez
     for (const nome of guardados) jar.delete(nome);
   }
+  // conta nova pelo WhatsApp com um número que está no cadastro de outra conta: pergunta se a outra é dela antes de
+  // seguir (src/lib/servidor/juntar-whatsapp.ts)
+  const juntar = opcoes?.semJuntar ? null : await destinoParaJuntar(destino);
+  if (juntar) redirect(juntar);
   const perfil = await obterMeuPerfil();
   atualizarCabecalho();
   // conta nova pela rede, procurando trabalho: o perfil nasce sozinho (lib/servidor/perfil-sozinho.ts)
