@@ -27,13 +27,22 @@ import {
 
 const CADA = { aberta: 10_000, lista: 20_000, fechada: 60_000 };
 const QUEM = { pessoa: "", robo: "Publike: ", equipe: "Equipe: " } as const;
+const FILTROS = [
+  { valor: "todas", nome: "Todas" },
+  { valor: "lidas", nome: "Lidas" },
+  { valor: "nao_lidas", nome: "Não lidas" },
+  { valor: "equipe", nome: "Equipe" },
+] as const;
+type Filtro = (typeof FILTROS)[number]["valor"];
 
 export function JanelaDasConversas() {
   const caminho = usePathname();
   const busca = useSearchParams();
   const naAba = caminho === "/admin/whatsapp" && busca.get("aba") === "conversas";
   const [aberta, setAberta] = useState(false);
-  const [filtro, setFiltro] = useState<"todas" | "equipe">("todas");
+  // Todas, Lidas, Não lidas e Equipe (21/11/2026, Marcelo). Lidas e Não lidas saem da lista de todas (as 100 mais
+  // recentes), como o número do botão; Equipe vem do banco.
+  const [filtro, setFiltro] = useState<Filtro>("todas");
   const [lista, setLista] = useState<ConversaNaLista[] | null>(null);
   const [comEquipe, setComEquipe] = useState(0);
   const [chave, setChave] = useState<string | null>(null);
@@ -56,7 +65,7 @@ export function JanelaDasConversas() {
   };
 
   const lerLista = useCallback(async () => {
-    const r = await conversasDaJanela(filtro).catch(() => null);
+    const r = await conversasDaJanela(filtro === "equipe" ? "equipe" : "todas").catch(() => null);
     if (!r) return;
     setLista(r.lista);
     setComEquipe(r.comEquipe);
@@ -92,6 +101,10 @@ export function JanelaDasConversas() {
 
   if (naAba) return null;
   const naoVistas = lista?.filter((x) => x.nao_vista).length ?? 0;
+  const naLista =
+    lista && (filtro === "lidas" || filtro === "nao_lidas")
+      ? lista.filter((x) => x.nao_vista === (filtro === "nao_lidas"))
+      : lista;
   const aviso = comEquipe + naoVistas;
 
   if (!aberta)
@@ -159,28 +172,32 @@ export function JanelaDasConversas() {
         <Conversa conversa={conversa} agora={agora} recarregar={lerConversa} />
       ) : (
         <>
-          <div className="flex gap-2 border-b border-line px-3 py-2" role="group" aria-label="Filtro">
-            {(["todas", "equipe"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                aria-pressed={filtro === f}
-                onClick={() => setFiltro(f)}
-                className={`min-h-9 rounded-pill px-3 text-body-sm ${
-                  filtro === f ? "bg-ink text-surface-100" : "bg-surface-300 text-ink"
-                }`}
-              >
-                {f === "todas" ? "Todas" : `Com a equipe${comEquipe ? ` (${comEquipe})` : ""}`}
-              </button>
-            ))}
+          <div className="flex gap-2 overflow-x-auto border-b border-line px-3 py-2" role="group" aria-label="Filtro">
+            {FILTROS.map(({ valor: f, nome }) => {
+              const n = f === "equipe" ? comEquipe : f === "nao_lidas" ? naoVistas : 0;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={filtro === f}
+                  onClick={() => setFiltro(f)}
+                  className={`min-h-9 shrink-0 rounded-pill px-3 text-body-sm ${
+                    filtro === f ? "bg-ink text-surface-100" : "bg-surface-300 text-ink"
+                  }`}
+                >
+                  {nome}
+                  {n > 0 ? ` (${n})` : ""}
+                </button>
+              );
+            })}
           </div>
           <ul className="flex-1 overflow-y-auto">
-            {lista === null ? (
+            {naLista === null ? (
               <li className="p-4 text-body-sm text-ink-muted">Carregando…</li>
-            ) : lista.length === 0 ? (
+            ) : naLista.length === 0 ? (
               <li className="p-4 text-body-sm text-ink-muted">Nenhuma conversa aqui.</li>
             ) : (
-              lista.map((x) => (
+              naLista.map((x) => (
                 <li key={x.chave} className="border-b border-line last:border-b-0">
                   <button
                     type="button"
