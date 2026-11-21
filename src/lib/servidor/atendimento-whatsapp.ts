@@ -415,6 +415,18 @@ export function tituloDaFuncao(titulo: string, funcao: string) {
   return ps.length > 0 && ps.every((p) => t.includes(p.slice(0, Math.max(5, p.length - 3))));
 }
 
+/**
+ * A função sem a última palavra, quando ela começa por uma palavra geral ("auxiliar de limpeza doméstica" vira
+ * "auxiliar de limpeza"; 21/11/2026, Marcelo: "existe auxiliar de limpeza"). null quando sobraria só a palavra geral.
+ */
+export function funcaoSemComplemento(funcao: string) {
+  const ps = palavrasDaFuncao(funcao);
+  if (ps.length < 3 || !PALAVRAS_GERAIS.has(ps[0])) return null;
+  const partes = funcao.trim().split(/\s+/).slice(0, -1);
+  while (partes.length && PALAVRAS_VAZIAS.has(simples(partes.at(-1) ?? ""))) partes.pop();
+  return partes.join(" ");
+}
+
 /** A função sem o complemento ("vigilante patrimonial" vira "vigilante"); null quando sobraria uma palavra geral. */
 export function funcaoCurta(funcao: string) {
   const ps = palavrasDaFuncao(funcao);
@@ -758,7 +770,7 @@ async function procurarVagas(
   const vizinhas = async () => {
     const semNada = funcoes.filter((f) => !achadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f));
     const curtas = unicos(
-      semNada.map(funcaoCurta).filter((c) => c && !funcoes.some((f) => simples(f) === simples(c))),
+      semNada.flatMap((f) => [funcaoSemComplemento(f), funcaoCurta(f)]).filter((c) => c && !funcoes.some((f) => simples(f) === simples(c))),
       3,
     );
     await juntar(curtas, perto, false, false);

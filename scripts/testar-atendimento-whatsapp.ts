@@ -957,6 +957,10 @@ async function main() {
       a.funcoesEquivalentes("doméstica").includes("diarista") &&
       a.funcoesEquivalentes("cuidadora de idosos").includes("cuidador") &&
       a.tituloDaFuncao("Empregada Doméstica", "empregada") &&
+      a.funcaoSemComplemento("auxiliar de limpeza doméstica") === "auxiliar de limpeza" &&
+      a.tituloDaFuncao("Auxiliar de limpeza", "auxiliar de limpeza") &&
+      a.funcaoSemComplemento("auxiliar de limpeza") === null &&
+      a.funcaoSemComplemento("vigilante patrimonial noturno") === null &&
       a.separarPalavrasColadas("diarista.domestica cuido de idosa") === "diarista domestica cuido de idosa" &&
       a.separarPalavrasColadas("publike.org e ana.souza@gmail.com") === "publike.org e ana.souza@gmail.com",
     "os nomes do mesmo trabalho",
