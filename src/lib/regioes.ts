@@ -58,7 +58,17 @@ const REGIOES_DOS_BAIRROS: Partial<Record<Cidade, Map<string, Regiao>>> = { Goi�
 /** Região de um bairro (null se não souber ou se a cidade não for dividida em regiões). */
 export function regiaoDoBairro(cidade: string, bairro: string): Regiao | null {
   if (!bairro) return null;
-  return REGIOES_DOS_BAIRROS[cidade as Cidade]?.get(chaveBairro(bairro)) ?? null;
+  const mapa = REGIOES_DOS_BAIRROS[cidade as Cidade];
+  if (!mapa) return null;
+  const chave = chaveBairro(bairro);
+  const exata = mapa.get(chave);
+  if (exata) return exata;
+  // o começo do nome ("Urias" → "Urias Magalhães", 21/11/2026): só quando todos os bairros com esse começo são da
+  // mesma região
+  if (chave.length < 4) return null;
+  const regioes = new Set<Regiao>();
+  for (const [k, r] of mapa) if (k.startsWith(`${chave} `)) regioes.add(r);
+  return regioes.size === 1 ? [...regioes][0] : null;
 }
 
 /** Chaves de todos os bairros da região, para o banco comparar. */

@@ -1353,6 +1353,36 @@ async function main() {
     "o anúncio de quem procura trabalho",
   );
 
+  // as parecidas já foram (21/11/2026: "zelador" de novo trouxe estágio e administrativo): diz isso, sem outras funções
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "faxineira", funcoes: ["faxineira"], parecidas: [], jeito: [], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("sou faxineira", {
+    perfil: "trabalho",
+    historico: [
+      ...procurando,
+      { de: "pessoa", texto: "sou faxineira, moro no setor bueno" },
+      { de: "robo", texto: "Separei outras vagas... • *Auxiliar de limpeza* https://publike.org/w/aaaaaaaa" },
+      { de: "pessoa", texto: "tem mais?" },
+    ],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("as parecidas que estão no ar (de limpeza) eu já te mandei") &&
+      !corpo(r.msgs[0]).includes("Cozinheira") &&
+      !corpo(r.msgs[0]).includes("outras funções"),
+    "as parecidas já foram: diz isso, sem vagas de outras funções",
+    corpo(r.msgs[0]),
+  );
+  const regioes = await import("../src/lib/regioes");
+  conferir(
+    regioes.regiaoDoBairro("Goiânia", "Urias") !== null &&
+      regioes.regiaoDoBairro("Goiânia", "Urias") === regioes.regiaoDoBairro("Goiânia", "Setor Urias Magalhães") &&
+      regioes.regiaoDoBairro("Goiânia", "Jar") === null,
+    "o bairro pelo começo do nome (Urias)",
+  );
+
   // atendente é atendimento ao público (21/11/2026): as de atendente, como o mesmo trabalho, sem o "não achei"
   respostaIA = ia("Olha as vagas:", {
     perfil: "trabalho",

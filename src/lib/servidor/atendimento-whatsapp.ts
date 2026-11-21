@@ -716,6 +716,8 @@ async function procurarVagas(
   anotarSemVaga?: (funcoes: string[]) => void,
 ) {
   const centro = onde.ponto ?? (onde.local ? pontoDoLocal(onde.local) : null);
+  // o bairro que não reconhecemos: o ponto é o centro da cidade, e "a menos de 1 km" seria do Setor Central
+  const centroDaCidade = !onde.ponto && Boolean(onde.local && !onde.local.ponto && !onde.local.centro && !onde.local.regiao);
   // perto: o ponto que ela mandou, ou o bairro primeiro, depois a região e a cidade (quem corta é o raio)
   const perto = onde.ponto
     ? { p_lat: onde.ponto.lat, p_lng: onde.ponto.lng, p_raio_km: 30, p_ordem: "perto", p_por_distancia: true }
@@ -785,6 +787,8 @@ async function procurarVagas(
   let repetidas = 0;
   // as funções (as que ela disse) que só tinham vagas que já foram
   const funcoesRepetidas = new Set<string>();
+  // as parecidas (a mesma área, as da IA) que só tinham vagas que já foram: na busca de novo, não vira "outras funções"
+  const parecidasQueForam = new Set<string>();
   // de cada termo, uma por vez (as duas funções que a pessoa disse aparecem), até caber
   const juntar = async (
     termos: string[],
@@ -804,6 +808,7 @@ async function procurarVagas(
           repetidas++;
           funcoesRepetidas.add(equivalentes.get(t) ?? t);
         }
+        if (a && parecida && jaMandadas.has(codigoDaVaga(a.id))) parecidasQueForam.add(t);
         if (!a || ids.has(codigoDaVaga(a.id)) || achadas.length >= max) continue;
         ids.add(codigoDaVaga(a.id));
         achadas.push({ a, termo: t, parecida, longe: eLonge });
@@ -816,11 +821,14 @@ async function procurarVagas(
   // conversa em que a pessoa disse o bairro e "não sei qual vaga tá disponível" e o Publike perguntou a função duas
   // vezes: "precisa entender e enviar vagas genéricas mais próximas e ir aumentando o raio"). Sem lugar, as mais novas.
   const RAIOS_KM = [3, 8, 15, 30, 60, 100];
-  const semFuncao = async () => {
+  const ehPrograma = (a: Anuncio & Vinda) =>
+    ["aprendiz", "estagio", "trainee"].includes(a.regime ?? "") || /\b(estagi|aprendiz|trainee)/.test(simples(a.titulo));
+  const semFuncao = async (semProgramas = false) => {
     const categoria = CATEGORIAS.some((c) => c.slug === busca.categoria) ? busca.categoria : null;
+    const serve = (a: Anuncio & Vinda) => !semProgramas || !ehPrograma(a);
     const juntarPerto = async (cat: string | null) => {
       if (!centro) {
-        for (const a of (await tentar(null, perto, cat)).slice(0, max))
+        for (const a of (await tentar(null, perto, cat)).filter(serve).slice(0, max))
           if (!ids.has(codigoDaVaga(a.id)) && achadas.length < max) {
             ids.add(codigoDaVaga(a.id));
             achadas.push({ a, termo: "", parecida: false, longe: false });
@@ -830,7 +838,7 @@ async function procurarVagas(
       for (const raio of RAIOS_KM) {
         if (achadas.length >= max) return;
         const l = await tentar(null, { p_lat: centro.lat, p_lng: centro.lng, p_raio_km: raio, p_ordem: "perto", p_por_distancia: true }, cat);
-        for (const a of l) {
+        for (const a of l.filter(serve)) {
           if (achadas.length >= max) break;
           if (ids.has(codigoDaVaga(a.id))) continue;
           ids.add(codigoDaVaga(a.id));
@@ -927,16 +935,24 @@ async function procurarVagas(
     }
     // nada da função nem parecido: as vagas mais perto, de outras funções (é o nosso maior funil: ninguém sai sem vaga
     // quando tem vaga no ar), ditas assim
-    if (!achadas.length && !repetidas) {
-      await semFuncao();
+    // (21/11/2026; Marcelo, com "zelador" procurado de novo: as de serviços gerais e limpeza já tinham ido, e vieram
+    // estágio de contábeis e assistente administrativo: "não faz sentido") as parecidas que já foram não abrem as
+    // outras funções; e as outras não trazem estágio, aprendiz nem trainee, que ela não pediu
+    if (!achadas.length && !repetidas && !parecidasQueForam.size) {
+      await semFuncao(true);
       for (const x of achadas) {
         x.parecida = true;
         x.outras = !busca.jeito?.includes("qualquer");
       }
     }
   }
-  if (!achadas.length && !repetidas) anotarSemVaga?.(funcoes);
-  if (!achadas.length) return repetidas ? { jaForam: true as const } : null;
+  if (!achadas.length && !repetidas && !parecidasQueForam.size) anotarSemVaga?.(funcoes);
+  if (!achadas.length)
+    return repetidas
+      ? { jaForam: true as const, parecidas: [] as string[] }
+      : parecidasQueForam.size
+        ? { jaForam: true as const, parecidas: [...parecidasQueForam].slice(0, 3) }
+        : null;
 
   // as de perto primeiro
   achadas.sort((x, y) => Number(x.longe) - Number(y.longe));
@@ -944,7 +960,7 @@ async function procurarVagas(
     const valor = valorDoAnuncio(a);
     const d = a.distancia_km;
     const km =
-      (eLonge || comKm) && centro && d != null
+      (eLonge || comKm) && centro && !centroDaCidade && d != null
         ? d < 1
           ? comKm ? " (a menos de 1 km)" : ""
           : ` (a ${Math.round(d)} km)`
@@ -1070,6 +1086,21 @@ async function mensagemDaBusca(
     jaMandadas,
     anotarSemVaga,
   );
+  if (vagas && "jaForam" in vagas && vagas.parecidas?.length) {
+    // as parecidas já foram (a busca de novo): diz isso, sem as vagas de outras funções
+    const q = new URLSearchParams({ tipo: "vaga" });
+    if (funcoes[0]) q.set("q", funcoes[0]);
+    return {
+      abertura: [
+        `Agora não tem vaga de ${listaE(funcoes)} no ar, e as parecidas que estão no ar (de ${listaE(vagas.parecidas)}) eu já te mandei. Entram vagas novas todo dia: é só me chamar de novo.`,
+        "E se ainda não deixou o seu *currículo* no Publike, deixe: é grátis, leva uns 2 minutos, e você recebe o aviso quando entrar vaga que combina com você.",
+      ].join("\n\n"),
+      aberturaPadrao: "",
+      texto: "",
+      botao: LINKS.curriculo as Botao,
+      quantas: 0,
+    };
+  }
   if (vagas && "jaForam" in vagas) {
     // "Tem mais vagas" (20/11/2026; Marcelo: "precisa responder melhor algumas perguntas"): todas as da função já foram,
     // e nem parecida tem. Diz isso, em vez do "não achei", e abre o caminho: outra função, o currículo e o site.
@@ -2219,7 +2250,13 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
   // todas as da função já foram (a resposta que repetiu): diz isso, com a pergunta de outra função
   if (!r.quantas && jaForam.size && repetiuVagas(historico))
     return { ok: true, texto: `${oi(primeiroNome(nome))} ${r.abertura}`, botao: r.botao };
-  if (!r.quantas) return { ok: false, motivo: "Ainda não há vaga da função nem parecida." };
+  if (!r.quantas)
+    return {
+      ok: false,
+      motivo: r.abertura?.includes("já te mandei")
+        ? "Nada novo: as vagas parecidas que estão no ar já foram para esta pessoa."
+        : "Ainda não há vaga da função nem parecida.",
+    };
   return {
     ok: true,
     texto: `${oi(primeiroNome(nome))} Procurei de novo as vagas para você, com mais cuidado.\n\n${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`,
