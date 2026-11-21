@@ -1220,6 +1220,18 @@ async function main() {
   conferir(r.msgs.length === 1 && corpo(r.msgs[0]).includes("Para contratar"), "teto: quem contrata segue normal", corpo(r.msgs[0]));
   teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
 
+  // o link curto de quem veio do anúncio: a letra da campanha antes do código (21/11/2026: no fim, ficava estranho)
+  conferir(
+    a.comCampanhaDoAnuncio("https://publike.org/w/3f9c2b1d\nhttps://publike.org/w/a71e0c44", "ig-whatsapp") ===
+      "https://publike.org/i/3f9c2b1d\nhttps://publike.org/i/a71e0c44",
+    "link curto do anúncio: /i/código",
+  );
+  conferir(
+    [...a.vagasJaMandadas([{ de: "robo", texto: "publike.org/f/3f9c2b1d e publike.org/w/a71e0c44 e /anuncio/0c1d2e3f-0000-0000-0000-000000000000" }])].join(",") ===
+      "3f9c2b1d,a71e0c44,0c1d2e3f",
+    "as vagas que já foram, por todos os links",
+  );
+
   // 21. o primeiro currículo de quem conversou nas últimas horas: as vagas que combinam, pelo WhatsApp (21/11/2026)
   const vagasDoCv = [
     { id: "v1", titulo: "Cozinheira", quem: "Restaurante Sabor", bairro: "Setor Bueno", cidade: "Goiânia", nota: 92 },

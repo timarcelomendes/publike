@@ -219,8 +219,8 @@ const link = (caminho: string) => comOrigem(`${urlDosEmails() ?? SITE_URL}${cami
 const DO_ATENDIMENTO = "utm_source=whatsapp&utm_campaign=atendimento";
 /**
  * O link curto da vaga (21/11/2026; Marcelo: "deixe os links das vagas encurtado"): publike.org/w/ e os 8 primeiros
- * caracteres do id (src/app/w/[codigo]/route.ts põe a origem do atendimento). `comCampanhaDoAnuncio` acrescenta a letra
- * da campanha de quem veio do anúncio.
+ * caracteres do id (src/app/w/[codigo]/route.ts põe a origem do atendimento). `comCampanhaDoAnuncio` troca o /w/ pela
+ * letra da campanha de quem veio do anúncio (/i/, /f/ ou /m/).
  */
 /** O código da vaga no link curto e nas vagas que já foram: os 8 primeiros caracteres do id. */
 export const codigoDaVaga = (id: string) => id.slice(0, 8).toLowerCase();
@@ -244,7 +244,7 @@ export const comCampanhaDoAnuncio = (t: string, campanha: string | null) =>
   campanha
     ? t
         .replaceAll(DO_ATENDIMENTO, `utm_source=meta-ads&utm_campaign=${campanha}`)
-        .replace(/(\/w\/[0-9a-f]{8})(?![0-9a-z])/g, `$1${LETRA_DA_CAMPANHA[campanha] ?? "m"}`)
+        .replace(/\/w\/([0-9a-f]{8})(?![0-9a-z])/g, `/${LETRA_DA_CAMPANHA[campanha] ?? "m"}/$1`)
     : t;
 
 // --- Ler a mensagem ---------------------------------------------------------------------------------------------
@@ -2118,7 +2118,7 @@ export function vagasJaMandadas(historico: { de: string; texto: string }[]) {
   const ids = new Set<string>();
   for (const m of historico)
     if (m.de !== "pessoa")
-      for (const x of m.texto.matchAll(/\/(?:anuncio\/([0-9a-f]{8})[0-9a-f-]{28}|w\/([0-9a-f]{8}))/g)) ids.add(x[1] ?? x[2]);
+      for (const x of m.texto.matchAll(/\/(?:anuncio\/([0-9a-f]{8})[0-9a-f-]{28}|[wifm]\/([0-9a-f]{8}))/g)) ids.add(x[1] ?? x[2]);
   return ids;
 }
 
