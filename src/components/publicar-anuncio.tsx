@@ -45,6 +45,7 @@ import {
 import { ganhosDoBanco } from "@/lib/vaga-extra";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import { valoresDoConvite } from "@/lib/valores-convite";
+import { LOGIN_CELULAR } from "@/lib/config";
 import { TEXTO_PRONTO_DO_WHATSAPP } from "@/lib/vagas-pelo-whatsapp";
 import { AvisoDaSaida, useSaidaDoSalvar, vagaGravada } from "./anuncio/saida-do-salvar";
 import { ArteDaVaga } from "./arte-da-vaga";
@@ -484,7 +485,10 @@ export function PublicarAnuncio({
           <span className="flex flex-col gap-2">
             <span>
               Já veio preenchida com o anúncio. Confira cada passo, ajuste o que precisar e toque em Publicar. É grátis,
-              sem plano e sem taxa. Para publicar, você entra com o e-mail, sem senha.
+              sem plano e sem taxa.{" "}
+              {LOGIN_CELULAR
+                ? "Para publicar, você entra com um código que chega no seu WhatsApp, sem senha."
+                : "Para publicar, você entra com o e-mail, sem senha."}
             </span>
             {(convite.total ?? 1) > 1 && (
               <span>

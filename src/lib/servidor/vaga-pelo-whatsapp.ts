@@ -1,4 +1,5 @@
 import "server-only";
+import { LOGIN_CELULAR } from "@/lib/config";
 import { SITE_URL } from "@/lib/config";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { lerVagas } from "@/lib/ia/ler-vagas";
@@ -246,7 +247,9 @@ export async function tentarVagaPeloWhatsapp(p: {
     return true;
   }
   const resposta = respostaDasVagas(config.textos, vagas, lida.vagas.length, ola, p.jaDisse);
-  await p.saida(resposta.texto, {
+  // com a entrada pelo código no WhatsApp ligada, a pessoa já sabe que não precisa de e-mail para publicar
+  const comCodigo = LOGIN_CELULAR ? `${resposta.texto}\n\nPara publicar, você recebe um código aqui mesmo no WhatsApp: não precisa de e-mail nem senha.` : resposta.texto;
+  await p.saida(comCodigo.length <= 1024 ? comCodigo : resposta.texto, {
     perfil: "contratar",
     botao: { titulo: resposta.botao, caminho: caminhoDaVagaDoWhatsapp(links[0], resposta.lote) },
   });

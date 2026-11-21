@@ -582,7 +582,7 @@ export function FormEntrar({
           </div>
           <div className="flex items-center gap-3 text-body-sm text-ink-muted">
             <span className="h-px flex-1 bg-line" />
-            {modo === "celular" ? "ou use seu celular" : "ou use seu e-mail"}
+            {modo === "celular" ? "ou entre com o WhatsApp" : "ou use seu e-mail"}
             <span className="h-px flex-1 bg-line" />
           </div>
         </>
@@ -592,7 +592,7 @@ export function FormEntrar({
         <form onSubmit={pedirCodigo} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="celular" className="text-label">
-              Seu celular
+              Seu WhatsApp
             </label>
             <input
               id="celular"
@@ -608,7 +608,7 @@ export function FormEntrar({
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
           <Botao type="submit" variante="primario" disabled={carregando || verificando} className="min-h-12">
             <Smartphone aria-hidden />
-            {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber código"}
+            {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber código no WhatsApp"}
           </Botao>
           <button
             type="button"
@@ -717,7 +717,7 @@ export function FormEntrar({
               }}
               className="min-h-11 text-label text-terra-text underline"
             >
-              Prefiro entrar com o celular
+              Prefiro entrar com o WhatsApp
             </button>
           )}
           <button
