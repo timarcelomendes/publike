@@ -108,6 +108,11 @@ globalThis.fetch = (async (url: any, init: any) => {
     const t = corpo.p_texto ?? "";
     const vaga = (id: string, titulo: string, x: Record<string, unknown> = {}) => ({ ...vagaCozinheira, id: id.repeat(36).slice(0, 36), titulo, ...x });
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
+    // três funções, com títulos longos: não cabem todas numa mensagem (21/11/2026)
+    const longo = " com cesta natalina, produtividade, cooperativa de crédito, premiação anual, plano de saúde, odontológico, vale-alimentação e transporte".repeat(2);
+    if (t === "operador de caixa") return json([vaga("c", `Operador de caixa${longo}`)]);
+    if (t === "repositor") return json([vaga("d", `Repositor${longo}`)]);
+    if (t === "auxiliar de padaria") return json([vaga("b", `Auxiliar de padaria${longo}`)]);
     // o mesmo trabalho com outro nome: assistente administrativo não tem, auxiliar administrativo tem
     if (t === "auxiliar administrativo") return json([vaga("8", "Auxiliar Administrativo")]);
     // serviços gerais só com carteira (o banco filtra o regime)
@@ -985,6 +990,13 @@ async function main() {
       a.funcoesEquivalentes("diarista").includes("empregada") &&
       a.funcoesEquivalentes("doméstica").includes("diarista") &&
       a.funcoesEquivalentes("cuidadora de idosos").includes("cuidador") &&
+      // 21/11/2026: estoquista, porteiro, coletor e caixa
+      a.funcoesEquivalentes("estoquista").includes("auxiliar de estoque") &&
+      a.funcoesEquivalentes("porteiro noturno").includes("agente de portaria") &&
+      a.funcoesEquivalentes("coletor de lixo").includes("gari") &&
+      a.funcoesEquivalentes("operadora de caixa").includes("caixa") &&
+      a.tituloDaFuncao("Agente de Portaria", "agente de portaria") &&
+      a.tituloDaFuncao("Operador(a) de caixa (Vaga para mulher)", "operador de caixa") &&
       a.tituloDaFuncao("Empregada Doméstica", "empregada") &&
       a.funcaoSemComplemento("auxiliar de limpeza doméstica") === "auxiliar de limpeza" &&
       a.tituloDaFuncao("Auxiliar de limpeza", "auxiliar de limpeza") &&
@@ -1224,6 +1236,23 @@ async function main() {
   r = await rodar("Quero contratar", { historico: [{ de: "pessoa", texto: "Quero contratar" }] }, { payload: "a:contratar" });
   conferir(r.msgs.length === 1 && corpo(r.msgs[0]).includes("Para contratar"), "teto: quem contrata segue normal", corpo(r.msgs[0]));
   teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
+
+  // a função com vaga que não coube na mensagem não vira "não achei" (21/11/2026)
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "operador de caixa", funcoes: ["operador de caixa", "repositor", "auxiliar de padaria"], categoria: "todas", cidade: "", bairro: "" },
+  });
+  r = await rodar("já trabalhei de caixa, repositor, auxiliar de padaria", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "já trabalhei de caixa, repositor, auxiliar de padaria" }],
+  });
+  conferir(
+    !corpo(r.msgs[0]).includes("não achei") &&
+      /Também tem vaga de (operador de caixa|repositor|auxiliar de padaria): é só me pedir que eu mando\./.test(corpo(r.msgs[0])),
+    "a função que não coube: 'também tem', e não 'não achei'",
+    corpo(r.msgs[0]),
+  );
 
   // jovem aprendiz (21/11/2026): sem vaga de aprendiz, as de estágio, ditas assim; com vaga de aprendiz, pelo regime
   respostaIA = ia("Vou ver as vagas de jovem aprendiz.", {

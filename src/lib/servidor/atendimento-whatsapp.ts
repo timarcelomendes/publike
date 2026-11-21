@@ -480,6 +480,11 @@ const MESMO_TRABALHO: { chave: RegExp; nomes: string[] }[] = [
   { chave: /^(baba|baby ?sitter|bab[aá] folguista)$/, nomes: ["babá", "baby sitter"] },
   { chave: /^(garcom|garconete)$/, nomes: ["garçom", "garçonete"] },
   { chave: /^(motoboy|motofretista|entregador de moto)$/, nomes: ["motoboy", "motofretista", "entregador"] },
+  // 21/11/2026, das conversas sem vaga com vaga parecida no ar ("estoquista" com "Auxiliar de estoque" no ar)
+  { chave: /^(estoquista|auxiliar de estoque|almoxarife|auxiliar de almoxarifado)$/, nomes: ["estoquista", "auxiliar de estoque", "almoxarife", "auxiliar de almoxarifado"] },
+  { chave: /^(porteiro|porteira|agente de portaria|controlador de acesso|controladora de acesso)( noturno| diurno)?$/, nomes: ["porteiro", "agente de portaria", "controlador de acesso"] },
+  { chave: /^(coletor de lixo|coletor|gari|ajudante de coleta)$/, nomes: ["coletor", "gari", "ajudante de coleta"] },
+  { chave: /^(operador de caixa|operadora de caixa|caixa|atendente de caixa|frente de caixa)$/, nomes: ["operador de caixa", "caixa", "atendente de caixa"] },
 ];
 export function funcoesEquivalentes(funcao: string) {
   const partes = funcao.trim().split(/\s+/);
@@ -916,23 +921,35 @@ async function procurarVagas(
     const onde1 = eLonge && a.cidade && !lugar.includes(a.cidade) ? `${lugar}, ${a.cidade}` : lugar;
     return `• *${a.titulo}*${valor ? ` · ${valor}` : ""} · ${onde1}${km}\n${linkDaVaga(a.id)}`;
   };
-  // a mensagem com botão vai até 1.024 letras: com links longos, cabem menos vagas
-  let n = Math.min(Math.max(1, max), 4, achadas.length);
-  while (n > 1 && achadas.slice(0, n).map(linha).join("\n\n").length > 760) n--;
-  const usadas = achadas.slice(0, n);
+  // a mensagem com botão vai até 1.024 letras: com links longos, cabem menos vagas. Uma de cada função primeiro (21/11/2026:
+  // "caixa, repositor, auxiliar de padaria" voltou com caixa e repositor e "não achei vaga de auxiliar de padaria", com
+  // ela no ar: a de padaria ficou de fora no corte do tamanho)
+  const primeiras: Achada[] = [];
+  for (const x of achadas) if (!primeiras.some((y) => y.termo === x.termo)) primeiras.push(x);
+  const prioridade = [...primeiras, ...achadas.filter((x) => !primeiras.includes(x))];
+  let n = Math.min(Math.max(1, max), 4, prioridade.length);
+  while (n > 1 && prioridade.slice(0, n).map(linha).join("\n\n").length > 760) n--;
+  const usadas = prioridade.slice(0, n).sort((x, y) => Number(x.longe) - Number(y.longe));
   const perto1 = usadas.filter((x) => !x.longe);
   const longe1 = usadas.filter((x) => x.longe);
+  // a função que a pessoa disse, com vaga, de um jeito ou de outro (o termo, o outro nome ou o título da vaga)
+  const daFuncaoDita = (f: string, x: Achada) =>
+    x.termo === f || equivalentes.get(x.termo) === f || (!x.parecida && tituloDaFuncao(x.a.titulo, f));
+  // as funções que têm vaga, mas não couberam nesta mensagem: ficam para o próximo pedido
+  const naoCouberam = funcoes.filter((f) => !usadas.some((x) => daFuncaoDita(f, x)) && achadas.some((x) => daFuncaoDita(f, x)));
   const texto =
-    perto1.length && longe1.length
+    (perto1.length && longe1.length
       ? `${perto1.map(linha).join("\n\n")}\n\nUm pouco mais longe:\n\n${longe1.map(linha).join("\n\n")}`
-      : usadas.map(linha).join("\n\n");
+      : usadas.map(linha).join("\n\n")) +
+    (naoCouberam.length ? `\n\nTambém tem vaga de ${listaE(naoCouberam)}: é só me pedir que eu mando.` : "");
 
   // a frase que apresenta
   const parecidas = usadas[0].parecida;
   const achados = unicos(usadas.map((x) => x.termo), 3);
+  // sem vaga mesmo: nem nesta mensagem, nem entre as que não couberam
   const semNada = funcoes.filter(
     (f) =>
-      !usadas.some((x) => x.termo === f || equivalentes.get(x.termo) === f) &&
+      !achadas.some((x) => daFuncaoDita(f, x)) &&
       !achados.some((t) => simples(t) === simples(f)) &&
       !funcoesRepetidas.has(f),
   );
