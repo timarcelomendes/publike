@@ -34,6 +34,40 @@ const FILTROS = [
   { valor: "sem_perfil", nome: "Sem perfil" },
 ];
 
+// Mais filtros (21/11/2026; Marcelo: "quero filtros por tipo, perfil"; migração 20270821120000): cada linha vale junto
+// com as outras e com o filtro de cima.
+const TIPOS = [
+  { valor: "todos", nome: "Todos os tipos" },
+  { valor: "pessoa", nome: "Pessoa" },
+  { valor: "comercio", nome: "Comércio" },
+  { valor: "empresa", nome: "Empresa" },
+  { valor: "agencia", nome: "Agência" },
+];
+const ENTRADAS = [
+  { valor: "todas", nome: "Entrou por qualquer forma" },
+  { valor: "email", nome: "E-mail" },
+  { valor: "phone", nome: "Celular" },
+  { valor: "google", nome: "Google" },
+  { valor: "facebook", nome: "Facebook" },
+  { valor: "linkedin_oidc", nome: "LinkedIn" },
+];
+const CURRICULOS = [
+  { valor: "todos", nome: "Com ou sem currículo" },
+  { valor: "com", nome: "Com currículo" },
+  { valor: "sem", nome: "Sem currículo" },
+];
+const PROCURA = [
+  { valor: "todos", nome: "Procura qualquer coisa" },
+  { valor: "trabalho", nome: "Procura trabalho" },
+  { valor: "contrata", nome: "Contrata" },
+  { valor: "servico", nome: "Oferece serviço" },
+];
+
+/** O valor do endereço, se é uma das opções (a primeira é "todos"). */
+function opcao(lista: { valor: string }[], v: string | undefined) {
+  return v && lista.some((o, i) => i > 0 && o.valor === v) ? v : null;
+}
+
 /** "Curtiu 2 vagas (1 deu match) · lembrete do currículo há 3 horas" (quem está sem currículo). */
 function textoDoAndamento(a: AndamentoSemCurriculo, agora: number) {
   const curtidas =
@@ -66,11 +100,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
   const pedido = primeiro(sp.filtro) ?? "todos";
   const filtro = FILTROS.some((f) => f.valor === pedido) ? pedido : "todos";
   const pagina = Math.max(1, Math.floor(Number(primeiro(sp.pagina))) || 1);
+  const mais = {
+    tipo: opcao(TIPOS, primeiro(sp.tipo)),
+    entrada: opcao(ENTRADAS, primeiro(sp.entrada)),
+    curriculo: opcao(CURRICULOS, primeiro(sp.curriculo)),
+    procura: opcao(PROCURA, primeiro(sp.procura)),
+  };
   const [{ itens, total, curriculos, andamento }, agora] = await Promise.all([
-    listarUsuarios(c, q || null, filtro, pagina),
+    listarUsuarios(c, q || null, filtro, pagina, mais),
     agoraDaRequisicao(),
   ]);
-  const atuais = { q: q || null, filtro: filtro === "todos" ? null : filtro };
+  const atuais = { q: q || null, filtro: filtro === "todos" ? null : filtro, ...mais };
+  const linha = (rotulo: string, chave: keyof typeof mais, opcoes: { valor: string; nome: string }[]) => (
+    <Filtros
+      discreto
+      rotulo={rotulo}
+      opcoes={opcoes}
+      atual={mais[chave] ?? opcoes[0].valor}
+      link={(v) => linkCom("/admin/usuarios", atuais, { [chave]: v === opcoes[0].valor ? null : v, pagina: null })}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,7 +130,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
             acao="/admin/usuarios"
             valor={q}
             placeholder="Nome, e-mail ou WhatsApp"
-            ocultos={{ filtro: atuais.filtro }}
+            ocultos={{ filtro: atuais.filtro, ...mais }}
           />
         </div>
         <Link href="/admin/usuarios/nova" className={classesBotao("primario")}>
@@ -95,6 +144,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
         atual={filtro}
         link={(v) => linkCom("/admin/usuarios", atuais, { filtro: v === "todos" ? null : v, pagina: null })}
       />
+      {linha("Tipo da conta", "tipo", TIPOS)}
+      {linha("Como entrou", "entrada", ENTRADAS)}
+      {linha("Currículo", "curriculo", CURRICULOS)}
+      {linha("O que procura", "procura", PROCURA)}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-body-sm text-ink-muted" aria-live="polite">
           {total === 1 ? "1 conta" : `${formatarNumero(total)} contas`}

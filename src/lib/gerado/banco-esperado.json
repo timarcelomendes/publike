@@ -365,7 +365,8 @@
   "20270817120000_whatsapp_codigo_de_acesso",
   "20270818120000_whatsapp_entrar_conta_existente",
   "20270819120000_whatsapp_juntar_conta_nova",
-  "20270820120000_whatsapp_teto_preco_novo"
+  "20270820120000_whatsapp_teto_preco_novo",
+  "20270821120000_admin_usuarios_filtros"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3059,7 +3060,7 @@
   "f|public.admin_listar_falhas(p_limite integer)": "8840f080d7",
   "f|public.admin_listar_moderadores()": "b573531df3",
   "f|public.admin_listar_sugestoes()": "e2eeb745de",
-  "f|public.admin_listar_usuarios(p_busca text, p_filtro text, p_limite integer, p_deslocamento integer)": "0f9ab4178c",
+  "f|public.admin_listar_usuarios(p_busca text, p_filtro text, p_limite integer, p_deslocamento integer, p_tipo text, p_entrada text, p_curriculo text, p_procura text)": "239fc5b0ce",
   "f|public.admin_mandar_mensagem_equipe(p_conta uuid, p_assunto text, p_texto text, p_email boolean)": "6878664176",
   "f|public.admin_marcar_convite_testador(p_id uuid, p_canal text)": "1f084288c8",
   "f|public.admin_marcar_empresa_avisada(p_conta uuid, p_pessoas integer)": "59fe4ce97a",

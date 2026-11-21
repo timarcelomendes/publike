@@ -587,12 +587,24 @@ export async function acessosDoSite(c: ClienteBanco): Promise<AcessosSite | null
   return data as unknown as AcessosSite;
 }
 
-export async function listarUsuarios(c: ClienteBanco, busca: string | null, filtro: string, pagina: number) {
+export async function listarUsuarios(
+  c: ClienteBanco,
+  busca: string | null,
+  filtro: string,
+  pagina: number,
+  /** os filtros da migração 20270821120000 (null: todos) */
+  mais: { tipo?: string | null; entrada?: string | null; curriculo?: string | null; procura?: string | null } = {},
+) {
   const { data, error } = await c.rpc("admin_listar_usuarios", {
     p_busca: busca,
     p_filtro: filtro,
     p_limite: POR_PAGINA,
     p_deslocamento: (pagina - 1) * POR_PAGINA,
+    // só manda o que foi escolhido: sem filtro novo, a chamada é a de antes (vale antes da migração)
+    ...(mais.tipo ? { p_tipo: mais.tipo } : {}),
+    ...(mais.entrada ? { p_entrada: mais.entrada } : {}),
+    ...(mais.curriculo ? { p_curriculo: mais.curriculo } : {}),
+    ...(mais.procura ? { p_procura: mais.procura } : {}),
   });
   if (error) falha("as contas", error);
   const itens = await comUltimoAcesso(c, data ?? []);

@@ -4743,7 +4743,12 @@ export type Database = {
         Returns: Json;
       };
       admin_listar_usuarios: {
-        Args: { p_busca?: string | null; p_filtro?: string; p_limite?: number; p_deslocamento?: number };
+        Args: { p_busca?: string | null; p_filtro?: string; p_limite?: number; p_deslocamento?: number;
+          p_tipo?: string | null;
+          p_entrada?: string | null;
+          p_curriculo?: string | null;
+          p_procura?: string | null;
+        };
         Returns: {
           id: string;
           email: string | null;
