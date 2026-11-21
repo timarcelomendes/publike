@@ -367,7 +367,8 @@
   "20270819120000_whatsapp_juntar_conta_nova",
   "20270820120000_whatsapp_teto_preco_novo",
   "20270821120000_admin_usuarios_filtros",
-  "20270822120000_procuradas_sem_vaga"
+  "20270822120000_procuradas_sem_vaga",
+  "20270823120000_procuradas_30_dias"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2861,7 +2862,7 @@
   "f|privado.pode_ver_painel_no_site()": "1a258e69f4",
   "f|privado.pontos_do_anuncio(p_anuncio uuid)": "1464d53d01",
   "f|privado.porta_do_caminho(p_caminho text)": "ef86c31210",
-  "f|privado.procuradas_destinatarios(p_dias integer, p_minimo integer)": "e063ca99b5",
+  "f|privado.procuradas_destinatarios(p_dias integer, p_minimo integer)": "21b516d568",
   "f|privado.procuradas_sem_vaga(p_dias integer, p_minimo integer)": "cea8dc6e2b",
   "f|privado.proposta_em_json(p public.propostas)": "b7115ee88e",
   "f|privado.quem_contrata(p_conta uuid)": "2f13017f85",
