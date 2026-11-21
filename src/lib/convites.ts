@@ -17,6 +17,7 @@ import { LIMITES_EXTRA, lerBeneficiosExtras, lerGanhosExtras, lerHorario, type G
 import { escaparHtml } from "./email/montar";
 import { paginaDeVagasDaGupy } from "./gupy";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
+import { WHATSAPP_OFICIAL } from "@/lib/whatsapp-oficial";
 import { emailValido } from "@/lib/email-valido";
 
 export const ESTADOS_CONVITE = [
@@ -573,6 +574,13 @@ const PEDIR_SIM = [
   `Querem que a gente divulgue? Basta responder "sim".`,
 ] as const;
 
+// o outro jeito de publicar (21/11/2026, Marcelo): mandar o anúncio para o WhatsApp do Publike, que devolve a vaga pronta
+// (Publicar pelo WhatsApp, migração 20270806120000)
+const PELO_WHATSAPP = [
+  `Se preferir, mandem a foto do anúncio, o PDF ou o texto da vaga para o WhatsApp do Publike, ${WHATSAPP_OFICIAL.exibicao}: a vaga volta pronta para vocês conferirem e publicarem.`,
+  `Outro jeito: mandem a foto ou o texto do anúncio para o WhatsApp do Publike, ${WHATSAPP_OFICIAL.exibicao}, que a vaga volta pronta para conferir e publicar.`,
+] as const;
+
 /** Até duas vagas no meio da frase, em minúsculas; com mais, "e outras". */
 function vagasDoTexto(vagas: string[]) {
   const l = vagas.map(minusculo);
@@ -708,6 +716,7 @@ export function mensagemConvite(
         `Escrevi para vocês ${quando} sobre divulgar as vagas no Publike, sem custo. Deu para ver?`,
       ]),
       pedido,
+      escolher(s, "whatsapp", PELO_WHATSAPP),
       fecha,
     ].join("\n\n");
   }
@@ -758,6 +767,7 @@ export function mensagemConvite(
         ["É grátis: sem plano e sem taxa por candidato.", "Não custa nada: sem plano e sem taxa por candidato."],
       ]),
       pedido,
+      escolher(s, "whatsapp", PELO_WHATSAPP),
       fecha,
     ].join("\n\n");
   }
@@ -788,6 +798,7 @@ export function mensagemConvite(
       ],
     ]),
     pedido,
+    escolher(s, "whatsapp", PELO_WHATSAPP),
     fecha,
   ].join("\n\n");
 }
