@@ -2704,7 +2704,7 @@
   "f|privado.email_empresas_ultimo_acesso(p_conta uuid)": "bfcaafb196",
   "f|privado.email_empresas_valido(p_email text)": "8d9e86bf6b",
   "f|privado.email_ligado(p_modelo text)": "75f88b9fda",
-  "f|privado.email_mascarado(p text)": "35f6d3762f",
+  "f|privado.email_mascarado(p text)": "57c641dfc0",
   "f|privado.email_valido(p_email text)": "4fd5198ec0",
   "f|privado.empresa_do_nome(p_nome text)": "5df4cecccb",
   "f|privado.enfileirar_email(p_usuario uuid, p_modelo text, p_dados jsonb)": "76eb4e2b56",

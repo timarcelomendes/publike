@@ -10,6 +10,31 @@
 --
 -- Pode rodar de novo.
 
+-- 0. O e-mail escondido como fazem Google e Meta (21/11/2026; Marcelo: "t***mendes ou algo que identifica melhor, se o
+-- usuário tiver 2 e-mails com as mesmas iniciais" e, depois, "melhor prática de mercado?"): as duas primeiras letras,
+-- ••• e a última antes do @ ("ti.marcelomendes@gmail.com" → "ti•••s@gmail.com"); com até 4 letras, só a primeira
+-- ("ana@gmail.com" → "a•••@gmail.com"). Os pontos são sempre 3 (não entregam o tamanho). O domínio da empresa continua
+-- escondido. O aviso só vai para o WhatsApp do número, já provado com o código.
+create or replace function privado.email_mascarado(p text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case
+           when coalesce(p, '') !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then null
+           else case when char_length(l) <= 4 then left(l, 1) || '•••' else left(l, 2) || '•••' || right(l, 1) end
+                || '@' || case
+                            when lower(d) in ('gmail.com', 'hotmail.com', 'hotmail.com.br', 'outlook.com',
+                                              'outlook.com.br', 'live.com', 'msn.com', 'yahoo.com', 'yahoo.com.br',
+                                              'icloud.com', 'uol.com.br', 'bol.com.br', 'terra.com.br')
+                              then lower(d)
+                            else left(d, 1) || '•••' || substr(lower(d), position('.' in d))
+                          end
+         end
+    from (select split_part(p, '@', 1) as l, split_part(p, '@', 2) as d) x
+$$;
+
 -- 1. A origem nova do vínculo ---------------------------------------------------------------------------------------
 
 alter table privado.whatsapp_login drop constraint if exists whatsapp_login_origem_check;
