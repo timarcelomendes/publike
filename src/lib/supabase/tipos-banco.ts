@@ -4408,6 +4408,21 @@ export type Database = {
       servidor_email_empresas_voltaram: { Args: { p_chave: string; p_itens: Json }; Returns: number };
       // os lembretes do atendimento do WhatsApp (migração 20270813120000)
       servidor_whatsapp_codigo: { Args: { p_chave: string; p_numero: string }; Returns: Json };
+      // entrar com o WhatsApp sem conta duplicada (migração 20270818120000)
+      servidor_whatsapp_contas_do_numero: {
+        Args: { p_chave: string; p_numero: string; p_usuario?: string };
+        Returns: Json;
+      };
+      servidor_whatsapp_ligacao_pedir: {
+        Args: { p_chave: string; p_usuario: string; p_numero: string; p_hash: string };
+        Returns: Json;
+      };
+      servidor_whatsapp_ligacao_conferir: {
+        Args: { p_chave: string; p_usuario: string; p_numero: string; p_hash: string };
+        Returns: Json;
+      };
+      servidor_whatsapp_login_desligar: { Args: { p_chave: string; p_usuario: string }; Returns: string };
+      servidor_whatsapp_login_pela_vaga: { Args: { p_chave: string; p_conversa: string; p_vaga: string }; Returns: Json };
       servidor_whatsapp_lembrete_vaga: { Args: { p_chave: string; p_marcas: string[]; p_marca_lembrete: string }; Returns: Json };
       servidor_whatsapp_lembretes: { Args: { p_chave: string; p_marca_pergunta: string; p_marca_sempre: string }; Returns: Json };
       admin_email_empresas_copia: { Args: Record<string, never>; Returns: Json };

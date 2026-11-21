@@ -1,9 +1,13 @@
-import { assinaturaDoGanchoValida, mandarCodigoPeloWhatsapp } from "@/lib/servidor/codigo-whatsapp";
+import { assinaturaDoGanchoValida, codigoDoGancho, type UsuarioDoGancho } from "@/lib/servidor/codigo-whatsapp";
 
 // O gancho "Send SMS" do Supabase Auth (Authentication › Hooks › Send SMS hook, tipo HTTPS, com este endereço): o
 // código de entrar pelo celular vai pelo WhatsApp do Publike (src/lib/servidor/codigo-whatsapp.ts). Sem o segredo
-// SUPABASE_SMS_HOOK_SECRET na Vercel, ou com a assinatura errada, recusa.
+// SUPABASE_SMS_HOOK_SECRET na Vercel, ou com a assinatura errada, recusa. O Auth manda a conta (o celular do login, o
+// e-mail, e o "new_phone" quando é troca de celular, que é recusada) e o código.
 
+// Toda recusa sai com status de erro: só assim o Auth para (com 200, mesmo com "error" no corpo, ele dá o código por
+// enviado e, na conta nova, cria a conta). A mensagem não chega à tela (o Auth troca por uma dele); o status do "fora
+// da janela" é só dele (STATUS_FORA_DA_JANELA), para a tela de entrar pedir o oi.
 const erro = (status: number, mensagem: string) =>
   Response.json({ error: { http_code: status, message: mensagem } }, { status });
 
@@ -35,15 +39,23 @@ export async function POST(request: Request) {
     corpo,
   );
   if (!valido) return erro(401, "Assinatura inválida.");
-  let telefone = "";
+  let usuario: UsuarioDoGancho = {};
   let codigo = "";
   try {
-    const dados = JSON.parse(corpo) as { user?: { phone?: string }; sms?: { otp?: string } };
-    telefone = String(dados.user?.phone ?? "");
+    const dados = JSON.parse(corpo) as { user?: Record<string, unknown>; sms?: { otp?: string } };
+    const u = dados.user ?? {};
+    const texto = (v: unknown) => (typeof v === "string" ? v : undefined);
+    usuario = {
+      id: texto(u.id),
+      phone: texto(u.phone),
+      email: texto(u.email),
+      new_phone: texto(u.new_phone),
+      phone_confirmed_at: texto(u.phone_confirmed_at),
+    };
     codigo = String(dados.sms?.otp ?? "");
   } catch {
     return erro(400, "Corpo inválido.");
   }
-  const r = await mandarCodigoPeloWhatsapp(telefone, codigo);
+  const r = await codigoDoGancho(usuario, codigo);
   return r.ok ? Response.json({}) : erro(r.status, r.mensagem);
 }

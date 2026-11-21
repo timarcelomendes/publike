@@ -9,6 +9,8 @@ import { GOOGLE_CLIENT_ID, TURNSTILE_SITE_KEY } from "@/lib/config";
 import { COOKIE_PEDIU_LINK } from "@/lib/link-entrada";
 import { REDES, type BotaoRede, type RedeSocial } from "@/lib/login-social";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { telefoneDoLogin } from "@/lib/telefone-login";
+import { linkDoOi, MANDE_UM_OI } from "@/lib/whatsapp-oficial";
 import { BotaoGoogle } from "./botao-google";
 import { Aviso } from "./ui/basicos";
 import { Botao, classesBotaoRede } from "./ui/botao";
@@ -17,6 +19,16 @@ import { CampoSenha } from "./ui/campo-senha";
 import { VerificacaoRobo } from "./verificacao-robo";
 
 type ErroAuth = { code?: string; message?: string; status?: number } | null;
+
+/**
+ * O número ainda não escreveu para o Publike nas últimas 24 horas (o gancho do código responde 403,
+ * STATUS_FORA_DA_JANELA em src/lib/servidor/codigo-whatsapp.ts). O Auth troca a mensagem do gancho por
+ * "Unexpected status code returned from hook: 403"; se um dia repassar a do gancho, ela fala do "oi".
+ */
+function ehForaDaJanela(erro: ErroAuth) {
+  const msg = (erro?.message ?? "").toLowerCase();
+  return /\bhook\b.*\b403\b/.test(msg) || msg.includes("mande antes um oi");
+}
 
 /** Mensagens do Supabase Auth em português. */
 /** Pede ao navegador para guardar o e-mail e a senha (Credential Management; onde não existe, nada acontece). */
@@ -56,11 +68,19 @@ function traduzir(erro: ErroAuth) {
     return "Código errado ou vencido. Confira ou peça um novo.";
   }
   // o código vai pelo WhatsApp (o gancho /api/auth/codigo-whatsapp): fora das 24 horas da Meta, o pedido de um "oi" antes
-  if (msg.includes("mande antes um oi")) return erro?.message ?? "";
+  if (ehForaDaJanela(erro)) return MANDE_UM_OI;
   if (codigo === "phone_provider_disabled" || msg.includes("phone provider")) {
     return "O login por celular ainda não está ativado. Entre com seu e-mail.";
   }
-  if (codigo === "sms_send_failed" || codigo?.startsWith("hook") || msg.includes("sms") || msg.includes("hook")) {
+  // o gancho não conseguiu mandar (o Auth troca a mensagem do gancho por uma que fala do "hook"; se um dia repassar a
+  // do gancho, ela fala do WhatsApp)
+  if (
+    codigo === "sms_send_failed" ||
+    codigo?.startsWith("hook") ||
+    msg.includes("sms") ||
+    msg.includes("hook") ||
+    msg.includes("whatsapp")
+  ) {
     return "Não consegui mandar o código no WhatsApp agora. Tente de novo em instantes ou entre com seu e-mail.";
   }
   if (codigo === "provider_disabled" || msg.includes("provider is not enabled") || msg.includes("unsupported provider")) {
@@ -154,7 +174,10 @@ export function FormEntrar({
   const [reenviado, setReenviado] = useState(false);
 
   const digitos = celular.replace(/\D/g, "");
-  const telefone = `+55${digitos}`;
+  // sempre o mesmo formato (com o 9 no celular): o Auth acha a conta pelo celular, e "com" e "sem" o 9 seriam duas
+  // contas (src/lib/telefone-login.ts)
+  const doLogin = telefoneDoLogin(digitos);
+  const telefone = `+${doLogin ?? `55${digitos}`}`;
 
   // Quem volta da página da rede pelo botão "voltar" encontra os botões liberados de novo.
   useEffect(() => {
@@ -289,8 +312,8 @@ export function FormEntrar({
   async function pedirCodigo(e: FormEvent) {
     e.preventDefault();
     setErro(null);
-    if (digitos.length < 10) {
-      setErro("Digite o celular com DDD. Ex.: (62) 99999-0000.");
+    if (digitos.length < 10 || !doLogin) {
+      setErro("Digite o WhatsApp com DDD. Ex.: (62) 99999-0000.");
       return;
     }
     if (esperarVerificacao("celular")) return;
@@ -605,7 +628,19 @@ export function FormEntrar({
             />
             <p className="text-body-sm text-ink-muted">Você recebe um código no WhatsApp, na conversa com o Publike.</p>
           </div>
-          {erro && <Aviso tipo="erro">{erro}</Aviso>}
+          {erro && (
+            <Aviso tipo="erro">
+              {erro}
+              {erro === MANDE_UM_OI && (
+                <>
+                  {" "}
+                  <a href={linkDoOi()} target="_blank" rel="noopener noreferrer" className="underline">
+                    Mandar um oi no WhatsApp
+                  </a>
+                </>
+              )}
+            </Aviso>
+          )}
           <Botao type="submit" variante="primario" disabled={carregando || verificando} className="min-h-12">
             <Smartphone aria-hidden />
             {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber código no WhatsApp"}

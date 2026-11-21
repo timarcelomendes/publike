@@ -40,6 +40,7 @@ import { PRACA_PADRAO } from "@/lib/pracas";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { emailValido } from "@/lib/email-valido";
+import { telefoneDoLogin } from "@/lib/telefone-login";
 
 // Convites às empresas: importar a lista, marcar a situação e anotar. Só no admin.
 
@@ -641,7 +642,12 @@ async function garantirConta(
       const { data: criado, error: erroLogin } = await c.auth.admin.createUser(
         p.email
           ? { email: p.email, email_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } }
-          : { phone: p.whatsapp, phone_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } },
+          : {
+              // o mesmo formato do entrar pelo celular (com o 9 no celular; src/lib/telefone-login.ts)
+              phone: telefoneDoLogin(p.whatsapp ?? "") ?? p.whatsapp,
+              phone_confirm: true,
+              user_metadata: { name: p.nome, criada_pela_equipe: true },
+            },
       );
       if (erroLogin || !criado.user) {
         return {

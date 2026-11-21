@@ -5,12 +5,15 @@ import { Suspense } from "react";
 import { ExcluirConta, FormPerfil } from "@/components/form-perfil";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { SenhaDeAcesso } from "@/components/senha-de-acesso";
+import { WhatsappDeAcesso } from "@/components/whatsapp-de-acesso";
 import { TrocarEmail } from "@/components/trocar-email";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
-import { MODO_DEMO } from "@/lib/config";
+import { LOGIN_CELULAR, MODO_DEMO } from "@/lib/config";
 import { aceitePendente, obterMeuPerfil } from "@/lib/dados";
 import { PAPEIS_EQUIPE } from "@/lib/equipe";
-import { caminhoSeguro, primeiro } from "@/lib/formato";
+import { caminhoSeguro, formatarTelefone, primeiro } from "@/lib/formato";
+import { contatoDasVagasPeloWhatsapp } from "@/lib/servidor/numero-do-publike";
+import { linkDoOi } from "@/lib/whatsapp-oficial";
 import { lerModos, modoPadrao } from "@/lib/modo-painel";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { modosMarcados, modosNoBanco, tenhoVagaPublicada } from "@/lib/servidor/modo";
@@ -66,6 +69,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
     : undefined;
   const conta = contaAuth.data.user;
   const proximo = caminhoSeguro(primeiro(sp.next), "");
+  // Entrar pelo WhatsApp (migração 20270818120000): só para a própria conta (quem age por uma agência liga o próprio
+  // login lá na conta dele) e com o login pelo celular ligado
+  const comWhatsappDeAcesso = LOGIN_CELULAR && Boolean(perfil) && Boolean(conta) && usuario.id === usuario.pessoaId;
+  // o "mande antes um oi": o número como a Meta mostra ou, sem o Publicar pelo WhatsApp no site, o oficial
+  const linkDoOiDoPublike = comWhatsappDeAcesso ? linkDoOi((await contatoDasVagasPeloWhatsapp())?.numero) : null;
 
   // quem é da equipe de uma agência e age por ela: o perfil é o da agência
   if (usuario.papel !== "dono") {
@@ -216,6 +224,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
       )}
       {/* opcional: quem prefere entrar com e-mail e senha */}
       {perfil && <SenhaDeAcesso email={conta?.email || null} temSenha={conta?.user_metadata?.tem_senha === true} />}
+      {comWhatsappDeAcesso && conta && (
+        <WhatsappDeAcesso
+          ligado={conta.phone ? formatarTelefone(conta.phone) : null}
+          podeDesligar={Boolean(conta.email && conta.email_confirmed_at)}
+          sugestao={perfil?.whatsapp ?? null}
+          linkDoOi={linkDoOiDoPublike}
+        />
+      )}
       {perfil && <ExcluirConta />}
     </>
   );

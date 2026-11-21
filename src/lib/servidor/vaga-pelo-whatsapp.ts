@@ -335,5 +335,17 @@ export async function respostaDaOferta(
   });
   if (error || !(data as { ok?: boolean } | null)?.ok)
     return "Não consegui ligar os avisos por aqui agora. Dá para ligar no Publike, em Preferências › WhatsApp.";
-  return "Combinado! Quando alguém se candidatar às suas vagas, eu aviso por aqui. Para parar, é só responder PARAR.";
+  const combinado =
+    "Combinado! Quando alguém se candidatar às suas vagas, eu aviso por aqui. Para parar, é só responder PARAR.";
+  // com o entrar pelo WhatsApp ligado: o mesmo número no cadastro da conta liga o login (migração 20270818120000;
+  // as duas pontas dizem a mesma coisa). Sem a migração, ou sem ligar, só o combinado.
+  if (!LOGIN_CELULAR) return combinado;
+  const { data: login, error: erroLogin } = await banco.rpc("servidor_whatsapp_login_pela_vaga", {
+    p_chave: chave,
+    p_conversa: conversa,
+    p_vaga: m[1],
+  });
+  return !erroLogin && (login as { ligou?: boolean } | null)?.ligou
+    ? `${combinado}\n\nE, da próxima vez, você entra no Publike com um código que chega aqui no WhatsApp, sem e-mail. Para desligar, é em Meu perfil.`
+    : combinado;
 }

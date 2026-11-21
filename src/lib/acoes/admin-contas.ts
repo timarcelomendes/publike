@@ -11,6 +11,7 @@ import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { mandarEmailDeAcesso } from "@/lib/servidor/email-acesso";
 import { enviarEmailsPendentes, enviarPushPendentes, processarFilas } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
+import { telefoneDoLogin } from "@/lib/telefone-login";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
 import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio";
@@ -450,12 +451,13 @@ export async function salvarServicosEmNomeDe(
 
 // ------------------------------------------------------------------ acesso da conta
 
-/** "(62) 99999-0000" → "5562999990000" (o Supabase guarda assim). Vazio: null. */
+/**
+ * "(62) 99999-0000" → "5562999990000" (o Supabase guarda assim). Vazio: null. O mesmo formato do entrar pelo celular
+ * (com o 9 no celular; src/lib/telefone-login.ts).
+ */
 function telefoneDeLogin(valor: string): string | null | "invalido" {
-  let d = valor.replace(/\D/g, "");
-  if (!d) return null;
-  if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
-  return /^\d{10,11}$/.test(d) ? `55${d}` : "invalido";
+  if (!valor.replace(/\D/g, "")) return null;
+  return telefoneDoLogin(valor) ?? "invalido";
 }
 
 /**
