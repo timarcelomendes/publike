@@ -41,6 +41,7 @@ import {
   situacaoWhatsapp,
   type SituacaoModelos,
 } from "@/lib/servidor/whatsapp";
+import { situacaoConversoes } from "@/lib/servidor/meta-conversoes";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -542,6 +543,13 @@ async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conv
   // sem a migração 20270710120000, os resultados e os erros do período não vêm
   const res = resultados.error || !resultados.data ? null : (resultados.data as unknown as Resultados);
   const s = situacaoWhatsapp();
+  // as vagas que voltaram para a Meta (migração 20270824120000; sem ela, null)
+  const conversoes: ConversoesMeta =
+    aba === "ligacao"
+      ? await c.rpc("admin_meta_conversoes").then(({ data, error }) =>
+          error || !data ? null : (data as unknown as NonNullable<ConversoesMeta>),
+        )
+      : null;
   // Admin aberto no computador (16/11/2026: "aqui ele olha local?"): as chaves são as do .env.local, não as da Vercel
   const local = !process.env.VERCEL;
   const p = parametrosWhatsapp(r?.config ?? {});
@@ -673,7 +681,7 @@ async function Conteudo({ aba, vista, conversa }: { aba: Aba; vista: Vista; conv
           {aba === "erros" && r && <AbaErros erros={erros} r={r} res={res} vista={vista} numeros={numeros} />}
           {aba === "parametros" && r && <AbaParametros r={r} p={p} />}
           {aba === "modelos" && r && <AbaModelos r={r} p={p} conferir={s.token && s.conta} />}
-          {aba === "ligacao" && <AbaLigacao s={s} local={local} />}
+          {aba === "ligacao" && <AbaLigacao s={s} local={local} conversoes={conversoes} />}
         </>
       )}
     </div>
@@ -1373,7 +1381,23 @@ function AbaModelos({ r, p, conferir }: { r: Resumo; p: ParametrosWhatsapp; conf
   );
 }
 
-function AbaLigacao({ s, local }: { s: ReturnType<typeof situacaoWhatsapp>; local: boolean }) {
+type ConversoesMeta = {
+  enviadas_30_dias: number;
+  falharam_30_dias: number;
+  ultimo_erro: string | null;
+  ultima_em: string | null;
+} | null;
+
+function AbaLigacao({
+  s,
+  local,
+  conversoes,
+}: {
+  s: ReturnType<typeof situacaoWhatsapp>;
+  local: boolean;
+  conversoes: ConversoesMeta;
+}) {
+  const cv = situacaoConversoes();
   const ligacaoPronta = s.token && s.numero && s.conta && s.segredo && s.webhook;
   const enderecoWebhook = local ? "https://publike.org/api/whatsapp/webhook" : s.enderecoWebhook;
   return (
@@ -1407,6 +1431,35 @@ function AbaLigacao({ s, local }: { s: ReturnType<typeof situacaoWhatsapp>; loca
         {s.token && s.numero && <ConferirNumero />}
         {!ligacaoPronta && (
           <p className="text-body-sm text-ink-muted">Sem as chaves, o Publike não manda nada e nada dá erro.</p>
+        )}
+      </Secao>
+
+      <Secao
+        titulo="Vagas publicadas de volta para a Meta"
+        descricao="Quem chega por um anúncio de clique para o WhatsApp e publica vaga em até 7 dias vira uma conversão (LeadSubmitted) na Meta, uma vez por clique. Assim a campanha de empresas aprende quem publica, e não só quem manda mensagem."
+      >
+        <div className="flex flex-col gap-1.5">
+          <Situacao ok={cv.dataset}>
+            META_DATASET_ID: o ID do conjunto de dados do Gerenciador de Eventos, ligado à conta do WhatsApp Business
+          </Situacao>
+          <Situacao ok={s.conta}>WHATSAPP_WABA_ID: a conta do WhatsApp Business (vai junto com o clique)</Situacao>
+          <p className="text-body-sm text-ink-muted">
+            {cv.tokenProprio
+              ? "META_CONVERSOES_TOKEN: usa um token só para as conversões."
+              : "Usa o WHATSAPP_TOKEN. Se a Meta recusar por permissão, dê ao usuário do sistema acesso ao conjunto de dados ou ponha um META_CONVERSOES_TOKEN."}
+          </p>
+        </div>
+        {conversoes && (
+          <p className="text-body-sm text-ink">
+            Últimos 30 dias: {plural(conversoes.enviadas_30_dias, "vaga enviada", "vagas enviadas")}
+            {conversoes.falharam_30_dias > 0 && `, ${plural(conversoes.falharam_30_dias, "recusada", "recusadas")}`}
+            {conversoes.ultima_em && ` · a última em ${formatarDataHora(conversoes.ultima_em)}`}.
+          </p>
+        )}
+        {conversoes?.ultimo_erro && (
+          <Aviso tipo="alerta" titulo="O último erro da Meta">
+            {conversoes.ultimo_erro}
+          </Aviso>
         )}
       </Secao>
 

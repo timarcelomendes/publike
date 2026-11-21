@@ -1107,15 +1107,20 @@ export async function baixarFotoOuPdf(cfg: ConfigMeta, id: string, max = 8 * 102
   }
 }
 
-/** O anúncio de onde a pessoa veio, só o que serve (sem a imagem nem o id do clique). */
+/**
+ * O anúncio de onde a pessoa veio, só o que serve (sem a imagem). O id do clique (`ctwa_clid`) volta para a Meta
+ * quando a conversa vira vaga publicada (migração 20270824120000, src/lib/servidor/meta-conversoes.ts).
+ */
 function origemDoAnuncio(r: Record<string, unknown> | undefined) {
   if (!r) return null;
   const texto = (k: string, max: number) => (typeof r[k] === "string" ? String(r[k]).slice(0, max) : null);
+  const clique = texto("ctwa_clid", 300);
   const o = {
     tipo: texto("source_type", 20),
     link: texto("source_url", 300),
     titulo: texto("headline", 200),
     texto: texto("body", 500),
+    ...(clique && clique.length >= 8 ? { clique } : {}),
   };
   return o.tipo || o.link || o.titulo ? o : null;
 }

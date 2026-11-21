@@ -9,6 +9,7 @@ import { MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerrament
 import { obterUsuario } from "@/lib/dados";
 import { anuncioRepetido, mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
+import { avisarMetaDaVaga } from "@/lib/servidor/meta-conversoes";
 import { processarFilas } from "@/lib/servidor/filas";
 import { confirmarVagaPublicada } from "@/lib/servidor/vaga-pelo-whatsapp";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -243,7 +244,11 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     destino = outrasDoWhatsapp
       ? `/publicar/whatsapp/${outrasDoWhatsapp}?publicada=${data.id}`
       : `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}${comTeste ? "&teste=1" : ""}`;
-    if (d.tipo === "vaga") await marcarConversao("vaga");
+    if (d.tipo === "vaga") {
+      await marcarConversao("vaga");
+      // chegou por um anúncio de clique para o WhatsApp: a Meta fica sabendo que o clique publicou vaga
+      after(() => avisarMetaDaVaga(data.id));
+    }
     // o funil do publicar em passos: a vaga saiu (só a contagem do dia; sem a migração, nada)
     if (formData.get("de_passos") === "1") {
       const { error: erroFunil } = await supabase.rpc("registrar_passo_publicar", { p_passo: 6 });

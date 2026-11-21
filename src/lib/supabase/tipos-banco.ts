@@ -2896,6 +2896,9 @@ export type Database = {
       servidor_avisar_procuradas: { Args: { p_chave: string; p_limite?: number; p_agora?: boolean }; Returns: number };
       admin_procuradas: { Args: { p_dias?: number | null }; Returns: Json };
       admin_procuradas_config: { Args: { p_ligado: boolean | null; p_minimo: number | null; p_dias: number | null }; Returns: undefined };
+      servidor_meta_conversao_da_vaga: { Args: { p_chave: string; p_anuncio: string }; Returns: Json };
+      servidor_meta_conversao_resultado: { Args: { p_chave: string; p_clique: string; p_resultado: string }; Returns: undefined };
+      admin_meta_conversoes: { Args: Record<string, never>; Returns: Json };
       minhas_perguntas_de_resposta: {
         Args: Record<string, never>;
         Returns: { anuncio_id: string; titulo: string; empresa_nome: string; perguntas: number }[];
