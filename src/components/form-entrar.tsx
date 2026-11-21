@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, KeyRound, Mail, MailCheck, RotateCw, Smartphone } from "lucide-react";
+import { ArrowLeft, KeyRound, Mail, MailCheck, MessageCircle, RotateCw, Smartphone } from "lucide-react";
 import Image from "next/image";
 import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ehNavegacao } from "@/lib/acao-segura";
@@ -509,7 +509,7 @@ export function FormEntrar({
         {reenvios >= 2 && (
           <p className="text-body-sm text-ink-muted">
             Ainda nada? Confira se o endereço está certo
-            {comCelular ? " ou entre com o celular, pelo código no WhatsApp" : ""}.
+            {comCelular ? " ou entre com o WhatsApp, pelo código na conversa com o Publike" : ""}.
           </p>
         )}
         <Botao
@@ -572,9 +572,24 @@ export function FormEntrar({
   return (
     <div className="flex flex-col gap-5">
       {cabecalho && <div className="-mb-5">{cabecalho}</div>}
-      {redes.length > 0 && (
+      {modo !== "celular" && (redes.length > 0 || comCelular) && (
         <>
-          <div role="group" aria-label="Entrar com uma rede social" className="flex flex-col gap-3">
+          <div role="group" aria-label="Jeitos de entrar" className="flex flex-col gap-3">
+            {/* o WhatsApp primeiro, do mesmo tamanho dos outros (21/11/2026: o link pequeno embaixo do e-mail sumia) */}
+            {comCelular && (
+              <button
+                type="button"
+                onClick={() => {
+                  setModo("celular");
+                  setErro(null);
+                }}
+                disabled={abrindo !== null || carregando}
+                className="inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-pill bg-cerrado px-3 text-body-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-cerrado/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <MessageCircle aria-hidden className="size-5 shrink-0" />
+                Entrar com o WhatsApp
+              </button>
+            )}
             {redes.map(({ rede, nome, logo }) =>
               rede === "google" && googleOficial ? (
                 <div key={rede} className="flex flex-col gap-1">
@@ -605,7 +620,7 @@ export function FormEntrar({
           </div>
           <div className="flex items-center gap-3 text-body-sm text-ink-muted">
             <span className="h-px flex-1 bg-line" />
-            {modo === "celular" ? "ou entre com o WhatsApp" : "ou use seu e-mail"}
+            ou use seu e-mail
             <span className="h-px flex-1 bg-line" />
           </div>
         </>
@@ -645,16 +660,16 @@ export function FormEntrar({
             <Smartphone aria-hidden />
             {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber código no WhatsApp"}
           </Botao>
-          <button
-            type="button"
+          <Botao
+            variante="fantasma"
             onClick={() => {
               setModo("email");
               setErro(null);
             }}
-            className="min-h-11 text-label text-terra-text underline"
           >
-            Prefiro entrar com e-mail
-          </button>
+            <ArrowLeft aria-hidden />
+            Outras formas de entrar
+          </Botao>
         </form>
       ) : modo === "senha" ? (
         <form onSubmit={pedirEntrarComSenha} className="flex flex-col gap-4">
@@ -743,18 +758,6 @@ export function FormEntrar({
             <Mail aria-hidden />
             {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber link de acesso"}
           </Botao>
-          {comCelular && (
-            <button
-              type="button"
-              onClick={() => {
-                setModo("celular");
-                setErro(null);
-              }}
-              className="min-h-11 text-label text-terra-text underline"
-            >
-              Prefiro entrar com o WhatsApp
-            </button>
-          )}
           <button
             type="button"
             onClick={() => {

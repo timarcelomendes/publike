@@ -168,6 +168,6 @@ function EsqueletoEntrar() {
 function comoEntrar() {
   // Com redes sociais ou celular, os próprios botões mostram as opções.
   return REDES_ATIVAS.length > 0 || LOGIN_CELULAR
-    ? "Grátis. Entre sem senha ou com a senha que você criou. Na primeira vez, a conta é criada na hora."
+    ? "Grátis. Se ainda não tem conta, ela é criada na hora."
     : "Grátis: você recebe um link no e-mail, ou entra com a senha que criou. Na primeira vez, a conta é criada na hora.";
 }

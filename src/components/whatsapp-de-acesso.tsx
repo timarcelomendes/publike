@@ -123,7 +123,7 @@ export function WhatsappDeAcesso({
             {atual ? (
               <>
                 O WhatsApp <strong className="text-ink">{atual}</strong> está vinculado a esta conta. Para entrar por ele,
-                toque em “Prefiro entrar com o WhatsApp” na tela de entrar: o código chega na conversa com o Publike.
+                toque em “Entrar com o WhatsApp” na tela de entrar: o código chega na conversa com o Publike.
               </>
             ) : (
               "Opcional. Vincule o seu WhatsApp a esta conta para entrar com um código que chega na conversa com o Publike, sem e-mail e sem senha."
@@ -134,7 +134,7 @@ export function WhatsappDeAcesso({
 
       {pronto && atual && (
         <Aviso tipo="sucesso" titulo="WhatsApp vinculado a esta conta.">
-          Da próxima vez, na tela de entrar, toque em “Prefiro entrar com o WhatsApp”.
+          Da próxima vez, na tela de entrar, toque em “Entrar com o WhatsApp”.
         </Aviso>
       )}
 
