@@ -6,19 +6,20 @@ import { configMeta } from "./whatsapp";
 // anúncio de clique para o WhatsApp (`ctwa_clid`). Assim a campanha de empresas aprende qual clique publicou vaga, e não
 // só quem mandou mensagem.
 //
-// Variáveis na Vercel (só o usuário põe):
-//   META_DATASET_ID           o ID do conjunto de dados (Gerenciador de Eventos) ligado à conta do WhatsApp Business
-//   META_CONVERSOES_TOKEN     opcional: o token com acesso ao conjunto de dados; sem ele, vale o WHATSAPP_TOKEN
-// Sem o META_DATASET_ID, nada sai e nada dá erro.
+// O conjunto de dados da conta do WhatsApp Business vem do banco (o botão "Ligar as conversões" de Admin › WhatsApp ›
+// Ligação, migração 20270825120000). Na Vercel, opcionais (só o usuário põe):
+//   META_DATASET_ID           outro conjunto de dados, no lugar do guardado no banco
+//   META_CONVERSOES_TOKEN     o token com acesso ao conjunto de dados; sem ele, vale o WHATSAPP_TOKEN
+// Sem conjunto de dados, nada sai e nada dá erro.
 
 const env = (nome: string) => (process.env[nome] || "").trim();
 
 /** O evento que a Meta conhece para "virou cliente" numa conversa: a vaga publicada. */
 const EVENTO = "LeadSubmitted";
 
-export function configConversoes() {
+function configConversoes(datasetDoBanco: string | null) {
   const meta = configMeta();
-  const dataset = env("META_DATASET_ID");
+  const dataset = env("META_DATASET_ID") || datasetDoBanco || "";
   if (!meta || !meta.wabaId || !/^\d{5,30}$/.test(dataset)) return null;
   return { dataset, wabaId: meta.wabaId, token: env("META_CONVERSOES_TOKEN") || meta.token, base: meta.base };
 }
@@ -36,10 +37,14 @@ export function situacaoConversoes() {
  * Meta (uma vez por clique). Não lança: falha fica anotada no banco e no log.
  */
 export async function avisarMetaDaVaga(anuncioId: string) {
-  const cfg = configConversoes();
   const acesso = acessoFila();
-  if (!cfg || !acesso) return;
+  if (!acesso || !configMeta()?.wabaId) return;
   const { cliente, chave } = acesso;
+  const guardado = env("META_DATASET_ID")
+    ? null
+    : await cliente.rpc("servidor_meta_dataset", { p_chave: chave }).then(({ data }) => (data as string | null) ?? null);
+  const cfg = configConversoes(guardado);
+  if (!cfg) return;
   const { data, error } = await cliente.rpc("servidor_meta_conversao_da_vaga", { p_chave: chave, p_anuncio: anuncioId });
   if (error) {
     // sem a migração: fica como antes

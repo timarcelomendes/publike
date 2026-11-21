@@ -695,6 +695,25 @@ export async function ligarWebhookDaConta(cfg: ConfigMeta) {
   return r.dados.success === false ? { ok: false as const, erro: "a Meta não confirmou" } : { ok: true as const };
 }
 
+/**
+ * O conjunto de dados da conta do WhatsApp Business, para a API de Conversões (migração 20270825120000): pede o que já
+ * existe e, se não tem, cria. Devolve o ID.
+ */
+export async function datasetDaConta(cfg: ConfigMeta) {
+  if (!cfg.wabaId) return { ok: false as const, erro: "Falta o WHATSAPP_WABA_ID na Vercel." };
+  type Dataset = { id?: string; dataset_id?: string; data?: { id?: string; dataset_id?: string }[] };
+  const idDe = (d: Dataset) => {
+    const id = d.id ?? d.dataset_id ?? d.data?.[0]?.id ?? d.data?.[0]?.dataset_id;
+    return typeof id === "string" && /^\d{5,30}$/.test(id) ? id : null;
+  };
+  const existe = await graph<Dataset>(cfg, `${cfg.wabaId}/dataset`);
+  if (existe.ok && idDe(existe.dados)) return { ok: true as const, id: idDe(existe.dados)!, criado: false };
+  const novo = await graph<Dataset>(cfg, `${cfg.wabaId}/dataset`, { metodo: "POST", corpo: {} });
+  if (!novo.ok) return { ok: false as const, erro: novo.texto };
+  const id = idDe(novo.dados);
+  return id ? { ok: true as const, id, criado: true } : { ok: false as const, erro: "a Meta não devolveu o ID" };
+}
+
 export type SituacaoModelo = { status: string; categoria?: string; motivo?: string; tentado_em?: string };
 export type SituacaoModelos = Record<string, SituacaoModelo>;
 

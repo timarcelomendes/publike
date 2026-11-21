@@ -369,7 +369,8 @@
   "20270821120000_admin_usuarios_filtros",
   "20270822120000_procuradas_sem_vaga",
   "20270823120000_procuradas_30_dias",
-  "20270824120000_meta_conversoes"
+  "20270824120000_meta_conversoes",
+  "20270825120000_meta_dataset"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -686,6 +687,7 @@
   "c|privado.config_whatsapp.limite_mes_gratis": "a7ea0bef69",
   "c|privado.config_whatsapp.limite_mes_plano": "a7ea0bef69",
   "c|privado.config_whatsapp.mensagem_minutos": "a7ea0bef69",
+  "c|privado.config_whatsapp.meta_dataset": "00bdf2fb04",
   "c|privado.config_whatsapp.modelos": "664d5eacff",
   "c|privado.config_whatsapp.modelos_conferidos_em": "de599dc94b",
   "c|privado.config_whatsapp.numeros_teste": "a78f94fc27",
@@ -3102,7 +3104,7 @@
   "f|public.admin_medir_geral_agora()": "cca468b5bd",
   "f|public.admin_medir_impulsos_agora()": "645ca66164",
   "f|public.admin_mensagens_equipe(p_conta uuid)": "6127cc659f",
-  "f|public.admin_meta_conversoes()": "c763db7bed",
+  "f|public.admin_meta_conversoes()": "dfd30589f8",
   "f|public.admin_metricas_crescimento()": "8bf703408f",
   "f|public.admin_metricas_produto()": "60d521e643",
   "f|public.admin_modelos_email()": "38ff3ff575",
@@ -3162,6 +3164,7 @@
   "f|public.admin_salvar_impulso(p_precos jsonb, p_config jsonb)": "1675340c03",
   "f|public.admin_salvar_logo_emails(p_mostrar boolean, p_url text)": "6203895ef5",
   "f|public.admin_salvar_meta(p_indicador text, p_valor numeric)": "17c547a72f",
+  "f|public.admin_salvar_meta_dataset(p_id text)": "e754ab299c",
   "f|public.admin_salvar_modelo_email(p_chave text, p_assunto text, p_corpo text, p_botao text)": "227d2daa82",
   "f|public.admin_salvar_parametros_email(p_por_dia integer, p_semana_dia integer, p_semana_hora integer, p_reativar_sem_vaga_dias integer, p_reativar_janela_dias integer, p_reativar_intervalo_dias integer, p_reativar_max_seguidos integer, p_reativar_minimo_talentos integer)": "95c5ccb437",
   "f|public.admin_salvar_plano(p_id uuid, p_valor numeric, p_ligado boolean)": "17cef6552e",
@@ -3764,6 +3767,7 @@
   "f|public.servidor_medir_geral(p_chave text)": "ee0b6d15d8",
   "f|public.servidor_meta_conversao_da_vaga(p_chave text, p_anuncio uuid)": "0f609a7d6c",
   "f|public.servidor_meta_conversao_resultado(p_chave text, p_clique text, p_resultado text)": "30e98ea35f",
+  "f|public.servidor_meta_dataset(p_chave text)": "25b31d1c5c",
   "f|public.servidor_noticias_contexto(p_chave text)": "3645735f7b",
   "f|public.servidor_numeros_da_semana(p_chave text)": "00b7ad8430",
   "f|public.servidor_numeros_do_mes_receita(p_chave text, p_mes date)": "b0bfeff6c8",

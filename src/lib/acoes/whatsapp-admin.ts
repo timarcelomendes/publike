@@ -10,6 +10,7 @@ import {
   conferirModelos,
   conferirNumero,
   configMeta,
+  datasetDaConta,
   enviarTeste,
   enviarTexto,
   ligarWebhookDaConta,
@@ -188,6 +189,33 @@ export async function ligarWebhookAgora(): Promise<Resultado> {
   if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
   const r = await ligarWebhookDaConta(cfg);
   return r.ok ? { ok: true, mensagem: "Webhook ligado nesta conta." } : { ok: false, erro: `A Meta recusou: ${r.erro}` };
+}
+
+/**
+ * Liga as conversões (migração 20270825120000): pede à Meta o conjunto de dados da conta do WhatsApp Business (cria se
+ * não tem) e guarda o ID no banco. Daí em diante, a vaga publicada por quem veio de um anúncio volta para a Meta.
+ */
+export async function ligarConversoesAgora(): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const cfg = configMeta();
+  if (!cfg) return { ok: false, erro: "Faltam o WHATSAPP_TOKEN e o WHATSAPP_PHONE_ID na Vercel." };
+  const r = await datasetDaConta(cfg);
+  if (!r.ok) return { ok: false, erro: `A Meta recusou: ${r.erro}` };
+  const { error } = await c.rpc("admin_salvar_meta_dataset", { p_id: r.id });
+  if (error)
+    return {
+      ok: false,
+      erro:
+        error.code === "PGRST202"
+          ? "Falta aplicar a migração 20270825120000 no banco."
+          : `A Meta devolveu o conjunto de dados ${r.id}, mas ele não ficou guardado: ${error.message}`,
+    };
+  refresh();
+  return {
+    ok: true,
+    mensagem: `${r.criado ? "Conjunto de dados criado" : "Conjunto de dados encontrado"} (${r.id}). As conversões estão ligadas.`,
+  };
 }
 
 /** A mensagem de teste da Meta (hello_world) para um dos números de teste. */

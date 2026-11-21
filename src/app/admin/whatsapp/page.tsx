@@ -21,6 +21,7 @@ import {
   AtendimentoWhatsapp,
   ConferirModelos,
   ConferirNumero,
+  LigarConversoes,
   ConfigWhatsapp,
   MandarTeste,
   PedirAceite,
@@ -1382,6 +1383,8 @@ function AbaModelos({ r, p, conferir }: { r: Resumo; p: ParametrosWhatsapp; conf
 }
 
 type ConversoesMeta = {
+  /** migração 20270825120000: o conjunto de dados guardado pelo botão */
+  dataset?: string | null;
   enviadas_30_dias: number;
   falharam_30_dias: number;
   ultimo_erro: string | null;
@@ -1438,17 +1441,29 @@ function AbaLigacao({
         titulo="Vagas publicadas de volta para a Meta"
         descricao="Quem chega por um anúncio de clique para o WhatsApp e publica vaga em até 7 dias vira uma conversão (LeadSubmitted) na Meta, uma vez por clique. Assim a campanha de empresas aprende quem publica, e não só quem manda mensagem."
       >
-        <div className="flex flex-col gap-1.5">
-          <Situacao ok={cv.dataset}>
-            META_DATASET_ID: o ID do conjunto de dados do Gerenciador de Eventos, ligado à conta do WhatsApp Business
-          </Situacao>
-          <Situacao ok={s.conta}>WHATSAPP_WABA_ID: a conta do WhatsApp Business (vai junto com o clique)</Situacao>
-          <p className="text-body-sm text-ink-muted">
-            {cv.tokenProprio
-              ? "META_CONVERSOES_TOKEN: usa um token só para as conversões."
-              : "Usa o WHATSAPP_TOKEN. Se a Meta recusar por permissão, dê ao usuário do sistema acesso ao conjunto de dados ou ponha um META_CONVERSOES_TOKEN."}
-          </p>
-        </div>
+        {(() => {
+          const dataset = cv.dataset ? "na Vercel (META_DATASET_ID)" : conversoes?.dataset ? conversoes.dataset : null;
+          return (
+            <div className="flex flex-col gap-1.5">
+              <Situacao ok={Boolean(dataset)}>
+                {dataset ? `Conversões ligadas: conjunto de dados ${dataset}` : "Conversões desligadas"}
+              </Situacao>
+              <Situacao ok={s.conta}>WHATSAPP_WABA_ID: a conta do WhatsApp Business (vai junto com o clique)</Situacao>
+              {!dataset && s.token && s.conta && (
+                <>
+                  <p className="text-body-sm text-ink-muted">
+                    O botão pede à Meta o conjunto de dados da conta do WhatsApp do Publike (cria se não tem) e guarda
+                    aqui. Não gasta nada.
+                  </p>
+                  <LigarConversoes />
+                </>
+              )}
+              {cv.tokenProprio && (
+                <p className="text-body-sm text-ink-muted">META_CONVERSOES_TOKEN: usa um token só para as conversões.</p>
+              )}
+            </div>
+          );
+        })()}
         {conversoes && (
           <p className="text-body-sm text-ink">
             Últimos 30 dias: {plural(conversoes.enviadas_30_dias, "vaga enviada", "vagas enviadas")}

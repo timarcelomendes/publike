@@ -2899,6 +2899,8 @@ export type Database = {
       servidor_meta_conversao_da_vaga: { Args: { p_chave: string; p_anuncio: string }; Returns: Json };
       servidor_meta_conversao_resultado: { Args: { p_chave: string; p_clique: string; p_resultado: string }; Returns: undefined };
       admin_meta_conversoes: { Args: Record<string, never>; Returns: Json };
+      servidor_meta_dataset: { Args: { p_chave: string }; Returns: string | null };
+      admin_salvar_meta_dataset: { Args: { p_id: string }; Returns: undefined };
       minhas_perguntas_de_resposta: {
         Args: Record<string, never>;
         Returns: { anuncio_id: string; titulo: string; empresa_nome: string; perguntas: number }[];

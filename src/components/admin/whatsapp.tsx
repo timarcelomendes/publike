@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import {
   conferirModelosAgora,
   conferirNumeroAgora,
+  ligarConversoesAgora,
   ligarWebhookAgora,
   mandarTesteWhatsapp,
   mudarConversaWhatsapp,
@@ -949,5 +950,29 @@ export function ResponderConversa({ conversa, aberta }: { conversa: string; aber
       </div>
       <Resposta r={resposta} />
     </form>
+  );
+}
+
+/** Admin › WhatsApp › Ligação: pede à Meta o conjunto de dados das conversões (migração 20270825120000). */
+export function LigarConversoes() {
+  const [pendente, iniciar] = useTransition();
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <button
+        type="button"
+        disabled={pendente}
+        className={classesBotao("primario")}
+        onClick={() =>
+          iniciar(async () => {
+            const r = await ligarConversoesAgora();
+            setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+          })
+        }
+      >
+        {pendente ? "Ligando…" : "Ligar as conversões"}
+      </button>
+      <Resposta r={resposta} />
+    </div>
   );
 }
