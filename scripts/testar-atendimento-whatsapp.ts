@@ -109,6 +109,9 @@ globalThis.fetch = (async (url: any, init: any) => {
     const t = corpo.p_texto ?? "";
     const vaga = (id: string, titulo: string, x: Record<string, unknown> = {}) => ({ ...vagaCozinheira, id: id.repeat(36).slice(0, 36), titulo, ...x });
     if (t === "motorista") return json([vaga("2", "Motorista entregador")]);
+    // garçom de freela: um anúncio de quem procura (fica fora) e uma vaga de verdade
+    if (t === "garçom" && corpo.p_regime === "freelance")
+      return json([vaga("5", "Sou garçom freelancer, responsável e pontual", { regime: "freelance" }), vaga("6", "Garçom para eventos", { regime: "freelance" })]);
     // três funções, com títulos longos: não cabem todas numa mensagem (21/11/2026)
     const longo = " com cesta natalina, produtividade, cooperativa de crédito, premiação anual, plano de saúde, odontológico, vale-alimentação e transporte".repeat(2);
     if (t === "operador de caixa") return json([vaga("c", `Operador de caixa${longo}`)]);
@@ -1297,6 +1300,56 @@ async function main() {
     corpo(r.msgs[0]),
   );
   semAprendiz = true;
+
+  // só o jeito, sem a função (21/11/2026: "Freelancer conjunto Vera Cruz II" mostrou outra pessoa freelancer): pergunta
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "freelancer", funcoes: ["freelancer"], parecidas: [], jeito: ["freelance"], categoria: "todas", cidade: "Goiânia", bairro: "Conjunto Vera Cruz II", fora: "" },
+  });
+  r = await rodar("Freelancer conjunto Vera Cruz II", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "Freelancer conjunto Vera Cruz II" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("Que tipo de trabalho de freelance você procura?") &&
+      corpo(r.msgs[0]).includes("garçom, atendente") &&
+      !corpo(r.msgs[0]).includes("e o bairro onde mora") &&
+      !corpo(r.msgs[0]).includes("publike.org/") &&
+      buscas.length === 0,
+    "freelance sem função: pergunta a função, sem buscar",
+    corpo(r.msgs[0]),
+  );
+  // a resposta ("garçom") continua de freelance, e o anúncio de quem procura fica fora
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "garçom", funcoes: ["garçom"], parecidas: [], jeito: [], categoria: "todas", cidade: "Goiânia", bairro: "Conjunto Vera Cruz II", fora: "" },
+  });
+  r = await rodar("garçom", {
+    perfil: "trabalho",
+    historico: [
+      ...procurando,
+      { de: "pessoa", texto: "Freelancer conjunto Vera Cruz II" },
+      { de: "robo", texto: a.perguntaDaFuncao(["freelance"], false) },
+      { de: "pessoa", texto: "garçom" },
+    ],
+  });
+  conferir(
+    buscas.some((b) => b.p_regime === "freelance") &&
+      corpo(r.msgs[0]).includes("*Garçom para eventos*") &&
+      !corpo(r.msgs[0]).includes("Sou garçom"),
+    "depois da pergunta: garçom de freelance, sem o anúncio de quem procura",
+    corpo(r.msgs[0]),
+  );
+  conferir(
+    a.pareceQuemProcura("Sou freelancer, comunicativa, responsável") &&
+      a.pareceQuemProcura("Procuro emprego de auxiliar") &&
+      a.pareceQuemProcura("Faço diárias de faxina") &&
+      !a.pareceQuemProcura("Garçom para eventos") &&
+      !a.pareceQuemProcura("Sorveteria contrata atendente"),
+    "o anúncio de quem procura trabalho",
+  );
 
   // o link curto de quem veio do anúncio: a letra da campanha antes do código (21/11/2026: no fim, ficava estranho)
   conferir(

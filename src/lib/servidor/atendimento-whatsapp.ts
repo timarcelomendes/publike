@@ -666,6 +666,33 @@ export function vagaDoJeito(a: Vinda, jeitos: readonly Jeito[]) {
 /** "que aceitam sem experiência e para PCD" (sem o "qualquer"). */
 const nomeDoJeito = (jeitos: readonly Jeito[]) => listaE(jeitos.map((j) => JEITOS[j]).filter(Boolean));
 
+// Só o jeito, sem a função (21/11/2026; Marcelo, com "Freelancer conjunto Vera Cruz II" respondido com o anúncio de
+// outra pessoa que também é freelancer: "tem que perguntar o que ela quer fazer como freelancer"): freelance, diária,
+// home office, meio período e fim de semana dizem como, não o quê. Pergunta a função antes de buscar. O "primeiro
+// emprego", o PCD e o "qualquer coisa" seguem com as vagas mais perto.
+const JEITOS_QUE_PEDEM_A_FUNCAO: readonly Jeito[] = ["freelance", "diaria", "remoto", "meio_periodo", "fim_de_semana"];
+
+/** A pergunta da função, com o jeito que ela pediu ("Que tipo de trabalho de freelance você procura?"). */
+export function perguntaDaFuncao(jeitos: readonly Jeito[], comBairro: boolean) {
+  const qual = JEITOS_QUE_PEDEM_A_FUNCAO.find((j) => jeitos.includes(j))!;
+  return [
+    `Que tipo de trabalho ${JEITOS[qual]} você procura? 😊`,
+    `Me diz a função, como garçom, atendente, auxiliar de cozinha, diarista ou entregador${comBairro ? ", e o bairro onde mora" : ""}, que eu te mando as vagas ${JEITOS[qual]} perto de você.`,
+  ].join("\n\n");
+}
+/** A última resposta foi essa pergunta: o jeito dela vale para a função que vier agora. */
+export const PERGUNTOU_A_FUNCAO = /Que tipo de trabalho (de freelance|de diária|home office|de meio período|de fim de semana) você procura/;
+
+/**
+ * Quem escreveu como quem procura trabalho, não como quem contrata ("Sou freelancer, comunicativa…", "Procuro emprego
+ * de…"): o anúncio fica fora das vagas mandadas pelo WhatsApp.
+ */
+export function pareceQuemProcura(titulo: string) {
+  return /^(eu )?(sou|estou (procurando|em busca|a procura)|procuro (emprego|trabalho|vaga|servico|oportunidade)|busco (emprego|trabalho|vaga|oportunidade)|preciso de (emprego|trabalho)|faco (diarias?|freelas?|bicos?))\b/.test(
+    simples(titulo).trim(),
+  );
+}
+
 type BuscaDeVagas = { texto: string; funcoes?: string[]; parecidas?: string[]; categoria: string; jeito?: Jeito[] };
 
 /**
@@ -733,7 +760,7 @@ async function procurarVagas(
       p_regime: regime,
       p_limite: jeitos.length ? 60 : 20,
     } as never);
-    const lista = (error ? [] : (data ?? [])) as unknown as (Anuncio & Vinda)[];
+    const lista = ((error ? [] : (data ?? [])) as unknown as (Anuncio & Vinda)[]).filter((a) => !pareceQuemProcura(a.titulo));
     if (!jeitos.length || !lista.length) return lista;
     // o que a busca não traz (a experiência, PCD, o modelo e a jornada), para o filtro do jeito
     const { data: mais } = await criarClientePublico()
@@ -1031,6 +1058,8 @@ async function mensagemDaBusca(
   const texto = busca?.texto?.trim().slice(0, 40) ?? "";
   const jeito = [...new Set([...(busca?.jeito ?? []).filter(ehJeito), ...jeitoDoTexto(`${texto} ${textos.join(" ")}`)])];
   const funcoes = unicos((busca?.funcoes?.length ? busca.funcoes : [texto]).map(funcaoSemJeito), 3);
+  if (!funcoes.length && jeito.some((j) => JEITOS_QUE_PEDEM_A_FUNCAO.includes(j)))
+    return { abertura: perguntaDaFuncao(jeito, !local), aberturaPadrao: "", texto: "", botao: null, quantas: 0 };
   const vagas = await procurarVagas(
     { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas", jeito },
     { local },
@@ -2070,7 +2099,9 @@ export async function atenderConversa(
         botao: funcao ? { titulo: "Ver as vagas no site", caminho: `/?${q}` } : LINKS.vagas,
       });
     }
-    const r = await mensagemDaBusca(plano.busca, local, restam, textos, vagasJaMandadas(e.historico), (fs) =>
+    // respondeu a pergunta da função ("Que tipo de trabalho de freelance…?"): o jeito dela continua valendo
+    const jeitoDaPergunta = PERGUNTOU_A_FUNCAO.exec(minhaUltima)?.[1];
+    const r = await mensagemDaBusca(plano.busca, local, restam, jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos, vagasJaMandadas(e.historico), (fs) =>
       void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
     );
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
