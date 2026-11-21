@@ -951,7 +951,14 @@ async function main() {
   conferir(
     a.funcoesEquivalentes("assistente administrativo").join("|") === "auxiliar administrativo" &&
       a.funcoesEquivalentes("ajudante de cozinha").join("|") === "assistente de cozinha|auxiliar de cozinha" &&
-      a.funcoesEquivalentes("motorista").length === 0,
+      a.funcoesEquivalentes("motorista").length === 0 &&
+      // o mesmo trabalho com outro nome (21/11/2026: "Empregada Doméstica" no ar e "diarista" sem resposta)
+      a.funcoesEquivalentes("diarista").includes("empregada") &&
+      a.funcoesEquivalentes("doméstica").includes("diarista") &&
+      a.funcoesEquivalentes("cuidadora de idosos").includes("cuidador") &&
+      a.tituloDaFuncao("Empregada Doméstica", "empregada") &&
+      a.separarPalavrasColadas("diarista.domestica cuido de idosa") === "diarista domestica cuido de idosa" &&
+      a.separarPalavrasColadas("publike.org e ana.souza@gmail.com") === "publike.org e ana.souza@gmail.com",
     "os nomes do mesmo trabalho",
   );
   // 22b5. o jeito que não tem (20/11/2026: "Tem vagas de auxiliar de serviços gerais"): solta o jeito e diz

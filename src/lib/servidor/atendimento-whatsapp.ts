@@ -426,9 +426,23 @@ export function funcaoCurta(funcao: string) {
  * administrativo"; 20/11/2026, Marcelo: "tem auxiliar administrativo que é correlato de assistente").
  */
 const MESMO_NIVEL = ["assistente", "auxiliar", "ajudante"];
+/**
+ * O mesmo trabalho com nomes diferentes no título das vagas (21/11/2026; Marcelo, com "diarista e cuidadora de
+ * idosos" sem resposta e uma vaga "Empregada Doméstica" no ar: "tem o termo 'empregada' e não foi considerado").
+ */
+const MESMO_TRABALHO: { chave: RegExp; nomes: string[] }[] = [
+  { chave: /^(diarista|domestica|empregada( domestica)?|faxineira|faxineiro|secretaria do lar|trabalhadora domestica)$/, nomes: ["diarista", "doméstica", "empregada", "faxineira", "secretária do lar"] },
+  { chave: /^(cuidador|cuidadora)( de idosos?| de idosa)?$|^acompanhante de idos/, nomes: ["cuidador", "cuidadora", "acompanhante de idosos"] },
+  { chave: /^(baba|baby ?sitter|bab[aá] folguista)$/, nomes: ["babá", "baby sitter"] },
+  { chave: /^(garcom|garconete)$/, nomes: ["garçom", "garçonete"] },
+  { chave: /^(motoboy|motofretista|entregador de moto)$/, nomes: ["motoboy", "motofretista", "entregador"] },
+];
 export function funcoesEquivalentes(funcao: string) {
   const partes = funcao.trim().split(/\s+/);
   const primeira = simples(partes[0] ?? "");
+  const f = simples(funcao.trim());
+  const nomes = MESMO_TRABALHO.find((g) => g.chave.test(f))?.nomes;
+  if (nomes) return nomes.filter((n) => simples(n) !== f);
   if (partes.length < 2 || !MESMO_NIVEL.includes(primeira)) return [];
   const resto = partes.slice(1).join(" ");
   // "ajudante administrativo" não existe: o ajudante só vale para o trabalho de mão (cozinha, obra, carga)
@@ -482,6 +496,18 @@ export function areaDaLideranca(funcao: string) {
 export function tituloDeLideranca(titulo: string, area: string) {
   const palavras = simples(titulo).split(" ");
   return tituloDaFuncao(titulo, area) && NIVEIS.some((n) => palavras.some((w) => w.startsWith(n.slice(0, 5))));
+}
+
+/**
+ * Palavras coladas por ponto, sublinhado ou barra ("diarista.domestica", "cozinheira/auxiliar"): separadas, para a
+ * leitura achar cada função (21/11/2026). Endereços (publike.org, e-mail) ficam como estão.
+ */
+export function separarPalavrasColadas(texto: string) {
+  return texto.replace(/(^|\s)([^\s@]+)(?=\s|$)/g, (tudo, antes: string, palavra: string) =>
+    /^(https?:|www\.)/i.test(palavra) || /\.(com|org|net|br|gov|edu|io|app)(\.br)?\b/i.test(palavra)
+      ? tudo
+      : antes + palavra.replace(/(\p{L}{2,})[._/]+(?=\p{L}{2,})/gu, "$1 "),
+  );
 }
 
 /** "a", "a e b", "a, b e c". */
@@ -723,7 +749,8 @@ async function procurarVagas(
     for (const f of funcoes.filter((f) => !achadas.some((x) => x.termo === f)))
       for (const e of funcoesEquivalentes(f))
         if (!funcoes.some((g) => simples(g) === simples(e)) && !equivalentes.has(e)) equivalentes.set(e, f);
-    const eqs = [...equivalentes.keys()].slice(0, 4);
+    // até 8: duas funções com outros nomes cada ("diarista": doméstica, empregada...; "cuidadora": cuidador...)
+    const eqs = [...equivalentes.keys()].slice(0, 8);
     await juntar(eqs, perto, false, false);
     await juntar(eqs, longe, false, true);
   };
@@ -1335,7 +1362,7 @@ function contexto(e: Entrada, jaFalou: boolean, agora: Date, vagasPorAqui = fals
 
 function transcricao(historico: Mensagem[]) {
   const quem = { pessoa: "Pessoa", robo: "Você", equipe: "Equipe" } as const;
-  return `Conversa até agora:\n${historico.map((m) => `${quem[m.de]}: ${m.texto}`).join("\n")}\n\nResponda à Pessoa (às mensagens dela depois da sua última resposta).`;
+  return `Conversa até agora:\n${historico.map((m) => `${quem[m.de]}: ${separarPalavrasColadas(m.texto)}`).join("\n")}\n\nResponda à Pessoa (às mensagens dela depois da sua última resposta).`;
 }
 
 /** O modelo do chat (Admin › IA), se a IA está configurada. */
