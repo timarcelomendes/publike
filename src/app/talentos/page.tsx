@@ -87,6 +87,24 @@ function vagasNoAr(anuncios: MeuAnuncio[], agora: number) {
     .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
 }
 
+/** Abre no "Para a sua vaga": com vaga no ar, fora do "Todos os talentos" e sem busca (ou com a vaga no endereço). */
+function naVagaEscolhida(f: ReturnType<typeof lerBusca>, noAr: MeuAnuncio[]) {
+  return noAr.length > 0 && !f.todos && Boolean(f.vaga || (!f.q && !f.cidade));
+}
+
+/** O "Para a sua vaga" ou "Todos os talentos", logo embaixo das abas (quem não tem vaga no ar não vê). */
+async function EscolhaDosTalentos({ searchParams }: { searchParams: Parametros }) {
+  const [sp, noAr] = await Promise.all([searchParams, minhasVagasNoAr()]);
+  if (!noAr.length) return null;
+  const f = lerBusca(sp);
+  const vaga = naVagaEscolhida(f, noAr) ? (noAr.find((v) => v.id === f.vaga) ?? noAr[0]).id : null;
+  return (
+    <div className="mt-4">
+      <QuaisTalentos vagas={noAr} vaga={vaga} />
+    </div>
+  );
+}
+
 /** As vagas no ar de quem entrou (com elas, o "Para a sua vaga"); quem visita não tem. */
 async function minhasVagasNoAr() {
   if (MODO_DEMO || !(await obterUsuario())) return [];
@@ -130,11 +148,16 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
             <Selo variante="novo">Grátis</Selo>
           </div>
           <Abas semAjuda />
+          {/* quem tem vaga no ar: "Para a sua vaga" ou "Todos os talentos" logo embaixo das abas, com a vaga ao lado
+              (22/11/2026; Marcelo: "revise a parte superior de filtro e abas"); a busca só em "Todos os talentos" */}
+          <Suspense fallback={null}>
+            <EscolhaDosTalentos searchParams={searchParams} />
+          </Suspense>
           <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
             <Busca searchParams={searchParams} />
           </Suspense>
           {/* a dica e o "Você aparece aqui" na mesma linha (16/11/2026); no celular, um embaixo do outro */}
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 empty:hidden">
             <Suspense fallback={null}>
               <DicaEBuscasSalvas searchParams={searchParams} emLinha />
             </Suspense>
@@ -217,6 +240,7 @@ function TalentosAberta({ searchParams }: { searchParams: Parametros }) {
 async function Busca({ searchParams }: { searchParams: Parametros }) {
   const [sp, noAr] = await Promise.all([searchParams, minhasVagasNoAr()]);
   const f = lerBusca(sp);
+  if (naVagaEscolhida(f, noAr)) return null;
   return (
     <form
       role="search"
@@ -272,8 +296,9 @@ async function Busca({ searchParams }: { searchParams: Parametros }) {
  * Embaixo da busca: o jeito de combinar palavras e, para quem contrata, as buscas salvas (migração 20270308120000).
  */
 async function DicaEBuscasSalvas({ searchParams, emLinha = false }: { searchParams: Parametros; emLinha?: boolean }) {
-  const [sp, perfil] = await Promise.all([searchParams, obterMeuPerfil().catch(() => null)]);
+  const [sp, perfil, noAr] = await Promise.all([searchParams, obterMeuPerfil().catch(() => null), minhasVagasNoAr()]);
   const f = lerBusca(sp);
+  if (naVagaEscolhida(f, noAr)) return null;
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
   const buscas = empresa ? await minhasBuscasDeTalentos() : null;
   return (
@@ -322,11 +347,10 @@ async function Lista({
     empresa || noAr.length > 0 || Boolean(perfil && (await modosMarcados().catch(() => null))?.includes("contratar"));
 
   // com vaga no ar e sem busca, abre no "Para a sua vaga" (a vaga do endereço ou a mais nova)
-  if (noAr.length && !f.todos && (f.vaga || (!f.q && !f.cidade))) {
+  if (naVagaEscolhida(f, noAr)) {
     const vaga = noAr.find((v) => v.id === f.vaga) ?? noAr[0];
     return (
       <div className="flex flex-col gap-5">
-        <QuaisTalentos vagas={noAr} vaga={vaga.id} />
         {/* quem a leitura do currículo indicou como pronto (5 sem assinatura; migração 20270827120000) */}
         {f.pagina <= 1 && <ProntosParaAVaga vaga={vaga} agora={agora} />}
         <ParaAVaga
@@ -389,7 +413,6 @@ async function Lista({
           completo, pedem conexão (mesmo sem vaga aberta) e convidam para uma vaga.
         </p>
       )}
-      {noAr.length > 0 && <QuaisTalentos vagas={noAr} vaga={null} />}
       {busca && busca.mapa.bairros.length > 0 && (
         <MapaDosTalentos
           dados={busca.mapa}
@@ -554,11 +577,11 @@ const classesSegmento = (ativo: boolean) =>
 
 function QuaisTalentos({ vagas, vaga }: { vagas: MeuAnuncio[]; vaga: string | null }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
       {/* as duas listas num controle só (16/11/2026, "dá um tapa no visual"): a escolhida em tinta */}
       <nav
         aria-label="Quais talentos"
-        className="flex w-full rounded-pill border border-line-strong bg-surface-200 p-1 shadow-card sm:w-auto sm:self-start"
+        className="flex w-full rounded-pill border border-line-strong bg-surface-200 p-1 shadow-card sm:w-auto"
       >
         <Link
           href={vaga ? `/talentos?vaga=${vaga}` : "/talentos"}
@@ -579,6 +602,7 @@ function QuaisTalentos({ vagas, vaga }: { vagas: MeuAnuncio[]; vaga: string | nu
           Todos os talentos
         </Link>
       </nav>
+      {/* a vaga, num botão do mesmo jeito (antes, um campo com o rótulo "Vaga" em cima, embaixo do controle) */}
       {vaga && vagas.length > 1 && (
         <FiltroVaga
           vagas={vagas.map((v) => ({ id: v.id, titulo: v.titulo }))}
@@ -586,6 +610,9 @@ function QuaisTalentos({ vagas, vaga }: { vagas: MeuAnuncio[]; vaga: string | nu
           etapa={null}
           caminho="/talentos"
           todas={false}
+          compacto
+          prefixo="Vaga: "
+          aoLado
         />
       )}
     </div>

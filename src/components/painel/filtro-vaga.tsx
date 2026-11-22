@@ -15,6 +15,8 @@ export function FiltroVaga({
   cliente = null,
   compacto = false,
   todas = true,
+  prefixo = "",
+  aoLado = false,
 }: {
   /** `total`: quantos candidatos, entre parênteses (sem ele, só o título) */
   vagas: { id: string; titulo: string; total?: number }[];
@@ -31,6 +33,10 @@ export function FiltroVaga({
   compacto?: boolean;
   /** com a opção "Todas as vagas" (sem ela, sempre uma vaga escolhida: o "Para a sua vaga" dos Talentos) */
   todas?: boolean;
+  /** antes do nome de cada vaga, no compacto ("Vaga: "), quando não há o "Vaga: todas" para dizer o que é */
+  prefixo?: string;
+  /** no compacto: logo depois do que vem antes (e não empurrado para a direita) */
+  aoLado?: boolean;
 }) {
   const nome = (v: { titulo: string; total?: number }) =>
     v.total === undefined ? v.titulo : `${v.titulo} (${v.total})`;
@@ -54,7 +60,7 @@ export function FiltroVaga({
         value={vaga ?? ""}
         disabled={pendente}
         onChange={(e) => mudar(e.target.value)}
-        envoltorio="min-w-0 shrink-0 self-start sm:ml-auto sm:max-w-72 sm:self-auto"
+        envoltorio={`min-w-0 shrink-0 self-start sm:max-w-72 sm:self-auto ${aoLado ? "" : "sm:ml-auto"}`}
         className={`field-sizing-content min-h-10 max-w-full rounded-pill border pl-4 text-label transition-colors disabled:opacity-60 ${
           vaga
             ? "border-ink bg-surface-200 text-ink"
@@ -64,7 +70,7 @@ export function FiltroVaga({
         {todas && <option value="">Vaga: todas</option>}
         {vagas.map((v) => (
           <option key={v.id} value={v.id}>
-            {nome(v)}
+            {`${prefixo}${nome(v)}`}
           </option>
         ))}
       </Seletor>
