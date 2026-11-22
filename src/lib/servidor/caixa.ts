@@ -11,6 +11,7 @@ import {
 import type { ResumoCandidato } from "@/lib/ia/tarefas";
 import { ENTREVISTA_ABERTA } from "@/lib/recrutamento";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { atividadesDaVaga } from "./atividades-da-vaga";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta } from "@/lib/vaga-extra";
 import { conversasPorPessoa } from "./conversas";
@@ -162,11 +163,15 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
   // o % pelo contexto: a função que a IA leu de cada vaga e de cada experiência (cópias só para a conta; a tela
   // recebe o currículo como está)
   const todosOsCvs = [...curriculos.values()].flatMap((m) => (m ? [...m.values()] : []));
-  const [vagasComCbo, cvsComCbo, diaADia, jeitos] = await Promise.all([
+  const [vagasComCbo, cvsComCbo, diaADia, jeitos, atividades] = await Promise.all([
     comFuncaoDasVagas([...anuncios.values()].filter((a): a is NonNullable<typeof a> => Boolean(a))),
     comFuncoes(todosOsCvs),
     diaADiaDasVagas([...anuncios.keys()]),
     jeitosDasPessoas(todosOsCvs.map((cv) => cv.perfil_id)),
+    // se cada um fazia as mesmas atividades da vaga (a IA leu; migração 20270831120000)
+    Promise.all([...anuncios.keys()].map(async (id) => [id, await atividadesDaVaga(id)] as const)).then(
+      (l) => new Map(l),
+    ),
   ]);
   // o jeito de trabalhar (migração 20270309120000): no currículo da ficha e no match, como sinal
   for (const cv of todosOsCvs) {
@@ -203,6 +208,7 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
               respostas: r,
               cidade: c.cidade,
               bairro: c.bairro,
+              atividades: atividades.get(a.id)?.get(c.perfil_id) ?? null,
             },
             agora,
           )

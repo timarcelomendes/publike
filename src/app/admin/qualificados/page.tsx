@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { CompararAtividades } from "@/components/admin/comparar-atividades";
 import { CompararLeitura } from "@/components/admin/comparar-leitura";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { Botao } from "@/components/ui/botao";
-import { salvarConfigLeitura } from "@/lib/acoes/admin-qualificados";
+import { salvarConfigAtividades, salvarConfigLeitura } from "@/lib/acoes/admin-qualificados";
 import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
 import { MODELOS_IA } from "@/lib/ia/openai";
 import { MODELO_DA_LEITURA, MODELOS_DA_COMPARACAO } from "@/lib/servidor/leitura-curriculo";
+import { MODELO_DAS_ATIVIDADES, MODELOS_DA_COMPARACAO_DAS_ATIVIDADES } from "@/lib/servidor/atividades-da-vaga";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Qualificados" };
@@ -18,6 +20,11 @@ export const metadata: Metadata = { title: "Qualificados" };
 // para a etapa 2 (a "Lista pronta" para agências, quando uma função passar de 20 a 30 prontos na região).
 
 type Linha = { cbo: string; nome: string; cidade: string | null; prontos: number; treinamento: number; total: number };
+type DadosDasAtividades = {
+  config: { ligado: boolean; modelo: string | null; atualizado_em: string };
+  lidos: number;
+  por_resultado: Partial<Record<"sim" | "parte" | "nao" | "sem", number>>;
+};
 type Dados = {
   config: { ligado: boolean; modelo: string | null; atualizado_em: string };
   em_talentos: number;
@@ -42,7 +49,7 @@ export default function Qualificados({ searchParams }: PageProps<"/admin/qualifi
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qualificados">["searchParams"] }) {
   const c = await exigirAdminLocal();
   const sp = await searchParams;
-  const { data, error } = await c.rpc("admin_qualificados");
+  const [{ data, error }, ativ] = await Promise.all([c.rpc("admin_qualificados"), c.rpc("admin_atividades")]);
   if (error)
     return (
       <Aviso tipo="erro" titulo="Sem os dados">
@@ -57,6 +64,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
     preco: m.preco,
   }));
   const modeloAtual = d.config.modelo ?? MODELO_DA_LEITURA;
+  // as atividades da vaga (migração 20270831120000); sem a migração, a parte não aparece
+  const at = ativ.error ? null : (ativ.data as unknown as DadosDasAtividades);
+  const modelosDasAtividades = MODELOS_DA_COMPARACAO_DAS_ATIVIDADES.map((id) => MODELOS_IA.find((m) => m.id === id)!);
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,6 +117,59 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
           {d.nota_media != null && ` · nota média ${d.nota_media}`}.
         </p>
       </Secao>
+
+      {at && (
+        <div id="atividades" className="scroll-mt-32">
+          <Secao
+            titulo="Atividades da vaga"
+            descricao={
+              <>
+                O % de combina conta o tempo na mesma função (6 meses valem menos que 5 anos). Ligado, a IA também lê a
+                vaga e o que a pessoa fazia nesses trabalhos e diz se fazia as mesmas atividades: outras atividades fazem o
+                trabalho contar como função parecida, e “em parte” tira 20% do tempo. Só os pares que mudam a nota (quem
+                se candidatou ou está em Talentos e tem trabalho na mesma função), primeiro os candidatos. Compare os dois
+                modelos antes de ligar.
+              </>
+            }
+          >
+            <form action={salvarConfigAtividades} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
+              <label className="flex items-center gap-2 text-label">
+                <input type="checkbox" name="ligado" defaultChecked={at.config.ligado} className="size-5" />
+                Comparar as atividades sozinho
+              </label>
+              <label className="flex flex-col gap-1 text-body-sm">
+                Modelo
+                <select
+                  name="modelo"
+                  defaultValue={at.config.modelo ?? MODELO_DAS_ATIVIDADES}
+                  className="min-h-11 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
+                >
+                  {modelosDasAtividades.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome} (US$ {m.preco.entrada} / {m.preco.saida} por milhão)
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Botao type="submit" variante="secundario">
+                Salvar
+              </Botao>
+              <p className="basis-full text-caption text-ink-muted">
+                {at.config.ligado
+                  ? `Ligado: uns 6 pares por rodada das filas. Alterado em ${formatarDataCurta(at.config.atualizado_em)}.`
+                  : "Desligado: só o tempo conta. Compare os modelos abaixo antes de ligar."}
+              </p>
+            </form>
+            <p className="text-body-sm">
+              {formatarNumero(at.lidos)} pares lidos
+              {at.lidos > 0 &&
+                `: ${formatarNumero(at.por_resultado.sim ?? 0)} com as mesmas atividades, ${formatarNumero(at.por_resultado.parte ?? 0)} em parte, ${formatarNumero(at.por_resultado.nao ?? 0)} com outras e ${formatarNumero(at.por_resultado.sem ?? 0)} sem como comparar`}
+              .
+            </p>
+            <CompararAtividades modelos={modelosDasAtividades.map((m) => ({ id: m.id, nome: m.nome }))} />
+          </Secao>
+        </div>
+      )}
 
       <Secao
         titulo="Sonnet x Opus"

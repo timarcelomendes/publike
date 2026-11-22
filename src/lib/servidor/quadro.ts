@@ -1,4 +1,5 @@
 import "server-only";
+import { atividadesDaVaga } from "./atividades-da-vaga";
 import { indicacoesDaVaga } from "./indicacao";
 import { diaADiaDasVagas, jeitosDasPessoas } from "./jeito-de-trabalhar";
 import { calcularAderencia, ordemDaNota, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
@@ -113,8 +114,19 @@ function finalistaDe(f: RespostaCliente | undefined): RespostaCliente | null {
 
 export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
   const id = anuncio.id;
-  const [interessados, etapas, curriculos, respostas, triagem, entrevistas, modelos, finalistas, colocacoes, indicacoes] =
-    await Promise.all([
+  const [
+    interessados,
+    etapas,
+    curriculos,
+    respostas,
+    triagem,
+    entrevistas,
+    modelos,
+    finalistas,
+    colocacoes,
+    indicacoes,
+    atividades,
+  ] = await Promise.all([
       listarInteressados(id),
       listarEtapasDosCandidatos(id),
       listarCurriculosDosInteressados(id).catch(() => new Map()),
@@ -125,6 +137,8 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       finalistasDaVaga(id),
       colocacoesDasVagas([id]),
       indicacoesDaVaga(id),
+      // se cada um fazia as mesmas atividades da vaga (a IA leu; migração 20270831120000)
+      atividadesDaVaga(id),
     ]);
   const perguntas: Pergunta[] = juntarTriagem(perguntasDoBanco(anuncio.perguntas), triagem);
   // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (cópias, só para a conta)
@@ -169,6 +183,7 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
           respostas: r,
           cidade: p.cidade,
           bairro: p.bairro,
+          atividades: atividades.get(p.perfil_id) ?? null,
         },
         agora,
       ),

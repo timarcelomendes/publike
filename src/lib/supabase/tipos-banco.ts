@@ -2934,6 +2934,25 @@ export type Database = {
       minha_leitura_do_curriculo: { Args: Record<string, never>; Returns: Json };
       tirar_funcao_indicada: { Args: { p_cbo: string }; Returns: undefined };
       admin_qualificados: { Args: Record<string, never>; Returns: Json };
+      servidor_config_atividades: { Args: { p_chave: string }; Returns: Json };
+      servidor_dados_para_atividades: { Args: { p_chave: string }; Returns: Json };
+      servidor_guardar_atividades: {
+        Args: {
+          p_chave: string;
+          p_anuncio: string;
+          p_perfil: string;
+          p_impressao: string;
+          p_resultado: string;
+          p_trecho: string;
+          p_modelo: string;
+        };
+        Returns: undefined;
+      };
+      atividades_da_vaga: { Args: { p_anuncio: string }; Returns: { perfil_id: string; resultado: string; trecho: string }[] };
+      minhas_atividades: { Args: Record<string, never>; Returns: { anuncio_id: string; resultado: string; trecho: string }[] };
+      admin_config_atividades: { Args: { p_ligado: boolean | null; p_modelo: string | null }; Returns: undefined };
+      admin_atividades: { Args: Record<string, never>; Returns: Json };
+      admin_dados_para_atividades: { Args: Record<string, never>; Returns: Json };
       prontos_para_a_vaga: { Args: { p_anuncio: string }; Returns: Json };
       prontos_da_triagem: { Args: { p_anuncio: string }; Returns: { perfil_id: string; mesma: boolean }[] };
       copiloto_abriu: { Args: { p_anuncio: string; p_liberado: boolean }; Returns: undefined };

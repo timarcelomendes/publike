@@ -23,6 +23,7 @@ import { Aviso, Avatar, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
 import { classesChip } from "../painel/fluxo";
 import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-contexto";
+import { atividadesDaVaga } from "@/lib/servidor/atividades-da-vaga";
 import { distanciaAproximada, montarMapa, SEM_BAIRRO, type Ponto } from "@/lib/mapa-dos-talentos";
 import { lugaresDosTalentos, minhasVagasNoMapa } from "@/lib/servidor/mapa-dos-talentos";
 import { MapaDosTalentos } from "./mapa-dos-talentos";
@@ -77,11 +78,13 @@ export async function ParaAVaga({
     );
   }
   // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (claude/plano-match-pelo-contexto.md)
-  const [[vagaComCbo], experiencias, diaADia, jeitos] = await Promise.all([
+  const [[vagaComCbo], experiencias, diaADia, jeitos, atividades] = await Promise.all([
     comFuncaoDasVagas([anuncio]),
     comFuncoes(lista.map((t) => ({ experiencias: t.experiencias }))),
     diaADiaDasVagas([vaga.id]),
     jeitosDasPessoas(lista.map((t) => t.perfil_id)),
+    // se cada um fazia as mesmas atividades da vaga (a IA leu; migração 20270831120000)
+    atividadesDaVaga(vaga.id),
   ]);
   const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [], dia_a_dia: diaADia.get(vaga.id) ?? null };
   // a vaga de entrada (aceita quem está começando) que diz a função: no "Atende a vaga", a função não precisa ser a mesma
@@ -107,6 +110,7 @@ export async function ParaAVaga({
           respostas: {},
           cidade: t.cidade,
           bairro: t.bairro,
+          atividades: atividades.get(t.perfil_id) ?? null,
         },
         agora,
       ),

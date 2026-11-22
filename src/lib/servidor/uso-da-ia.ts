@@ -14,9 +14,10 @@ const ESPERA = 1500;
 
 /**
  * As funcionalidades com escolha de modelo (Admin › IA), a transcrição de áudio (só a OpenAI, sem escolha) e a leitura
- * do currículo (o modelo é escolhido em Admin › Qualificados, migração 20270826120000).
+ * do currículo e as atividades da vaga (o modelo é escolhido em Admin › Qualificados, migrações 20270826120000 e
+ * 20270831120000).
  */
-export type FuncionalidadeDoUso = FuncionalidadeIA | "transcricao" | "qualificar";
+export type FuncionalidadeDoUso = FuncionalidadeIA | "transcricao" | "qualificar" | "atividades";
 
 export async function contarUsoDaIA(
   funcionalidade: FuncionalidadeDoUso,

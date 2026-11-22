@@ -209,6 +209,17 @@ export function FormConfigIA({
               <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.qualificar)}</span>
             </div>
           )}
+          {uso && (
+            // as atividades da vaga: o modelo também é escolhido em Admin › Qualificados (migração 20270831120000)
+            <div className="flex flex-col gap-1">
+              <span className="text-label">Atividades da vaga</span>
+              <span className="text-body-sm text-ink-muted">
+                Se a pessoa fazia as mesmas atividades da vaga, para o % de combina. O modelo e o ligar ficam em Admin ›
+                Qualificados.
+              </span>
+              <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.atividades)}</span>
+            </div>
+          )}
         </div>
       </fieldset>
 

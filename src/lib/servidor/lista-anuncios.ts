@@ -5,6 +5,7 @@ import type { Filtros } from "@/lib/filtros";
 import type { Local } from "@/lib/regioes";
 import type { AnuncioResumo } from "@/lib/tipos";
 import { ganhosDoBanco } from "@/lib/vaga-extra";
+import { minhasAtividades } from "./atividades-da-vaga";
 import { comFuncoesDoCurriculo } from "./funcoes-pelo-contexto";
 
 // O que a lista de anúncios precisa além da busca (o % de match, os extras do cartão e de onde
@@ -18,7 +19,9 @@ export async function quemProcura(): Promise<Omit<Candidato, "respostas"> | null
     // que tenha ficado de quando a conta era de pessoa)
     if (!curriculo || perfil?.tipo !== "pessoa") return null;
     // a função de cada experiência que a IA leu (o % pelo contexto); uma cópia, o currículo do formulário não muda
-    return { curriculo: await comFuncoesDoCurriculo(curriculo), cidade: perfil.cidade, bairro: perfil.bairro };
+    // e se fazia as mesmas atividades de cada vaga (a IA leu; migração 20270831120000)
+    const [comCbo, atividadesPorVaga] = await Promise.all([comFuncoesDoCurriculo(curriculo), minhasAtividades()]);
+    return { curriculo: comCbo, cidade: perfil.cidade, bairro: perfil.bairro, atividadesPorVaga };
   } catch {
     return null;
   }

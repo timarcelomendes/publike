@@ -1,5 +1,6 @@
 import "server-only";
 import { FUNCIONALIDADES_IA, type FuncionalidadeIA } from "@/lib/ia-nomes";
+import { criarClientePublico } from "@/lib/supabase/servidor";
 import { modeloDaIA } from "./openai";
 
 // Um modelo de IA para cada funcionalidade e o apelido da IA (claude/plano-ia-por-funcionalidade.md, 05/11/2026).
@@ -24,4 +25,10 @@ export function modelosEscolhidos(config: ConfigDaIA): Partial<Record<Funcionali
 /** O modelo da funcionalidade: o escolhido para ela ou, sem escolha, o padrão. */
 export function modeloPara(config: ConfigDaIA, funcionalidade: FuncionalidadeIA): string {
   return modeloDaIA(modelosEscolhidos(config)[funcionalidade] ?? config?.ia_modelo).id;
+}
+
+/** O modelo da funcionalidade lido da configuração do site (para quem não tem a configuração em mãos). */
+export async function modeloDaFuncionalidade(funcionalidade: FuncionalidadeIA): Promise<string> {
+  const { data } = await criarClientePublico().rpc("config_publica");
+  return modeloPara(data?.[0], funcionalidade);
 }

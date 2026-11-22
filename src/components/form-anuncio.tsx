@@ -1271,7 +1271,7 @@ export function FormAnuncio({
           {!experiencia && (
             <p className="-mt-2 text-body-sm text-ink-muted">
               {perfilDaVaga({ experiencia: null, titulo: tituloAtual, descricao, cbo: funcao?.cbo ?? null }) === "entrada"
-                ? "Pelo título, a vaga conta como de entrada: quem está no primeiro emprego fica em até 79% na nota de aderência, em vez de 40%. Pede experiência? Escolha o tempo em Experiência."
+                ? "Pelo título, a vaga conta como de entrada: quem está no primeiro emprego fica em até 72% na nota de aderência, em vez de 40%. Pede experiência? Escolha o tempo em Experiência."
                 : "Aceita quem está no primeiro emprego? Escolha “Aceita sem experiência” em Experiência: sem isso, a nota de aderência conta o que o currículo mostra da função."}
             </p>
           )}

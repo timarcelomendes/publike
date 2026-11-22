@@ -1,6 +1,7 @@
 import "server-only";
 import { CONTEUDOS } from "@/lib/conteudos";
 import { lerDadosDoConteudo, mesmaEstrutura, textoDoBloco, type DadosDoConteudo } from "@/lib/conteudos/atualizacao";
+import { modeloDaFuncionalidade } from "@/lib/ia/funcionalidades";
 import { chamarIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
 import { conteudoAtual } from "./conteudos-atuais";
 import { acessoFila } from "./filas";
@@ -72,6 +73,8 @@ export async function atualizarConteudos({ agora = Date.now() } = {}): Promise<R
     p_quantos: POR_RODADA,
   });
   if (error) return { ok: false, erro: `Não deu para ler a fila dos conteúdos: ${error.message}` };
+  // o modelo escolhido para "Admin" em Admin › IA (antes ia sem modelo e caía sempre no primeiro da lista)
+  const modelo = await modeloDaFuncionalidade("admin");
   const hoje = new Date(agora).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
   const conferidos: { slug: string; resultado: string; rascunho: boolean }[] = [];
 
@@ -85,7 +88,7 @@ export async function atualizarConteudos({ agora = Date.now() } = {}): Promise<R
     try {
       const r = await chamarIA({
         funcionalidade: "admin",
-        modelo: "",
+        modelo,
         sistema: instrucoes(hoje),
         mensagem: JSON.stringify({
           titulo: atual.titulo,

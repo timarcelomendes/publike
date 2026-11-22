@@ -65,6 +65,7 @@ import { MatchDaVaga, SeloMatch } from "@/components/match-vaga";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { matchComAVaga } from "@/lib/aderencia";
+import { minhasAtividades } from "@/lib/servidor/atividades-da-vaga";
 import { comFuncaoDasVagas, comFuncoesDoCurriculo } from "@/lib/servidor/funcoes-pelo-contexto";
 import { SITE_URL } from "@/lib/config";
 import {
@@ -329,7 +330,13 @@ async function DetalheAnuncio({
   // o % pelo contexto: a função que a IA leu de cada experiência e da vaga (cópias; o currículo não muda)
   const quem =
     curriculo && perfil?.tipo === "pessoa"
-      ? { curriculo: await comFuncoesDoCurriculo(curriculo), cidade: perfil.cidade, bairro: perfil.bairro }
+      ? {
+          curriculo: await comFuncoesDoCurriculo(curriculo),
+          cidade: perfil.cidade,
+          bairro: perfil.bairro,
+          // se fazia as mesmas atividades desta e das parecidas (a IA leu; migração 20270831120000)
+          atividadesPorVaga: await minhasAtividades(),
+        }
       : null;
   const match = quem ? matchComAVaga((await comFuncaoDasVagas([anuncio]))[0], quem, agora) : null;
   // quem publicou já aceitou e falta o currículo (vaga que pede): o próximo passo é mandar

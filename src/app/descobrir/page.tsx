@@ -9,6 +9,7 @@ import { Aviso, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { matchComAVaga, type Aderencia } from "@/lib/aderencia";
+import { minhasAtividades } from "@/lib/servidor/atividades-da-vaga";
 import { comFuncoesDoCurriculo } from "@/lib/servidor/funcoes-pelo-contexto";
 import { ehOutraArea } from "@/components/match-vaga";
 import {
@@ -175,7 +176,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
   let matches: Matches = new Map();
   if (curriculo && perfil) {
     // o % pelo contexto: a função que a IA leu de cada experiência (uma cópia do currículo)
-    const pessoa = { curriculo: await comFuncoesDoCurriculo(curriculo), cidade: perfil.cidade, bairro: perfil.bairro };
+    const [comCbo, atividadesPorVaga] = await Promise.all([comFuncoesDoCurriculo(curriculo), minhasAtividades()]);
+    const pessoa = { curriculo: comCbo, cidade: perfil.cidade, bairro: perfil.bairro, atividadesPorVaga };
     const detalhes = await requisitosDasVagas(todas.filter((v) => v.autor_id !== usuario?.id).map((v) => v.id)).catch(
       () => [],
     );

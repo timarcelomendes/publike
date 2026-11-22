@@ -2,18 +2,18 @@
 // servidor: servem também às telas. A escolha do modelo de cada uma fica em lib/ia/funcionalidades.ts.
 
 export const FUNCIONALIDADES_IA = [
-  { id: "chat", nome: "IA do Publike", ajuda: "O chat com o Publike, para quem procura e para quem contrata." },
+  { id: "chat", nome: "IA do Publike", ajuda: "O chat com o Publike, para quem procura e para quem contrata, e o atendimento no WhatsApp." },
   { id: "revisao", nome: "Revisão", ajuda: "A moderação automática dos anúncios, das avaliações e dos recados." },
   { id: "ler", nome: "Ler currículo e vaga", ajuda: "O PDF ou a foto do currículo, a vaga da imagem e a importação." },
   { id: "textos", nome: "Melhorar textos", ajuda: "O “Melhorar com a IA” do currículo e do anúncio." },
-  { id: "funcao", nome: "Função da vaga", ajuda: "A ocupação da CBO de cada vaga (salário do mercado e currículo)." },
-  { id: "empresa", nome: "Triagem e copiloto", ajuda: "A triagem com IA, o copiloto e o resumo do candidato." },
+  { id: "funcao", nome: "Função da vaga", ajuda: "A ocupação da CBO de cada vaga e de cada experiência dos currículos (salário do mercado e o % de combina)." },
+  { id: "empresa", nome: "Triagem e copiloto", ajuda: "A triagem com IA (e os critérios montados pela vaga), o copiloto, o resumo do candidato e a entrevista em vídeo." },
   { id: "descobrir", nome: "Descobrir", ajuda: "As notas das vagas indicadas para quem procura." },
-  { id: "admin", nome: "Admin", ajuda: "O resumo do painel e o agrupar empresas." },
+  { id: "admin", nome: "Admin", ajuda: "O resumo do painel, o agrupar empresas, os conteúdos e as matérias da Receita (as notícias têm modelo próprio)." },
   {
     id: "impulso",
     nome: "Impulso",
-    ajuda: "Revisa as palavras-chave do anúncio de cada vaga impulsionada no Google (uma vez por impulso).",
+    ajuda: "As palavras-chave e os grupos de anúncios das vagas impulsionadas no Google.",
   },
 ] as const;
 

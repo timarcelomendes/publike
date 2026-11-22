@@ -111,22 +111,22 @@ const casos: [V, ReturnType<typeof P>, string, number | null, number | null, boo
   [V1, faculdadeDeDados, "primeiro emprego + faculdade da área", 76, 76, true],
   [V1, engenhariaCivil, "Engenharia Civil", 40, null, false],
   [V1, atendente, "atendente", 40, 40, false],
-  [V2, atendente, "atendente", 100, 100, true],
-  [V2, vendedora, "vendedora (área parecida)", 94, 94, true],
-  [V2, primeiro, "primeiro emprego", 79, 79, false],
+  [V2, atendente, "atendente", 96, 96, true],
+  [V2, vendedora, "vendedora (área parecida)", 79, 79, true],
+  [V2, primeiro, "primeiro emprego", 72, 72, false],
   [V2, pedreiro, "pedreiro sem o médio", 45, 45, false],
   [V2, deLonge, "longe e só à noite", 33, 33, false],
   [V2, atendenteSemMedio, "atendente sem o médio", 45, 45, false],
-  [V3, primeiro, "primeiro emprego", 79, 79, false],
-  [V3, vendedora, "vendedora", 94, 94, true],
-  [V4, primeiro, "primeiro emprego", 79, 79, false],
-  [V5, motoristaD, "motorista com CNH D", 100, 100, true],
+  [V3, primeiro, "primeiro emprego", 72, 72, false],
+  [V3, vendedora, "vendedora", 79, 79, true],
+  [V4, primeiro, "primeiro emprego", 72, 72, false],
+  [V5, motoristaD, "motorista com CNH D", 95, 95, true],
   [V5, motoristaB, "motorista com CNH B", 45, 45, false],
   [V5, primeiro, "primeiro emprego", 23, 23, false],
   [V6, tecnicaEnfermagem, "técnico em enfermagem", 64, 64, true],
   [V6, primeiro, "primeiro emprego", 24, null, false],
-  [V7, atendente, "atendente (outra área)", 79, 79, false],
-  [V7, primeiro, "primeiro emprego", 79, 79, false],
+  [V7, atendente, "atendente (outra área)", 72, 72, false],
+  [V7, primeiro, "primeiro emprego", 72, 72, false],
   [V8, tecnicaEnfermagem, "técnico em enfermagem, só escala", 45, 45, false],
   [V8, primeiro, "primeiro emprego", 40, null, false],
   [V9, vendedora, "vendedora sem CNH", 45, 45, false],
@@ -142,15 +142,36 @@ const casos: [V, ReturnType<typeof P>, string, number | null, number | null, boo
   [V20, P({ experiencias: [exp("Esteticista", "2019-01", null)] }), "esteticista na vaga de esteticista", 92, 92, true],
   [V13, pedreiro, "pedreiro", 40, 40, false],
   [V13, primeiro, "primeiro emprego", 40, null, false],
-  [V14, primeiro, "primeiro emprego", 79, 79, false],
+  [V14, primeiro, "primeiro emprego", 72, 72, false],
 ];
 
+// O tempo na mesma função (22/11/2026; Marcelo: "6M = PERDE X %, 5 ANOS 100%"): o mesmo trabalho com 2 meses, 6 meses,
+// 1 ano, 2 anos e 6 anos, na vaga de entrada (a função pesa 30% e começa na metade) e numa de experiência sem tempo
+// pedido (pesa 60%); e as atividades lidas pela IA ("nao": conta como função parecida; "parte": o tempo vale 20% menos).
+const V30 = vaga("Mecânico de automóveis", { horario: h("08:00", "17:00"), escolaridade_minima: "medio" });
+const tempoNaFuncao: [V, string, Record<string, unknown>, Record<string, unknown> | null, number][] = [
+  [V2, "atendente há 2 meses", { experiencias: [exp("Atendente", "2026-08", "2026-09")] }, null, 82],
+  [V2, "atendente há 6 meses", { experiencias: [exp("Atendente", "2025-01", "2025-06")] }, null, 88],
+  [V2, "atendente há 6 anos", { experiencias: [exp("Atendente", "2019-01", "2024-12")] }, null, 100],
+  [V30, "mecânico há 2 meses", { experiencias: [exp("Mecânico", "2026-08", "2026-09")] }, null, 64],
+  [V30, "mecânico há 6 meses", { experiencias: [exp("Mecânico", "2025-01", "2025-06")] }, null, 76],
+  [V30, "mecânico há 1 ano", { experiencias: [exp("Mecânico", "2024-01", "2024-12")] }, null, 85],
+  [V30, "mecânico há 2 anos", { experiencias: [exp("Mecânico", "2023-01", "2024-12")] }, null, 91],
+  [V30, "mecânico há 6 anos", { experiencias: [exp("Mecânico", "2019-01", "2024-12")] }, null, 100],
+  [V30, "mecânico há 6 anos, atividades em parte", { experiencias: [exp("Mecânico", "2019-01", "2024-12")] }, { resultado: "parte", trecho: "x" }, 88],
+  [V30, "mecânico há 6 anos, outras atividades", { experiencias: [exp("Mecânico", "2019-01", "2024-12")] }, { resultado: "nao", trecho: "x" }, 76],
+  [V30, "mecânico sem as datas", { experiencias: [exp("Mecânico", "", null)] }, null, 70],
+];
 let falhas = 0;
 const falhou = (texto: string) => {
   falhas++;
   console.error(`✗ ${texto}`);
 };
 
+for (const [v, nome, cv, atividades, esperada] of tempoNaFuncao) {
+  const a = calcularAderencia({ ...v, perguntas: [] } as never, { ...P(cv), atividades } as never, agora);
+  if (a.nota !== esperada) falhou(`${v.nome} × ${nome}: devia dar ${esperada}, agora ${a.nota}`);
+}
 for (const [v, p, nome, empresa, pessoa, talentos] of casos) {
   const a = calcularAderencia({ ...v, perguntas: [] } as never, p as never, agora);
   const m = matchComAVaga({ ...v, horario_detalhe: v.horario } as never, p as never, agora);

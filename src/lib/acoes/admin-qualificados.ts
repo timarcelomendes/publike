@@ -8,6 +8,13 @@ import {
   type LeituraComNomes,
   type LinhaDoCurriculo,
 } from "@/lib/servidor/leitura-curriculo";
+import {
+  MODELOS_DA_COMPARACAO_DAS_ATIVIDADES,
+  paresParaLer,
+  type DadosParaAtividades,
+  type ParDasAtividades,
+} from "@/lib/servidor/atividades-da-vaga";
+import { compararAtividadesComIA, daParaComparar } from "@/lib/ia/atividades";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 
 // Admin › Qualificados (migração 20270826120000; claude/plano-curriculos-qualificados.md): ligar a leitura do
@@ -64,4 +71,73 @@ export async function compararUmCurriculo(
     }),
   );
   return { ok: true, resultados: Object.fromEntries(pares) };
+}
+
+// As atividades da vaga (migração 20270831120000): ligar com o modelo escolhido e a comparação Haiku x Sonnet nos
+// mesmos pares (a vaga e os trabalhos da pessoa na mesma função; nada é guardado: só as chamadas, em Admin › IA).
+
+export async function salvarConfigAtividades(formData: FormData) {
+  const c = await clienteAdminOuNulo();
+  if (!c) redirect(`${AQUI}?erro=fora`);
+  const modelo = String(formData.get("modelo") ?? "");
+  const { error } = await c.rpc("admin_config_atividades", {
+    p_ligado: formData.get("ligado") === "on",
+    p_modelo: MODELOS_IA.some((m) => m.id === modelo) ? modelo : null,
+  });
+  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#atividades`);
+}
+
+/** Até 30 pares para a comparação, de vagas diferentes (uma de cada vaga por vez), primeiro os candidatos. */
+export async function paresParaComparar(): Promise<{ ok: true; pares: ParDasAtividades[] } | { ok: false; erro: string }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: "O admin só funciona com a sua conta de admin." };
+  const { data, error } = await c.rpc("admin_dados_para_atividades");
+  if (error || !data)
+    return {
+      ok: false,
+      erro: error?.code === "PGRST202" ? "Rode a migração 20270831120000_atividades_da_vaga.sql primeiro." : (error?.message ?? "Sem dados."),
+    };
+  const todos = (await paresParaLer(data as unknown as DadosParaAtividades, Date.now(), true)).filter((p) =>
+    daParaComparar(p.vaga, p.trabalhos),
+  );
+  // uma de cada vaga por vez, para não ficar tudo numa vaga só
+  const porVaga = new Map<string, ParDasAtividades[]>();
+  for (const p of todos) porVaga.set(p.vaga.id, [...(porVaga.get(p.vaga.id) ?? []), p]);
+  const filas = [...porVaga.values()];
+  const pares: ParDasAtividades[] = [];
+  for (let i = 0; pares.length < 30 && filas.some((f) => f.length > i); i++)
+    for (const f of filas) if (f[i] && pares.length < 30) pares.push(f[i]);
+  return { ok: true, pares };
+}
+
+export type RespostaDoModelo =
+  | { ok: true; resultado: "sim" | "parte" | "nao" | "sem"; trecho: string; modelo: string; custo: number; ms: number }
+  | { ok: false; erro: string };
+
+/** Compara um par com os dois modelos, ao mesmo tempo. */
+export async function compararUmPar(
+  par: ParDasAtividades,
+): Promise<{ ok: true; resultados: Record<string, RespostaDoModelo> } | { ok: false; erro: string }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: "O admin só funciona com a sua conta de admin." };
+  const respostas = await Promise.all(
+    MODELOS_DA_COMPARACAO_DAS_ATIVIDADES.map(async (m): Promise<[string, RespostaDoModelo]> => {
+      const inicio = Date.now();
+      try {
+        const r = await compararAtividadesComIA(par.vaga, par.trabalhos, m);
+        const preco = MODELOS_IA.find((x) => x.id === (r?.modelo ?? m))?.preco;
+        const custo =
+          r?.tokens && preco ? (r.tokens.entrada * preco.entrada + r.tokens.saida * preco.saida) / 1_000_000 : 0;
+        return [
+          m,
+          r
+            ? { ok: true, resultado: r.resultado, trecho: r.trecho, modelo: r.modelo, custo, ms: Date.now() - inicio }
+            : { ok: true, resultado: "sem", trecho: "", modelo: m, custo, ms: Date.now() - inicio },
+        ];
+      } catch (e) {
+        return [m, { ok: false, erro: e instanceof Error ? e.message : String(e) }];
+      }
+    }),
+  );
+  return { ok: true, resultados: Object.fromEntries(respostas) };
 }

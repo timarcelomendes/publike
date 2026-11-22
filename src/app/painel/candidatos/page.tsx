@@ -71,6 +71,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-contexto";
+import { atividadesDaVaga } from "@/lib/servidor/atividades-da-vaga";
 import { juntarTriagem, perguntasDoBanco, type Pergunta, type Respostas } from "@/lib/vaga-extra";
 
 export const metadata: Metadata = { title: "Lista de candidatos e planilha" };
@@ -263,9 +264,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   const chave = (c: Candidato) => `${c.anuncio_id}:${c.perfil_id}`;
   // o % pelo contexto: a função que a IA leu de cada vaga e de cada experiência (cópias, só para a conta)
   const todosOsCvs = [...curriculos.values()].flatMap((m) => (m ? [...m.values()] : []));
-  const [vagasComCbo, cvsComCbo] = await Promise.all([
+  const [vagasComCbo, cvsComCbo, atividades] = await Promise.all([
     comFuncaoDasVagas([...anuncios.values()].filter((a): a is NonNullable<typeof a> => Boolean(a))),
     comFuncoes(todosOsCvs),
+    // se cada um fazia as mesmas atividades da vaga (a IA leu; migração 20270831120000)
+    Promise.all(vagasDaLista.map(async (id) => [id, await atividadesDaVaga(id)] as const)).then((l) => new Map(l)),
   ]);
   const vagaComCbo = new Map(vagasComCbo.map((v) => [v.id, v]));
   const cvComCbo = new Map(todosOsCvs.map((cv, i) => [cv, cvsComCbo[i]]));
@@ -285,6 +288,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
               respostas: respostas.get(chave(c)) ?? {},
               cidade: c.cidade,
               bairro: c.bairro,
+              atividades: atividades.get(c.anuncio_id)?.get(c.perfil_id) ?? null,
             },
             agora,
           )

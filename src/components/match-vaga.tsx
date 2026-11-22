@@ -140,7 +140,7 @@ export function MatchDaVaga({ a, className = "" }: { a: Aderencia; className?: s
           {motivoDoTeto(a) && `${motivoDoTeto(a)} `}A conta compara o que a vaga pede com o seu currículo e o bairro
           do seu perfil
           {semConta > 0 && ` (${itens(semConta)} sem informação no currículo ficam de fora)`}. A função vale mais
-          {a.perfil === "entrada" && " (nesta vaga, que aceita quem está começando, quem não tem experiência na função fica em até 79%)"}
+          {a.perfil === "entrada" && " (nesta vaga, que aceita quem está começando, o verde é de quem já trabalhou na mesma função; sem ela, até 79%)"}
           , o que bate em parte conta em parte e os itens com “+” só somam.{" "}
           <Link href="/perfil/curriculo" className="font-semibold text-terra-text underline underline-offset-2">
             Atualizar meu currículo

@@ -12,8 +12,12 @@
 // outros itens, cada um com o seu peso (perto, horário e tempo 2; escolaridade, CNH, cada pergunta e os "+" 1).
 // A função vale pelo que o currículo mostra: a mesma (1), de área parecida (0,6: vendedora numa vaga de
 // atendente), estudou na área (0,6), só um curso (0,5) ou uma habilidade (0,4), nada (0, também no primeiro
-// emprego). Na vaga de entrada, começa na metade (0,5 + a metade disso): quem não tem nada da função, no
-// primeiro emprego ou vindo de outra área, não perde a vaga, mas fica no amarelo (até 79%). Estágio e trainee são
+// emprego). Na mesma função, vezes o tempo nela (fatorDoTempo: menos de 3 meses 40%, 6 meses 60%, 1 ano 75%,
+// 2 anos 85%, 3 anos 92%, 5 anos 100%; sem as datas, 50%) e, quando a IA leu a vaga e o que a pessoa fazia
+// (Candidato.atividades), outras atividades fazem o trabalho contar como função parecida e "em parte" tira 20%.
+// Na vaga de entrada, sem a mesma função começa na metade (0,5 + a metade disso): quem não tem nada da função, no
+// primeiro emprego ou vindo de outra área, não perde a vaga, mas fica em até 72% (ainda "combina", 70%); área
+// parecida, estudo ou curso, até 79%; o verde é só de quem trabalhou na mesma função, que vale pelo tempo nela. Estágio e trainee são
 // vagas de experiência: pedem o curso da área. Os outros itens valem em parte quando batem em parte:
 //   o tempo ....... os meses na função (os de área parecida contam a metade) ÷ os pedidos
 //   o horário ..... a parte dos períodos da vaga em que a pessoa pode
@@ -22,7 +26,8 @@
 // O que não dá para saber (sem currículo, sem resposta) fica de fora da conta e aparece com "?".
 // As habilidades e os cursos que a vaga cita só somam ("+"): aparecem quando a pessoa tem.
 // Tetos: faltou o que a vaga pede (a escolaridade, a CNH ou nenhum dos horários em que a pessoa pode), a nota
-// vai até 45%; na vaga de entrada, sem nada da função, até 79%; com poucos itens para conferir, até 85% (1 ou 2
+// vai até 45%; na vaga de entrada, sem nada da função, até 72%, e sem a mesma função, até 79%; com poucos itens
+// para conferir, até 85% (1 ou 2
 // itens) ou 92% (3): bater a cidade e a função diz
 // menos que bater tudo o que uma vaga completa pede. A nota sem os tetos (`bruta`) desempata.
 // Pergunta eliminatória respondida diferente: nota 0. Nada para comparar: sem nota.
@@ -95,6 +100,9 @@ export function motivoDoTeto(a: { teto?: number | null; faltam?: string[] }) {
   if (!a.teto) return null;
   if (a.teto === TETO_ENTRADA_SEM_FUNCAO) {
     return `Sem experiência, estudo ou curso da função, a nota desta vaga de entrada vai até ${a.teto}%.`;
+  }
+  if (a.teto === TETO_ENTRADA_PARECIDA) {
+    return `Sem trabalho na mesma função (área parecida, estudo ou curso), a nota desta vaga de entrada vai até ${a.teto}%.`;
   }
   if (a.teto === TETO_SEM_OBRIGATORIO) {
     return `Falta ${a.faltam?.length ? listaDeItens(a.faltam) : "algo que a vaga pede"}: a nota vai até ${a.teto}%.`;
@@ -171,7 +179,17 @@ export type Candidato = {
   respostas: Respostas;
   cidade: string | null;
   bairro?: string | null;
+  /**
+   * A IA leu a vaga e o que a pessoa fazia na função (migração 20270831120000): "sim" faz as mesmas atividades, "parte"
+   * em parte (o tempo vale 20% menos), "nao" outras atividades (o trabalho conta como função parecida). Sem a leitura
+   * ainda, só o tempo conta.
+   */
+  atividades?: AtividadesDaVaga | null;
+  /** quem procura vê muitas vagas: as atividades lidas de cada uma (matchComAVaga pega a da vaga pelo id) */
+  atividadesPorVaga?: ReadonlyMap<string, AtividadesDaVaga>;
 };
+
+export type AtividadesDaVaga = { resultado: "sim" | "parte" | "nao"; trecho: string };
 
 type CurriculoDoCandidato = NonNullable<Candidato["curriculo"]>;
 
@@ -189,6 +207,32 @@ function mesesDoTrabalho(e: PeriodoDoTrabalho, agora: number) {
   const ini = numeroDoMes(e.inicio);
   const fim = trabalhaAqui(e) ? hoje.getUTCFullYear() * 12 + hoje.getUTCMonth() : e.fim ? numeroDoMes(e.fim) : null;
   return ini !== null && fim !== null && fim >= ini ? fim - ini + 1 : 0;
+}
+
+/**
+ * O tempo na função (22/11/2026; Marcelo: "6M = PERDE X %, 5 ANOS 100%"): quanto a experiência vale pelo tempo.
+ * Menos de 3 meses 40%, 6 meses 60%, 1 ano 75%, 2 anos 85%, 3 anos 92%, 5 anos ou mais 100%; no meio, proporcional.
+ */
+const PONTOS_DO_TEMPO: [number, number][] = [
+  [3, 0.4],
+  [6, 0.6],
+  [12, 0.75],
+  [24, 0.85],
+  [36, 0.92],
+  [60, 1],
+];
+/** O trabalho na função sem as datas: não dá para contar o tempo (vale como uns 4 meses). */
+export const FATOR_SEM_DATAS = 0.5;
+export function fatorDoTempo(meses: number) {
+  if (meses <= PONTOS_DO_TEMPO[0][0]) return PONTOS_DO_TEMPO[0][1];
+  for (let i = 1; i < PONTOS_DO_TEMPO.length; i++) {
+    const [m1, f1] = PONTOS_DO_TEMPO[i];
+    if (meses <= m1) {
+      const [m0, f0] = PONTOS_DO_TEMPO[i - 1];
+      return Math.round((f0 + ((meses - m0) / (m1 - m0)) * (f1 - f0)) * 100) / 100;
+    }
+  }
+  return 1;
 }
 
 /** Quantos meses de experiência, somando as do currículo (até hoje nas atuais). */
@@ -403,41 +447,86 @@ function tipoDoTrabalho(
 /** O currículo já passou pela leitura da IA (alguma experiência tem a ocupação da CBO). */
 const curriculoLido = (cv: Pick<CurriculoDoCandidato, "experiencias">) => cv.experiencias.some((e) => e.cbo);
 
+/**
+ * Os trabalhos do currículo na mesma função da vaga (a mesma conta da nota): os que a IA compara com as atividades da
+ * vaga (src/lib/servidor/atividades-da-vaga.ts). As experiências já com a ocupação da CBO (comFuncoes).
+ */
+export function trabalhosNaMesmaFuncao<E extends Curriculo["experiencias"][number]>(
+  vaga: { titulo: string; cbo: string | null },
+  experiencias: E[],
+): E[] {
+  const lido = curriculoLido({ experiencias });
+  return experiencias.filter((e) => tipoDoTrabalho(vaga, e.cargo, e.cbo, lido).tipo === "mesma");
+}
+
+/** Os meses de um trabalho do currículo (o atual, até hoje; sem as datas, 0). */
+export function mesesDoTrabalhoDoCurriculo(e: PeriodoDoTrabalho, agora: number) {
+  return mesesDoTrabalho(e, agora);
+}
+
 function funcaoNoCurriculo(
   vaga: FuncaoDaVaga,
   cv: CurriculoDoCandidato,
-): { parte: number; detalhe: string; usado?: string } {
+  agora: number,
+  atividades: AtividadesDaVaga | null | undefined,
+): { parte: number; fator: number; detalhe: string; usado?: string } {
   const tituloDaVaga = vaga.titulo;
   const daVaga = palavrasDaFuncao(tituloDaVaga);
   const bate = (texto: string) => daVaga.length > 0 && batem(daVaga, palavrasDaFuncao(texto));
   const lido = curriculoLido(cv);
-  const tipos = cv.experiencias.map((e) => ({ e, t: tipoDoTrabalho(vaga, e.cargo, e.cbo, lido) }));
-  const mesma = tipos.find((x) => x.t.tipo === "mesma");
-  if (mesma) return { parte: 1, detalhe: `Trabalhou como ${textoDoTrabalho(mesma.e)}` };
-  // a profissão de "O que você faz" não passa pela IA: com a vaga e o currículo lidos, a palavra dá "parecida"
-  if (cv.titulo && bate(cv.titulo)) {
-    return vaga.cbo && lido
-      ? { parte: 0.6, detalhe: `No currículo: ${cv.titulo} (função parecida)` }
-      : { parte: 1, detalhe: `No currículo: ${cv.titulo}` };
+  // a IA leu que as atividades não são as da vaga: o trabalho da mesma função conta como parecido
+  const outrasAtividades = atividades?.resultado === "nao";
+  const tipos = cv.experiencias.map((e) => {
+    const t = tipoDoTrabalho(vaga, e.cargo, e.cbo, lido);
+    return { e, meses: mesesDoTrabalho(e, agora), t: outrasAtividades && t.tipo === "mesma" ? { tipo: "parecida" as const } : t };
+  });
+  const daIA = (texto: string) => (texto ? ` A IA leu: “${texto}”.` : "");
+  const mesmas = tipos.filter((x) => x.t.tipo === "mesma");
+  const parecidas = tipos.filter((x) => x.t.tipo === "parecida");
+  if (mesmas.length) {
+    const naFuncao = mesmas.reduce((t, x) => t + x.meses, 0);
+    const emParecida = parecidas.reduce((t, x) => t + x.meses, 0);
+    const meses = naFuncao + emParecida / 2;
+    const semDatas = meses === 0;
+    const emParte = atividades?.resultado === "parte";
+    const fator = (semDatas ? FATOR_SEM_DATAS : fatorDoTempo(meses)) * (emParte ? 0.8 : 1);
+    const quanto = semDatas ? "sem as datas" : `${tempo(Math.round(meses))} na função`;
+    const comoFazia =
+      atividades?.resultado === "sim"
+        ? `. Fazia as mesmas atividades da vaga.${daIA(atividades.trecho)}`
+        : emParte
+          ? `. Fazia parte das atividades da vaga.${daIA(atividades.trecho)}`
+          : "";
+    return { parte: 1, fator, detalhe: `Trabalhou como ${textoDoTrabalho(mesmas[0].e)} (${quanto})${comoFazia}` };
   }
-  const parecida = tipos.find((x) => x.t.tipo === "parecida");
-  if (parecida) {
-    return {
-      parte: 0.6,
-      detalhe: `Trabalhou como ${textoDoTrabalho(parecida.e)} (${parecida.t.area ? `área parecida: ${parecida.t.area}` : "função parecida"})`,
-    };
+  // a profissão de "O que você faz" não passa pela IA: com a vaga e o currículo lidos, a palavra dá "parecida"
+  if (cv.titulo && bate(cv.titulo) && !outrasAtividades) {
+    return vaga.cbo && lido
+      ? { parte: 0.6, fator: 1, detalhe: `No currículo: ${cv.titulo} (função parecida)` }
+      : { parte: 1, fator: FATOR_SEM_DATAS, detalhe: `No currículo: ${cv.titulo} (sem o tempo no trabalho)` };
+  }
+  if (parecidas.length) {
+    const p = parecidas[0];
+    const meses = parecidas.reduce((t, x) => t + x.meses, 0);
+    const quanto = meses ? `${tempo(meses)}` : "sem as datas";
+    const detalhe = outrasAtividades
+      ? `Trabalhou como ${textoDoTrabalho(p.e)} (${quanto}), mas com outras atividades que as da vaga.${daIA(atividades?.trecho ?? "")}`
+      : `Trabalhou como ${textoDoTrabalho(p.e)} (${quanto}; ${p.t.area ? `área parecida: ${p.t.area}` : "função parecida"})`;
+    // a área parecida vale 0,6 com qualquer tempo: o tempo pesa na mesma função (e nunca deixa quem trabalhou em área
+    // parecida abaixo de quem só estudou)
+    return { parte: 0.6, fator: 1, detalhe };
   }
   const area = cv.titulo && daVaga.length ? areaEmComum(daVaga, palavrasDaFuncao(cv.titulo)) : null;
-  if (area) return { parte: 0.6, detalhe: `No currículo: ${cv.titulo} (área parecida: ${area})` };
+  if (area) return { parte: 0.6, fator: 1, detalhe: `No currículo: ${cv.titulo} (área parecida: ${area})` };
   const formacao = [cv.curso, ...(cv.estudos ?? []).map((e) => e.curso)].find((x): x is string => Boolean(x && bate(x)));
-  if (formacao) return { parte: 0.6, detalhe: `Estudou ${formacao} (sem trabalho na função)` };
+  if (formacao) return { parte: 0.6, fator: 1, detalhe: `Estudou ${formacao} (sem trabalho na função)` };
   const curso = (cv.cursos ?? []).find(bate);
-  if (curso) return { parte: 0.5, detalhe: `Fez o curso: ${curso} (sem trabalho na função)`, usado: curso };
+  if (curso) return { parte: 0.5, fator: 1, detalhe: `Fez o curso: ${curso} (sem trabalho na função)`, usado: curso };
   const habilidade = (cv.habilidades ?? []).find(bate);
   if (habilidade) {
-    return { parte: 0.4, detalhe: `Nas habilidades: ${habilidade} (sem trabalho na função)`, usado: habilidade };
+    return { parte: 0.4, fator: 1, detalhe: `Nas habilidades: ${habilidade} (sem trabalho na função)`, usado: habilidade };
   }
-  return { parte: 0, detalhe: `Nenhum trabalho parecido com “${tituloDaVaga}” no currículo` };
+  return { parte: 0, fator: 1, detalhe: `Nenhum trabalho parecido com “${tituloDaVaga}” no currículo` };
 }
 
 /** Os programas que o título diz sem dizer a função ("Jovem aprendiz", "Estágio"): parecidos entre si. */
@@ -539,17 +628,31 @@ export const PESO_DA_FUNCAO_ENTRADA = 0.3;
 /** Falta algo que a vaga pede (CNH, escolaridade, nenhum horário que a pessoa pode): a nota não passa disto. */
 export const TETO_SEM_OBRIGATORIO = 45;
 /**
- * Na vaga de entrada, quem não tem experiência, estudo nem curso da função (no máximo uma habilidade escrita) vai até 79%,
- * o amarelo: não perde a vaga e ainda "combina" (70%), mas o verde fica para quem mostra a função (o relatório do Admin,
- * 11/11/2026).
+ * Na vaga de entrada, quem não tem experiência, estudo nem curso da função (no máximo uma habilidade escrita) vai até 72%:
+ * não perde a vaga e ainda "combina" (70%, a lista de "Vagas que combinam" e o aviso de segunda), mas fica abaixo de quem
+ * tem área parecida, estudo ou curso (79%) e o verde fica para quem já trabalhou na mesma função (o relatório do Admin,
+ * 11/11/2026; 22/11/2026, Marcelo).
  */
-export const TETO_ENTRADA_SEM_FUNCAO = 79;
+export const TETO_ENTRADA_SEM_FUNCAO = 72;
+/**
+ * Na vaga de entrada, quem tem só área parecida, o estudo ou um curso da função vai até 79%: o verde fica para quem já
+ * trabalhou na mesma função (22/11/2026; Marcelo, a atendente de restaurante com 94% numa vaga de recepcionista).
+ */
+export const TETO_ENTRADA_PARECIDA = 79;
 
 /** Os meses dos trabalhos do currículo: na função da vaga, em área parecida e nas outras. */
-function mesesNaFuncao(vaga: FuncaoDaVaga, experiencias: Curriculo["experiencias"], agora: number) {
+function mesesNaFuncao(
+  vaga: FuncaoDaVaga,
+  experiencias: Curriculo["experiencias"],
+  agora: number,
+  outrasAtividades = false,
+) {
   const meses = { mesma: 0, parecida: 0, outras: 0 };
   const lido = curriculoLido({ experiencias });
-  for (const e of experiencias) meses[tipoDoTrabalho(vaga, e.cargo, e.cbo, lido).tipo] += mesesDoTrabalho(e, agora);
+  for (const e of experiencias) {
+    const tipo = tipoDoTrabalho(vaga, e.cargo, e.cbo, lido).tipo;
+    meses[outrasAtividades && tipo === "mesma" ? "parecida" : tipo] += mesesDoTrabalho(e, agora);
+  }
   return meses;
 }
 
@@ -743,7 +846,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
         peso: 2,
       });
     } else {
-      const m = mesesNaFuncao(funcaoDaVaga, cv.experiencias, agora);
+      const m = mesesNaFuncao(funcaoDaVaga, cv.experiencias, agora, c.atividades?.resultado === "nao");
       criterios.push({ nome, ...comParte((m.mesma + m.parecida / 2) / meses), detalhe: textoDoTempo(m), peso: 2 });
     }
   }
@@ -758,7 +861,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     if (!cv) {
       if (meses) criterios.push({ nome: "Experiência na função", ok: null, detalhe: "Sem currículo", funcao: true });
     } else {
-      const f = funcaoNoCurriculo(funcaoDaVaga, cv);
+      const f = funcaoNoCurriculo(funcaoDaVaga, cv, agora, c.atividades);
       usadoNaFuncao = f.usado;
       evidencia = f.parte;
       const primeiro = !temHistorico(cv);
@@ -767,15 +870,18 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
           ? f.detalhe
           : perfil === "entrada"
             ? primeiro
-              ? "Primeiro emprego (vaga de entrada: vai até 79%)"
-              : `${f.detalhe} (vaga de entrada: vai até 79%)`
+              ? `Primeiro emprego (vaga de entrada: vai até ${TETO_ENTRADA_SEM_FUNCAO}%)`
+              : `${f.detalhe} (vaga de entrada: vai até ${TETO_ENTRADA_SEM_FUNCAO}%)`
             : primeiro
               ? `Primeiro emprego: nada de “${funcaoDaVaga.titulo}” no currículo (trabalho, estudo, curso ou habilidade)`
               : f.detalhe;
-      // na vaga de entrada, quem não tem nada da função começa na metade: o que tiver só soma
+      // o que o currículo mostra da função vezes o tempo nela; na vaga de entrada, quem não tem a mesma função começa
+      // na metade (o que tiver só soma), e quem tem vale pelo tempo, como na de experiência (22/11/2026, Marcelo: o
+      // tempo pesando mais: 2 meses 82%, 6 meses 88%, 1 ano 92%, 5 anos 100%, com o resto batendo)
+      const vale = f.parte * f.fator;
       criterios.push({
         nome: "Experiência na função",
-        ...comParte(perfil === "entrada" ? 0.5 + f.parte / 2 : f.parte),
+        ...comParte(perfil === "entrada" && f.parte < 1 ? 0.5 + vale / 2 : vale),
         detalhe,
         funcao: true,
       });
@@ -890,12 +996,18 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
   // com poucos itens para conferir, a nota não chega a 100%; faltando algo que a vaga pede, não passa de 45%
   const faltam = conhecidos.filter((x) => x.obrigatorio && x.ok === false).map((x) => x.nome);
   const falta = faltam.length > 0;
-  // na vaga de entrada, o verde pede um curso, o estudo ou o trabalho na função (só a habilidade escrita não basta)
-  const semNadaNaEntrada = perfil === "entrada" && evidencia !== null && evidencia < 0.5;
+  // na vaga de entrada, o verde é só de quem trabalhou na mesma função; área parecida, estudo ou curso vão até o
+  // amarelo, e nada da função (só a habilidade escrita não basta) um pouco abaixo
+  const tetoDaEntrada =
+    perfil !== "entrada" || evidencia === null || evidencia >= 1
+      ? 100
+      : evidencia >= 0.5
+        ? TETO_ENTRADA_PARECIDA
+        : TETO_ENTRADA_SEM_FUNCAO;
   const maximo = Math.min(
     pedidos <= 2 ? 85 : pedidos === 3 ? 92 : 100,
     falta ? TETO_SEM_OBRIGATORIO : 100,
-    semNadaNaEntrada ? TETO_ENTRADA_SEM_FUNCAO : 100,
+    tetoDaEntrada,
   );
   const semTeto = pedidos && conta !== null ? Math.round(100 * conta) : null;
   const nota = eliminado ? 0 : semTeto === null ? null : Math.min(maximo, semTeto);
@@ -966,8 +1078,17 @@ export function requisitosDaVaga(a: CamposDaVaga) {
  * currículo, não dá para dizer que a vaga é da área dela (05/11/2026: dava 100% de "Auxiliar" a quem é
  * de TI). Sem o %, a linha do tempo usa a área do que a pessoa faz e procura.
  */
-export function matchComAVaga(vaga: CamposDaVaga, pessoa: Omit<Candidato, "respostas">, agora: number) {
-  const a = calcularAderencia({ ...requisitosDaVaga(vaga), perguntas: [] }, { ...pessoa, respostas: {} }, agora);
+export function matchComAVaga(
+  vaga: CamposDaVaga & { id?: string },
+  pessoa: Omit<Candidato, "respostas">,
+  agora: number,
+) {
+  const atividades = pessoa.atividades ?? (vaga.id ? pessoa.atividadesPorVaga?.get(vaga.id) : undefined) ?? null;
+  const a = calcularAderencia(
+    { ...requisitosDaVaga(vaga), perguntas: [] },
+    { ...pessoa, atividades, respostas: {} },
+    agora,
+  );
   const daVaga = a.criterios.filter((k) => !k.extra && k.ok !== null).length;
   const comFuncao = dizAFuncao(vaga);
   const semFuncao = comFuncao && !a.criterios.some((k) => k.funcao && k.ok !== null);

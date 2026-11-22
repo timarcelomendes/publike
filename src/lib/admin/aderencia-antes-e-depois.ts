@@ -15,8 +15,9 @@ import type { ClienteBanco } from "@/lib/supabase/admin";
 import { entraEmParaAVaga } from "@/lib/talentos";
 import * as antes from "./aderencia-de-antes";
 
-// Admin › Nota de aderência (11/11/2026, claude/plano-pesos-da-aderencia.md): a conta de antes (congelada em
-// ./aderencia-de-antes.ts) e a nova, lado a lado, nas vagas no ar. Para conferir, antes do push, quantas candidaturas
+// Admin › Nota de aderência (11/11/2026, claude/plano-pesos-da-aderencia.md; de novo em 22/11/2026, o tempo na função
+// e o verde da vaga de entrada só para a mesma função): a conta de antes (congelada em ./aderencia-de-antes.ts) e a
+// nova, lado a lado, nas vagas no ar. As atividades lidas pela IA ficam de fora (só valem quando ligadas). Para conferir, antes do push, quantas candidaturas
 // mudam de cor, quantas pessoas entram ou saem de Talentos › Para a sua vaga e de "Vagas que combinam" (o aviso de
 // segunda e o convite automático). Sem as perguntas com resposta procurada (a resposta fica guardada à parte): as duas
 // contas ficam sem elas. Sem migração: o admin lê as tabelas com a chave de serviço.
@@ -66,36 +67,42 @@ export type RelatorioAderencia = {
 export type VagaDeTalentos = { vagaId: string; vaga: string; antes: number; depois: number };
 export type Contagem = { nome: string; quantas: number };
 
-/** O detalhe da função na conta nova diz que contou o estudo (a evidência nova). */
-const contouOEstudo = (a: Aderencia) => Boolean(a.criterios.find((k) => k.funcao)?.detalhe.startsWith("Estudou "));
+/** A experiência na função pela conta nova: a mesma função (1), com o tempo (`parte` do item) */
+const naMesmaFuncao = (a: Aderencia) => a.funcao !== null && a.funcao >= 1;
+/** O item da função vale menos de 75% pelo tempo (menos de 1 ano na mesma função, ou sem as datas) */
+const poucoTempo = (a: Aderencia) => {
+  const k = a.criterios.find((x) => x.funcao);
+  if (!k || !naMesmaFuncao(a)) return false;
+  const vale = a.perfil === "entrada" ? ((k.parte ?? 1) - 0.5) * 2 : (k.parte ?? 1);
+  return vale < 0.75;
+};
 
 /** Por que alguém sai de Talentos › Para a sua vaga (o primeiro motivo que vale). */
-function porQueSai(a0: antes.Aderencia, a1: Aderencia) {
+function porQueSai(a1: Aderencia) {
   if (a1.faltam.length) return "Falta algo que a vaga pede (escolaridade, CNH ou horário)";
-  if (a1.primeiroEmprego && !a0.criterios.some((k) => k.funcao)) return "Primeiro emprego sem nada da função";
-  if (a1.funcao !== null && a1.funcao < 0.5) return "A função não bate pela conta nova (palavras de nível, área)";
+  if (a1.perfil === "entrada" && !naMesmaFuncao(a1)) return "Vaga de entrada sem a mesma função (até 79%)";
+  if (poucoTempo(a1)) return "Pouco tempo na mesma função";
   return "Outros";
 }
 
 /** Por que alguém entra em Talentos › Para a sua vaga. */
 function porQueEntra(a1: Aderencia) {
-  return contouOEstudo(a1) ? "Estudou na área (o estudo passou a contar)" : "Outros (palavras e pesos)";
+  return naMesmaFuncao(a1) ? "Na mesma função" : "Outros";
 }
 
 /** Por que um par passa a combinar. */
 function porQueCombina(m: Aderencia | null) {
-  if (!m) return "Outros";
-  if (m.primeiroEmprego && m.perfil === "entrada") return "Primeiro emprego em vaga de entrada";
-  if (contouOEstudo(m)) return "Estudou na área";
-  return "Outros (pesos e perfil da vaga)";
+  return m && naMesmaFuncao(m) ? "Na mesma função" : "Outros";
 }
 
 /** Por que um par deixa de combinar. */
 function porQueDeixa(m: Aderencia | null) {
-  if (!m) return "Sem % pela conta nova (primeiro emprego sem nada da função)";
+  if (!m) return "Sem % pela conta nova";
   if (m.faltam.length) return "Falta algo que a vaga pede (até 45%)";
   if (outraArea(m)) return "Outra área pela conta nova";
-  return "Ficou abaixo de 70% (pesos e perfil da vaga)";
+  if (m.perfil === "entrada" && !naMesmaFuncao(m)) return "Vaga de entrada sem a mesma função (até 79% ou 72%)";
+  if (poucoTempo(m)) return "Pouco tempo na mesma função";
+  return "Ficou abaixo de 70%";
 }
 
 /** Soma um motivo. */
@@ -133,22 +140,24 @@ function motivoDoPerfil(v: Vaga) {
 /** Por que a nota de uma candidatura mudou (o primeiro motivo que vale). */
 function motivoDaMudanca(depois: Aderencia) {
   if (depois.faltam.length) return "Falta algo que a vaga pede (até 45%)";
-  if (depois.primeiroEmprego && depois.perfil === "experiencia") return "Primeiro emprego em vaga de experiência";
-  if (depois.perfil === "entrada") return "Vaga de entrada (a função pesa menos)";
-  return "Os pesos e o estudo na área";
+  if (depois.perfil === "entrada" && !naMesmaFuncao(depois)) {
+    return depois.funcao !== null && depois.funcao >= 0.5
+      ? "Vaga de entrada: área parecida, estudo ou curso (até 79%)"
+      : "Vaga de entrada: nada da função (até 72%)";
+  }
+  if (poucoTempo(depois)) return "Pouco tempo na mesma função";
+  if (naMesmaFuncao(depois)) return "O tempo na mesma função";
+  return "Outros";
 }
 
-/** Entrava em Talentos › Para a sua vaga pela regra de antes (03/11/2026). */
+/** Entrava em Talentos › Para a sua vaga pela regra de antes (a mesma regra, com a nota de antes). */
 function entravaAntes(a: antes.Aderencia) {
-  if (a.eliminado) return false;
-  const funcao = a.criterios.find((k) => k.funcao);
-  if (!funcao) return (a.nota ?? 0) >= 50;
-  return funcao.ok === true && (funcao.parte ?? 1) >= 0.5;
+  return entraEmParaAVaga(a as unknown as Aderencia);
 }
 
 /** "Vagas que combinam" de antes: 70% ou mais e não é de outra área. */
 function combinavaAntes(a: antes.Aderencia | null) {
-  return Boolean(a && (a.nota ?? 0) >= MINIMO && !a.criterios.some((c) => c.funcao && c.ok === false));
+  return Boolean(a && (a.nota ?? 0) >= MINIMO && !antes.outraArea(a));
 }
 
 function combinaAgora(a: Aderencia | null) {
@@ -283,7 +292,7 @@ export async function relatorioDaAderencia(c: ClienteBanco, agora: number): Prom
         }
         if (e0 && !e1) {
           saem++;
-          somar(tSaemPor, porQueSai(a0, a1));
+          somar(tSaemPor, porQueSai(a1));
         }
       }
       // "Vagas que combinam": só as vagas da região da pessoa, como no aviso de segunda

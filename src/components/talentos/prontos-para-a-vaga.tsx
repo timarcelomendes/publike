@@ -8,6 +8,7 @@ import { calcularAderencia, ordemDaNota, requisitosDaVaga } from "@/lib/aderenci
 import { obterAnuncio } from "@/lib/dados";
 import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-contexto";
 import { diaADiaDasVagas, jeitosDasPessoas } from "@/lib/servidor/jeito-de-trabalhar";
+import { atividadesDaVaga } from "@/lib/servidor/atividades-da-vaga";
 import { atendeAVaga } from "@/lib/talentos";
 import { ListaDosProntos, type ProntoNaLista } from "./lista-dos-prontos";
 
@@ -42,14 +43,15 @@ async function comPrioridade(anuncioId: string, prontos: Pronto[], talentos: Tal
   const porId = new Map(talentos.map((t) => [t.perfil_id, t]));
   const comCv = prontos.map((p) => porId.get(p.perfil_id) ?? null);
   const daLista = comCv.filter((t): t is Talento => Boolean(t));
-  const [vagaComCbo, experiencias, diaADia, jeitos] = anuncio
+  const [vagaComCbo, experiencias, diaADia, jeitos, atividades] = anuncio
     ? await Promise.all([
         comFuncaoDasVagas([anuncio]).then((v) => v[0]),
         comFuncoes(daLista.map((t) => ({ experiencias: t.experiencias }))),
         diaADiaDasVagas([anuncioId]),
         jeitosDasPessoas(daLista.map((t) => t.perfil_id)),
-      ]).catch(() => [null, null, null, null] as const)
-    : ([null, null, null, null] as const);
+        atividadesDaVaga(anuncioId),
+      ]).catch(() => [null, null, null, null, null] as const)
+    : ([null, null, null, null, null] as const);
   const requisitos = vagaComCbo
     ? { ...requisitosDaVaga(vagaComCbo), perguntas: [], dia_a_dia: diaADia?.get(anuncioId) ?? null }
     : null;
@@ -77,6 +79,7 @@ async function comPrioridade(anuncioId: string, prontos: Pronto[], talentos: Tal
                 respostas: {},
                 cidade: t.cidade,
                 bairro: t.bairro,
+                atividades: atividades?.get(t.perfil_id) ?? null,
               },
               agora,
             )
