@@ -77,6 +77,13 @@ async function perguntasGuardadas(banco: ClienteBanco, chave: string, relato: st
   return null;
 }
 
+/** As perguntas guardadas pelo que a pessoa contou, com a chave do servidor (o "Montar conversando" do site). */
+export async function perguntasGuardadasDoTexto(texto: string) {
+  const acesso = acessoFila();
+  if (!acesso) return null;
+  return perguntasGuardadas(acesso.cliente, acesso.chave, texto).catch(() => null);
+}
+
 /**
  * O passo da conversa do currículo. Devolve true quando respondeu; false quando a mensagem não é do currículo (ou o
  * recurso está desligado) e o atendimento segue normal.

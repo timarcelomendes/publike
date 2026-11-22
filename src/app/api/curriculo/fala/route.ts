@@ -4,7 +4,7 @@ import { obterUsuario } from "@/lib/dados";
 import { falaDisponivel } from "@/lib/ia/transcrever";
 import { registrarFalha, textoDoErro } from "@/lib/servidor/falhas";
 import { dentroDoLimite } from "@/lib/servidor/limite";
-import { lerFalaDoCurriculo, type LeituraDoArquivo } from "@/lib/servidor/ler-curriculo";
+import { lerFalaDoCurriculo, transcreverFalaDoCurriculo, type LeituraDoArquivo } from "@/lib/servidor/ler-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 // Currículo falado: o navegador grava a pessoa contando a experiência e manda o áudio para cá (rota, e
@@ -27,6 +27,21 @@ export async function POST(request: NextRequest) {
   if (!falaDisponivel()) return responder({ ok: false, erro: "Contar falando não está disponível agora." });
   const usuario = await obterUsuario();
   if (!usuario) return responder({ ok: false, erro: "Entre na sua conta para continuar." }, 401);
+  // ?so=texto: só a transcrição (o "Montar conversando" e o microfone das experiências), até 40 por hora
+  const soTexto = request.nextUrl.searchParams.get("so") === "texto";
+  if (soTexto) {
+    if (!dentroDoLimite(`fala-texto:${usuario.id}`, 40, 60 * 60_000))
+      return responder({ ok: false, erro: "Muitas gravações seguidas. Espere um pouco ou escreva." } as LeituraDoArquivo, 429);
+    let audio: FormDataEntryValue | null;
+    try {
+      audio = (await request.formData()).get("audio");
+    } catch {
+      return responder({ ok: false, erro: "Não deu para enviar a gravação. Tente de novo." }, 400);
+    }
+    if (!(audio instanceof File)) return responder({ ok: false, erro: "Grave de novo." }, 400);
+    const r = await transcreverFalaDoCurriculo(audio).catch(() => ({ ok: false as const, erro: "Não deu para ouvir a gravação agora. Tente de novo ou escreva." }));
+    return Response.json(r, { headers: { "cache-control": "no-store" } });
+  }
   // além da cota da ajuda da IA (por dia): no máximo 8 gravações por hora, por conta
   if (!dentroDoLimite(`fala:${usuario.id}`, 8, 60 * 60_000)) {
     return responder({ ok: false, erro: "Muitas gravações seguidas. Espere um pouco e tente de novo." }, 429);

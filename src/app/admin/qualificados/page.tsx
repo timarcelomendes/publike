@@ -7,8 +7,10 @@ import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { Botao } from "@/components/ui/botao";
 import {
+  mandarCurriculoDaSemanaAgora,
   refazerPerguntasDaFuncao,
   salvarConfigAtividades,
+  salvarCurriculoDaSemana,
   salvarConfigLeitura,
   salvarModoCurriculoWhatsapp,
 } from "@/lib/acoes/admin-qualificados";
@@ -63,6 +65,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
   ]);
   // as perguntas de recrutador guardadas por função (migração 20270903120000; sem ela, nenhuma)
   const { data: perguntasDasFuncoes } = await c.rpc("admin_perguntas_das_funcoes");
+  // o currículo na semana (migração 20270904120000; sem ela, a parte não aparece)
+  const semana = await c.rpc("admin_curriculo_semana");
+  const cs = semana.error
+    ? null
+    : (semana.data as unknown as {
+        ligado: boolean;
+        receberiam: number;
+        com_movimento: number;
+        por_dica: Record<string, number>;
+        exemplos: string[];
+        avisados_na_semana: number;
+      });
   if (error)
     return (
       <Aviso tipo="erro" titulo="Sem os dados">
@@ -89,6 +103,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
     <div className="flex flex-col gap-6">
       {erro && <Aviso tipo="erro">{ERROS[erro] ?? ERROS.salvar}</Aviso>}
       {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" titulo="Salvo." />}
+      {primeiro(sp.mandados) !== undefined && (
+        <Aviso tipo="sucesso" titulo={`O currículo na semana: ${primeiro(sp.mandados)} avisos mandados agora.`} />
+      )}
 
       <Secao
         titulo="Leitura do currículo"
@@ -184,6 +201,64 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
               .
             </p>
             <CompararAtividades modelos={modelosDasAtividades.map((m) => ({ id: m.id, nome: m.nome }))} />
+          </Secao>
+        </div>
+      )}
+
+      {cs && (
+        <div id="curriculo-semana" className="scroll-mt-32">
+          <Secao
+            titulo="O currículo na semana"
+            descricao={
+              <>
+                Uma vez por semana (de segunda a sexta, das 10h às 19h), quem tem currículo recebe no sino, no celular e por
+                e-mail quantas empresas abriram o currículo e quantos convites chegaram, com uma dica: a experiência que não
+                diz o que a pessoa fazia (“toque em Contar falando”), o currículo parado há mais de 45 dias (“Ainda está
+                procurando? Mudou de trabalho?”) ou a primeira coisa a melhorar da leitura. Sem empresa nem convite na
+                semana, só a dica, no máximo uma vez a cada 4 semanas. O e-mail é o modelo “O currículo na semana” (Admin ›
+                E-mails).
+              </>
+            }
+          >
+            <form action={salvarCurriculoDaSemana} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
+              <label className="flex flex-col gap-1 text-body-sm">
+                Envio toda semana
+                <select
+                  name="ligado"
+                  defaultValue={cs.ligado ? "1" : "0"}
+                  className="min-h-11 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
+                >
+                  <option value="0">Desligado</option>
+                  <option value="1">Ligado</option>
+                </select>
+              </label>
+              <Botao type="submit" variante="secundario">
+                Salvar
+              </Botao>
+            </form>
+            <p className="text-body-sm">
+              Agora receberiam {formatarNumero(cs.receberiam)} pessoas ({formatarNumero(cs.com_movimento)} com empresa ou
+              convite na semana) · {formatarNumero(cs.avisados_na_semana)} já receberam nesta semana. Dicas:{" "}
+              {Object.entries(cs.por_dica)
+                .map(([d, n]) => `${{ sem_descricao: "contar o que fazia", parado: "ainda procurando", melhorar: "melhorar", nenhuma: "nenhuma" }[d] ?? d}: ${n}`)
+                .join(" · ") || "nenhuma"}
+              .
+            </p>
+            {cs.exemplos.length > 0 && (
+              <details className="rounded-md border border-line p-4">
+                <summary className="cursor-pointer text-label">Como ficam os avisos (exemplos, sem o nome)</summary>
+                <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-body-sm">
+                  {cs.exemplos.map((t) => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            <form action={mandarCurriculoDaSemanaAgora}>
+              <Botao type="submit" variante="secundario" disabled={!cs.receberiam}>
+                Mandar agora para {formatarNumero(Math.min(cs.receberiam, 100))} pessoas
+              </Botao>
+            </form>
           </Secao>
         </div>
       )}

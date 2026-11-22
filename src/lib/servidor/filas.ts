@@ -897,3 +897,25 @@ export async function perguntarRotas(limite = 100): Promise<{ perguntas: number;
   }
   return { perguntas: Number(data ?? 0) };
 }
+
+/**
+ * O currículo na semana (migração 20270904120000; claude/plano-curriculo-otimizado.md, fase 2): uma vez por semana,
+ * quem tem currículo fica sabendo quantas empresas abriram e quantos convites chegaram, com uma dica (contar falando o
+ * que fazia, atualizar ou melhorar). Sino, celular e e-mail. Começa desligado (Admin › Qualificados). `agora`: o
+ * "Mandar agora" do Admin. Sem a migração, nada (e sem `motivo`).
+ */
+export async function avisarCurriculosDaSemana(agora = false): Promise<{ avisos: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisos: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_curriculos_da_semana", {
+    p_chave: acesso.chave,
+    p_limite: 100,
+    p_agora: agora,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { avisos: 0 };
+    console.error("Publike: falha ao avisar o currículo da semana:", error.message);
+    return { avisos: 0, motivo: "Não foi possível avisar o currículo da semana." };
+  }
+  return { avisos: Number(data ?? 0) };
+}

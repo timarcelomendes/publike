@@ -100,6 +100,27 @@ export async function lerGravacao(audio: Blob): Promise<LeituraDoArquivo> {
   }
 }
 
+/** Só a transcrição (o "Montar conversando" e o microfone das experiências): o texto ou ErroDaFala. */
+export async function transcreverGravacao(audio: Blob): Promise<string> {
+  const dados = new FormData();
+  dados.set("audio", audio, audio.type.includes("mp4") ? "fala.mp4" : "fala.webm");
+  let resposta: Response;
+  try {
+    resposta = await fetch("/api/curriculo/fala?so=texto", { method: "POST", body: dados });
+  } catch {
+    throw new ErroDaFala("A internet caiu no meio do envio. Tente de novo.");
+  }
+  if (resposta.status === 413) throw new ErroDaFala("A gravação ficou grande demais. Fale em até 3 minutos.");
+  let r: { ok: boolean; texto?: string; erro?: string };
+  try {
+    r = await resposta.json();
+  } catch {
+    throw new ErroDaFala("Não deu para ouvir a gravação agora. Tente de novo.");
+  }
+  if (!r.ok || !r.texto) throw new ErroDaFala(r.erro ?? "Não deu para ouvir a gravação agora. Tente de novo.");
+  return r.texto;
+}
+
 /** 0:42 */
 export function relogio(segundos: number) {
   const s = Math.max(0, Math.floor(segundos));

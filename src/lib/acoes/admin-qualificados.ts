@@ -15,6 +15,7 @@ import {
   type ParDasAtividades,
 } from "@/lib/servidor/atividades-da-vaga";
 import { compararAtividadesComIA, daParaComparar } from "@/lib/ia/atividades";
+import { avisarCurriculosDaSemana } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 
 // Admin › Qualificados (migração 20270826120000; claude/plano-curriculos-qualificados.md): ligar a leitura do
@@ -160,4 +161,19 @@ export async function refazerPerguntasDaFuncao(formData: FormData) {
   if (!/^\d{6}$/.test(cbo)) redirect(`${AQUI}?erro=salvar#curriculo-whatsapp`);
   const { error } = await c.rpc("admin_refazer_perguntas_da_funcao", { p_cbo: cbo });
   redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-whatsapp`);
+}
+
+// O currículo na semana (migração 20270904120000): ligar e desligar, e o "Mandar agora".
+export async function salvarCurriculoDaSemana(formData: FormData) {
+  const c = await clienteAdminOuNulo();
+  if (!c) redirect(`${AQUI}?erro=fora`);
+  const { error } = await c.rpc("admin_curriculo_semana_ligar", { p_ligado: formData.get("ligado") === "1" });
+  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-semana`);
+}
+
+export async function mandarCurriculoDaSemanaAgora() {
+  const c = await clienteAdminOuNulo();
+  if (!c) redirect(`${AQUI}?erro=fora`);
+  const r = await avisarCurriculosDaSemana(true);
+  redirect(`${AQUI}?${r.motivo ? "erro=salvar" : `mandados=${r.avisos}`}#curriculo-semana`);
 }

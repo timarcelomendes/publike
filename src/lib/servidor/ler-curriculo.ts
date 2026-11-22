@@ -119,7 +119,7 @@ export async function lerArquivoDoCurriculo(
  * O modelo escolhido no admin e a cota da ajuda da IA (a mesma chave do admin e o mesmo limite
  * por dia): no admin local não gasta cota.
  */
-async function modeloComCota(
+export async function modeloComCota(
   supabase: Awaited<ReturnType<typeof criarClienteServidor>>,
 ): Promise<{ ok: true; modelo: string } | { ok: false; erro: string }> {
   const admin = await clienteAdminOuNulo();
@@ -191,4 +191,27 @@ export async function lerFalaDoCurriculo(
     console.error("Publike: a leitura do currículo falado falhou:", e instanceof Error ? e.message : e);
     return { ok: false, erro: "Não deu para preencher agora. Tente de novo ou preencha aqui embaixo." };
   }
+}
+
+/**
+ * Só a transcrição (o "Montar conversando" e o microfone das experiências; 22/11/2026): a fala vira texto, para a
+ * pessoa ver e mandar. Não gasta a cota da ajuda da IA (a rota limita por hora); o áudio não fica guardado.
+ */
+export async function transcreverFalaDoCurriculo(audio: File): Promise<{ ok: true; texto: string } | { ok: false; erro: string }> {
+  if (audio.size < MIN_AUDIO_BYTES) return { ok: false, erro: "A gravação ficou curta demais. Fale de novo, com calma." };
+  if (audio.size > MAX_AUDIO_BYTES) return { ok: false, erro: "A gravação ficou grande demais. Fale em até 3 minutos." };
+  const bytes = Buffer.from(await audio.arrayBuffer());
+  const nome = formatoDoAudio(bytes);
+  if (!nome) return { ok: false, erro: "Não deu para abrir a gravação. Tente de novo." };
+  let fala: string;
+  try {
+    fala = await transcrever(new Blob([bytes], { type: audio.type || "application/octet-stream" }), nome);
+  } catch (e) {
+    console.error("Publike: a transcrição da fala falhou:", e instanceof Error ? e.message : e);
+    return { ok: false, erro: "Não deu para ouvir a gravação agora. Tente de novo ou escreva." };
+  }
+  if (fala.replace(/[^\p{L}]/gu, "").length < 4) {
+    return { ok: false, erro: "Não deu para ouvir. Fale perto do celular, num lugar sem barulho, e tente de novo." };
+  }
+  return { ok: true, texto: fala.trim().slice(0, 3000) };
 }

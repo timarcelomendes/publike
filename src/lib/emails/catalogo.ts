@@ -65,6 +65,8 @@ const QUEM: Record<string, QuemRecebe[]> = {
   interesse_local: ["contrata"],
   // procuraram e não acharam vaga (migração 20270822120000)
   procura_na_regiao: ["contrata"],
+  // o currículo na semana (migração 20270904120000)
+  curriculo_semana: ["procura"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],
@@ -143,7 +145,7 @@ export function textoDoIntervalo(minutos: number) {
 /** Os números que valem para todos os e-mails (Admin › E-mails › Todos › Regras gerais). */
 export type NumerosDosEmails = { por_dia: number; semana_dia: number; semana_hora: number };
 
-const DA_SEMANA = new Set(["vagas_semana", "talentos_semana", "resumo_vagas", "talentos_reativar"]);
+const DA_SEMANA = new Set(["vagas_semana", "talentos_semana", "resumo_vagas", "talentos_reativar", "curriculo_semana"]);
 const DE_CONTA = new Set(["conta_suspensa", "conta_banida", "conta_reativada"]);
 const DE_MODERACAO = new Set(["em_analise", "removido", "liberado"]);
 

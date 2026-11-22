@@ -45,6 +45,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   // "Quero trabalhar aqui": o currículo de quem demonstrou interesse (migração 20270615120000)
   if (n.tipo === "interesse_local") return n.ator_id ? `/talentos/${n.ator_id}` : (n.link ?? "/talentos");
   // procuraram e não acharam vaga: publicar de novo a vaga de antes, ou publicar (migração 20270822120000)
+  // o currículo na semana (migração 20270904120000): Meu currículo
+  if (n.tipo === "curriculo_semana") return n.link ?? "/perfil/curriculo";
   if (n.tipo === "procura_na_regiao") return n.link ?? (n.anuncio_id ? `/publicar?copiar=${n.anuncio_id}` : "/publicar");
   // o vencimento da vaga: renovar em um toque ou "Já preenchi"
   if ((n.tipo === "vaga_vence" || n.tipo === "vaga_venceu") && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/renovar`;

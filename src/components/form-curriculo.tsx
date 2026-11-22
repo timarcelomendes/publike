@@ -70,6 +70,8 @@ import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm, Experiencia } from "@/lib/tipos";
 import { LinhaDaExperiencia } from "./curriculo/linha-da-experiencia";
 import { MesEAno } from "./curriculo/mes-e-ano";
+import { FalarNoCampo } from "./curriculo/falar-no-campo";
+import { MontarConversando } from "./curriculo/montar-conversando";
 import { PreencherComOPdf } from "./curriculo/preencher-com-o-pdf";
 import { irParaOCampo, SeuCartao, type PessoaDoCartao, type QuemVe } from "./curriculo/seu-cartao";
 import { MelhorarCurriculoComIA } from "./melhorar-curriculo-ia";
@@ -1207,6 +1209,15 @@ export function FormCurriculo({
               />
             )}
 
+            {/* montar conversando (fase 2 do currículo otimizado): para quem ainda não tem currículo */}
+            {lerArquivo && !demo && !semConta && inicial === null && (
+              <MontarConversando
+                aoLer={(lido) => aplicarLeitura(lido, null)}
+                rotuloSalvar={rotuloSalvar}
+                falar={ouvirFala}
+              />
+            )}
+
             <Secao
               id="o-que-faz"
               titulo="O que você faz"
@@ -1486,6 +1497,16 @@ export function FormCurriculo({
                               className={classesEntrada}
                             />
                             {erro("descricao") && <MensagemErro>{erro("descricao")}</MensagemErro>}
+                            {ouvirFala && !semConta && !demo && (
+                              <FalarNoCampo
+                                rotulo="Contar falando"
+                                aoFalar={(t) =>
+                                  mudarExperiencia(x.chave, {
+                                    descricao: `${x.descricao.trim()}${x.descricao.trim() ? " " : ""}${t}`.slice(0, 300),
+                                  })
+                                }
+                              />
+                            )}
                           </div>
                           {x.cargo.trim().length >= 2 && (
                             <Botao
