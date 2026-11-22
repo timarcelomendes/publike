@@ -74,19 +74,55 @@ function dasGuardadas(guardadas: PerguntaGuardada[] | null) {
   return prontas.length === 3 ? prontas : null;
 }
 
+// --- Uma pergunta por vez, com as opções (22/11/2026; Marcelo: "sim" aos botões de múltipla escolha) -----------------
+
+/** Uma pergunta da conversa: o texto (com o exemplo) e até 3 opções para tocar (vazio: resposta livre). */
+export type PerguntaComOpcoes = { texto: string; opcoes: string[] };
+
+const ESQUEMA_DA_PROXIMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["pergunta", "exemplo", "opcoes"],
+  properties: {
+    pergunta: { type: "string" },
+    exemplo: { type: "string" },
+    opcoes: { type: "array", items: { type: "string" } },
+  },
+} as const;
+
+const SISTEMA_DA_PROXIMA = `${SISTEMA_DAS_PERGUNTAS.replace(
+  /Escreva exatamente 3 perguntas[^:]*:/,
+  "Você vai fazer 3 perguntas, uma de cada vez, como um bom recrutador, para tirar dela a experiência que ainda não apareceu e que conta para o trabalho que ela procura. Agora escreva só a próxima pergunta, olhando o que ela já respondeu:",
+)}
+- "opcoes": quando a resposta cabe em poucas escolhas (quantidade, tempo, sim ou não, com que frequência), até 3 respostas curtas para ela tocar, até 20 letras cada, do jeito que ela falaria ("Até 50 por dia", "De 50 a 150", "Mais de 150"; "Sim, sempre", "Às vezes", "Nunca"). Quando a resposta é livre (o que ela fazia, que máquina usava), deixe vazio: ela responde escrevendo ou em áudio.
+- Não repita pergunta já feita nem pergunte o que ela já disse.`;
+
+/** As opções que servem como botão (até 3, até 20 letras, sem repetir). */
+function opcoesLimpas(opcoes: unknown): string[] {
+  if (!Array.isArray(opcoes)) return [];
+  const vistas = new Set<string>();
+  const boas = opcoes
+    .filter((o): o is string => typeof o === "string")
+    .map((o) => o.replace(/[_*]/g, "").replace(/\s+/g, " ").trim())
+    .filter((o) => o.length >= 2 && o.length <= 20 && !temContatoNoTexto(o))
+    .filter((o) => !vistas.has(o.toLowerCase()) && vistas.add(o.toLowerCase()));
+  return boas.length >= 2 ? boas.slice(0, 3) : [];
+}
+
 /**
- * As 3 perguntas do recrutador (com o exemplo em itálico). Com as perguntas guardadas da função, a IA parte delas e
- * adapta ao que a pessoa contou. Sem a IA ou com a resposta ruim: as guardadas, ou as de sempre.
+ * A pergunta `n` (1 a 3) do passo 2, pela conversa até agora. Com as perguntas guardadas da função, a IA parte delas.
+ * Sem a IA ou com a resposta ruim: a guardada `n`, ou a de sempre `n` (sem opções).
  */
-export async function perguntasDoRecrutador(
-  relato: string,
+export async function proximaPergunta(
+  n: number,
+  conversa: string,
   modelo: string | null,
   guardadas: PerguntaGuardada[] | null = null,
-): Promise<string[]> {
-  const reserva = dasGuardadas(guardadas) ?? PERGUNTAS_DE_SEMPRE;
-  if (!modelo || relato.trim().length < 3) return reserva;
+): Promise<PerguntaComOpcoes> {
+  const reserva = { texto: (dasGuardadas(guardadas) ?? PERGUNTAS_DE_SEMPRE)[n - 1] ?? PERGUNTAS_DE_SEMPRE[0], opcoes: [] };
+  if (!modelo || conversa.trim().length < 3) return reserva;
   const base = guardadas?.length
-    ? `\n\nPerguntas que recrutadores daqui fazem para a função que ela procura (tiradas das vagas do Publike). Use como base, escolha as que ela ainda não respondeu e adapte ao que ela contou:\n${guardadas
+    ? `\n\nPerguntas que recrutadores daqui fazem para a função que ela procura (tiradas das vagas do Publike). Use como base, escolha uma que ela ainda não respondeu e adapte ao que ela contou:\n${guardadas
         .slice(0, 6)
         .map((g) => `- ${g.pergunta}`)
         .join("\n")}`
@@ -95,18 +131,20 @@ export async function perguntasDoRecrutador(
     const { texto, parada } = await chamarIA({
       funcionalidade: "ler",
       modelo,
-      sistema: SISTEMA_DAS_PERGUNTAS,
-      mensagem: `O que a pessoa contou:\n\n${relato.slice(0, 3000)}${base}`,
-      maxTokens: 800,
-      esquema: { nome: "perguntas_do_recrutador", schema: ESQUEMA_DAS_PERGUNTAS },
+      sistema: SISTEMA_DA_PROXIMA,
+      mensagem: `A conversa até agora:\n\n${conversa.slice(-5000)}\n\nEscreva a pergunta ${n} de 3.${base}`,
+      maxTokens: 400,
+      esquema: { nome: "proxima_pergunta", schema: ESQUEMA_DA_PROXIMA },
       tempoLimite: 25_000,
     });
     if (parada) return reserva;
-    const r = lerJson<{ perguntas?: { pergunta?: unknown; exemplo?: unknown }[] }>(texto);
-    const perguntas = (r.perguntas ?? []).map(comoPergunta).filter(Boolean).slice(0, 3);
-    return perguntas.length === 3 ? perguntas : reserva;
+    const r = lerJson<{ pergunta?: unknown; exemplo?: unknown; opcoes?: unknown }>(texto);
+    const opcoes = opcoesLimpas(r.opcoes);
+    // com opções, o exemplo sobra (os botões já mostram o jeito de responder)
+    const pergunta = comoPergunta({ pergunta: r.pergunta, exemplo: opcoes.length ? "" : r.exemplo });
+    return pergunta ? { texto: pergunta, opcoes } : reserva;
   } catch (e) {
-    console.error("Publike: a IA não fez as perguntas do currículo:", e instanceof Error ? e.message : e);
+    console.error("Publike: a IA não fez a pergunta do currículo:", e instanceof Error ? e.message : e);
     return reserva;
   }
 }

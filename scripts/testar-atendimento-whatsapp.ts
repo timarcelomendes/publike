@@ -1558,27 +1558,43 @@ async function main() {
 
     const p1 = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.passo1 };
     const relato = "🎤 quero trabalhar de auxiliar de cozinha, trabalhei uns 2 anos numa lanchonete no Campinas e faço salgado pra vender";
-    // passo 1 → as perguntas da IA
-    respostaIA = {
-      perguntas: [
-        { pergunta: "Na lanchonete, o que você fazia no dia a dia?", exemplo: "fazia lanche na chapa e fritava porção" },
-        { pergunta: "Quantos pedidos saíam por dia, mais ou menos?", exemplo: "uns 80" },
-        { pergunta: "Você mexia com o caixa ou fechava a lanchonete?", exemplo: "às vezes fechava o caixa" },
-      ],
-    };
+    // passo 1 → a pergunta 1 da IA, com as opções em botões (22/11/2026; Marcelo: "sim" aos botões de múltipla escolha)
+    respostaIA = { pergunta: "Na lanchonete, quantos lanches saíam por dia, mais ou menos?", exemplo: "uns 80", opcoes: ["Até 50 por dia", "De 50 a 150", "Mais de 150", "Muitos, muitos mesmo"] };
     r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });
     const m2 = corpo(r.msgs[0]);
-    conferir(m2.startsWith(M.passo2) && m2.includes("1. Na lanchonete") && m2.includes("_Ex.: fazia lanche na chapa e fritava porção._") && m2.includes("3. "), "passo 2: as 3 perguntas da IA, com o exemplo", m2);
-    conferir(pedidosIA.length === 1 && JSON.stringify(pedidosIA[0]).includes("lanchonete") && !JSON.stringify(pedidosIA[0]).includes("🎤"), "as perguntas: a IA recebe o relato, sem o 🎤");
-    console.log("\n--- currículo, passo 2 ---\n" + m2 + "\n---");
-    // a IA perguntou o que não pode (estudo): as perguntas de sempre
-    respostaIA = {
-      perguntas: [
-        { pergunta: "Até que ano você estudou na escola?", exemplo: "8ª série" },
-        { pergunta: "Na lanchonete, o que você fazia no dia a dia?", exemplo: "chapa" },
-        { pergunta: "Quanto tempo ficou lá?", exemplo: "2 anos" },
-      ],
-    };
+    const botoesQ1 = r.msgs[0]?.interactive?.action?.buttons ?? [];
+    conferir(
+      m2.startsWith(M.pergunta1) && m2.includes("Na lanchonete, quantos lanches") && !m2.includes("_Ex.:") && m2.includes("Toque numa opção"),
+      "pergunta 1: uma pergunta, sem o exemplo (as opções mostram)",
+      m2,
+    );
+    conferir(
+      botoesQ1.map((b: any) => b.reply.title).join("|") === "Até 50 por dia|De 50 a 150|Mais de 150" && botoesQ1[1]?.reply?.id === "a:cv-op:2",
+      "pergunta 1: as opções em botões (até 3, até 20 letras)",
+      botoesQ1,
+    );
+    conferir(pedidosIA.length === 1 && JSON.stringify(pedidosIA[0]).includes("lanchonete") && JSON.stringify(pedidosIA[0]).includes("pergunta 1 de 3"), "a pergunta 1: a IA recebe a conversa");
+    console.log("\n--- currículo, pergunta 1 ---\n" + m2 + "\n[" + botoesQ1.map((b: any) => b.reply.title).join("] [") + "]\n---");
+    // o toque numa opção responde a pergunta 1; a 2 é livre (sem botões), com o exemplo, e a IA vê a resposta
+    const q1 = { de: "robo", texto: `${m2}\n\n[Botões: Até 50 por dia · De 50 a 150 · Mais de 150]` };
+    respostaIA = { pergunta: "O que você fazia no dia a dia na lanchonete?", exemplo: "fazia lanche na chapa e fritava porção", opcoes: [] };
+    r = await rodar("De 50 a 150", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, q1, { de: "pessoa", texto: "De 50 a 150" }] }, { payload: "a:cv-op:2" });
+    const m3 = corpo(r.msgs[0]);
+    conferir(
+      m3.startsWith(M.pergunta2) && m3.includes("_Ex.: fazia lanche na chapa e fritava porção._") && !r.msgs[0]?.interactive && m3.includes("Responda do seu jeito"),
+      "pergunta 2: livre, com o exemplo, sem botões",
+      r.msgs[0],
+    );
+    conferir(JSON.stringify(pedidosIA[0] ?? {}).includes("De 50 a 150") && JSON.stringify(pedidosIA[0]).includes("pergunta 2 de 3"), "a pergunta 2: a IA vê a resposta da 1");
+    // a resposta da 3: o passo 3, sem a IA
+    const q3 = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.perguntaDoPasso2(3, "Você mexia com o caixa?", false) };
+    r = await rodar("sim, fechava o caixa", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, q3, { de: "pessoa", texto: "sim, fechava o caixa" }] });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.passo3 && pedidosIA.length === 0, "pergunta 3 → passo 3, sem a IA", corpo(r.msgs[0]));
+    // "cancelar" no meio das perguntas: para
+    r = await rodar("cancelar", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, q1, { de: "pessoa", texto: "cancelar" }] });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.parou, "cancelar numa pergunta: para", corpo(r.msgs[0]));
+    // a IA perguntou o que não pode (estudo): a de sempre
+    respostaIA = { pergunta: "Até que ano você estudou na escola?", exemplo: "8ª série", opcoes: [] };
     r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });
     conferir(corpo(r.msgs[0]).includes(cv.PERGUNTAS_DE_SEMPRE[0]), "pergunta de estudo da IA: vão as de sempre", corpo(r.msgs[0]));
     // "ok" no passo 1: a pergunta de novo
@@ -1678,7 +1694,7 @@ async function main() {
     r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });
     conferir(cvPerguntasPedidas[0]?.p_cbos?.length > 0, "as perguntas guardadas: pede pelas funções do relato", cvPerguntasPedidas[0]);
     conferir(JSON.stringify(pedidosIA[0] ?? {}).includes("Perguntas que recrutadores daqui fazem") && JSON.stringify(pedidosIA[0]).includes("chapa ou na fritadeira"), "a IA recebe as guardadas como base");
-    conferir(corpo(r.msgs[0]).includes("1. Você trabalhava na chapa ou na fritadeira? _Ex.: nas duas._") && !corpo(r.msgs[0]).includes("estudou"), "a resposta da IA não serviu: vão as guardadas (sem a de estudo)", corpo(r.msgs[0]));
+    conferir(corpo(r.msgs[0]).includes("Você trabalhava na chapa ou na fritadeira? _Ex.: nas duas._") && !corpo(r.msgs[0]).includes("estudou"), "a resposta da IA não serviu: vai a guardada (sem a de estudo)", corpo(r.msgs[0]));
     cvGuardadas = null;
 
     // depois da prévia: o cartão e o PDF
@@ -1695,6 +1711,24 @@ async function main() {
     r = await rodar("cartão", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "cartão" }] });
     conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.semArquivo, "sem currículo montado em 7 dias: monta de novo", corpo(r.msgs[0]));
     conferir(cv.pedeArquivo("cartão") === "cartao" && cv.pedeArquivo("PDF") === "pdf" && cv.pedeArquivo("quero imprimir") === "pdf" && cv.pedeArquivo("trabalhei 3 anos na lanchonete do centro") === null, "o pedido do cartão e do PDF");
+    // sem vaga: o convite do currículo diz que dá para montar aqui, falando, com o botão de montar (22/11/2026; Marcelo:
+    // "não deveria deixar claro, que pode ser falando?")
+    respostaIA = ia("Olha as vagas de pedreiro:", {
+      perfil: "trabalho",
+      acao: "buscar_vagas",
+      busca: { texto: "pedreiro", categoria: "todas", cidade: "Goiânia", bairro: "" },
+    });
+    semVagaNenhuma = true;
+    r = await rodar("tem vaga de pedreiro?", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "tem vaga de pedreiro?" }] });
+    semVagaNenhuma = false;
+    conferir(
+      corpo(r.msgs[0]).includes("Agora não achei vaga de pedreiro") &&
+        corpo(r.msgs[0]).includes("Eu monto com você aqui mesmo, *falando*") &&
+        !corpo(r.msgs[0]).includes("deixe o seu *currículo*") &&
+        r.msgs[0]?.interactive?.action?.buttons?.[0]?.reply?.id === "a:cv-montar",
+      "sem vaga, ligado: o currículo aqui, falando, com Montar meu currículo",
+      r.msgs[0],
+    );
     // o tempo do trabalho
     conferir(cv.tempoDoTrabalho({ inicio: "2024-01", fim: "2025-12", atual: false }, "2026-11") === "2 anos", "24 meses: 2 anos");
     conferir(cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11") === "há 1 ano e meio, até hoje", "desde 06/2025: 1 ano e meio, até hoje", cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11"));

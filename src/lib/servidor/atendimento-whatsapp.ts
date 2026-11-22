@@ -27,7 +27,7 @@ import {
   type ConfigMeta,
 } from "./whatsapp";
 import { BOTAO_AGORA_NAO, BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
-import { seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
+import { curriculoPeloWhatsappLigado, seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
 import { configVagasWhatsapp, deveTentarVaga, respostaDaOferta, tentarVagaPeloWhatsapp } from "./vaga-pelo-whatsapp";
 
 // O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000,
@@ -1181,6 +1181,16 @@ async function mensagemDaBusca(
   };
 }
 
+/** O parágrafo do currículo nas mensagens das vagas (o "deixe o seu currículo no Publike", com o botão do site). */
+const PARAGRAFO_DO_CURRICULO =
+  /(E se ainda não deixou o seu \*currículo\* no Publike|Enquanto isso, deixe o seu \*currículo\* no Publike|E deixe o seu \*currículo\* no Publike)[^\n]*/;
+/**
+ * Com o currículo pelo WhatsApp ligado, o convite diz que dá para montar aqui, falando (22/11/2026; Marcelo, com o "deixe
+ * o seu currículo" e o botão do site: "não deveria deixar claro que pode ser falando?"), com o botão Montar meu currículo.
+ */
+export const CONVITE_CURRICULO_FALANDO =
+  "Ainda não tem currículo? Eu monto com você aqui mesmo, *falando*: é só mandar áudio, sem precisar digitar. É grátis, leva uns 5 minutos, e as empresas da região passam a te achar. Toque em *Montar meu currículo*.";
+
 // --- Os textos prontos ------------------------------------------------------------------------------------------
 
 /** "Bom dia", "Boa tarde" ou "Boa noite", quando a pessoa cumprimentou assim; senão, "Oi". */
@@ -1780,6 +1790,13 @@ export async function atenderConversa(
     return error ? 0 : Number(data) || 0;
   };
 
+  // as mensagens das vagas com o convite do currículo: com o currículo pelo WhatsApp ligado, "monto aqui, falando", com o
+  // botão de montar no lugar do botão do site
+  const comCurriculoFalando = async (texto: string, botao: Botao | null) =>
+    botao === LINKS.curriculo && PARAGRAFO_DO_CURRICULO.test(texto) && (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
+      ? { texto: texto.replace(PARAGRAFO_DO_CURRICULO, CONVITE_CURRICULO_FALANDO), extra: { botoes: [BOTAO_MONTAR_CURRICULO] } }
+      : { texto, extra: { botao } };
+
   // a oferta depois de publicar pelo WhatsApp: o "Sim, quero receber" é o aceite dos avisos (migração 20270806120000)
   const daOferta = await respostaDaOferta(banco, chave, e.chave, m.payload);
   if (daOferta) return saida(daOferta, { perfil: "contratar" });
@@ -2020,7 +2037,8 @@ export async function atenderConversa(
       vagasJaMandadas(e.historico),
     );
     if (!r.quantas) return saida(PEDIR_FUNCAO_E_BAIRRO, { perfil: e.perfil ?? "trabalho" });
-    return saida(`${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`, { perfil: e.perfil ?? "trabalho", botao: r.botao });
+    const c = await comCurriculoFalando(`${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`, r.botao);
+    return saida(c.texto, { perfil: e.perfil ?? "trabalho", ...c.extra });
   }
 
   // "ok", "beleza", "👍" ou figurinha depois de conversar: não pedem resposta. Depois de pedir a função (antes de mandar
@@ -2065,7 +2083,8 @@ export async function atenderConversa(
         void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
       );
       const abertura = r.abertura ?? r.aberturaPadrao;
-      return saida(`${ola1}${abertura}${r.texto ? `\n\n${r.texto}` : ""}`, { perfil: "trabalho", botao: r.botao });
+      const c = await comCurriculoFalando(`${ola1}${abertura}${r.texto ? `\n\n${r.texto}` : ""}`, r.botao);
+      return saida(c.texto, { perfil: "trabalho", ...c.extra });
     }
     return saida(
       deNovo
@@ -2238,10 +2257,11 @@ export async function atenderConversa(
       void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
     );
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
-    return saida(r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
-      perfil: perfil ?? "trabalho",
-      botao: r.botao,
-    });
+    const c = await comCurriculoFalando(
+      r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`,
+      r.botao,
+    );
+    return saida(c.texto, { perfil: perfil ?? "trabalho", ...c.extra });
   }
 
   // o botão que abre o site, quando a conversa leva até ele; senão, os botões do começo, uma vez, enquanto não se sabe

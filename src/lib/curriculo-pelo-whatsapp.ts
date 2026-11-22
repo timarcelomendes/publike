@@ -13,7 +13,11 @@ import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 
 export const MARCAS_DO_CURRICULO = {
   passo1: "📝 *Currículo 1 de 3:*",
+  /** as 3 perguntas do passo 2 antes de 22/11/2026, numa mensagem só (as conversas que já estavam nele) */
   passo2: "📝 *Currículo 2 de 3:*",
+  pergunta1: "📝 *Currículo 2 de 3 · pergunta 1 de 3:*",
+  pergunta2: "📝 *Currículo 2 de 3 · pergunta 2 de 3:*",
+  pergunta3: "📝 *Currículo 2 de 3 · pergunta 3 de 3:*",
   passo3: "📝 *Currículo 3 de 3:*",
   previa: "📝 *Seu currículo ficou assim:*",
   falha: "📝 *Não consegui terminar o currículo agora.*",
@@ -24,6 +28,8 @@ export type PassoDoCurriculo = keyof typeof MARCAS_DO_CURRICULO;
 
 /** O botão que começa (o nome vai até 20 letras). */
 export const BOTAO_MONTAR_CURRICULO = { id: "a:cv-montar", titulo: "Montar meu currículo" } as const;
+/** O id dos botões das opções de uma pergunta ("a:cv-op:1"): a resposta é o nome do botão. */
+export const OPCAO_DO_CURRICULO = "a:cv-op:";
 /** O "Agora não" da pergunta depois das vagas. */
 export const BOTAO_AGORA_NAO = { id: "a:cv-nao", titulo: "Agora não" } as const;
 /** O botão da prévia, que abre o formulário do site preenchido. */
@@ -42,6 +48,13 @@ export const TEXTOS_DO_CURRICULO = {
       `${MARCAS_DO_CURRICULO.passo2} boa! Agora umas perguntas que o recrutador faria. Responda do seu jeito, numa mensagem ou num áudio:`,
       perguntas.map((p, i) => `${i + 1}. ${p}`).join("\n"),
     ].join("\n\n"),
+  /** uma pergunta do passo 2 por mensagem, com as opções em botões quando cabem */
+  perguntaDoPasso2: (n: 1 | 2 | 3, texto: string, comOpcoes: boolean) =>
+    [
+      `${MARCAS_DO_CURRICULO[`pergunta${n}`]}${n === 1 ? " boa! Agora umas perguntas que o recrutador faria." : ""}`,
+      texto,
+      comOpcoes ? "_Toque numa opção ou responda do seu jeito, escrito ou em áudio._" : "_Responda do seu jeito, escrito ou em áudio._",
+    ].join("\n\n"),
   passo3: [
     `${MARCAS_DO_CURRICULO.passo3} quase pronto! Por último, me conta:`,
     "• até que ano você estudou;\n• se fez algum curso (de qualquer coisa);\n• se tem carteira de motorista, e qual;\n• e quando você pode trabalhar (manhã, tarde, noite, fim de semana).",
@@ -58,7 +71,7 @@ export const TEXTOS_DO_CURRICULO = {
   /** o que a pessoa contou não deu um currículo (nada de trabalho, estudo nem do que sabe fazer) */
   semNada: `${MARCAS_DO_CURRICULO.passo1} não consegui montar o currículo com o que você me contou. 😕 Me conta de novo, com calma: *que trabalho você procura e o que você já fez?* Vale bico e trabalho sem carteira. Pode mandar áudio.`,
   semAudio: (passo: PassoDoCurriculo) =>
-    `${MARCAS_DO_CURRICULO[passo === "previa" || passo === "falha" ? "passo3" : passo]} não consegui ouvir esse áudio. 😕 Pode mandar de novo ou escrever?`,
+    `${MARCAS_DO_CURRICULO[passo === "previa" || passo === "falha" || passo === "arquivos" ? "passo3" : passo]} não consegui ouvir esse áudio. 😕 Pode mandar de novo ou escrever?`,
   arquivo:
     "Recebi! Se você já tem o currículo pronto, toque em *Enviar meu currículo* e mande por lá: o Publike lê e preenche tudo para você conferir.",
   parou: "Tudo bem! Quando quiser, é só escrever *currículo* que a gente monta junto. 😊",

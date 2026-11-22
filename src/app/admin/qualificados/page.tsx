@@ -195,7 +195,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
             descricao={
               <>
                 Quem procura trabalho monta o currículo conversando no atendimento do WhatsApp: conta o que faz (escrito ou
-                em áudio), responde 3 perguntas de recrutador que a IA escreve sobre o que a pessoa contou, depois estudo,
+                em áudio), responde 3 perguntas de recrutador que a IA escreve sobre o que a pessoa contou (uma por mensagem, com as opções em botões quando cabem), depois estudo,
                 cursos, CNH e horário. A IA monta o currículo só com o que foi dito e manda a prévia com o botão “Conferir e
                 salvar”, que abre o formulário do site já preenchido (o link vale 7 dias). Depois da prévia, a pessoa
                 escreve “cartão” (a imagem para os grupos e o status) ou “PDF” (uma página para imprimir, com o nome e o
@@ -230,7 +230,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
               <summary className="cursor-pointer text-label">Os textos da conversa</summary>
               <div className="mt-3 flex flex-col gap-3 text-body-sm whitespace-pre-line">
                 <p>{TEXTOS_DO_CURRICULO.passo1}</p>
-                <p>{TEXTOS_DO_CURRICULO.passo2(PERGUNTAS_DE_SEMPRE)}</p>
+                <p>{`${TEXTOS_DO_CURRICULO.perguntaDoPasso2(1, "Na lanchonete, quantos lanches saíam por dia, mais ou menos?", true)}\n[Até 50 por dia] [De 50 a 150] [Mais de 150]`}</p>
+                <p>{TEXTOS_DO_CURRICULO.perguntaDoPasso2(2, PERGUNTAS_DE_SEMPRE[0], false)}</p>
                 <p>{TEXTOS_DO_CURRICULO.passo3}</p>
                 <p>{TEXTOS_DO_CURRICULO.previa("(a prévia do currículo)")}</p>
                 <p>{TEXTOS_DO_CURRICULO.cartao}</p>

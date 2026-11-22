@@ -4,6 +4,7 @@ import {
   BOTAO_AGORA_NAO,
   BOTAO_MONTAR_CURRICULO,
   conversaDoCurriculo,
+  OPCAO_DO_CURRICULO,
   type CurriculoMontado,
   passoDoCurriculo,
   pedeArquivo,
@@ -18,7 +19,7 @@ import { limparCurriculoLido, type CurriculoLido } from "@/lib/ia/curriculo-do-a
 import {
   montarCurriculoDaConversa,
   perguntasDaFuncaoComIA,
-  perguntasDoRecrutador,
+  proximaPergunta,
   type PerguntaGuardada,
 } from "@/lib/ia/curriculo-pelo-whatsapp";
 import { modeloPara } from "@/lib/ia/funcionalidades";
@@ -150,7 +151,7 @@ export async function seguirCurriculoPeloWhatsapp(p: {
   }
 
   const escrito = p.textos.filter((t, i) => !p.midias[i]).join("\n").trim();
-  const noMeio = passo === "passo1" || passo === "passo2" || passo === "passo3";
+  const noMeio = passo === "passo1" || passo === "passo2" || passo === "passo3" || passo.startsWith("pergunta");
   if (noMeio && p.textos.some(querParar)) {
     await p.saida(TEXTOS_DO_CURRICULO.parou, { perfil });
     return true;
@@ -169,18 +170,35 @@ export async function seguirCurriculoPeloWhatsapp(p: {
     return false;
   }
 
+  // a próxima pergunta do passo 2 (uma por mensagem, com as opções em botões quando cabem): a IA lê a conversa até
+  // aqui, então a pergunta 2 já sabe o que ela respondeu na 1
+  const perguntar = async (n: 1 | 2 | 3) => {
+    const conversa = conversaDoCurriculo(p.historico);
+    const daPessoa = conversa
+      .split("\n\n")
+      .filter((l) => l.startsWith("Pessoa:"))
+      .join(" ");
+    const guardadas = await perguntasGuardadas(p.banco, p.chave, daPessoa || relatoDoPasso1(p.textos)).catch(() => null);
+    const q = await proximaPergunta(n, conversa || relatoDoPasso1(p.textos), await p.modelo(), guardadas);
+    await p.saida(TEXTOS_DO_CURRICULO.perguntaDoPasso2(n, q.texto, q.opcoes.length > 0), {
+      perfil,
+      ...(q.opcoes.length ? { botoes: q.opcoes.map((o, i) => ({ id: `${OPCAO_DO_CURRICULO}${i + 1}`, titulo: o })) } : {}),
+    });
+  };
+
   if (passo === "passo1") {
     if (p.textos.every(p.semConteudo)) {
       await p.saida(TEXTOS_DO_CURRICULO.passo1DeNovo, { perfil });
       return true;
     }
-    const relato = relatoDoPasso1(p.textos);
-    const guardadas = await perguntasGuardadas(p.banco, p.chave, relato).catch(() => null);
-    const perguntas = await perguntasDoRecrutador(relato, await p.modelo(), guardadas);
-    await p.saida(TEXTOS_DO_CURRICULO.passo2(perguntas), { perfil });
+    await perguntar(1);
     return true;
   }
-  if (passo === "passo2") {
+  if (passo === "pergunta1" || passo === "pergunta2") {
+    await perguntar(passo === "pergunta1" ? 2 : 3);
+    return true;
+  }
+  if (passo === "passo2" || passo === "pergunta3") {
     await p.saida(TEXTOS_DO_CURRICULO.passo3, { perfil });
     return true;
   }
