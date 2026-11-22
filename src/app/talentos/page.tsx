@@ -12,6 +12,7 @@ import { CartaoTalento } from "@/components/talentos/cartao-talento";
 import { ConviteEmLote, MarcarConvite, MarcarTodos } from "@/components/talentos/convite-em-lote";
 import { MapaDosTalentos } from "@/components/talentos/mapa-dos-talentos";
 import { ParaAVaga } from "@/components/talentos/para-a-vaga";
+import { ProntosParaAVaga } from "@/components/talentos/prontos-para-a-vaga";
 import { Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { classesEntrada, Seletor } from "@/components/ui/campo";
@@ -326,6 +327,8 @@ async function Lista({
     return (
       <div className="flex flex-col gap-5">
         <QuaisTalentos vagas={noAr} vaga={vaga.id} />
+        {/* quem a leitura do currículo indicou como pronto (5 sem assinatura; migração 20270827120000) */}
+        {f.pagina <= 1 && <ProntosParaAVaga vaga={vaga} />}
         <ParaAVaga
           vaga={vaga}
           pagina={f.pagina}

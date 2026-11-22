@@ -239,7 +239,7 @@ async function LeituraDoCurriculo() {
         <p className="text-body-sm text-ink-muted">Ainda não deu para indicar uma função pelo que está no currículo.</p>
       )}
       <p className="text-body-sm text-ink-muted">
-        As empresas acham você em Talentos por essas funções.
+        As empresas acham você em Talentos por essas funções e, nas vagas delas, veem que você está pronto e o porquê.
         {l.desatualizada && " Você mudou o currículo: a leitura nova sai em instantes."}
       </p>
       {l.melhorar.length > 0 && (

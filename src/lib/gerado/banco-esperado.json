@@ -371,7 +371,8 @@
   "20270823120000_procuradas_30_dias",
   "20270824120000_meta_conversoes",
   "20270825120000_meta_dataset",
-  "20270826120000_leitura_do_curriculo"
+  "20270826120000_leitura_do_curriculo",
+  "20270827120000_prontos_para_a_vaga"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2890,6 +2891,7 @@
   "f|privado.procuradas_destinatarios(p_dias integer, p_minimo integer)": "21b516d568",
   "f|privado.procuradas_sem_vaga(p_dias integer, p_minimo integer)": "cea8dc6e2b",
   "f|privado.proposta_em_json(p public.propostas)": "b7115ee88e",
+  "f|privado.qualificados_com_plano(p_conta uuid)": "d2aa38da7c",
   "f|privado.quem_contrata(p_conta uuid)": "2f13017f85",
   "f|privado.quem_respondeu_a_curtida()": "67755fafac",
   "f|privado.raio_da_vaga(p_titulo text, p_cidade text)": "cf7ad94811",
@@ -3567,6 +3569,7 @@
   "f|public.preferencias_antes_de_salvar()": "8e142bd1be",
   "f|public.processo_da_conta()": "f6f4c6244c",
   "f|public.procurando_agora(p_ids uuid[])": "1ba1bf61d5",
+  "f|public.prontos_para_a_vaga(p_anuncio uuid)": "2c9f3f641f",
   "f|public.propostas_da_vaga(p_anuncio uuid)": "26034f14f0",
   "f|public.publicar_vaga_do_whatsapp(p_token text, p_anuncio uuid)": "18d233862d",
   "f|public.pular_regra(p_anuncio uuid, p_perfil uuid, p_regra text, p_motivo text)": "9319243a6d",
