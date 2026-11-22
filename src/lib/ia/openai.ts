@@ -61,7 +61,8 @@ export const MODELOS_IA = [
     preco: { entrada: 4, saida: 20 },
     nome: "Claude Opus 5.5",
     ajuda: "O mais capaz, o dobro do Sonnet. Gasta os créditos do Claude.",
-    esforco: "low",
+    // o Opus não aceita o raciocínio "entre buscas" (between_tools): responde direto, como o Haiku
+    esforco: "none",
     provedor: "claude",
     par: "gpt-6.1-sol",
   },
