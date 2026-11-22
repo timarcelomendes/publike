@@ -140,12 +140,13 @@ export function ListaDosProntos({
                   Só quem atende a vaga
                   <span className="tabular-nums opacity-70">{atendem}</span>
                 </button>
-                <label className="inline-flex items-center">
+                <label className="relative inline-flex items-center">
                   <span className="sr-only">Distância da vaga</span>
+                  {/* com o jeito dos outros botões (o Safari desenha o select do sistema sem o appearance-none) */}
                   <select
                     value={ate ?? ""}
                     onChange={(e) => setAte(e.target.value ? Number(e.target.value) : null)}
-                    className="min-h-10 rounded-pill border border-line-strong bg-surface-200 px-3 text-label"
+                    className={`${classesChip(ate !== null)} cursor-pointer appearance-none pr-9`}
                   >
                     {DISTANCIAS.map((d) => (
                       <option key={d.nome} value={d.m ?? ""}>
@@ -153,6 +154,10 @@ export function ListaDosProntos({
                       </option>
                     ))}
                   </select>
+                  <ChevronDown
+                    aria-hidden
+                    className={`pointer-events-none absolute right-3 size-4 ${ate !== null ? "text-surface-100" : "text-ink-muted"}`}
+                  />
                 </label>
               </div>
             </div>
