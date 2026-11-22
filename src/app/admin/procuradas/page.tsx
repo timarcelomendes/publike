@@ -14,11 +14,11 @@ export const metadata: Metadata = { title: "Procuradas sem vaga" };
 
 // As funções que as pessoas procuraram no WhatsApp do Publike sem vaga no ar (migração 20270822120000; 21/11/2026,
 // Marcelo: "empresas que já tiveram vagas ou são agências de emprego... serem notificadas"). Quem receberia o aviso
-// da semana, com o texto, e o envio (automático, uma vez por semana, ou o "Mandar agora").
+// com o texto, e o envio (automático, a cada novas pessoas na função, ou o "Mandar agora").
 
 type Funcao = { funcao: string; pessoas: number; cidades: string[]; regioes: string[] };
-type Destinatario = { conta_id: string; nome: string; tipo: "empresa" | "agencia"; funcoes: string[]; texto: string; avisada_na_semana: boolean };
-type Avisada = { semana: string; nome: string; conta_id: string; funcoes: string[] };
+type Destinatario = { conta_id: string; nome: string; tipo: "empresa" | "agencia"; funcoes: string[]; texto: string; sem_novidade: boolean; ultimo_aviso: string | null };
+type Avisada = { dia: string; nome: string; conta_id: string; funcoes: string[] };
 type Dados = {
   config: { ligado: boolean; minimo: number; dias: number };
   dias: number;
@@ -53,7 +53,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
       </Aviso>
     );
   const d = data as unknown as Dados;
-  const aReceber = d.destinatarios.filter((x) => !x.avisada_na_semana);
+  const aReceber = d.destinatarios.filter((x) => !x.sem_novidade);
   const confirmar = primeiro(sp.confirmar) === "1";
   const erro = primeiro(sp.erro);
   const mandados = primeiro(sp.mandados);
@@ -73,19 +73,19 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
         descricao={
           <>
             As funções que as pessoas procuraram no WhatsApp do Publike e não tinham vaga no ar, nos últimos {d.dias} dias.
-            Só a função, a cidade e a região: quem procurou não aparece. Uma vez por semana, com o envio ligado, a
-            empresa que já anunciou a função (e não tem vaga dela no ar) e as agências recebem o aviso, das funções com
-            pelo menos {d.config.minimo} pessoas.
+            Só a função, a cidade e a região: quem procurou não aparece. Com o envio ligado, a empresa que já anunciou a
+            função (e não tem vaga dela no ar) e as agências recebem o aviso quando a função junta {d.config.minimo}{" "}
+            pessoas, e um aviso novo a cada {d.config.minimo} pessoas a mais desde o último.
           </>
         }
       >
         <form action={salvarConfigProcuradas} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
           <label className="flex items-center gap-2 text-label">
             <input type="checkbox" name="ligado" defaultChecked={d.config.ligado} className="size-5" />
-            Mandar sozinho, toda semana
+            Mandar sozinho
           </label>
           <label className="flex flex-col gap-1 text-body-sm">
-            Mínimo de pessoas por função
+            Pessoas a mais para avisar
             <input type="number" name="minimo" min={1} max={50} defaultValue={d.config.minimo} className="w-24 rounded-md border border-line bg-surface-100 px-3 py-2" />
           </label>
           <label className="flex flex-col gap-1 text-body-sm">
@@ -97,7 +97,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
           </Botao>
           <p className="basis-full text-caption text-ink-muted">
             {d.config.ligado
-              ? "Ligado: sai de segunda a sexta, das 9h às 18h, uma vez por semana para cada conta (e para depois de 3 semanas seguidas sem publicar)."
+              ? `Ligado: sai de segunda a sexta, das 9h às 18h, sempre que uma função da conta junta ${plural(d.config.minimo, "pessoa", "pessoas")} a mais desde o último aviso (no máximo um por dia; para depois de 3 avisos seguidos sem publicar).`
               : "Desligado: nada sai sozinho. Dá para mandar pelo botão abaixo, depois de conferir a lista."}
           </p>
         </form>
@@ -139,7 +139,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
 
       <Secao
         titulo="Quem recebe"
-        descricao={`O texto exato de cada aviso. ${plural(aReceber.length, "conta ainda não recebeu", "contas ainda não receberam")} nesta semana.`}
+        descricao={`O texto exato de cada aviso. ${plural(aReceber.length, "conta tem", "contas têm")} gente nova para avisar agora.`}
         acoes={
           aReceber.length > 0 &&
           (confirmar ? (
@@ -173,7 +173,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
                     {x.nome}
                   </Link>
                   <Selo variante="contorno">{x.tipo === "agencia" ? "Agência" : "Já anunciou"}</Selo>
-                  {x.avisada_na_semana && <Selo variante="match">Avisada nesta semana</Selo>}
+                  {x.sem_novidade && (
+                    <Selo variante="match">
+                      Avisada{x.ultimo_aviso ? ` em ${formatarDataCurta(x.ultimo_aviso)}` : ""}: espera mais gente
+                    </Selo>
+                  )}
                 </span>
                 <p className="text-body-sm">{x.texto}</p>
               </li>
@@ -183,11 +187,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
       </Secao>
 
       {d.avisadas.length > 0 && (
-        <Secao titulo="Avisos mandados (4 semanas)">
+        <Secao titulo="Avisos mandados (30 dias)">
           <ul className="flex flex-col gap-1 text-body-sm">
             {d.avisadas.map((a) => (
-              <li key={`${a.conta_id}-${a.semana}`}>
-                Semana de {formatarDataCurta(a.semana)} ·{" "}
+              <li key={`${a.conta_id}-${a.dia}`}>
+                {formatarDataCurta(a.dia)} ·{" "}
                 <Link href={`/admin/usuarios/${a.conta_id}`} className="underline-offset-2 hover:underline">
                   {a.nome}
                 </Link>{" "}

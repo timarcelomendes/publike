@@ -106,7 +106,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   vagas_semana: "Vagas que combinam (toda semana)",
   talentos_semana: "Talentos que combinam (toda semana)",
   talentos_reativar: "Volte a contratar (sem vaga no ar)",
-  procura_na_regiao: "Procuraram e não acharam vaga (toda semana)",
+  procura_na_regiao: "Procuraram e não acharam vaga (a cada 3 pessoas a mais)",
   curriculo_semana: "As novidades do currículo (a cada 3 novidades)",
 };
 
