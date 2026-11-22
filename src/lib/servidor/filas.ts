@@ -908,10 +908,9 @@ export async function perguntarRotas(limite = 100): Promise<{ perguntas: number;
 }
 
 /**
- * As novidades do currículo (migrações 20270904120000 e 20270905120000; claude/plano-curriculo-otimizado.md, fase 2):
- * sempre que juntar 3 novidades desde o último aviso (empresas que abriram o currículo e convites; no máximo um por
- * dia), quem tem currículo fica sabendo, com uma dica (contar falando o que fazia, atualizar ou melhorar); sem
- * novidade, só a dica, a cada 4 semanas. Sino, celular e e-mail. Começa desligado (Admin › Qualificados). `agora`: o
+ * O currículo na semana (migração 20270904120000; claude/plano-curriculo-otimizado.md, fase 2): uma vez por semana,
+ * quem tem currículo fica sabendo quantas empresas abriram e quantos convites chegaram, com uma dica (contar falando o
+ * que fazia, atualizar ou melhorar). Sino, celular e e-mail. Começa desligado (Admin › Qualificados). `agora`: o
  * "Mandar agora" do Admin. Sem a migração, nada (e sem `motivo`).
  */
 export async function avisarCurriculosDaSemana(agora = false): Promise<{ avisos: number; motivo?: string }> {

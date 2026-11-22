@@ -99,7 +99,7 @@ export async function GET(request: Request) {
   // quem atende a vaga e ainda não curtiu: a cada 3 pessoas novas no "Atende a vaga", um por dia por vaga (migração
   // 20270908120000; começa desligado)
   const atendem = await comTempo(() => avisarQuemAtende());
-  // as novidades do currículo: a cada 3 (empresas que abriram e convites), com uma dica (migrações 20270904120000 e 20270905120000; começa desligado)
+  // o currículo na semana: empresas que abriram, convites e uma dica (migração 20270904120000; começa desligado)
   const curriculoSemana = await comTempo(() => avisarCurriculosDaSemana());
   // a rota do currículo: uma semana depois de entregar, "Alguém te chamou?" (migração 20270606120000)
   const rotas = await comTempo(() => perguntarRotas());

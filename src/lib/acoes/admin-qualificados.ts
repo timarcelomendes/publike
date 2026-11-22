@@ -167,11 +167,7 @@ export async function refazerPerguntasDaFuncao(formData: FormData) {
 export async function salvarCurriculoDaSemana(formData: FormData) {
   const c = await clienteAdminOuNulo();
   if (!c) redirect(`${AQUI}?erro=fora`);
-  const novidades = Number(formData.get("novidades"));
-  const { error } = await c.rpc("admin_curriculo_semana_ligar", {
-    p_ligado: formData.get("ligado") === "1",
-    ...(Number.isInteger(novidades) && novidades >= 1 && novidades <= 20 ? { p_novidades: novidades } : {}),
-  });
+  const { error } = await c.rpc("admin_curriculo_semana_ligar", { p_ligado: formData.get("ligado") === "1" });
   redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-semana`);
 }
 
