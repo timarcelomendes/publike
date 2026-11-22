@@ -2938,7 +2938,27 @@ export type Database = {
       minha_leitura_do_curriculo: { Args: Record<string, never>; Returns: Json };
       mudar_meu_resumo: { Args: { p_resumo: string | null }; Returns: undefined };
       servidor_curriculo_whatsapp_ligado: { Args: { p_chave: string; p_numero: string }; Returns: boolean };
-      servidor_guardar_curriculo_preparado: { Args: { p_chave: string; p_conversa: string; p_dados: Json }; Returns: string };
+      servidor_guardar_curriculo_preparado: {
+        Args: { p_chave: string; p_conversa: string; p_dados: Json; p_nome?: string; p_telefone?: string };
+        Returns: string;
+      };
+      servidor_ultimo_curriculo_preparado: { Args: { p_chave: string; p_conversa: string }; Returns: string | null };
+      curriculo_preparado_para_arquivo: { Args: { p_token: string; p_com_telefone?: boolean }; Returns: Json };
+      servidor_funcoes_para_perguntas: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
+      servidor_guardar_perguntas_da_funcao: {
+        Args: { p_chave: string; p_cbo: string; p_perguntas: Json; p_vagas: number; p_modelo: string };
+        Returns: undefined;
+      };
+      servidor_perguntas_das_funcoes: { Args: { p_chave: string; p_cbos: string[] }; Returns: { cbo: string; perguntas: Json }[] };
+      admin_perguntas_das_funcoes: {
+        Args: Record<string, never>;
+        Returns: { cbo: string; perguntas: Json; vagas: number; modelo: string | null; gerado_em: string }[];
+      };
+      admin_refazer_perguntas_da_funcao: { Args: { p_cbo: string }; Returns: undefined };
+      servidor_whatsapp_pergunta_curriculo: {
+        Args: { p_chave: string; p_marcas_vagas: string[]; p_marca_pergunta: string };
+        Returns: Json;
+      };
       curriculo_preparado: { Args: { p_token: string }; Returns: Json };
       admin_curriculo_whatsapp: { Args: Record<string, never>; Returns: Json };
       admin_modo_curriculo_whatsapp: { Args: { p_modo: string }; Returns: undefined };

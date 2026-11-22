@@ -17,11 +17,15 @@ export const MARCAS_DO_CURRICULO = {
   passo3: "📝 *Currículo 3 de 3:*",
   previa: "📝 *Seu currículo ficou assim:*",
   falha: "📝 *Não consegui terminar o currículo agora.*",
+  /** depois do cartão ou do PDF: vale como a prévia (corrigir ainda refaz) */
+  arquivos: "📎 *Seu currículo",
 } as const;
 export type PassoDoCurriculo = keyof typeof MARCAS_DO_CURRICULO;
 
 /** O botão que começa (o nome vai até 20 letras). */
 export const BOTAO_MONTAR_CURRICULO = { id: "a:cv-montar", titulo: "Montar meu currículo" } as const;
+/** O "Agora não" da pergunta depois das vagas. */
+export const BOTAO_AGORA_NAO = { id: "a:cv-nao", titulo: "Agora não" } as const;
 /** O botão da prévia, que abre o formulário do site preenchido. */
 export const TITULO_CONFERIR_E_SALVAR = "Conferir e salvar";
 
@@ -47,7 +51,7 @@ export const TEXTOS_DO_CURRICULO = {
     [
       `${MARCAS_DO_CURRICULO.previa}`,
       previa,
-      "Escrevi só o que você me contou. Se quiser mudar ou acrescentar alguma coisa, é só me dizer aqui.",
+      "Escrevi só o que você me contou. Se quiser mudar ou acrescentar alguma coisa, é só me dizer aqui. Para mandar nos grupos ou imprimir, escreva *cartão* ou *PDF*.",
       `Se estiver bom, toque em *${TITULO_CONFERIR_E_SALVAR}*: você entra com o seu WhatsApp, confere e salva. Aí as empresas da região já te acham. 😊`,
     ].join("\n\n"),
   falha: `${MARCAS_DO_CURRICULO.falha} 😕 Me manda qualquer mensagem daqui a pouco que eu tento de novo, com tudo o que você já me contou.`,
@@ -58,8 +62,13 @@ export const TEXTOS_DO_CURRICULO = {
   arquivo:
     "Recebi! Se você já tem o currículo pronto, toque em *Enviar meu currículo* e mande por lá: o Publike lê e preenche tudo para você conferir.",
   parou: "Tudo bem! Quando quiser, é só escrever *currículo* que a gente monta junto. 😊",
-  /** a linha depois das vagas (uma vez por conversa) */
-  convite: "Ainda não tem currículo? Escreva *currículo* que eu monto com você aqui mesmo, de graça.",
+  /** a pergunta separada, uns 10 minutos depois das vagas (uma vez por conversa), com Montar meu currículo e Agora não */
+  pergunta:
+    "📝 Quer que eu monte o seu currículo agora, aqui no WhatsApp? Leva uns 5 minutos, pode ser por áudio, e as empresas da região passam a te achar.",
+  cartao: `${MARCAS_DO_CURRICULO.arquivos} em cartão* 📎 Mande nos grupos de vagas e no seu status. Quem se interessar fala com você.`,
+  pdf: `${MARCAS_DO_CURRICULO.arquivos} em PDF* 📎 Para imprimir e entregar. Lembre de salvar também no Publike, pelo botão *${TITULO_CONFERIR_E_SALVAR}*.`,
+  semArquivo: "Não achei o seu currículo montado nos últimos 7 dias. 😕 Escreva *currículo* que a gente monta de novo.",
+  arquivoFalhou: "Não consegui mandar o arquivo agora. 😕 Tente de novo daqui a pouco.",
 } as const;
 
 /** As perguntas de sempre do passo 2 (sem a IA, ou quando a resposta dela não serve). */
@@ -98,6 +107,15 @@ export function querMontarCurriculo(texto: string) {
   if (/\b(enviei|mandei|enviar|mandar|anexar|anexei|atualizar|editar|ja tenho|tenho meu|tenho um)\b/.test(t)) return false;
   if (/^(o )?curriculo( por favor)?$/.test(t)) return true;
   return /\b(fazer|montar|criar|preparar|ajuda[r]?( a)?|quero( um)?|preciso( de)?( um)?)\b.*\bcurriculo\b/.test(t);
+}
+
+/** Depois da prévia: o cartão em imagem ou o PDF. */
+export function pedeArquivo(texto: string): "cartao" | "pdf" | null {
+  const t = simples(texto.replace(/^🎤\s*/, ""));
+  if (t.length > 40) return null;
+  if (/\b(pdf|imprimir|impressao)\b/.test(t)) return "pdf";
+  if (/\b(cartao|imagem|foto|figura|status|grupo|grupos)\b/.test(t)) return "cartao";
+  return null;
 }
 
 /** A pessoa quer parar no meio. */
@@ -139,8 +157,8 @@ export function tempoDoTrabalho(x: { inicio: string; fim: string; atual: boolean
 
 const cortar = (t: string, max: number) => (t.length <= max ? t : `${t.slice(0, max - 1).replace(/\s+\S*$/, "")}…`);
 
-/** A prévia que vai na conversa (até ~620 letras: a mensagem com botão vai até 1.000). */
-export function previaDoCurriculo(c: CurriculoMontado, hoje: string, max = 620) {
+/** A prévia que vai na conversa (até ~560 letras: a mensagem com botão vai até 1.000). */
+export function previaDoCurriculo(c: CurriculoMontado, hoje: string, max = 560) {
   const partes: string[] = [];
   if (c.titulo) partes.push(`*${c.titulo}*`);
   if (c.resumo) partes.push(`_${c.resumo}_`);

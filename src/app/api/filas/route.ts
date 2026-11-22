@@ -32,6 +32,7 @@ import {
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { leiturasDosCurriculos } from "@/lib/servidor/leitura-curriculo";
 import { atividadesDasVagas } from "@/lib/servidor/atividades-da-vaga";
+import { perguntasDasFuncoes } from "@/lib/servidor/curriculo-pelo-whatsapp";
 import { lembrarDocumentos, limparDocumentosVencidos } from "@/lib/servidor/documentos-admissao";
 import { funcoesDasVagas, funcoesDosCurriculos } from "@/lib/servidor/funcao";
 import { avisarGoogleDasVagas } from "@/lib/servidor/google-vagas";
@@ -135,6 +136,8 @@ export async function GET(request: Request) {
   const leituras = await comTempo(() => leiturasDosCurriculos(3));
   // as atividades da vaga (migração 20270831120000): desligadas até o admin ligar em Admin › Qualificados
   const atividades = await comTempo(() => atividadesDasVagas(6));
+  // as perguntas de recrutador por função (migração 20270903120000): só com o currículo pelo WhatsApp ligado
+  const perguntasDaFuncao = await comTempo(() => perguntasDasFuncoes(2));
   // a página de carreiras liberada pela meta (10 vagas publicadas): o aviso, uma vez (sai junto com os e-mails abaixo)
   const liberacoes = await comTempo(() => avisarLiberacoesPorMeta());
   // os planos por faixa: quem passou das vagas no ar da faixa recebe o aviso (nada trava)
@@ -263,6 +266,7 @@ export async function GET(request: Request) {
       funcoesCurriculos: funcoesCv.lidos,
       leituras: leituras.lidos,
       atividades: atividades.lidos,
+      perguntas_da_funcao: perguntasDaFuncao.geradas,
       liberacoes: liberacoes.avisadas,
       faixas: faixas.avisadas,
       fim_dos_30_dias: fimDos30.avisadas,

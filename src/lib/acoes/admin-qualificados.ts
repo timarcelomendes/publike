@@ -151,3 +151,13 @@ export async function salvarModoCurriculoWhatsapp(formData: FormData) {
   const { error } = await c.rpc("admin_modo_curriculo_whatsapp", { p_modo: modo });
   redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-whatsapp`);
 }
+
+// As perguntas de recrutador de uma função (migração 20270903120000): apaga, e o robô das filas faz de novo.
+export async function refazerPerguntasDaFuncao(formData: FormData) {
+  const c = await clienteAdminOuNulo();
+  if (!c) redirect(`${AQUI}?erro=fora`);
+  const cbo = String(formData.get("cbo") ?? "");
+  if (!/^\d{6}$/.test(cbo)) redirect(`${AQUI}?erro=salvar#curriculo-whatsapp`);
+  const { error } = await c.rpc("admin_refazer_perguntas_da_funcao", { p_cbo: cbo });
+  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-whatsapp`);
+}

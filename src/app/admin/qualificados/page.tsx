@@ -6,7 +6,13 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { Botao } from "@/components/ui/botao";
-import { salvarConfigAtividades, salvarConfigLeitura, salvarModoCurriculoWhatsapp } from "@/lib/acoes/admin-qualificados";
+import {
+  refazerPerguntasDaFuncao,
+  salvarConfigAtividades,
+  salvarConfigLeitura,
+  salvarModoCurriculoWhatsapp,
+} from "@/lib/acoes/admin-qualificados";
+import { ocupacao } from "@/lib/cbo";
 import { PERGUNTAS_DE_SEMPRE, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
 import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
 import { MODELOS_IA } from "@/lib/ia/openai";
@@ -55,6 +61,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
     c.rpc("admin_atividades"),
     c.rpc("admin_curriculo_whatsapp"),
   ]);
+  // as perguntas de recrutador guardadas por função (migração 20270903120000; sem ela, nenhuma)
+  const { data: perguntasDasFuncoes } = await c.rpc("admin_perguntas_das_funcoes");
   if (error)
     return (
       <Aviso tipo="erro" titulo="Sem os dados">
@@ -189,9 +197,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
                 Quem procura trabalho monta o currículo conversando no atendimento do WhatsApp: conta o que faz (escrito ou
                 em áudio), responde 3 perguntas de recrutador que a IA escreve sobre o que a pessoa contou, depois estudo,
                 cursos, CNH e horário. A IA monta o currículo só com o que foi dito e manda a prévia com o botão “Conferir e
-                salvar”, que abre o formulário do site já preenchido (o link vale 7 dias). Começa pelo botão “Montar meu
-                currículo” (em “Procuro emprego”), por quem escreve “currículo” ou pelo convite depois das vagas. Usa o
-                modelo de “Ler currículo e vaga” (Admin › IA).
+                salvar”, que abre o formulário do site já preenchido (o link vale 7 dias). Depois da prévia, a pessoa
+                escreve “cartão” (a imagem para os grupos e o status) ou “PDF” (uma página para imprimir, com o nome e o
+                número do WhatsApp). Começa por quem escreve “currículo” ou pela pergunta separada, uns 10 minutos depois
+                das vagas, para quem não tem currículo pelo número (uma vez por conversa, das 8h às 21h). Usa o modelo de
+                “Ler currículo e vaga” (Admin › IA).
               </>
             }
           >
@@ -223,7 +233,43 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
                 <p>{TEXTOS_DO_CURRICULO.passo2(PERGUNTAS_DE_SEMPRE)}</p>
                 <p>{TEXTOS_DO_CURRICULO.passo3}</p>
                 <p>{TEXTOS_DO_CURRICULO.previa("(a prévia do currículo)")}</p>
-                <p>{TEXTOS_DO_CURRICULO.convite}</p>
+                <p>{TEXTOS_DO_CURRICULO.cartao}</p>
+                <p>{TEXTOS_DO_CURRICULO.pdf}</p>
+                <p>{`${TEXTOS_DO_CURRICULO.pergunta}\n[Montar meu currículo] [Agora não]`}</p>
+              </div>
+            </details>
+            <details className="rounded-md border border-line p-4">
+              <summary className="cursor-pointer text-label">
+                As perguntas de recrutador por função ({formatarNumero(perguntasDasFuncoes?.length ?? 0)})
+              </summary>
+              <div className="mt-3 flex flex-col gap-4 text-body-sm">
+                <p className="text-ink-muted">
+                  Tiradas das vagas do Publike de cada função com 3 vagas ou mais em 120 dias, pelo robô das filas (com o
+                  currículo pelo WhatsApp ligado). A conversa usa as da função que a pessoa contou como base; sem elas, a IA
+                  escreve sozinha. “Refazer” apaga e o robô faz de novo na próxima rodada.
+                </p>
+                {(perguntasDasFuncoes ?? []).map((f) => (
+                  <div key={f.cbo} className="flex flex-col gap-2 rounded-md bg-surface-200 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-label">
+                        {ocupacao(f.cbo)?.nome ?? f.cbo} · {formatarNumero(f.vagas)} vagas
+                      </span>
+                      <form action={refazerPerguntasDaFuncao}>
+                        <input type="hidden" name="cbo" value={f.cbo} />
+                        <Botao type="submit" variante="secundario">
+                          Refazer
+                        </Botao>
+                      </form>
+                    </div>
+                    <ul className="list-disc pl-5">
+                      {(f.perguntas as unknown as { pergunta: string; exemplo: string }[]).map((q) => (
+                        <li key={q.pergunta}>
+                          {q.pergunta} {q.exemplo && <em className="text-ink-muted">Ex.: {q.exemplo}</em>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
             </details>
           </Secao>

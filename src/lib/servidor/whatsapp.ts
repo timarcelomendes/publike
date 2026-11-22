@@ -500,6 +500,32 @@ export async function enviarComLink(
 }
 
 /**
+ * Uma imagem ou um documento pelo link (só na janela de 24 horas): a Meta busca o arquivo no endereço (público) e manda.
+ * O currículo pelo WhatsApp usa para o cartão em imagem e o PDF.
+ */
+export async function enviarArquivo(
+  cfg: ConfigMeta,
+  numero: string,
+  arquivo: { tipo: "image" | "document"; url: string; legenda: string; nome?: string },
+) {
+  const midia =
+    arquivo.tipo === "image"
+      ? { link: arquivo.url, caption: arquivo.legenda.slice(0, 1024) }
+      : { link: arquivo.url, caption: arquivo.legenda.slice(0, 1024), filename: (arquivo.nome ?? "curriculo.pdf").slice(0, 120) };
+  const r = await graph<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
+    metodo: "POST",
+    corpo: {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: numero.replace(/\D/g, ""),
+      type: arquivo.tipo,
+      [arquivo.tipo]: midia,
+    },
+  });
+  return r.ok ? { ok: true as const, wamid: r.dados.messages?.[0]?.id ?? null } : { ok: false as const, erro: r.texto };
+}
+
+/**
  * Baixa um arquivo que a pessoa mandou (o áudio do atendimento): a Meta dá o endereço pelo id, e o arquivo sai com o
  * mesmo token. Maior que `maxBytes` (ou sem resposta em 15 s), devolve null.
  */

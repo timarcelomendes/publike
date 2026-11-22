@@ -17,6 +17,7 @@ import type { Json } from "@/lib/supabase/tipos-banco";
 import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
 import {
+  enviarArquivo,
   baixarMidia,
   configMeta,
   enviarComBotoes,
@@ -25,8 +26,8 @@ import {
   marcarLidaDigitando,
   type ConfigMeta,
 } from "./whatsapp";
-import { BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
-import { curriculoPeloWhatsappLigado, seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
+import { BOTAO_AGORA_NAO, BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
+import { seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
 import { configVagasWhatsapp, deveTentarVaga, respostaDaOferta, tentarVagaPeloWhatsapp } from "./vaga-pelo-whatsapp";
 
 // O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000,
@@ -1796,6 +1797,7 @@ export async function atenderConversa(
       chave,
       conversa: e.chave,
       numero: m.numero,
+      nome: e.nome ?? null,
       historico: e.historico,
       minhaUltima,
       payload: m.payload,
@@ -1807,6 +1809,29 @@ export async function atenderConversa(
       ola,
       agora: opcoes.agora ?? new Date(),
       linkEnviarCurriculo: LINKS.enviarCurriculo,
+      // o cartão e o PDF: a Meta busca pelo link; a legenda fica na conversa (o passo sai dela)
+      enviarArquivo: async (a) => {
+        const r = await enviarArquivo(cfg, m.numero, {
+          tipo: a.tipo,
+          url: `${urlDosEmails() ?? SITE_URL}${a.caminho}`,
+          legenda: a.legenda,
+          nome: a.nome,
+        });
+        if (!r.ok) {
+          console.error("Publike: o arquivo do currículo não saiu:", r.erro);
+          return false;
+        }
+        await banco.rpc("servidor_whatsapp_conversa_saida", {
+          p_chave: chave,
+          p_conversa: e.chave,
+          p_texto: a.legenda,
+          p_wamid: r.wamid,
+          p_perfil: "trabalho",
+          p_equipe: false,
+          p_motivo: null,
+        });
+        return true;
+      },
     })
   )
     return;
@@ -1836,13 +1861,7 @@ export async function atenderConversa(
   // os botões do começo, com texto pronto
   // a pergunta, e a equipe num botão (o menu tem só 3; a conversa continua aqui mesmo)
   if (novas.length <= 1 && m.payload === "a:trabalho")
-    return saida(PARA_QUEM_PROCURA, {
-      perfil: "trabalho",
-      // com o currículo pelo WhatsApp ligado, o botão de montar o currículo junto
-      botoes: (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
-        ? [BOTAO_MONTAR_CURRICULO, BOTAO_DA_EQUIPE]
-        : [BOTAO_DA_EQUIPE],
-    });
+    return saida(PARA_QUEM_PROCURA, { perfil: "trabalho", botoes: [BOTAO_DA_EQUIPE] });
   if (novas.length <= 1 && m.payload === "a:curriculo")
     return saida(PARA_QUEM_TEM_CURRICULO, { perfil: "trabalho", botao: LINKS.enviarCurriculo });
   if (novas.length <= 1 && m.payload === "a:contratar") {
@@ -2176,15 +2195,8 @@ export async function atenderConversa(
     const r = await mensagemDaBusca(plano.busca, local, restam, jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos, vagasJaMandadas(e.historico), (fs) =>
       void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
     );
-    // com o currículo pelo WhatsApp ligado, o convite para montar o currículo, uma vez por conversa, depois das vagas
-    const convite =
-      r.quantas > 0 &&
-      !respostas.some((x) => x.texto.includes(TEXTOS_DO_CURRICULO.convite)) &&
-      (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
-        ? `\n\n${TEXTOS_DO_CURRICULO.convite}`
-        : "";
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
-    return saida((r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`) + convite, {
+    return saida(r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
       perfil: perfil ?? "trabalho",
       botao: r.botao,
     });
@@ -2383,6 +2395,9 @@ async function mandarDoRobo(
   return { ok: true };
 }
 
+/** Os links curtos das vagas na mensagem da busca: /w/, ou a letra da campanha de quem veio do anúncio. */
+const MARCAS_DOS_LINKS_DAS_VAGAS = ["/w/", "/i/", "/f/", "/m/"];
+
 /** O /api/filas: os lembretes que estão na hora (até 30 por vez). */
 export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; falhas: number }> {
   const cfg = configMeta();
@@ -2409,6 +2424,25 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
       else {
         falhas++;
         console.error("Publike: o lembrete do WhatsApp (vaga) não saiu:", r.erro);
+      }
+    }
+  // o currículo pelo WhatsApp (migração 20270903120000): a pergunta separada, uns 10 minutos depois das vagas, para quem
+  // não tem currículo; com o recurso desligado (Admin › Qualificados), o banco não devolve ninguém
+  const { data: semCurriculo, error: erroDoCurriculo } = await banco.rpc("servidor_whatsapp_pergunta_curriculo", {
+    p_chave: chave,
+    p_marcas_vagas: MARCAS_DOS_LINKS_DAS_VAGAS,
+    p_marca_pergunta: TEXTOS_DO_CURRICULO.pergunta.slice(0, 40),
+  });
+  if (!erroDoCurriculo)
+    for (const l of (semCurriculo ?? []) as unknown as { chave: string; numero: string }[]) {
+      const r = await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, TEXTOS_DO_CURRICULO.pergunta, null, [
+        BOTAO_MONTAR_CURRICULO,
+        BOTAO_AGORA_NAO,
+      ]);
+      if (r.ok) enviados++;
+      else {
+        falhas++;
+        console.error("Publike: a pergunta do currículo no WhatsApp não saiu:", r.erro);
       }
     }
   // sem a migração: nada

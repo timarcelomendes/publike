@@ -1,6 +1,7 @@
 import "server-only";
 import type { CurriculoMontado } from "@/lib/curriculo-pelo-whatsapp";
 import { PERGUNTAS_DE_SEMPRE } from "@/lib/curriculo-pelo-whatsapp";
+import { ocupacao } from "@/lib/cbo";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
 import { temContatoNoTexto } from "@/lib/validacao";
 import { ESQUEMA_DO_CURRICULO, limparCurriculoLido, type RespostaDoCurriculo } from "./curriculo-do-arquivo";
@@ -51,39 +52,103 @@ Regras:
 - "exemplo": um exemplo curto de resposta, do jeito que a pessoa falaria (até 60 letras), para ela entender o que contar.
 - Se ela não contou trabalho nenhum (primeiro emprego), pergunte do que ela já fez em casa, na escola, na igreja, como voluntária ou ajudando alguém, e do que ela gosta e sabe fazer.`;
 
-/** As 3 perguntas do recrutador (com o exemplo em itálico); sem a IA ou com a resposta ruim, as de sempre. */
-export async function perguntasDoRecrutador(relato: string, modelo: string | null): Promise<string[]> {
-  if (!modelo || relato.trim().length < 3) return PERGUNTAS_DE_SEMPRE;
+/** Uma pergunta guardada por função (migração 20270903120000). */
+export type PerguntaGuardada = { pergunta: string; exemplo: string };
+
+/** O que não se pergunta no passo 2 (o passo 3 pergunta estudo, CNH e horário; o resto não se pergunta numa entrevista). */
+const PROIBIDA =
+  /\b(estud|escola|faculdade|curso|carteira de motorista|cnh|hor[aá]rio|idade|anos voc[eê] tem|filh|casad|sa[uú]de|religi|cpf|rg\b|endere[cç]o|telefone|e-?mail)/i;
+
+/** "Pergunta? _Ex.: exemplo._", ou "" se não serve. */
+function comoPergunta(p: { pergunta?: unknown; exemplo?: unknown }) {
+  const pergunta = typeof p.pergunta === "string" ? p.pergunta.replace(/\s+/g, " ").trim() : "";
+  const exemplo = typeof p.exemplo === "string" ? p.exemplo.replace(/[_*]/g, "").replace(/\s+/g, " ").trim() : "";
+  if (pergunta.length < 10 || temContatoNoTexto(pergunta) || PROIBIDA.test(pergunta)) return "";
+  const comExemplo = exemplo && exemplo.length <= 80 ? `${pergunta} _Ex.: ${exemplo.replace(/\.$/, "")}._` : pergunta;
+  return comExemplo.slice(0, MAX_PERGUNTA);
+}
+
+/** As guardadas da função, prontas para a conversa (3), ou null. */
+function dasGuardadas(guardadas: PerguntaGuardada[] | null) {
+  const prontas = (guardadas ?? []).map(comoPergunta).filter(Boolean).slice(0, 3);
+  return prontas.length === 3 ? prontas : null;
+}
+
+/**
+ * As 3 perguntas do recrutador (com o exemplo em itálico). Com as perguntas guardadas da função, a IA parte delas e
+ * adapta ao que a pessoa contou. Sem a IA ou com a resposta ruim: as guardadas, ou as de sempre.
+ */
+export async function perguntasDoRecrutador(
+  relato: string,
+  modelo: string | null,
+  guardadas: PerguntaGuardada[] | null = null,
+): Promise<string[]> {
+  const reserva = dasGuardadas(guardadas) ?? PERGUNTAS_DE_SEMPRE;
+  if (!modelo || relato.trim().length < 3) return reserva;
+  const base = guardadas?.length
+    ? `\n\nPerguntas que recrutadores daqui fazem para a função que ela procura (tiradas das vagas do Publike). Use como base, escolha as que ela ainda não respondeu e adapte ao que ela contou:\n${guardadas
+        .slice(0, 6)
+        .map((g) => `- ${g.pergunta}`)
+        .join("\n")}`
+    : "";
   try {
     const { texto, parada } = await chamarIA({
       funcionalidade: "ler",
       modelo,
       sistema: SISTEMA_DAS_PERGUNTAS,
-      mensagem: `O que a pessoa contou:\n\n${relato.slice(0, 3000)}`,
+      mensagem: `O que a pessoa contou:\n\n${relato.slice(0, 3000)}${base}`,
       maxTokens: 800,
       esquema: { nome: "perguntas_do_recrutador", schema: ESQUEMA_DAS_PERGUNTAS },
       tempoLimite: 25_000,
     });
-    if (parada) return PERGUNTAS_DE_SEMPRE;
+    if (parada) return reserva;
     const r = lerJson<{ perguntas?: { pergunta?: unknown; exemplo?: unknown }[] }>(texto);
-    const perguntas = (r.perguntas ?? [])
-      .map((p) => {
-        const pergunta = typeof p.pergunta === "string" ? p.pergunta.replace(/\s+/g, " ").trim() : "";
-        const exemplo = typeof p.exemplo === "string" ? p.exemplo.replace(/[_*]/g, "").replace(/\s+/g, " ").trim() : "";
-        if (pergunta.length < 10 || temContatoNoTexto(pergunta)) return "";
-        // nada que o passo 3 pergunta nem o que não se pergunta numa entrevista
-        if (/\b(estud|escola|faculdade|curso|carteira de motorista|cnh|hor[aá]rio|idade|anos voc[eê] tem|filh|casad|sa[uú]de|religi|cpf|rg\b|endere[cç]o|telefone|e-?mail)/i.test(pergunta))
-          return "";
-        const comExemplo = exemplo && exemplo.length <= 80 ? `${pergunta} _Ex.: ${exemplo.replace(/\.$/, "")}._` : pergunta;
-        return comExemplo.slice(0, MAX_PERGUNTA);
-      })
-      .filter(Boolean)
-      .slice(0, 3);
-    return perguntas.length === 3 ? perguntas : PERGUNTAS_DE_SEMPRE;
+    const perguntas = (r.perguntas ?? []).map(comoPergunta).filter(Boolean).slice(0, 3);
+    return perguntas.length === 3 ? perguntas : reserva;
   } catch (e) {
     console.error("Publike: a IA não fez as perguntas do currículo:", e instanceof Error ? e.message : e);
-    return PERGUNTAS_DE_SEMPRE;
+    return reserva;
   }
+}
+
+const SISTEMA_DA_FUNCAO = `Você é um recrutador experiente em ${ONDE_FUNCIONA}. Vai receber uma função (ocupação da CBO) e vagas reais dessa função publicadas no Publike (site gratuito de vagas). Escreva as 5 perguntas que você faria a quem procura essa função para descobrir a experiência que conta para essas vagas: as tarefas que as vagas mais pedem, o tamanho do lugar ou o movimento, as máquinas, ferramentas ou sistemas, as responsabilidades (caixa, estoque, equipe, abrir e fechar) e o trabalho informal que também vale.
+
+Regras:
+- Tire das vagas o que elas pedem de verdade; nada genérico ("fale de você").
+- Linguagem simples, de "você", curta (até 140 letras cada).
+- Nunca pergunte estudo, curso, carteira de motorista, horário, idade, estado civil, filhos, saúde, religião, documento, endereço, telefone ou e-mail.
+- "exemplo": uma resposta curta do jeito que a pessoa falaria (até 60 letras).`;
+
+/** O robô: as 5 perguntas de recrutador de uma função, das vagas dela. Null: a resposta não serviu. */
+export async function perguntasDaFuncaoComIA(
+  cbo: string,
+  exemplos: { titulo: string; descricao: string }[],
+  modelo: string,
+): Promise<PerguntaGuardada[] | null> {
+  const nome = ocupacao(cbo)?.nome ?? cbo;
+  const vagas = exemplos
+    .slice(0, 8)
+    .map((v, i) => `Vaga ${i + 1}: ${v.titulo}\n${v.descricao.replace(/\s+/g, " ").slice(0, 700)}`)
+    .join("\n\n");
+  const { texto, parada } = await chamarIA({
+    funcionalidade: "ler",
+    modelo,
+    sistema: SISTEMA_DA_FUNCAO,
+    mensagem: `Função: ${nome} (CBO ${cbo})\n\n${vagas}`,
+    maxTokens: 1200,
+    esquema: { nome: "perguntas_da_funcao", schema: ESQUEMA_DAS_PERGUNTAS },
+    tempoLimite: 40_000,
+  });
+  if (parada) return null;
+  const r = lerJson<{ perguntas?: { pergunta?: unknown; exemplo?: unknown }[] }>(texto);
+  const boas = (r.perguntas ?? [])
+    .filter((p) => comoPergunta(p))
+    .map((p) => ({
+      pergunta: String(p.pergunta).replace(/\s+/g, " ").trim().slice(0, 180),
+      exemplo: typeof p.exemplo === "string" ? p.exemplo.replace(/[_*]/g, "").replace(/\s+/g, " ").trim().slice(0, 80) : "",
+    }))
+    .slice(0, 6);
+  return boas.length >= 3 ? boas : null;
 }
 
 const ESQUEMA_DO_MONTADO = {

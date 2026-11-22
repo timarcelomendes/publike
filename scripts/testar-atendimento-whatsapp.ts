@@ -60,6 +60,9 @@ const json = (x: unknown, status = 200) =>
 
 let semAprendiz = true;
 let cvLigado = false;
+let cvTemUltimo = false;
+let cvGuardadas: any[] | null = null;
+let cvPerguntasPedidas: any[] = [];
 let cvGuardados: any[] = [];
 let procuras: any[] = [];
 globalThis.fetch = (async (url: any, init: any) => {
@@ -222,6 +225,11 @@ async function main() {
       if (nome === "servidor_guardar_curriculo_preparado") {
         cvGuardados.push(args);
         return { data: "a".repeat(64), error: null };
+      }
+      if (nome === "servidor_ultimo_curriculo_preparado") return { data: cvGuardados.length || cvTemUltimo ? "b".repeat(64) : null, error: null };
+      if (nome === "servidor_perguntas_das_funcoes") {
+        cvPerguntasPedidas.push(args);
+        return { data: cvGuardadas ? [{ cbo: args.p_cbos[0], perguntas: cvGuardadas }] : [], error: null };
       }
       // as vagas do dia (migração 20270807120000): quantas já foram hoje
       if (nome === "servidor_whatsapp_vagas_enviadas") return { data: vagasJaEnviadas, error: null };
@@ -1493,7 +1501,7 @@ async function main() {
     // o botão em "Procuro emprego"
     r = await rodar("Procuro emprego", { historico: [...comeco, { de: "pessoa", texto: "Procuro emprego" }] }, { payload: "a:trabalho" });
     const botoesTrabalho = r.msgs[0]?.interactive?.action?.buttons?.map((b: any) => b.reply.title) ?? [];
-    conferir(botoesTrabalho.join("|") === "Montar meu currículo|Falar com a equipe", "ligado: Procuro emprego com Montar meu currículo", botoesTrabalho);
+    conferir(botoesTrabalho.join("|") === "Falar com a equipe", "ligado: Procuro emprego continua só com o botão da equipe", botoesTrabalho);
 
     // o começo: pelo botão, sem a IA
     r = await rodar("Montar meu currículo", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "Montar meu currículo" }] }, { payload: "a:cv-montar" });
@@ -1595,19 +1603,53 @@ async function main() {
     r = await rodar(resposta3, { perfil: "trabalho", historico: historicoAte3 });
     conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.semNada, "nada de trabalho: pede de novo (passo 1)", corpo(r.msgs[0]));
 
-    // o convite depois das vagas, uma vez
+    // as vagas não levam convite: a pergunta vai separada (o robô das filas)
     respostaIA = ia("Olha as vagas de cozinheira perto do Setor Bueno:", {
       perfil: "trabalho",
       acao: "buscar_vagas",
       busca: { texto: "cozinheira", categoria: "todas", cidade: "", bairro: "Setor Bueno" },
     });
     r = await rodar("sou cozinheira, moro no setor bueno", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }] });
-    conferir(corpo(r.msgs[0]).includes("/w/11111111") && corpo(r.msgs[0]).endsWith(cv.TEXTOS_DO_CURRICULO.convite), "depois das vagas, o convite do currículo", corpo(r.msgs[0]));
-    r = await rodar("sou cozinheira, moro no setor bueno", {
-      perfil: "trabalho",
-      historico: [...procurando, { de: "robo", texto: `vagas...\n\n${cv.TEXTOS_DO_CURRICULO.convite}` }, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
-    });
-    conferir(!corpo(r.msgs[0]).includes(cv.TEXTOS_DO_CURRICULO.convite), "o convite vai uma vez só");
+    conferir(corpo(r.msgs[0]).includes("/w/11111111") && !corpo(r.msgs[0]).includes("currículo"), "as vagas, sem linha do currículo", corpo(r.msgs[0]));
+
+    // a pergunta depois das vagas: o "Agora não", o "sim" escrito e o botão
+    const pergunta = { de: "robo", texto: `${cv.TEXTOS_DO_CURRICULO.pergunta}\n\n[Botões: Montar meu currículo · Agora não]` };
+    r = await rodar("Agora não", { perfil: "trabalho", historico: [...procurando, pergunta, { de: "pessoa", texto: "Agora não" }] }, { payload: "a:cv-nao" });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.parou && pedidosIA.length === 0, "Agora não: tudo bem, sem a IA", corpo(r.msgs[0]));
+    r = await rodar("sim", { perfil: "trabalho", historico: [...procurando, pergunta, { de: "pessoa", texto: "sim" }] });
+    conferir(corpo(r.msgs[0]).startsWith(M.passo1), "o “sim” escrito à pergunta começa o currículo", corpo(r.msgs[0]));
+    r = await rodar("Montar meu currículo", { perfil: "trabalho", historico: [...procurando, pergunta, { de: "pessoa", texto: "Montar meu currículo" }] }, { payload: "a:cv-montar" });
+    conferir(corpo(r.msgs[0]).startsWith(M.passo1), "o botão da pergunta começa o currículo");
+
+    // as perguntas guardadas da função: a IA parte delas; sem a IA, vão elas
+    cvGuardadas = [
+      { pergunta: "Você trabalhava na chapa ou na fritadeira?", exemplo: "nas duas" },
+      { pergunta: "Quantos lanches saíam por dia, mais ou menos?", exemplo: "uns 100" },
+      { pergunta: "Você montava os pratos ou só preparava?", exemplo: "montava também" },
+      { pergunta: "Até que ano você estudou?", exemplo: "8ª série" },
+    ];
+    cvPerguntasPedidas = [];
+    respostaIA = { perguntas: [{ pergunta: "x", exemplo: "" }] };
+    r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });
+    conferir(cvPerguntasPedidas[0]?.p_cbos?.length > 0, "as perguntas guardadas: pede pelas funções do relato", cvPerguntasPedidas[0]);
+    conferir(JSON.stringify(pedidosIA[0] ?? {}).includes("Perguntas que recrutadores daqui fazem") && JSON.stringify(pedidosIA[0]).includes("chapa ou na fritadeira"), "a IA recebe as guardadas como base");
+    conferir(corpo(r.msgs[0]).includes("1. Você trabalhava na chapa ou na fritadeira? _Ex.: nas duas._") && !corpo(r.msgs[0]).includes("estudou"), "a resposta da IA não serviu: vão as guardadas (sem a de estudo)", corpo(r.msgs[0]));
+    cvGuardadas = null;
+
+    // depois da prévia: o cartão e o PDF
+    cvGuardados = [];
+    cvTemUltimo = true;
+    r = await rodar("cartão", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "cartão" }] });
+    conferir(r.msgs[0]?.type === "image" && String(r.msgs[0]?.image?.link).includes(`/api/curriculo/preparado/${"b".repeat(64)}/cartao`) && r.msgs[0]?.image?.caption === cv.TEXTOS_DO_CURRICULO.cartao, "“cartão”: a imagem pelo link", r.msgs[0]);
+    r = await rodar("me manda o PDF", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "me manda o PDF" }] });
+    conferir(r.msgs[0]?.type === "document" && String(r.msgs[0]?.document?.link).endsWith("/pdf") && /^curriculo-raphael/.test(r.msgs[0]?.document?.filename ?? ""), "“PDF”: o documento, com o nome", r.msgs[0]);
+    const depoisDoCartao = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.cartao };
+    r = await rodar("pdf", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "cartão" }, depoisDoCartao, { de: "pessoa", texto: "pdf" }] });
+    conferir(r.msgs[0]?.type === "document", "depois do cartão, o PDF também");
+    cvTemUltimo = false;
+    r = await rodar("cartão", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "cartão" }] });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.semArquivo, "sem currículo montado em 7 dias: monta de novo", corpo(r.msgs[0]));
+    conferir(cv.pedeArquivo("cartão") === "cartao" && cv.pedeArquivo("PDF") === "pdf" && cv.pedeArquivo("quero imprimir") === "pdf" && cv.pedeArquivo("trabalhei 3 anos na lanchonete do centro") === null, "o pedido do cartão e do PDF");
     // o tempo do trabalho
     conferir(cv.tempoDoTrabalho({ inicio: "2024-01", fim: "2025-12", atual: false }, "2026-11") === "2 anos", "24 meses: 2 anos");
     conferir(cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11") === "há 1 ano e meio, até hoje", "desde 06/2025: 1 ano e meio, até hoje", cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11"));
