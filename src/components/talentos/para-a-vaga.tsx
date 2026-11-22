@@ -118,7 +118,10 @@ export async function ParaAVaga({
     .filter(({ a }) => entraEmParaAVaga(a))
     .sort((x, y) => ordemDaNota(y.a) - ordemDaNota(x.a));
   const rigidos = comAderencia.filter(({ a }) => atendeAVaga(a));
-  const todos = nivel === "rigida" ? rigidos : comAderencia;
+  // "Ver mais gente" é só quem fica de fora do "Atende a vaga" (22/11/2026, Marcelo: "mais gente tem desconsiderar
+  // quem está na lista 'Atende a vaga'")
+  const mais = comAderencia.filter(({ a }) => !atendeAVaga(a));
+  const todos = nivel === "rigida" ? rigidos : mais;
   const niveis = (
     <div role="group" aria-label="Quanto o currículo precisa combinar" className="flex flex-wrap gap-2">
       <Link
@@ -137,7 +140,7 @@ export async function ParaAVaga({
         scroll={false}
       >
         Ver mais gente
-        <span className="tabular-nums opacity-70">{comAderencia.length}</span>
+        <span className="tabular-nums opacity-70">{mais.length}</span>
       </Link>
     </div>
   );
@@ -158,6 +161,25 @@ export async function ParaAVaga({
           {entrada
             ? "Aqui só entra quem tem experiência, estudo ou curso na função e atende cada item da vaga (escolaridade, CNH, horário e distância)."
             : "Aqui só entra quem já trabalhou na mesma função e atende cada item da vaga (escolaridade, tempo de experiência, CNH, horário e distância)."}
+        </Vazio>
+      </div>
+    );
+  }
+
+  if (nivel === "leve" && mais.length === 0 && rigidos.length > 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        {niveis}
+        <Vazio
+          icone={UserSearch}
+          titulo={`Ninguém além de quem atende “${vaga.titulo}”`}
+          acao={
+            <BotaoLink href={href(1, "rigida")} tamanho="sm" variante="secundario">
+              Ver {plural(rigidos.length, "pessoa", "pessoas")} que atendem a vaga
+            </BotaoLink>
+          }
+        >
+          Todo mundo com experiência, área parecida, estudo ou curso na função já está em “Atende a vaga”.
         </Vazio>
       </div>
     );
@@ -226,14 +248,14 @@ export async function ParaAVaga({
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-h3">
-          {plural(todos.length, "pessoa", "pessoas")} para “{vaga.titulo}”
+          {plural(todos.length, "pessoa", "pessoas")}{nivel === "leve" ? " a mais" : ""} para “{vaga.titulo}”
         </h2>
         <p className="mt-1 text-body-sm text-ink-muted">
           {nivel === "rigida"
             ? entrada
               ? "Só quem tem experiência, estudo ou curso na função e atende cada item da vaga."
               : "Só quem já trabalhou na mesma função e atende cada item da vaga."
-            : "Quem tem experiência, área parecida, estudo ou curso na função, quem mais combina primeiro."}{" "}
+            : "Quem chega perto sem atender tudo: experiência, área parecida, estudo ou curso na função, quem mais combina primeiro. Quem atende a vaga fica em “Atende a vaga”."}{" "}
           Convide: a pessoa vê a vaga e, se curtir, chega na sua caixa de entrada.
         </p>
       </div>
