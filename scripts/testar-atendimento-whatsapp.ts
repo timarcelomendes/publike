@@ -59,6 +59,8 @@ const json = (x: unknown, status = 200) =>
   new Response(JSON.stringify(x), { status, headers: { "content-type": "application/json" } });
 
 let semAprendiz = true;
+let cvLigado = false;
+let cvGuardados: any[] = [];
 let procuras: any[] = [];
 globalThis.fetch = (async (url: any, init: any) => {
   const u = String(url);
@@ -215,6 +217,12 @@ async function main() {
         };
       // o Publicar pelo WhatsApp (migração 20270806120000) fica desligado nesta bateria: não é uma saída
       if (nome === "servidor_whatsapp_vagas_config") return { data: { ligado: false }, error: null };
+      // o currículo pelo WhatsApp (migração 20270902120000): desligado, a não ser nos testes dele
+      if (nome === "servidor_curriculo_whatsapp_ligado") return { data: cvLigado, error: null };
+      if (nome === "servidor_guardar_curriculo_preparado") {
+        cvGuardados.push(args);
+        return { data: "a".repeat(64), error: null };
+      }
       // as vagas do dia (migração 20270807120000): quantas já foram hoje
       if (nome === "servidor_whatsapp_vagas_enviadas") return { data: vagasJaEnviadas, error: null };
       // o teto do mês (migração 20270808120000)
@@ -1458,6 +1466,154 @@ async function main() {
   rcv = await a.mandarVagasDoCurriculo(["62999990000"], vagasDoCv, { cfg, banco: bancoCv, chave: "k" });
   conferir(rcv === "economico" && enviados.length === 0, "currículo salvo no modo econômico: nada sai");
   teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
+
+  // --- O currículo pelo WhatsApp (migração 20270902120000) ---------------------------------------------------------
+  {
+    const cv = await import("../src/lib/curriculo-pelo-whatsapp");
+    const M = cv.MARCAS_DO_CURRICULO;
+    teto = { teto: 5000, enviadas: 10, economico: false, respondida_hoje: false };
+    vagasJaEnviadas = 0;
+
+    // o que pede para montar e o que não
+    for (const t of ["currículo", "Quero fazer meu currículo", "não tenho currículo", "me ajuda a montar um currículo", "Não tenho um currículo, e agora?"])
+      conferir(cv.querMontarCurriculo(t), `“${t}” pede para montar o currículo`);
+    for (const t of ["Tenho currículo", "já enviei meu currículo", "quero mandar meu currículo", "currículo para a vaga de motorista?", "como atualizar o currículo"])
+      conferir(!cv.querMontarCurriculo(t), `“${t}” não pede para montar`);
+    conferir(cv.querParar("cancelar") && cv.querParar("agora não") && !cv.querParar("trabalhei de caixa"), "o parar");
+
+    // desligado: nada muda (quem escreve "currículo" vai para a IA, como antes)
+    cvLigado = false;
+    respostaIA = ia("Para fazer o currículo, toque no botão abaixo.", { perfil: "trabalho", link: "curriculo" });
+    let r = await rodar("quero fazer meu currículo", { historico: [...comeco, { de: "pessoa", texto: "quero fazer meu currículo" }] });
+    conferir(!r.msgs.some((x) => corpo(x).includes("📝")) && pedidosIA.length === 1, "desligado: a IA responde, sem o currículo pelo WhatsApp", r.msgs.map(corpo));
+    r = await rodar("Procuro emprego", { historico: [...comeco, { de: "pessoa", texto: "Procuro emprego" }] }, { payload: "a:trabalho" });
+    conferir(r.msgs[0]?.interactive?.action?.buttons?.length === 1, "desligado: Procuro emprego só com o botão da equipe");
+
+    cvLigado = true;
+    // o botão em "Procuro emprego"
+    r = await rodar("Procuro emprego", { historico: [...comeco, { de: "pessoa", texto: "Procuro emprego" }] }, { payload: "a:trabalho" });
+    const botoesTrabalho = r.msgs[0]?.interactive?.action?.buttons?.map((b: any) => b.reply.title) ?? [];
+    conferir(botoesTrabalho.join("|") === "Montar meu currículo|Falar com a equipe", "ligado: Procuro emprego com Montar meu currículo", botoesTrabalho);
+
+    // o começo: pelo botão, sem a IA
+    r = await rodar("Montar meu currículo", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "Montar meu currículo" }] }, { payload: "a:cv-montar" });
+    conferir(corpo(r.msgs[0]).startsWith(M.passo1) && pedidosIA.length === 0, "o botão começa o passo 1, sem a IA", corpo(r.msgs[0]));
+    console.log("\n--- currículo, passo 1 ---\n" + corpo(r.msgs[0]) + "\n---");
+    // escrito na primeira mensagem: com o Oi
+    r = await rodar("não tenho currículo", { historico: [{ de: "pessoa", texto: "não tenho currículo" }] });
+    conferir(corpo(r.msgs[0]).startsWith("Oi, Raphael! 👋 Aqui é o Marcelo, do Publike.") && corpo(r.msgs[0]).includes(M.passo1), "“não tenho currículo” começa, com o Oi", corpo(r.msgs[0]));
+
+    const p1 = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.passo1 };
+    const relato = "🎤 quero trabalhar de auxiliar de cozinha, trabalhei uns 2 anos numa lanchonete no Campinas e faço salgado pra vender";
+    // passo 1 → as perguntas da IA
+    respostaIA = {
+      perguntas: [
+        { pergunta: "Na lanchonete, o que você fazia no dia a dia?", exemplo: "fazia lanche na chapa e fritava porção" },
+        { pergunta: "Quantos pedidos saíam por dia, mais ou menos?", exemplo: "uns 80" },
+        { pergunta: "Você mexia com o caixa ou fechava a lanchonete?", exemplo: "às vezes fechava o caixa" },
+      ],
+    };
+    r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });
+    const m2 = corpo(r.msgs[0]);
+    conferir(m2.startsWith(M.passo2) && m2.includes("1. Na lanchonete") && m2.includes("_Ex.: fazia lanche na chapa e fritava porção._") && m2.includes("3. "), "passo 2: as 3 perguntas da IA, com o exemplo", m2);
+    conferir(pedidosIA.length === 1 && JSON.stringify(pedidosIA[0]).includes("lanchonete") && !JSON.stringify(pedidosIA[0]).includes("🎤"), "as perguntas: a IA recebe o relato, sem o 🎤");
+    console.log("\n--- currículo, passo 2 ---\n" + m2 + "\n---");
+    // a IA perguntou o que não pode (estudo): as perguntas de sempre
+    respostaIA = {
+      perguntas: [
+        { pergunta: "Até que ano você estudou na escola?", exemplo: "8ª série" },
+        { pergunta: "Na lanchonete, o que você fazia no dia a dia?", exemplo: "chapa" },
+        { pergunta: "Quanto tempo ficou lá?", exemplo: "2 anos" },
+      ],
+    };
+    r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });
+    conferir(corpo(r.msgs[0]).includes(cv.PERGUNTAS_DE_SEMPRE[0]), "pergunta de estudo da IA: vão as de sempre", corpo(r.msgs[0]));
+    // "ok" no passo 1: a pergunta de novo
+    r = await rodar("ok", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: "ok" }] });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.passo1DeNovo && pedidosIA.length === 0, "“ok” no passo 1: a pergunta de novo", corpo(r.msgs[0]));
+    // o áudio que não virou texto
+    r = await rodar("[a pessoa mandou um áudio]", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: "[a pessoa mandou um áudio]" }] });
+    conferir(corpo(r.msgs[0]).startsWith(M.passo1) && corpo(r.msgs[0]).includes("não consegui ouvir"), "o áudio sem texto: pede de novo, no mesmo passo", corpo(r.msgs[0]));
+    // a foto do currículo: o envio pelo site
+    r = await rodar("[a pessoa mandou uma foto]", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: "[a pessoa mandou uma foto]" }] });
+    conferir(botao(r.msgs[0]) === "Enviar meu currículo", "a foto no meio: o botão Enviar meu currículo", corpo(r.msgs[0]));
+
+    // passo 2 → passo 3 (sem a IA); o parar
+    const p2 = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.passo2(cv.PERGUNTAS_DE_SEMPRE) };
+    const resposta2 = "fazia lanche na chapa e porção, uns 80 pedidos por dia, e fechava o caixa no fim do dia";
+    r = await rodar(resposta2, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, p2, { de: "pessoa", texto: resposta2 }] });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.passo3 && pedidosIA.length === 0, "passo 2 → passo 3, sem a IA", corpo(r.msgs[0]));
+    r = await rodar("cancelar", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, p2, { de: "pessoa", texto: "cancelar" }] });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.parou, "cancelar no meio: para", corpo(r.msgs[0]));
+
+    // passo 3 → o currículo montado, guardado e a prévia com o botão
+    const p3 = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.passo3 };
+    const resposta3 = "terminei o ensino médio, fiz curso de manipulação de alimentos, não tenho carteira, posso de manhã e de tarde";
+    const historicoAte3 = [...procurando, p1, { de: "pessoa", texto: relato }, p2, { de: "pessoa", texto: resposta2 }, p3, { de: "pessoa", texto: resposta3 }];
+    respostaIA = {
+      e_curriculo: true,
+      titulo: "Auxiliar de cozinha",
+      habilidades: ["Chapa e fritadeira", "Fechamento de caixa", "Salgados"],
+      escolaridade: "medio",
+      curso: "",
+      outros_estudos: [],
+      experiencias: [
+        { cargo: "Chapeiro", onde: "Lanchonete", inicio: "2024-01", fim: "2025-12", atual: false, descricao: "Lanches na chapa e porções, cerca de 80 pedidos por dia. Fechamento do caixa. Ligue 62 99999-0000." },
+        { cargo: "Salgadeira", onde: "Por conta própria", inicio: "", fim: "", atual: true, descricao: "Produção e venda de salgados." },
+      ],
+      cursos: ["Manipulação de alimentos"],
+      cnh: "",
+      disponibilidade: ["manha", "tarde"],
+      resumo: "Auxiliar de cozinha · cerca de 2 anos em lanchonete · chapa, fritura e caixa · curso de manipulação de alimentos",
+    };
+    cvGuardados = [];
+    r = await rodar(resposta3, { perfil: "trabalho", historico: historicoAte3 });
+    const previa = corpo(r.msgs[0]);
+    conferir(previa.startsWith(M.previa) && botao(r.msgs[0]) === "Conferir e salvar", "passo 3: a prévia com Conferir e salvar", previa);
+    conferir(
+      String(r.msgs[0]?.interactive?.action?.parameters?.url ?? "").includes(`/perfil/curriculo?preparado=${"a".repeat(64)}`),
+      "o botão abre o formulário com o token",
+      r.msgs[0]?.interactive?.action?.parameters?.url,
+    );
+    conferir(previa.length <= 1000 && previa.includes("*Auxiliar de cozinha*") && previa.includes("Chapeiro – Lanchonete (2 anos)") && previa.includes("Ensino médio completo"), "a prévia: título, experiência com o tempo e estudo", previa);
+    conferir(!previa.includes("99999") && !JSON.stringify(cvGuardados[0]?.p_dados ?? {}).includes("99999"), "o contato que a IA pôs sai (prévia e guardado)");
+    conferir(cvGuardados.length === 1 && cvGuardados[0].p_dados.titulo === "Auxiliar de cozinha" && cvGuardados[0].p_dados.experiencias.length === 2, "o currículo guardado", cvGuardados[0]);
+    const pedidoMontar = JSON.stringify(pedidosIA[0] ?? {});
+    conferir(pedidoMontar.includes("Pessoa: 🎤 quero trabalhar") && pedidoMontar.includes("fechava o caixa") && pedidoMontar.includes("manipulação"), "a IA recebe a conversa do currículo toda");
+    conferir(!pedidoMontar.includes("Olá") , "a conversa de antes do currículo fica fora");
+    console.log("\n--- currículo, a prévia ---\n" + previa + "\n---\n");
+
+    // depois da prévia: "ok" não refaz; a correção refaz
+    const pv = { de: "robo", texto: `${previa}\n\n[Botão: Conferir e salvar]` };
+    r = await rodar("ok", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "ok" }] });
+    conferir(r.msgs.length === 0 && pedidosIA.length === 0, "“ok” depois da prévia: sem resposta", r.msgs.map(corpo));
+    cvGuardados = [];
+    r = await rodar("na lanchonete foram 3 anos", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "na lanchonete foram 3 anos" }] });
+    conferir(corpo(r.msgs[0]).startsWith(M.previa) && cvGuardados.length === 1 && JSON.stringify(pedidosIA[0]).includes("foram 3 anos"), "a correção depois da prévia: monta de novo", corpo(r.msgs[0]));
+    // a conversa sem nada de trabalho: volta ao passo 1
+    respostaIA = { e_curriculo: false, titulo: "", habilidades: [], escolaridade: "", curso: "", outros_estudos: [], experiencias: [], cursos: [], cnh: "", disponibilidade: [], resumo: "" };
+    r = await rodar(resposta3, { perfil: "trabalho", historico: historicoAte3 });
+    conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.semNada, "nada de trabalho: pede de novo (passo 1)", corpo(r.msgs[0]));
+
+    // o convite depois das vagas, uma vez
+    respostaIA = ia("Olha as vagas de cozinheira perto do Setor Bueno:", {
+      perfil: "trabalho",
+      acao: "buscar_vagas",
+      busca: { texto: "cozinheira", categoria: "todas", cidade: "", bairro: "Setor Bueno" },
+    });
+    r = await rodar("sou cozinheira, moro no setor bueno", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }] });
+    conferir(corpo(r.msgs[0]).includes("/w/11111111") && corpo(r.msgs[0]).endsWith(cv.TEXTOS_DO_CURRICULO.convite), "depois das vagas, o convite do currículo", corpo(r.msgs[0]));
+    r = await rodar("sou cozinheira, moro no setor bueno", {
+      perfil: "trabalho",
+      historico: [...procurando, { de: "robo", texto: `vagas...\n\n${cv.TEXTOS_DO_CURRICULO.convite}` }, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+    });
+    conferir(!corpo(r.msgs[0]).includes(cv.TEXTOS_DO_CURRICULO.convite), "o convite vai uma vez só");
+    // o tempo do trabalho
+    conferir(cv.tempoDoTrabalho({ inicio: "2024-01", fim: "2025-12", atual: false }, "2026-11") === "2 anos", "24 meses: 2 anos");
+    conferir(cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11") === "há 1 ano e meio, até hoje", "desde 06/2025: 1 ano e meio, até hoje", cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11"));
+    conferir(cv.tempoDoTrabalho({ inicio: "2026-05", fim: "2026-10", atual: false }, "2026-11") === "6 meses", "6 meses");
+    cvLigado = false;
+  }
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);
   process.exit(falhas ? 1 : 0);

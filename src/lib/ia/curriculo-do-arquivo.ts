@@ -31,13 +31,13 @@ export type CurriculoLido = {
   disponibilidade: string[];
 };
 
-type Resposta = Omit<CurriculoLido, "estudos"> & { e_curriculo: boolean; outros_estudos: CurriculoLido["estudos"] };
+export type RespostaDoCurriculo = Omit<CurriculoLido, "estudos"> & { e_curriculo: boolean; outros_estudos: CurriculoLido["estudos"] };
 
 const comVazio = (l: readonly string[]) => [...l, ""];
 const texto = { type: "string" } as const;
 const listaDeTexto = { type: "array", items: texto } as const;
 
-const ESQUEMA = {
+export const ESQUEMA_DO_CURRICULO = {
   type: "object",
   additionalProperties: false,
   required: [
@@ -161,7 +161,7 @@ function mes(v: unknown, hoje: string) {
   return t > hoje ? hoje : t;
 }
 
-export function limparCurriculoLido(r: Partial<Resposta>, hoje: string): CurriculoLido {
+export function limparCurriculoLido(r: Partial<RespostaDoCurriculo>, hoje: string): CurriculoLido {
   const escolaridade = ESCOLARIDADES.some((e) => e.valor === r.escolaridade) ? (r.escolaridade as string) : "";
   const titulo = curto(r.titulo, 60);
   const curso = ESCOLARIDADES_COM_CURSO.includes(escolaridade) ? curto(r.curso, 80) : "";
@@ -243,12 +243,12 @@ export async function lerCurriculoDoArquivo(
     // a letra de uma folha fotografada é miúda
     detalhe: "high",
     maxTokens: 3000,
-    esquema: { nome: "curriculo_do_arquivo", schema: ESQUEMA },
+    esquema: { nome: "curriculo_do_arquivo", schema: ESQUEMA_DO_CURRICULO },
     tempoLimite: 90_000,
   });
   if (parada === "recusa") throw new ErroIA("A IA não quis ler este arquivo.");
   if (parada === "limite") throw new ErroIA("A resposta da IA ficou incompleta.");
-  const r = lerJson<Partial<Resposta>>(resposta);
+  const r = lerJson<Partial<RespostaDoCurriculo>>(resposta);
   if (!r.e_curriculo) return null;
   return limparCurriculoLido(r, hoje);
 }
@@ -264,12 +264,12 @@ export async function lerCurriculoDaFala(fala: string, modelo: string, hoje: str
     sistema: instrucoesDaFala(hoje),
     mensagem: `O que a pessoa contou:\n\n${fala.slice(0, 8000)}`,
     maxTokens: 3000,
-    esquema: { nome: "curriculo_da_fala", schema: ESQUEMA },
+    esquema: { nome: "curriculo_da_fala", schema: ESQUEMA_DO_CURRICULO },
     tempoLimite: 60_000,
   });
   if (parada === "recusa") throw new ErroIA("A IA não quis ler esta fala.");
   if (parada === "limite") throw new ErroIA("A resposta da IA ficou incompleta.");
-  const r = lerJson<Partial<Resposta>>(resposta);
+  const r = lerJson<Partial<RespostaDoCurriculo>>(resposta);
   if (!r.e_curriculo) return null;
   return limparCurriculoLido(r, hoje);
 }

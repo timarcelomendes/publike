@@ -141,3 +141,13 @@ export async function compararUmPar(
   );
   return { ok: true, resultados: Object.fromEntries(respostas) };
 }
+
+// O currículo pelo WhatsApp (migração 20270902120000): desligado, só os números de teste de Admin › WhatsApp ou todos.
+export async function salvarModoCurriculoWhatsapp(formData: FormData) {
+  const c = await clienteAdminOuNulo();
+  if (!c) redirect(`${AQUI}?erro=fora`);
+  const modo = String(formData.get("modo") ?? "");
+  if (!["desligado", "teste", "todos"].includes(modo)) redirect(`${AQUI}?erro=salvar#curriculo-whatsapp`);
+  const { error } = await c.rpc("admin_modo_curriculo_whatsapp", { p_modo: modo });
+  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-whatsapp`);
+}

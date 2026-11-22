@@ -6,7 +6,8 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { Botao } from "@/components/ui/botao";
-import { salvarConfigAtividades, salvarConfigLeitura } from "@/lib/acoes/admin-qualificados";
+import { salvarConfigAtividades, salvarConfigLeitura, salvarModoCurriculoWhatsapp } from "@/lib/acoes/admin-qualificados";
+import { PERGUNTAS_DE_SEMPRE, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
 import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
 import { MODELOS_IA } from "@/lib/ia/openai";
 import { MODELO_DA_LEITURA, MODELOS_DA_COMPARACAO } from "@/lib/servidor/leitura-curriculo";
@@ -49,7 +50,11 @@ export default function Qualificados({ searchParams }: PageProps<"/admin/qualifi
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qualificados">["searchParams"] }) {
   const c = await exigirAdminLocal();
   const sp = await searchParams;
-  const [{ data, error }, ativ] = await Promise.all([c.rpc("admin_qualificados"), c.rpc("admin_atividades")]);
+  const [{ data, error }, ativ, cvw] = await Promise.all([
+    c.rpc("admin_qualificados"),
+    c.rpc("admin_atividades"),
+    c.rpc("admin_curriculo_whatsapp"),
+  ]);
   if (error)
     return (
       <Aviso tipo="erro" titulo="Sem os dados">
@@ -66,6 +71,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
   const modeloAtual = d.config.modelo ?? MODELO_DA_LEITURA;
   // as atividades da vaga (migração 20270831120000); sem a migração, a parte não aparece
   const at = ativ.error ? null : (ativ.data as unknown as DadosDasAtividades);
+  // o currículo pelo WhatsApp (migração 20270902120000); sem a migração, a parte não aparece
+  const cw = cvw.error
+    ? null
+    : (cvw.data as unknown as { modo: string; montados: number; conversas: number; abertos: number; ultimos_7_dias: number });
   const modelosDasAtividades = MODELOS_DA_COMPARACAO_DAS_ATIVIDADES.map((id) => MODELOS_IA.find((m) => m.id === id)!);
 
   return (
@@ -167,6 +176,56 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
               .
             </p>
             <CompararAtividades modelos={modelosDasAtividades.map((m) => ({ id: m.id, nome: m.nome }))} />
+          </Secao>
+        </div>
+      )}
+
+      {cw && (
+        <div id="curriculo-whatsapp" className="scroll-mt-32">
+          <Secao
+            titulo="Currículo pelo WhatsApp"
+            descricao={
+              <>
+                Quem procura trabalho monta o currículo conversando no atendimento do WhatsApp: conta o que faz (escrito ou
+                em áudio), responde 3 perguntas de recrutador que a IA escreve sobre o que a pessoa contou, depois estudo,
+                cursos, CNH e horário. A IA monta o currículo só com o que foi dito e manda a prévia com o botão “Conferir e
+                salvar”, que abre o formulário do site já preenchido (o link vale 7 dias). Começa pelo botão “Montar meu
+                currículo” (em “Procuro emprego”), por quem escreve “currículo” ou pelo convite depois das vagas. Usa o
+                modelo de “Ler currículo e vaga” (Admin › IA).
+              </>
+            }
+          >
+            <form action={salvarModoCurriculoWhatsapp} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
+              <label className="flex flex-col gap-1 text-body-sm">
+                Quem recebe
+                <select
+                  name="modo"
+                  defaultValue={cw.modo}
+                  className="min-h-11 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
+                >
+                  <option value="desligado">Ninguém (desligado)</option>
+                  <option value="teste">Só os números de teste (Admin › WhatsApp)</option>
+                  <option value="todos">Todos</option>
+                </select>
+              </label>
+              <Botao type="submit" variante="secundario">
+                Salvar
+              </Botao>
+            </form>
+            <p className="text-body-sm">
+              {formatarNumero(cw.montados)} currículos montados em {formatarNumero(cw.conversas)} conversas ·{" "}
+              {formatarNumero(cw.abertos)} abertos no site · {formatarNumero(cw.ultimos_7_dias)} nos últimos 7 dias.
+            </p>
+            <details className="rounded-md border border-line p-4">
+              <summary className="cursor-pointer text-label">Os textos da conversa</summary>
+              <div className="mt-3 flex flex-col gap-3 text-body-sm whitespace-pre-line">
+                <p>{TEXTOS_DO_CURRICULO.passo1}</p>
+                <p>{TEXTOS_DO_CURRICULO.passo2(PERGUNTAS_DE_SEMPRE)}</p>
+                <p>{TEXTOS_DO_CURRICULO.passo3}</p>
+                <p>{TEXTOS_DO_CURRICULO.previa("(a prévia do currículo)")}</p>
+                <p>{TEXTOS_DO_CURRICULO.convite}</p>
+              </div>
+            </details>
           </Secao>
         </div>
       )}

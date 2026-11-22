@@ -2937,6 +2937,11 @@ export type Database = {
       };
       minha_leitura_do_curriculo: { Args: Record<string, never>; Returns: Json };
       mudar_meu_resumo: { Args: { p_resumo: string | null }; Returns: undefined };
+      servidor_curriculo_whatsapp_ligado: { Args: { p_chave: string; p_numero: string }; Returns: boolean };
+      servidor_guardar_curriculo_preparado: { Args: { p_chave: string; p_conversa: string; p_dados: Json }; Returns: string };
+      curriculo_preparado: { Args: { p_token: string }; Returns: Json };
+      admin_curriculo_whatsapp: { Args: Record<string, never>; Returns: Json };
+      admin_modo_curriculo_whatsapp: { Args: { p_modo: string }; Returns: undefined };
       resumos_dos_curriculos: { Args: { p_perfis: string[] }; Returns: { perfil_id: string; resumo: string }[] };
       tirar_funcao_indicada: { Args: { p_cbo: string }; Returns: undefined };
       admin_qualificados: { Args: Record<string, never>; Returns: Json };

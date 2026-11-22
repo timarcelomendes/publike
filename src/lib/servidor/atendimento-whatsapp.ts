@@ -25,6 +25,8 @@ import {
   marcarLidaDigitando,
   type ConfigMeta,
 } from "./whatsapp";
+import { BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
+import { curriculoPeloWhatsappLigado, seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
 import { configVagasWhatsapp, deveTentarVaga, respostaDaOferta, tentarVagaPeloWhatsapp } from "./vaga-pelo-whatsapp";
 
 // O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000,
@@ -1583,6 +1585,13 @@ async function modeloDoAtendimento() {
   return modeloPara(data?.[0], "chat");
 }
 
+/** O modelo de "Ler currículo e vaga" (Admin › IA), para o currículo pelo WhatsApp. */
+async function modeloDoLer() {
+  if (!iaConfigurada()) return null;
+  const { data } = await criarClientePublico().rpc("config_publica");
+  return modeloPara(data?.[0], "ler");
+}
+
 /** O áudio que a pessoa mandou, em texto ("🎤 …"); sem a transcrição (ou se falhou), null. */
 async function audioEmTexto(cfg: ConfigMeta, audio: { id: string; tipo: string | null }) {
   if (!falaDisponivel()) return null;
@@ -1779,6 +1788,29 @@ export async function atenderConversa(
   // a equipe devolveu com os botões
   if (opcoes.retomada && opcoes.comBotoes) return saida(VOLTEI_COM_BOTOES, { menu: true });
 
+  // o currículo pelo WhatsApp (migração 20270902120000): o botão "Montar meu currículo", quem escreve "currículo" e os
+  // passos da conversa; desligado (Admin › Qualificados), segue tudo como antes
+  if (
+    await seguirCurriculoPeloWhatsapp({
+      banco,
+      chave,
+      conversa: e.chave,
+      numero: m.numero,
+      historico: e.historico,
+      minhaUltima,
+      payload: m.payload,
+      textos,
+      midias,
+      semConteudo: (t) => soConfirmacao(t) || soEmoji(t) || soAgradecimento(t) || midiaDaMensagem(t) === "figurinha",
+      modelo: modeloDoLer,
+      saida,
+      ola,
+      agora: opcoes.agora ?? new Date(),
+      linkEnviarCurriculo: LINKS.enviarCurriculo,
+    })
+  )
+    return;
+
   // o teto do mês (migração 20270808120000): no modo econômico, quem procura trabalho recebe uma mensagem só por dia,
   // com o link das vagas, sem a IA; quem contrata segue normal (é quem traz vaga nova)
   const teto = await tetoDoMes(banco, chave, e.chave);
@@ -1804,7 +1836,13 @@ export async function atenderConversa(
   // os botões do começo, com texto pronto
   // a pergunta, e a equipe num botão (o menu tem só 3; a conversa continua aqui mesmo)
   if (novas.length <= 1 && m.payload === "a:trabalho")
-    return saida(PARA_QUEM_PROCURA, { perfil: "trabalho", botoes: [BOTAO_DA_EQUIPE] });
+    return saida(PARA_QUEM_PROCURA, {
+      perfil: "trabalho",
+      // com o currículo pelo WhatsApp ligado, o botão de montar o currículo junto
+      botoes: (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
+        ? [BOTAO_MONTAR_CURRICULO, BOTAO_DA_EQUIPE]
+        : [BOTAO_DA_EQUIPE],
+    });
   if (novas.length <= 1 && m.payload === "a:curriculo")
     return saida(PARA_QUEM_TEM_CURRICULO, { perfil: "trabalho", botao: LINKS.enviarCurriculo });
   if (novas.length <= 1 && m.payload === "a:contratar") {
@@ -2138,8 +2176,15 @@ export async function atenderConversa(
     const r = await mensagemDaBusca(plano.busca, local, restam, jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos, vagasJaMandadas(e.historico), (fs) =>
       void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
     );
+    // com o currículo pelo WhatsApp ligado, o convite para montar o currículo, uma vez por conversa, depois das vagas
+    const convite =
+      r.quantas > 0 &&
+      !respostas.some((x) => x.texto.includes(TEXTOS_DO_CURRICULO.convite)) &&
+      (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
+        ? `\n\n${TEXTOS_DO_CURRICULO.convite}`
+        : "";
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
-    return saida(r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`, {
+    return saida((r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`) + convite, {
       perfil: perfil ?? "trabalho",
       botao: r.botao,
     });

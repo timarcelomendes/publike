@@ -33,6 +33,7 @@ import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-cand
 import { meuContatoNoConvite } from "@/lib/servidor/contato-no-convite";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
 import { curriculoNoMercado } from "@/lib/servidor/curriculo-mercado";
+import { curriculoPreparado } from "@/lib/servidor/curriculo-pelo-whatsapp";
 import { comPrazo } from "@/lib/servidor/prazo";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
@@ -113,21 +114,34 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   // veio do convite de quem publicou a vaga (candidato de fora): o currículo vem pronto
   const tokenConvite = primeiro(sp.convite);
   const convite = tokenConvite && TOKEN_CONVITE.test(tokenConvite) ? tokenConvite : null;
+  // veio do "Conferir e salvar" do currículo montado no WhatsApp (migração 20270902120000): o formulário já preenchido
+  const tokenPreparado = primeiro(sp.preparado);
+  const preparado = !convite && tokenPreparado && /^[0-9a-f]{64}$/.test(tokenPreparado) ? tokenPreparado : null;
+  const doWhatsapp = preparado ? await curriculoPreparado(preparado, hoje) : null;
   // sem conta: dá para preencher; o salvar guarda no aparelho e pede para entrar (o convite pede conta)
   if (!convite && !(await obterUsuario())) {
     return (
       <FormCurriculo
+        key={doWhatsapp ? "whatsapp" : "novo"}
         inicial={null}
+        lido={doWhatsapp}
         usuarioId=""
         linkPdf={null}
         hoje={hoje}
         rotuloSalvar="Entrar e salvar o currículo"
         semConta
         avisos={
-          <Aviso tipo="info" titulo="Preencha agora, entre só para salvar">
-            O que você preencher fica guardado neste aparelho. No fim, toque em “Entrar e salvar o currículo”: depois de
-            entrar, ele volta preenchido para você conferir e salvar.
-          </Aviso>
+          doWhatsapp ? (
+            <Aviso tipo="info" titulo="Seu currículo do WhatsApp já veio preenchido">
+              Confira tudo e corrija o que precisar. No fim, toque em “Entrar e salvar o currículo”: você entra com o seu
+              WhatsApp e o currículo volta preenchido para salvar.
+            </Aviso>
+          ) : (
+            <Aviso tipo="info" titulo="Preencha agora, entre só para salvar">
+              O que você preencher fica guardado neste aparelho. No fim, toque em “Entrar e salvar o currículo”: depois de
+              entrar, ele volta preenchido para você conferir e salvar.
+            </Aviso>
+          )
         }
       />
     );
@@ -139,7 +153,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         ? "/perfil/curriculo?para=talentos"
         : convite
           ? `/perfil/curriculo?convite=${convite}`
-          : "/perfil/curriculo",
+          : preparado
+            ? `/perfil/curriculo?preparado=${preparado}`
+            : "/perfil/curriculo",
   );
   // currículo é de pessoa: comércio, empresa e agência contratam (quem age pela agência também cai aqui)
   if (perfil.tipo !== "pessoa") {
@@ -178,7 +194,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   const mercado = curriculo
     ? comPrazo(curriculoNoMercado({ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }, curriculo, agora), 1500)
     : null;
-  const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : null;
+  const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : (!curriculo && doWhatsapp) || null;
+  // já tem currículo salvo: o do WhatsApp entra só se a pessoa pedir ("Usar o do WhatsApp"), por cima dos campos
+  const trocarPeloWhatsapp = Boolean(curriculo && doWhatsapp && primeiro(sp.trocar) === "1");
+  const inicial =
+    curriculo && doWhatsapp && trocarPeloWhatsapp
+      ? {
+          ...curriculo,
+          titulo: doWhatsapp.titulo || curriculo.titulo,
+          habilidades: doWhatsapp.habilidades.length ? doWhatsapp.habilidades : curriculo.habilidades,
+          escolaridade: doWhatsapp.escolaridade || curriculo.escolaridade,
+          curso: doWhatsapp.escolaridade ? doWhatsapp.curso : curriculo.curso,
+          estudos: doWhatsapp.estudos.length ? doWhatsapp.estudos : curriculo.estudos,
+          experiencias: doWhatsapp.experiencias.length
+            ? doWhatsapp.experiencias.map((x) => ({ ...x, fim: x.fim || null }))
+            : curriculo.experiencias,
+          cursos: doWhatsapp.cursos.length ? doWhatsapp.cursos : curriculo.cursos,
+          cnh: doWhatsapp.cnh || curriculo.cnh,
+          disponibilidade: doWhatsapp.disponibilidade.length ? doWhatsapp.disponibilidade : curriculo.disponibilidade,
+        }
+      : curriculo;
   // acabou de salvar e ainda não tem nenhum aviso de vaga: o convite para avisar de vagas do que a pessoa faz
   const oQueFaz =
     curriculo?.titulo?.trim().slice(0, 60) || curriculo?.experiencias[0]?.cargo?.trim().slice(0, 60) || "";
@@ -236,6 +271,27 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
             {ia ? " Toque em “Preencher com esse PDF”, confira" : " Preencha"} e toque em “Salvar currículo”, no fim da
             página.
           </p>
+        </Aviso>
+      )}
+      {doWhatsapp && !curriculo && (
+        <Aviso tipo="info" titulo="Seu currículo do WhatsApp já veio preenchido">
+          Escrevemos só o que você contou na conversa. Confira tudo, corrija o que precisar e toque em “Salvar currículo”, no
+          fim da página.
+        </Aviso>
+      )}
+      {doWhatsapp && curriculo && !trocarPeloWhatsapp && (
+        <Aviso tipo="info" titulo="Você já tem um currículo salvo">
+          <p>O currículo que você montou no WhatsApp ficou guardado. Quer usar ele no lugar do que está aqui?</p>
+          <p className="mt-2">
+            <Link href={`/perfil/curriculo?preparado=${preparado}&trocar=1`} className="text-label underline">
+              Usar o do WhatsApp
+            </Link>
+          </p>
+        </Aviso>
+      )}
+      {trocarPeloWhatsapp && (
+        <Aviso tipo="info" titulo="O currículo do WhatsApp está no formulário">
+          Confira e toque em “Salvar currículo”, no fim da página. Se sair sem salvar, fica o currículo de antes.
         </Aviso>
       )}
       {lido && dadosConvite && (
@@ -329,8 +385,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
 
   return (
     <FormCurriculo
-      key={curriculo?.atualizado_em ?? (lido ? "convite" : "novo")}
-      inicial={curriculo}
+      key={curriculo ? `${curriculo.atualizado_em}${trocarPeloWhatsapp ? "-whatsapp" : ""}` : lido ? (doWhatsapp ? "whatsapp" : "convite") : "novo"}
+      inicial={inicial}
       lido={lido}
       usuarioId={usuario.id}
       linkPdf={linkPdf}
