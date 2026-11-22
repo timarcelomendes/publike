@@ -31,10 +31,14 @@ export const GRATIS = [
   "Candidatos, quadro e mensagens",
   "Equipe sem limite de pessoas",
   "Página de carreiras com 10 vagas publicadas",
+  // 22/11/2026 (Marcelo: "planos de assinatura, com as features novas")
+  "Resumo de uma linha de cada currículo e a nota de quanto combina com a vaga, com o tempo na função",
+  "Prontos para assumir: 5 por vaga, indicados pela leitura dos currículos",
 ];
 
 export const DOS_PLANOS = [
   "Triagem com IA",
+  "Prontos para assumir: todos os indicados de cada vaga, até 50",
   "Teste Prático",
   // as entrevistas ao vivo de cada faixa entram na grade (aoVivoDasFaixas)
   "Entrevista em vídeo: a gravada sem limite e a ao vivo pelo Publike",

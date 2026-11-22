@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   Bus,
   CalendarClock,
   Check,
@@ -95,7 +96,13 @@ const MOTIVOS: Item[] = [
     icone: Check,
     titulo: "Quem mais combina vem primeiro",
     texto:
-      "Cada candidato chega com a nota de aderência e o porquê, item por item: a experiência na função, o estudo, a distância, o horário. Falta a CNH ou a escolaridade que você pediu? A nota avisa.",
+      "Cada candidato chega com um resumo de uma linha do currículo e a nota de aderência com o porquê, item por item: a experiência e o tempo na função, o estudo, a distância, o horário. Falta a CNH ou a escolaridade que você pediu? A nota avisa.",
+  },
+  {
+    icone: BadgeCheck,
+    titulo: "Gente pronta para a vaga",
+    texto:
+      "O Publike lê os currículos e indica, em cada vaga, quem já fez esse trabalho, primeiro quem atende tudo o que a vaga pede. Convide com um toque. 5 por vaga de graça; nos planos, todos.",
   },
   {
     icone: ListChecks,
@@ -206,6 +213,12 @@ const RECURSOS_PAGOS: Item[] = [
 
 // O que vem só dentro do Plano Empresa e do Plano Agência (claude/plano-convite-automatico-30-dias-e-anual.md)
 const SO_NOS_PLANOS: Item[] = [
+  {
+    icone: BadgeCheck,
+    titulo: "Todos os prontos para assumir",
+    texto:
+      "Em cada vaga, todas as pessoas que a leitura dos currículos indicou como prontas para a função (até 50), com busca, filtros e quem atende tudo o que a vaga pede primeiro. No Grátis, as 5 mais perto.",
+  },
   {
     icone: CalendarClock,
     titulo: "Mutirão de contratação",
