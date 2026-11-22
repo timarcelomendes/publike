@@ -1,4 +1,4 @@
-import { BadgeCheck, ListChecks, MapPin } from "lucide-react";
+import { BadgeCheck, ChevronRight, ListChecks, MapPin } from "lucide-react";
 import Link from "next/link";
 import { MODO_DEMO } from "@/lib/config";
 import { recursosPagos, talentosParaVaga } from "@/lib/dados";
@@ -50,7 +50,7 @@ export async function ProntosParaAVaga({ vaga }: { vaga: { id: string; titulo: s
       className="flex flex-col gap-3 rounded-lg border-2 border-cerrado bg-surface-200 p-4 shadow-card sm:p-5"
     >
       <div className="flex flex-col gap-1">
-        <h2 id="prontos-titulo" className="flex items-center gap-2 font-display text-h3">
+        <h2 id="prontos-titulo" className="flex scroll-mt-32 items-center gap-2 font-display text-h3">
           <BadgeCheck aria-hidden className="size-5 text-cerrado-text" />
           {plural(r.total, "pessoa pronta", "pessoas prontas")} para assumir “{vaga.titulo}”
         </h2>
@@ -106,5 +106,37 @@ export async function ProntosParaAVaga({ vaga }: { vaga: { id: string; titulo: s
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * A faixa no quadro da vaga (22/11/2026; Marcelo: a tela da vaga não mostrava os prontos): "N pessoas prontas para
+ * assumir esta vaga", que leva ao quadro dos prontos em Talentos. Só com alguém pronto; sem a leitura, nada.
+ */
+export async function FaixaDosProntos({ anuncioId }: { anuncioId: string }) {
+  if (MODO_DEMO) return null;
+  const c = await criarClienteServidor();
+  const { data, error } = await c.rpc("prontos_para_a_vaga", { p_anuncio: anuncioId });
+  if (error || !data) return null;
+  const r = data as unknown as Resposta;
+  if (!r.funcao || !r.total) return null;
+  return (
+    <Link
+      href={`/talentos?vaga=${anuncioId}#prontos-titulo`}
+      className="group flex items-center gap-3 rounded-lg border border-cerrado/40 bg-surface-200 p-4 hover:border-cerrado"
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300">
+        <BadgeCheck aria-hidden className="size-5 text-cerrado-text" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-label">
+          {plural(r.total, "pessoa pronta", "pessoas prontas")} para assumir esta vaga
+        </span>
+        <span className="block text-body-sm text-ink-muted">
+          A leitura do currículo indicou quem já fez esse trabalho. Ver e convidar em Talentos.
+        </span>
+      </span>
+      <ChevronRight aria-hidden className="size-4 shrink-0 text-cerrado-text" />
+    </Link>
   );
 }

@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { CabecalhoDaVaga, OrdemQuemChamar, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { QuadroCandidatos } from "@/components/painel/quadro-candidatos";
+import { FaixaDosProntos } from "@/components/talentos/prontos-para-a-vaga";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
@@ -220,6 +221,11 @@ async function Conteudo({
           </span>
           <ChevronRight aria-hidden className="size-4 shrink-0 text-terra-text" />
         </Link>
+      )}
+      {status === "ativo" && (
+        <Suspense fallback={null}>
+          <FaixaDosProntos anuncioId={id} />
+        </Suspense>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <VistaDosCandidatos id={id} atual="quadro" />
