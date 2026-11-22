@@ -1,11 +1,13 @@
+import { CalendarDays, ListChecks, MapPinned, MessageCircle, ScanText } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CompararAtividades } from "@/components/admin/comparar-atividades";
 import { CompararLeitura } from "@/components/admin/comparar-leitura";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { BotaoSalvar } from "@/components/admin/botao-salvar";
+import { abaPedida, SubAbasAdmin } from "@/components/admin/sub-abas";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
-import { Botao } from "@/components/ui/botao";
 import {
   mandarCurriculoDaSemanaAgora,
   refazerPerguntasDaFuncao,
@@ -16,7 +18,7 @@ import {
 } from "@/lib/acoes/admin-qualificados";
 import { ocupacao } from "@/lib/cbo";
 import { PERGUNTAS_DE_SEMPRE, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
-import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
+import { formatarDataCurta, formatarNumero, plural, primeiro } from "@/lib/formato";
 import { MODELOS_IA } from "@/lib/ia/openai";
 import { MODELO_DA_LEITURA, MODELOS_DA_COMPARACAO } from "@/lib/servidor/leitura-curriculo";
 import { MODELO_DAS_ATIVIDADES, MODELOS_DA_COMPARACAO_DAS_ATIVIDADES } from "@/lib/servidor/atividades-da-vaga";
@@ -41,6 +43,20 @@ type Dados = {
   nota_media: number | null;
   funcoes: Linha[];
 };
+
+// as partes da tela (22/11/2026, Marcelo: "pode pensar essas telas com sub-abas, ficam muito extensas")
+const ABAS = [
+  { id: "funcoes", nome: "Por função e cidade", icone: MapPinned },
+  { id: "leitura", nome: "Leitura do currículo", icone: ScanText },
+  { id: "atividades", nome: "Atividades da vaga", icone: ListChecks },
+  { id: "whatsapp", nome: "Currículo pelo WhatsApp", icone: MessageCircle },
+  { id: "semana", nome: "O currículo na semana", icone: CalendarDays },
+] as const;
+
+/** A parte sem a migração dela. */
+function SemMigracao({ nome }: { nome: string }) {
+  return <p className="text-body-sm text-ink-muted">Rode a migração {nome} para ver esta parte.</p>;
+}
 
 const ERROS: Record<string, string> = {
   fora: "O admin só funciona com a sua conta de admin.",
@@ -98,61 +114,71 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
     ? null
     : (cvw.data as unknown as { modo: string; montados: number; conversas: number; abertos: number; ultimos_7_dias: number });
   const modelosDasAtividades = MODELOS_DA_COMPARACAO_DAS_ATIVIDADES.map((id) => MODELOS_IA.find((m) => m.id === id)!);
+  const aba = abaPedida(ABAS, primeiro(sp.aba));
+  const salvo = primeiro(sp.salvo);
+  const mandados = primeiro(sp.mandados);
 
   return (
     <div className="flex flex-col gap-6">
       {erro && <Aviso tipo="erro">{ERROS[erro] ?? ERROS.salvar}</Aviso>}
-      {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" titulo="Salvo." />}
-      {primeiro(sp.mandados) !== undefined && (
-        <Aviso tipo="sucesso" titulo={`O currículo na semana: ${primeiro(sp.mandados)} avisos mandados agora.`} />
+      <SubAbasAdmin rotulo="Qualificados" base="/admin/qualificados" abas={[...ABAS]} ativa={aba} />
+
+      {aba === "leitura" && (
+        <>
+          <Secao
+            titulo="Leitura do currículo"
+            descricao={
+              <>
+                A IA lê cada currículo de Talentos e diz para que trabalho a pessoa serve: até 3 funções, cada uma “pronto
+                para assumir” ou “precisa de treinamento”. Quem publica uma vaga vê, em Talentos, as pessoas prontas para a
+                função da vaga, e a Triagem com IA lê essas pessoas primeiro. A pessoa vê as funções e dicas para melhorar o
+                currículo. A IA não vê nome, foto, bairro nem contato, e lê de novo quando o currículo muda.
+              </>
+            }
+          >
+            <form action={salvarConfigLeitura} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
+              <label className="flex items-center gap-2 text-label">
+                <input type="checkbox" name="ligado" defaultChecked={d.config.ligado} className="size-5" />
+                Ler os currículos sozinho
+              </label>
+              <label className="flex flex-col gap-1 text-body-sm">
+                Modelo
+                <select
+                  name="modelo"
+                  defaultValue={modeloAtual}
+                  className="min-h-11 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
+                >
+                  {modelos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome} (US$ {m.preco.entrada} / {m.preco.saida} por milhão)
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <BotaoSalvar variante="secundario" feito={salvo === "leitura" ? "Salvo" : null} />
+              <p className="basis-full text-caption text-ink-muted">
+                {d.config.ligado
+                  ? `Ligado: uns 3 currículos por rodada das filas. Alterado em ${formatarDataCurta(d.config.atualizado_em)}.`
+                  : "Desligado: nada é lido. Compare os modelos abaixo antes de ligar."}
+              </p>
+            </form>
+            <p className="text-body-sm">
+              {formatarNumero(d.lidos)} de {formatarNumero(d.em_talentos)} currículos de Talentos lidos
+              {d.nota_media != null && ` · nota média ${d.nota_media}`}.
+            </p>
+          </Secao>
+
+          <Secao
+            titulo="Sonnet x Opus"
+            descricao="Os dois modelos leem os mesmos currículos. Os cartões com borda laranja são os que discordam nas funções, no nível ou na nota (15 pontos ou mais). Nada é guardado; as chamadas contam em Admin › IA."
+          >
+            <CompararLeitura modelos={modelos} />
+          </Secao>
+        </>
       )}
 
-      <Secao
-        titulo="Leitura do currículo"
-        descricao={
-          <>
-            A IA lê cada currículo de Talentos e diz para que trabalho a pessoa serve: até 3 funções, cada uma “pronto
-            para assumir” ou “precisa de treinamento”. Quem publica uma vaga vê, em Talentos, as pessoas prontas para a
-            função da vaga, e a Triagem com IA lê essas pessoas primeiro. A pessoa vê as funções e dicas para melhorar o
-            currículo. A IA não vê nome, foto, bairro nem contato, e lê de novo quando o currículo muda.
-          </>
-        }
-      >
-        <form action={salvarConfigLeitura} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
-          <label className="flex items-center gap-2 text-label">
-            <input type="checkbox" name="ligado" defaultChecked={d.config.ligado} className="size-5" />
-            Ler os currículos sozinho
-          </label>
-          <label className="flex flex-col gap-1 text-body-sm">
-            Modelo
-            <select
-              name="modelo"
-              defaultValue={modeloAtual}
-              className="min-h-11 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
-            >
-              {modelos.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nome} (US$ {m.preco.entrada} / {m.preco.saida} por milhão)
-                </option>
-              ))}
-            </select>
-          </label>
-          <Botao type="submit" variante="secundario">
-            Salvar
-          </Botao>
-          <p className="basis-full text-caption text-ink-muted">
-            {d.config.ligado
-              ? `Ligado: uns 3 currículos por rodada das filas. Alterado em ${formatarDataCurta(d.config.atualizado_em)}.`
-              : "Desligado: nada é lido. Compare os modelos abaixo antes de ligar."}
-          </p>
-        </form>
-        <p className="text-body-sm">
-          {formatarNumero(d.lidos)} de {formatarNumero(d.em_talentos)} currículos de Talentos lidos
-          {d.nota_media != null && ` · nota média ${d.nota_media}`}.
-        </p>
-      </Secao>
-
-      {at && (
+      {aba === "atividades" && !at && <SemMigracao nome="20270831120000_atividades_da_vaga.sql" />}
+      {aba === "atividades" && at && (
         <div id="atividades" className="scroll-mt-32">
           <Secao
             titulo="Atividades da vaga"
@@ -185,9 +211,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
                   ))}
                 </select>
               </label>
-              <Botao type="submit" variante="secundario">
-                Salvar
-              </Botao>
+              <BotaoSalvar variante="secundario" feito={salvo === "atividades" ? "Salvo" : null} />
               <p className="basis-full text-caption text-ink-muted">
                 {at.config.ligado
                   ? `Ligado: uns 6 pares por rodada das filas. Alterado em ${formatarDataCurta(at.config.atualizado_em)}.`
@@ -205,7 +229,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
         </div>
       )}
 
-      {cs && (
+      {aba === "semana" && !cs && <SemMigracao nome="20270904120000_curriculo_da_semana.sql" />}
+      {aba === "semana" && cs && (
         <div id="curriculo-semana" className="scroll-mt-32">
           <Secao
             titulo="O currículo na semana"
@@ -232,9 +257,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
                   <option value="1">Ligado</option>
                 </select>
               </label>
-              <Botao type="submit" variante="secundario">
-                Salvar
-              </Botao>
+              <BotaoSalvar variante="secundario" feito={salvo === "semana" ? "Salvo" : null} />
             </form>
             <p className="text-body-sm">
               Agora receberiam {formatarNumero(cs.receberiam)} pessoas ({formatarNumero(cs.com_movimento)} com empresa ou
@@ -255,15 +278,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
               </details>
             )}
             <form action={mandarCurriculoDaSemanaAgora}>
-              <Botao type="submit" variante="secundario" disabled={!cs.receberiam}>
+              <BotaoSalvar
+                variante="secundario"
+                disabled={!cs.receberiam}
+                enviando="Mandando…"
+                feito={mandados !== undefined ? `${plural(Number(mandados) || 0, "aviso mandado", "avisos mandados")} agora` : null}
+              >
                 Mandar agora para {formatarNumero(Math.min(cs.receberiam, 100))} pessoas
-              </Botao>
+              </BotaoSalvar>
             </form>
           </Secao>
         </div>
       )}
 
-      {cw && (
+      {aba === "whatsapp" && !cw && <SemMigracao nome="20270902120000_curriculo_pelo_whatsapp.sql" />}
+      {aba === "whatsapp" && cw && (
         <div id="curriculo-whatsapp" className="scroll-mt-32">
           <Secao
             titulo="Currículo pelo WhatsApp"
@@ -293,9 +322,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
                   <option value="todos">Todos</option>
                 </select>
               </label>
-              <Botao type="submit" variante="secundario">
-                Salvar
-              </Botao>
+              <BotaoSalvar variante="secundario" feito={salvo === "modo" ? "Salvo" : null} />
             </form>
             <p className="text-body-sm">
               {formatarNumero(cw.montados)} currículos montados em {formatarNumero(cw.conversas)} conversas ·{" "}
@@ -332,9 +359,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
                       </span>
                       <form action={refazerPerguntasDaFuncao}>
                         <input type="hidden" name="cbo" value={f.cbo} />
-                        <Botao type="submit" variante="secundario">
+                        <BotaoSalvar
+                          variante="secundario"
+                          enviando="Apagando…"
+                          feito={salvo === `refeito-${f.cbo}` ? "Apagadas: o robô faz de novo" : null}
+                        >
                           Refazer
-                        </Botao>
+                        </BotaoSalvar>
                       </form>
                     </div>
                     <ul className="list-disc pl-5">
@@ -352,46 +383,41 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
         </div>
       )}
 
-      <Secao
-        titulo="Sonnet x Opus"
-        descricao="Os dois modelos leem os mesmos currículos. Os cartões com borda laranja são os que discordam nas funções, no nível ou na nota (15 pontos ou mais). Nada é guardado; as chamadas contam em Admin › IA."
-      >
-        <CompararLeitura modelos={modelos} />
-      </Secao>
-
-      <Secao
-        titulo="Qualificados por função e cidade"
-        descricao="Só os currículos visíveis em Talentos, já lidos. Quando uma função passar de 20 a 30 prontos numa região, é hora da Lista pronta para agências (etapa 2)."
-      >
-        {d.funcoes.length === 0 ? (
-          <p className="text-body-sm text-ink-muted">Nenhum currículo lido ainda.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-body-sm">
-              <thead className="text-left text-caption text-ink-muted">
-                <tr>
-                  <th className="py-2 pr-4 font-normal">Função</th>
-                  <th className="py-2 pr-4 font-normal">Cidade</th>
-                  <th className="py-2 pr-4 font-normal">Prontos</th>
-                  <th className="py-2 font-normal">Com treinamento</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.funcoes.map((f) => (
-                  <tr key={`${f.cbo}-${f.cidade}`} className="border-t border-line">
-                    <td className="py-2 pr-4">
-                      {f.nome} <span className="text-caption text-ink-muted">{f.cbo}</span>
-                    </td>
-                    <td className="py-2 pr-4 text-ink-muted">{f.cidade ?? "—"}</td>
-                    <td className="py-2 pr-4 tabular-nums">{f.prontos}</td>
-                    <td className="py-2 tabular-nums">{f.treinamento}</td>
+      {aba === "funcoes" && (
+        <Secao
+          titulo="Qualificados por função e cidade"
+          descricao="Só os currículos visíveis em Talentos, já lidos. Quando uma função passar de 20 a 30 prontos numa região, é hora da Lista pronta para agências (etapa 2)."
+        >
+          {d.funcoes.length === 0 ? (
+            <p className="text-body-sm text-ink-muted">Nenhum currículo lido ainda.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-body-sm">
+                <thead className="text-left text-caption text-ink-muted">
+                  <tr>
+                    <th className="py-2 pr-4 font-normal">Função</th>
+                    <th className="py-2 pr-4 font-normal">Cidade</th>
+                    <th className="py-2 pr-4 font-normal">Prontos</th>
+                    <th className="py-2 font-normal">Com treinamento</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Secao>
+                </thead>
+                <tbody>
+                  {d.funcoes.map((f) => (
+                    <tr key={`${f.cbo}-${f.cidade}`} className="border-t border-line">
+                      <td className="py-2 pr-4">
+                        {f.nome} <span className="text-caption text-ink-muted">{f.cbo}</span>
+                      </td>
+                      <td className="py-2 pr-4 text-ink-muted">{f.cidade ?? "—"}</td>
+                      <td className="py-2 pr-4 tabular-nums">{f.prontos}</td>
+                      <td className="py-2 tabular-nums">{f.treinamento}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Secao>
+      )}
     </div>
   );
 }

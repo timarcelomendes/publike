@@ -22,7 +22,7 @@ export async function salvarConfigProcuradas(formData: FormData) {
     p_minimo: n("minimo", 1, 50),
     p_dias: n("dias", 1, 30),
   });
-  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}`);
+  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=procuradas"}`);
 }
 
 export async function mandarProcuradasAgora() {
@@ -43,12 +43,12 @@ export async function salvarConfigAtendem(formData: FormData) {
     p_ligado: formData.get("ligado") === "on",
     p_minimo: Number.isFinite(v) ? Math.min(20, Math.max(1, v)) : null,
   });
-  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#atendem`);
+  redirect(`${AQUI}?aba=atendem&${error ? "erro=salvar" : "salvo=atendem"}`);
 }
 
 export async function mandarAtendemAgora() {
   const c = await clienteAdminOuNulo();
   if (!c) redirect(`${AQUI}?erro=fora`);
   const r = await avisarQuemAtende(true);
-  redirect(`${AQUI}?${r.motivo ? "erro=mandar" : `atendem=${r.avisos}`}#atendem`);
+  redirect(`${AQUI}?aba=atendem&${r.motivo ? "erro=mandar" : `atendem=${r.avisos}`}`);
 }

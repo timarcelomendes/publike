@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FormConfigIA } from "@/components/admin/ia";
 import { usoPorFuncionalidade } from "@/lib/admin/custo-ia";
+import { abaPedida, SubAbasAdmin } from "@/components/admin/sub-abas";
 import { Paginacao, Secao, Situacao } from "@/components/admin/ui";
 import { Segmentos } from "@/components/painel/segmentos";
 import { CircleDollarSign, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
@@ -59,8 +60,7 @@ export default function IA({ searchParams }: PageProps<"/admin/ia">) {
   return (
     <Suspense fallback={<EsqueletoAdmin />}>
       {searchParams.then((sp) => {
-        const pedida = primeiro(sp.aba);
-        const aba: Aba = ABAS.some((a) => a.id === pedida) ? (pedida as Aba) : "configuracoes";
+        const aba = abaPedida(ABAS, primeiro(sp.aba));
         const decisao = primeiro(sp.decisao) ?? "";
         return (
           <Conteudo
@@ -71,38 +71,6 @@ export default function IA({ searchParams }: PageProps<"/admin/ia">) {
         );
       })}
     </Suspense>
-  );
-}
-
-function SubAbas({ ativa, retidas }: { ativa: Aba; retidas: number }) {
-  return (
-    <nav aria-label="IA" className="sem-barra relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-      {ABAS.map(({ id, nome, icone: Icone }) => {
-        const atual = id === ativa;
-        return (
-          <Link
-            key={id}
-            href={id === "configuracoes" ? "/admin/ia" : `/admin/ia?aba=${id}`}
-            scroll={false}
-            aria-current={atual ? "page" : undefined}
-            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
-              atual
-                ? "border-ink bg-ink text-surface-100"
-                : "border-line bg-surface-300 text-ink hover:border-line-strong"
-            }`}
-          >
-            <Icone aria-hidden className="size-4" />
-            {nome}
-            {id === "revisoes" && retidas > 0 && (
-              <span className="rounded-pill bg-danger px-1.5 text-caption text-on-terra tabular-nums">
-                {retidas}
-                <span className="sr-only"> retidas em 7 dias</span>
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -128,7 +96,12 @@ async function Conteudo({ aba, decisao, pagina }: { aba: Aba; decisao: Decisao; 
 
   return (
     <div className="flex flex-col gap-6">
-      <SubAbas ativa={aba} retidas={retidas7} />
+      <SubAbasAdmin
+        rotulo="IA"
+        base="/admin/ia"
+        abas={ABAS.map((a) => (a.id === "revisoes" ? { ...a, alerta: { n: retidas7, leitor: "retidas em 7 dias" } } : a))}
+        ativa={aba}
+      />
       {aba === "configuracoes" && (
         <>
           <Secao

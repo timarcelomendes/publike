@@ -32,7 +32,7 @@ export async function salvarConfigLeitura(formData: FormData) {
     p_ligado: formData.get("ligado") === "on",
     p_modelo: MODELOS_IA.some((m) => m.id === modelo) ? modelo : null,
   });
-  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}`);
+  redirect(`${AQUI}?aba=leitura&${error ? "erro=salvar" : "salvo=leitura"}`);
 }
 
 /** O que a tela mostra de cada currículo da comparação (sem nome, foto, bairro nem contato). */
@@ -85,7 +85,7 @@ export async function salvarConfigAtividades(formData: FormData) {
     p_ligado: formData.get("ligado") === "on",
     p_modelo: MODELOS_IA.some((m) => m.id === modelo) ? modelo : null,
   });
-  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#atividades`);
+  redirect(`${AQUI}?aba=atividades&${error ? "erro=salvar" : "salvo=atividades"}`);
 }
 
 /** Até 30 pares para a comparação, de vagas diferentes (uma de cada vaga por vez), primeiro os candidatos. */
@@ -148,9 +148,9 @@ export async function salvarModoCurriculoWhatsapp(formData: FormData) {
   const c = await clienteAdminOuNulo();
   if (!c) redirect(`${AQUI}?erro=fora`);
   const modo = String(formData.get("modo") ?? "");
-  if (!["desligado", "teste", "todos"].includes(modo)) redirect(`${AQUI}?erro=salvar#curriculo-whatsapp`);
+  if (!["desligado", "teste", "todos"].includes(modo)) redirect(`${AQUI}?aba=whatsapp&erro=salvar`);
   const { error } = await c.rpc("admin_modo_curriculo_whatsapp", { p_modo: modo });
-  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-whatsapp`);
+  redirect(`${AQUI}?aba=whatsapp&${error ? "erro=salvar" : "salvo=modo"}`);
 }
 
 // As perguntas de recrutador de uma função (migração 20270903120000): apaga, e o robô das filas faz de novo.
@@ -158,9 +158,9 @@ export async function refazerPerguntasDaFuncao(formData: FormData) {
   const c = await clienteAdminOuNulo();
   if (!c) redirect(`${AQUI}?erro=fora`);
   const cbo = String(formData.get("cbo") ?? "");
-  if (!/^\d{6}$/.test(cbo)) redirect(`${AQUI}?erro=salvar#curriculo-whatsapp`);
+  if (!/^\d{6}$/.test(cbo)) redirect(`${AQUI}?aba=whatsapp&erro=salvar`);
   const { error } = await c.rpc("admin_refazer_perguntas_da_funcao", { p_cbo: cbo });
-  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-whatsapp`);
+  redirect(`${AQUI}?aba=whatsapp&${error ? "erro=salvar" : `salvo=refeito-${cbo}`}`);
 }
 
 // O currículo na semana (migração 20270904120000): ligar e desligar, e o "Mandar agora".
@@ -168,12 +168,12 @@ export async function salvarCurriculoDaSemana(formData: FormData) {
   const c = await clienteAdminOuNulo();
   if (!c) redirect(`${AQUI}?erro=fora`);
   const { error } = await c.rpc("admin_curriculo_semana_ligar", { p_ligado: formData.get("ligado") === "1" });
-  redirect(`${AQUI}?${error ? "erro=salvar" : "salvo=1"}#curriculo-semana`);
+  redirect(`${AQUI}?aba=semana&${error ? "erro=salvar" : "salvo=semana"}`);
 }
 
 export async function mandarCurriculoDaSemanaAgora() {
   const c = await clienteAdminOuNulo();
   if (!c) redirect(`${AQUI}?erro=fora`);
   const r = await avisarCurriculosDaSemana(true);
-  redirect(`${AQUI}?${r.motivo ? "erro=salvar" : `mandados=${r.avisos}`}#curriculo-semana`);
+  redirect(`${AQUI}?aba=semana&${r.motivo ? "erro=salvar" : `mandados=${r.avisos}`}`);
 }
