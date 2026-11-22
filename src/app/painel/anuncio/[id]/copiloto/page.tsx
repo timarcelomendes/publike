@@ -4,6 +4,7 @@ import { falasDaIANoServidor } from "@/lib/servidor/apelido-ia";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { Suspense } from "react";
 import { CandidatoDoRanking, LegendaDaTira } from "@/components/copiloto/cartao";
 import { EditorDeCriterios } from "@/components/copiloto/criterios";
@@ -39,6 +40,7 @@ import {
   type PessoaDoCopiloto,
 } from "@/lib/servidor/copiloto";
 import { exigirUsuario } from "@/lib/sessao";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
@@ -81,6 +83,12 @@ async function Conteudo({
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const config = await configDoCopiloto(id);
+  // quem abre a Triagem (Admin › Triagem; migração 20270830120000): só a conta, a vaga e o dia, depois da resposta
+  const supabase = await criarClienteServidor();
+  after(async () => {
+    const { error } = await supabase.rpc("copiloto_abriu", { p_anuncio: id, p_liberado: Boolean(config?.liberado) });
+    if (error && error.code !== "PGRST202") console.error("Publike: falha ao contar a abertura da Triagem:", error.message);
+  });
   const cabecalho = <CabecalhoDaVaga anuncio={anuncio} aba="copiloto" />;
   if (!config?.liberado) {
     return (

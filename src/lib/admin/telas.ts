@@ -42,6 +42,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/vagas-paradas", nome: "Vagas paradas" },
       { href: "/admin/procuradas", nome: "Procuradas sem vaga" },
       { href: "/admin/qualificados", nome: "Qualificados" },
+      { href: "/admin/triagem", nome: "Triagem com IA" },
       { href: "/admin/aderencia", nome: "Nota de aderência" },
       { href: "/admin/retorno", nome: "Retorno" },
       { href: "/admin/salarios", nome: "Salários" },

@@ -2936,6 +2936,8 @@ export type Database = {
       admin_qualificados: { Args: Record<string, never>; Returns: Json };
       prontos_para_a_vaga: { Args: { p_anuncio: string }; Returns: Json };
       prontos_da_triagem: { Args: { p_anuncio: string }; Returns: { perfil_id: string; mesma: boolean }[] };
+      copiloto_abriu: { Args: { p_anuncio: string; p_liberado: boolean }; Returns: undefined };
+      admin_uso_da_triagem: { Args: { p_dias?: number }; Returns: Json };
       admin_config_leitura: { Args: { p_ligado: boolean | null; p_modelo: string | null }; Returns: undefined };
       admin_curriculos_para_comparar: {
         Args: { p_limite?: number };
