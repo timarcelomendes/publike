@@ -1,12 +1,15 @@
-import { BadgeCheck, ChevronRight, ListChecks, MapPin } from "lucide-react";
+import { BadgeCheck, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { MODO_DEMO } from "@/lib/config";
 import { recursosPagos, talentosParaVaga } from "@/lib/dados";
 import { plural } from "@/lib/formato";
-import { distanciaCurta } from "@/lib/rota-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
-import { BotaoConvidar } from "../painel/botao-convidar";
-import { Avatar } from "../ui/basicos";
+import { calcularAderencia, ordemDaNota, requisitosDaVaga } from "@/lib/aderencia";
+import { obterAnuncio } from "@/lib/dados";
+import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-contexto";
+import { diaADiaDasVagas, jeitosDasPessoas } from "@/lib/servidor/jeito-de-trabalhar";
+import { atendeAVaga } from "@/lib/talentos";
+import { ListaDosProntos, type ProntoNaLista } from "./lista-dos-prontos";
 
 // Prontos para assumir, no alto do "Para a sua vaga" (migração 20270827120000; 21/11/2026, Marcelo: "a empresa que
 // não tem assinatura pode ter 5 talentos qualificados", "5 por vaga no ar"). Quem a leitura do currículo indicou como
@@ -28,10 +31,77 @@ type Pronto = {
 };
 type Resposta = { plano: boolean; funcao: boolean; total: number; prontos: Pronto[] };
 
-export async function ProntosParaAVaga({ vaga }: { vaga: { id: string; titulo: string } }) {
+type Talento = Awaited<ReturnType<typeof talentosParaVaga>>[number];
+
+/**
+ * A prioridade dos prontos: primeiro quem atende tudo o que a vaga pede, depois a nota de aderência (a mesma de
+ * Candidatos e de "Para a sua vaga"), depois a ordem do banco (a mesma ocupação antes, depois a distância).
+ */
+async function comPrioridade(anuncioId: string, prontos: Pronto[], talentos: Talento[], agora: number) {
+  const anuncio = await obterAnuncio(anuncioId).catch(() => null);
+  const porId = new Map(talentos.map((t) => [t.perfil_id, t]));
+  const comCv = prontos.map((p) => porId.get(p.perfil_id) ?? null);
+  const daLista = comCv.filter((t): t is Talento => Boolean(t));
+  const [vagaComCbo, experiencias, diaADia, jeitos] = anuncio
+    ? await Promise.all([
+        comFuncaoDasVagas([anuncio]).then((v) => v[0]),
+        comFuncoes(daLista.map((t) => ({ experiencias: t.experiencias }))),
+        diaADiaDasVagas([anuncioId]),
+        jeitosDasPessoas(daLista.map((t) => t.perfil_id)),
+      ]).catch(() => [null, null, null, null] as const)
+    : ([null, null, null, null] as const);
+  const requisitos = vagaComCbo
+    ? { ...requisitosDaVaga(vagaComCbo), perguntas: [], dia_a_dia: diaADia?.get(anuncioId) ?? null }
+    : null;
+  const expDe = new Map(daLista.map((t, i) => [t.perfil_id, experiencias?.[i]?.experiencias ?? t.experiencias]));
+  return prontos
+    .map((p, i) => {
+      const t = comCv[i];
+      const a =
+        requisitos && t
+          ? calcularAderencia(
+              requisitos,
+              {
+                curriculo: {
+                  escolaridade: t.escolaridade,
+                  curso: t.curso,
+                  experiencias: expDe.get(t.perfil_id) ?? t.experiencias,
+                  cursos: t.cursos,
+                  cnh: t.cnh,
+                  disponibilidade: t.disponibilidade,
+                  estudos: t.estudos,
+                  titulo: t.titulo,
+                  habilidades: t.habilidades,
+                  jeito: jeitos?.get(t.perfil_id),
+                },
+                respostas: {},
+                cidade: t.cidade,
+                bairro: t.bairro,
+              },
+              agora,
+            )
+          : null;
+      const falta = (a?.criterios ?? [])
+        .filter((k) => !k.extra && !k.sinal && k.ok === false)
+        .map((k) => k.nome.replace(/:.*$/, ""));
+      return { p, i, a, atende: a ? atendeAVaga(a) : false, falta };
+    })
+    .sort((x, y) => Number(y.atende) - Number(x.atende) || ordemDaNota(y.a) - ordemDaNota(x.a) || x.i - y.i)
+    .map(
+      ({ p, a, atende, falta }, ordem): ProntoNaLista => ({
+        ...p,
+        nota: a && !a.eliminado ? a.nota : null,
+        atende,
+        falta: [...new Set(falta)].slice(0, 3),
+        ordem,
+      }),
+    );
+}
+
+export async function ProntosParaAVaga({ vaga, agora }: { vaga: { id: string; titulo: string }; agora: number }) {
   if (MODO_DEMO) return null;
   const c = await criarClienteServidor();
-  const [{ data, error }, lista, recursos] = await Promise.all([
+  const [{ data, error }, talentos, recursos] = await Promise.all([
     c.rpc("prontos_para_a_vaga", { p_anuncio: vaga.id }),
     talentosParaVaga(vaga.id).catch(() => null),
     recursosPagos().catch(() => null),
@@ -39,11 +109,11 @@ export async function ProntosParaAVaga({ vaga }: { vaga: { id: string; titulo: s
   if (error || !data) return null;
   const r = data as unknown as Resposta;
   if (!r.funcao || !r.prontos.length) return null;
-  const convidados = new Set((lista ?? []).filter((t) => t.convidado).map((t) => t.perfil_id));
+  const convidados = (talentos ?? []).filter((t) => t.convidado).map((t) => t.perfil_id);
   const faltam = r.total - r.prontos.length;
   const triagem = recursos?.copiloto;
   const experimentar = Boolean(triagem && !triagem.liberado && triagem.pode_experimentar);
-  const conferir = (perfil: string) => `/painel/anuncio/${vaga.id}/copiloto?ver=talentos&pessoa=${perfil}#p-${perfil}`;
+  const lista = await comPrioridade(vaga.id, r.prontos, talentos ?? [], agora);
   return (
     <section
       aria-labelledby="prontos-titulo"
@@ -55,41 +125,11 @@ export async function ProntosParaAVaga({ vaga }: { vaga: { id: string; titulo: s
           {plural(r.total, "pessoa pronta", "pessoas prontas")} para assumir “{vaga.titulo}”
         </h2>
         <p className="text-body-sm text-ink-muted">
-          A leitura do currículo indicou quem já fez esse trabalho, dos que moram mais perto da vaga para os mais longe.
-          Convide quem combinar: o contato aparece quando a pessoa aceitar.
+          A leitura do currículo indicou quem já fez esse trabalho. Primeiro quem atende tudo o que a vaga pede, depois
+          pela nota com a vaga e pela distância. Convide quem combinar: o contato aparece quando a pessoa aceitar.
         </p>
       </div>
-      <ul className="flex flex-col gap-2">
-        {r.prontos.map((p) => (
-          <li key={p.perfil_id} className="flex flex-wrap items-start gap-3 rounded-md bg-surface-100 p-3">
-            <Avatar nome={p.nome} tamanho={36} />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-label">{p.nome}</span>
-              <span className="text-body-sm">
-                {p.funcao} · pronto para assumir
-              </span>
-              {p.porque && <span className="text-body-sm text-ink-muted">{p.porque}</span>}
-              {(p.bairro || p.cidade) && (
-                <span className="flex items-center gap-1 text-caption text-ink-muted">
-                  <MapPin aria-hidden className="size-3.5" />
-                  {[p.bairro, p.cidade].filter(Boolean).join(", ")}
-                  {p.distancia_m != null && ` · ≈ ${distanciaCurta(p.distancia_m)} da vaga`}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap items-start gap-2">
-              <BotaoConvidar anuncioId={vaga.id} perfilId={p.perfil_id} convidado={convidados.has(p.perfil_id)} />
-              <Link
-                href={conferir(p.perfil_id)}
-                className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-label underline-offset-2 hover:bg-surface-300 hover:underline"
-              >
-                <ListChecks aria-hidden className="size-[18px]" />
-                Conferir com os critérios da vaga
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ListaDosProntos anuncioId={vaga.id} prontos={lista} convidados={convidados} />
       <p className="text-body-sm">
         Quer saber quem atende o que a sua vaga pede, com o trecho do currículo?{" "}
         <Link href={`/painel/anuncio/${vaga.id}/copiloto`} className="text-label underline underline-offset-2">

@@ -328,7 +328,7 @@ async function Lista({
       <div className="flex flex-col gap-5">
         <QuaisTalentos vagas={noAr} vaga={vaga.id} />
         {/* quem a leitura do currículo indicou como pronto (5 sem assinatura; migração 20270827120000) */}
-        {f.pagina <= 1 && <ProntosParaAVaga vaga={vaga} />}
+        {f.pagina <= 1 && <ProntosParaAVaga vaga={vaga} agora={agora} />}
         <ParaAVaga
           vaga={vaga}
           pagina={f.pagina}
