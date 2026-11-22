@@ -54,7 +54,7 @@ function corCheia(a: Assinatura) {
 }
 const endereco = (a: Assinatura) => (a.tipo === "empresa" ? a.endereco : "publike.org");
 
-// a logo colorida do Publike (pino e palavra em tinta, check vermelho), lida uma vez
+// a logo do Publike (pino e palavra em tinta, check branco), lida uma vez
 let logo: Promise<string> | null = null;
 function lerLogo() {
   logo ??= readFile(join(process.cwd(), "public/logo/publike-logo.svg"))

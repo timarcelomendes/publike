@@ -211,7 +211,7 @@ const ESTILO_LOGO =
 /**
  * A assinatura no site: o p de publike é o pino, com o check vazado (deu match).
  * Tudo numa cor só (ink; branca no tema escuro), e o fundo aparece pelo check.
- * A versão com o check vermelho fica para e-mail e arquivos (public/logo/publike-logo.svg).
+ * Os arquivos (public/logo/publike-logo.svg) trazem o check branco desenhado, para fundo de qualquer cor.
  * Regras e arquivos: guia da marca (public/logo/).
  */
 export function Logo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
@@ -233,15 +233,14 @@ export function Logo({ altura = 32, className = "" }: { altura?: number; classNa
 }
 
 /**
- * O símbolo sozinho: o pino vermelho com o check vazado (vermelho também no tema escuro). `semPressa`: sem o
- * pré-carregamento que o React põe no <head> para cada <img> de componente do servidor. A página "não encontrada"
- * vai no RSC de todas as páginas (o Next a manda para o caso de um 404), e a imagem dela era pedida, com pressa,
- * em todas, sem aparecer (17/11/2026).
+ * O símbolo sozinho: o pino da logo com o check vazado, na mesma cor dela (ink; branco no tema escuro). Desde
+ * 22/11/2026 a marca é sempre preta (Marcelo: "tudo tem que ser preto, só em exceções que eu pedir"); o pino
+ * vermelho saiu. Desenhado aqui, sem <img>: não pede arquivo nem entra no pré-carregamento do <head> (a página
+ * "não encontrada" vai no RSC de todas as páginas). `semPressa` ficou sem efeito.
  */
 export function Simbolo({
   altura = 32,
   className = "",
-  semPressa = false,
 }: {
   altura?: number;
   className?: string;
@@ -249,14 +248,15 @@ export function Simbolo({
 }) {
   const largura = Math.round((altura * 131) / 183);
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- SVG pequeno e fixo, não precisa do otimizador
-    <img
-      src="/logo/publike-simbolo.svg"
-      alt=""
+    <svg
+      viewBox="-1.74 17.72 143.7 200.7"
       width={largura}
       height={altura}
-      fetchPriority={semPressa ? "low" : undefined}
+      aria-hidden="true"
       className={`block ${className}`}
-    />
+    >
+      <style>{ESTILO_LOGO}</style>
+      <path d={`${LOGO.pino}${LOGO.check}`} fillRule="evenodd" className="lk-i" />
+    </svg>
   );
 }
