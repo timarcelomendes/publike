@@ -31,6 +31,8 @@ export type ProntoNaLista = {
   falta: string[];
   /** a ordem de prioridade (0 = a primeira) */
   ordem: number;
+  /** o resumo de recrutador (migração 20270901120000) */
+  resumo?: string | null;
 };
 
 const PRIMEIROS = 3;
@@ -73,7 +75,7 @@ export function ListaDosProntos({
       .filter((p) => ate === null || (p.distancia_m !== null && p.distancia_m <= ate))
       .filter((p) => {
         if (!termos.length) return true;
-        const texto = normal([p.nome, p.funcao, p.porque, p.titulo, p.bairro, p.cidade].filter(Boolean).join(" "));
+        const texto = normal([p.nome, p.funcao, p.porque, p.resumo, p.titulo, p.bairro, p.cidade].filter(Boolean).join(" "));
         return termos.every((t) => texto.includes(t));
       })
       .sort((a, b) =>
@@ -184,6 +186,7 @@ export function ListaDosProntos({
                       )}
                     </span>
                     <span className="text-body-sm">{p.funcao} · pronto para assumir</span>
+                    {p.resumo && <span className="text-body-sm">{p.resumo}</span>}
                     {p.porque && <span className="text-body-sm text-ink-muted">{p.porque}</span>}
                     <span className="text-body-sm">
                       {p.atende ? (

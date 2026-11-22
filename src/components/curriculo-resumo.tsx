@@ -125,6 +125,13 @@ export function CurriculoResumo({
 
   return (
     <div className="flex flex-col gap-4 text-body-sm">
+      {/* o resumo de recrutador (migração 20270901120000): o que a empresa precisa saber primeiro */}
+      {curriculo.resumo && (
+        <p className="rounded-md bg-surface-300 px-3 py-2 text-body">
+          <span className="block text-caption text-ink-muted">Em resumo</span>
+          {curriculo.resumo}
+        </p>
+      )}
       {linhas.length > 0 && (
         <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
           {linhas.map((l) => (

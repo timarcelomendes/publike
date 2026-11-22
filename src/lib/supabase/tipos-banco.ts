@@ -747,6 +747,8 @@ export type Database = {
           estudos: Json;
           /** o jeito de trabalhar (migração 20270309120000) */
           jeito?: string[];
+          /** o resumo para as empresas que a pessoa escreveu (migração 20270901120000); null: o automático */
+          resumo?: string | null;
           criado_em: string;
           atualizado_em: string;
         };
@@ -2928,10 +2930,14 @@ export type Database = {
           p_nota: number;
           p_melhorar: string[];
           p_modelo: string;
+          /** o resumo para as empresas (migração 20270901120000) */
+          p_resumo?: string;
         };
         Returns: undefined;
       };
       minha_leitura_do_curriculo: { Args: Record<string, never>; Returns: Json };
+      mudar_meu_resumo: { Args: { p_resumo: string | null }; Returns: undefined };
+      resumos_dos_curriculos: { Args: { p_perfis: string[] }; Returns: { perfil_id: string; resumo: string }[] };
       tirar_funcao_indicada: { Args: { p_cbo: string }; Returns: undefined };
       admin_qualificados: { Args: Record<string, never>; Returns: Json };
       servidor_config_atividades: { Args: { p_chave: string }; Returns: Json };

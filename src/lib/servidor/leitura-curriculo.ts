@@ -158,6 +158,7 @@ export async function leiturasDosCurriculos(limite = 3): Promise<{ lidos: number
       p_nota: r.nota,
       p_melhorar: r.melhorar,
       p_modelo: r.modelo,
+      p_resumo: r.resumo,
     });
     if (e) console.error("Publike: falha ao guardar a leitura do currículo:", e.message);
     else lidos++;

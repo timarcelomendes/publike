@@ -350,6 +350,8 @@ export function TalentoDaVaga({
             {t.titulo && <span className="text-ink">{t.titulo} · </span>}
             atualizou {tempoRelativo(t.atualizado_em, agora)}
           </p>
+          {/* o resumo de recrutador (migração 20270901120000) */}
+          {t.resumo && <p className="mt-1 line-clamp-2 text-body-sm">{t.resumo}</p>}
         </div>
         <div className="sm:row-span-2">
           <MedidorAderencia a={a} tamanho={60} />
@@ -417,6 +419,7 @@ export function TalentoDaVaga({
               titulo: t.titulo,
               habilidades: t.habilidades,
               jeito,
+              resumo: t.resumo,
             }}
             linkPdf={null}
             hoje={hoje}

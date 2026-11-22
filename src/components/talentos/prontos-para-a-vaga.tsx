@@ -94,6 +94,7 @@ async function comPrioridade(anuncioId: string, prontos: Pronto[], talentos: Tal
       ({ p, a, atende, falta }, ordem): ProntoNaLista => ({
         ...p,
         nota: a && !a.eliminado ? a.nota : null,
+        resumo: porId.get(p.perfil_id)?.resumo ?? null,
         atende,
         falta: [...new Set(falta)].slice(0, 3),
         ordem,

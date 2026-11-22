@@ -159,7 +159,12 @@ const json = (j: unknown, status = 200) => new Response(JSON.stringify(j), { sta
 
   // ligado: lê com o Sonnet e guarda
   ligado = true;
-  respostaIA = { funcoes: [{ cbo: "411005", nivel: "pronto", porque: "1 ano e 6 meses lançando notas" }], nota: 72, melhorar: ["Ponha o que você faz"] };
+  respostaIA = {
+    funcoes: [{ cbo: "411005", nivel: "pronto", porque: "1 ano e 6 meses lançando notas" }],
+    nota: 72,
+    melhorar: ["Ponha o que você faz"],
+    resumo: "Auxiliar de escritório · 1 ano e 6 meses · notas fiscais e planilhas no Excel.",
+  };
   guardados = [];
   rodada = await s.leiturasDosCurriculos(3);
   const pedido = pedidosClaude[0];
@@ -170,7 +175,8 @@ const json = (j: unknown, status = 200) => new Response(JSON.stringify(j), { sta
       guardados[0]?.p_nota === 72 &&
       guardados[0]?.p_funcoes?.[0]?.nome &&
       guardados[0]?.p_impressao === curriculoDaFila.impressao &&
-      !texto.includes(curriculoDaFila.perfil_id),
+      !texto.includes(curriculoDaFila.perfil_id) &&
+      guardados[0]?.p_resumo === "Auxiliar de escritório · 1 ano e 6 meses · notas fiscais e planilhas no Excel",
     "ligado: lê com o Sonnet, guarda com o nome da função e sem mandar quem é",
     { rodada, modelo: pedido?.model, guardado: guardados[0] },
   );
@@ -180,6 +186,12 @@ const json = (j: unknown, status = 200) => new Response(JSON.stringify(j), { sta
   guardados = [];
   await s.leiturasDosCurriculos(3);
   conferir(guardados[0]?.p_funcoes?.length === 0 && guardados[0]?.p_nota === 40, "código inventado fica de fora", guardados[0]);
+
+  // o resumo para as empresas: sem contato, uma linha, cortado numa parte inteira
+  conferir(ia.resumoLimpo("Vendedora · ligue 62 99999-1234") === "", "resumo com telefone não vale");
+  const longo = ia.resumoLimpo(`Vendedora · 3 anos · ${"atendimento no balcão e no caixa, ".repeat(6)} · curso de vendas`);
+  conferir(longo.length <= 200 && longo.startsWith("Vendedora · 3 anos"), "resumo longo é cortado numa parte inteira", longo);
+  conferir(ia.resumoLimpo(42) === "", "resumo que não é texto fica vazio");
 
   console.log(falhas ? `${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);
   process.exit(falhas ? 1 : 0);

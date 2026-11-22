@@ -83,6 +83,11 @@ export type Curriculo = {
   estudos?: Estudo[];
   /** o jeito de trabalhar ("publico:sim", "peso:nao"; migração 20270309120000), quando a página leu */
   jeito?: string[];
+  /**
+   * o resumo para as empresas (migração 20270901120000): o que a pessoa escreveu ou o da leitura do currículo, quando a
+   * página leu (só para quem contrata)
+   */
+  resumo?: string | null;
 };
 /** Currículo de quem curtiu a vaga, com o link temporário do PDF. */
 export type CurriculoDoInteressado = Curriculo & { perfil_id: string; link_pdf: string | null };

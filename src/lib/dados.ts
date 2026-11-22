@@ -434,15 +434,33 @@ export async function minhasProximasEntrevistas(agora: number) {
 }
 
 /** Talentos: quem deixou as empresas acharem o currículo, para uma vaga minha (sem contato). */
+/**
+ * O resumo para as empresas de cada currículo (migração 20270901120000): o que a pessoa escreveu ou o da leitura do
+ * currículo, de quem está em Talentos ou se candidatou a uma vaga da conta. Sem a migração ou com falha, nenhum.
+ */
+export async function resumosDosCurriculos(ids: string[]): Promise<Map<string, string>> {
+  if (MODO_DEMO || !ids.length) return new Map();
+  try {
+    const supabase = await criarClienteServidor();
+    const { data, error } = await supabase.rpc("resumos_dos_curriculos", { p_perfis: [...new Set(ids)].slice(0, 500) });
+    if (error) return new Map();
+    return new Map((data ?? []).map((l) => [l.perfil_id, l.resumo]));
+  } catch {
+    return new Map();
+  }
+}
+
 export async function talentosParaVaga(anuncioId: string) {
   if (MODO_DEMO || !UUID.test(anuncioId)) return [];
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("talentos_para_vaga", { p_anuncio: anuncioId });
   if (error) falha("talentos", error);
+  const resumos = await resumosDosCurriculos((data ?? []).map((t) => t.perfil_id));
   return (data ?? []).map((t) => ({
     ...t,
     experiencias: lerExperiencias(t.experiencias),
     estudos: estudosDoBanco(t.estudos),
+    resumo: resumos.get(t.perfil_id) ?? null,
   }));
 }
 
@@ -681,6 +699,7 @@ export async function listarCurriculosDosInteressados(anuncioId: string): Promis
     const { data: assinados } = await supabase.storage.from("curriculos").createSignedUrls(arquivos, VALIDADE_LINK_PDF);
     for (const a of assinados ?? []) if (a.path && a.signedUrl) links.set(a.path, a.signedUrl);
   }
+  const resumos = await resumosDosCurriculos(linhas.map((l) => l.perfil_id));
   return new Map(
     linhas.map((l) => [
       l.perfil_id,
@@ -689,6 +708,7 @@ export async function listarCurriculosDosInteressados(anuncioId: string): Promis
         experiencias: lerExperiencias(l.experiencias),
         estudos: estudosDoBanco(l.estudos),
         link_pdf: l.arquivo ? (links.get(l.arquivo) ?? null) : null,
+        resumo: resumos.get(l.perfil_id) ?? null,
       },
     ]),
   );

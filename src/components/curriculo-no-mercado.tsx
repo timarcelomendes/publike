@@ -1,3 +1,4 @@
+import { ResumoParaAsEmpresas } from "./resumo-para-as-empresas";
 import { Lock, Sparkles } from "lucide-react";
 import { IA } from "@/components/apelido-da-ia";
 import Link from "next/link";
@@ -206,6 +207,9 @@ type Leitura = {
   melhorar: string[];
   lido_em: string | null;
   desatualizada: boolean;
+  /** o resumo para as empresas (migração 20270901120000): o da leitura e o que a pessoa escreveu */
+  resumo?: string;
+  meu_resumo?: string | null;
 };
 
 /**
@@ -221,6 +225,7 @@ async function LeituraDoCurriculo() {
   if (!l.em_talentos || !l.lido_em || (!l.funcoes.length && !l.melhorar.length)) return null;
   return (
     <div className="flex flex-col gap-3 border-t border-line pt-4">
+      <ResumoParaAsEmpresas automatico={l.resumo ?? ""} meu={l.meu_resumo ?? null} />
       <h3 className="text-label">Para que vagas você está pronto</h3>
       {l.funcoes.length ? (
         <ul className="flex flex-col gap-2">
