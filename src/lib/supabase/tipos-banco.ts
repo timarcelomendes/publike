@@ -2957,7 +2957,7 @@ export type Database = {
       admin_refazer_perguntas_da_funcao: { Args: { p_cbo: string }; Returns: undefined };
       servidor_avisar_curriculos_da_semana: { Args: { p_chave: string; p_limite?: number; p_agora?: boolean }; Returns: number };
       admin_curriculo_semana: { Args: Record<string, never>; Returns: Json };
-      admin_curriculo_semana_ligar: { Args: { p_ligado: boolean }; Returns: undefined };
+      admin_curriculo_semana_ligar: { Args: { p_ligado: boolean; p_novidades?: number }; Returns: undefined };
       servidor_whatsapp_pergunta_curriculo: {
         Args: { p_chave: string; p_marcas_vagas: string[]; p_marca_pergunta: string };
         Returns: Json;

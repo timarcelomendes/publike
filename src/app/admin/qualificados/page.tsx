@@ -71,11 +71,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
     ? null
     : (semana.data as unknown as {
         ligado: boolean;
+        novidades: number;
         receberiam: number;
         com_movimento: number;
         por_dica: Record<string, number>;
         exemplos: string[];
-        avisados_na_semana: number;
+        avisados_7_dias: number;
       });
   if (error)
     return (
@@ -104,7 +105,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
       {erro && <Aviso tipo="erro">{ERROS[erro] ?? ERROS.salvar}</Aviso>}
       {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" titulo="Salvo." />}
       {primeiro(sp.mandados) !== undefined && (
-        <Aviso tipo="sucesso" titulo={`O currículo na semana: ${primeiro(sp.mandados)} avisos mandados agora.`} />
+        <Aviso tipo="sucesso" titulo={`As novidades do currículo: ${primeiro(sp.mandados)} avisos mandados agora.`} />
       )}
 
       <Secao
@@ -208,21 +209,33 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
       {cs && (
         <div id="curriculo-semana" className="scroll-mt-32">
           <Secao
-            titulo="O currículo na semana"
+            titulo="As novidades do currículo"
             descricao={
               <>
-                Uma vez por semana (de segunda a sexta, das 10h às 19h), quem tem currículo recebe no sino, no celular e por
-                e-mail quantas empresas abriram o currículo e quantos convites chegaram, com uma dica: a experiência que não
-                diz o que a pessoa fazia (“toque em Contar falando”), o currículo parado há mais de 45 dias (“Ainda está
-                procurando? Mudou de trabalho?”) ou a primeira coisa a melhorar da leitura. Sem empresa nem convite na
-                semana, só a dica, no máximo uma vez a cada 4 semanas. O e-mail é o modelo “O currículo na semana” (Admin ›
-                E-mails).
+                Sempre que juntar {cs.novidades} novidades desde o último aviso (empresas que abriram o currículo e convites
+                para vaga), quem tem currículo recebe no sino, no celular e por e-mail quantas foram, com uma dica: a
+                experiência que não diz o que a pessoa fazia (“toque em Contar falando”), o currículo parado há mais de 45
+                dias (“Ainda está procurando? Mudou de trabalho?”) ou a primeira coisa a melhorar da leitura. No máximo um
+                por dia, das 9h às 20h. Sem novidade, só a dica, no máximo a cada 4 semanas. O e-mail é o modelo “As
+                novidades do currículo” (Admin › E-mails).
               </>
             }
           >
             <form action={salvarCurriculoDaSemana} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
               <label className="flex flex-col gap-1 text-body-sm">
-                Envio toda semana
+                Avisar a cada
+                <input
+                  type="number"
+                  name="novidades"
+                  min={1}
+                  max={20}
+                  defaultValue={cs.novidades}
+                  className="min-h-11 w-24 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
+                />
+                <span className="text-ink-muted">novidades</span>
+              </label>
+              <label className="flex flex-col gap-1 text-body-sm">
+                Envio
                 <select
                   name="ligado"
                   defaultValue={cs.ligado ? "1" : "0"}
@@ -237,8 +250,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
               </Botao>
             </form>
             <p className="text-body-sm">
-              Agora receberiam {formatarNumero(cs.receberiam)} pessoas ({formatarNumero(cs.com_movimento)} com empresa ou
-              convite na semana) · {formatarNumero(cs.avisados_na_semana)} já receberam nesta semana. Dicas:{" "}
+              Agora receberiam {formatarNumero(cs.receberiam)} pessoas ({formatarNumero(cs.com_movimento)} com{" "}
+              {cs.novidades} novidades ou mais) · {formatarNumero(cs.avisados_7_dias)} avisos nos últimos 7 dias. Dicas:{" "}
               {Object.entries(cs.por_dica)
                 .map(([d, n]) => `${{ sem_descricao: "contar o que fazia", parado: "ainda procurando", melhorar: "melhorar", nenhuma: "nenhuma" }[d] ?? d}: ${n}`)
                 .join(" · ") || "nenhuma"}
