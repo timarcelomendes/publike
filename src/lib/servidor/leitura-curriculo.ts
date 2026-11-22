@@ -122,8 +122,14 @@ export async function leiturasDosCurriculos(limite = 3): Promise<{ lidos: number
   if (!acesso || !iaConfigurada()) return { lidos: 0 };
   const { cliente, chave } = acesso;
   const { data: config, error: erroConfig } = await cliente.rpc("servidor_config_leitura", { p_chave: chave });
-  // sem a migração ou desligado: nada
-  if (erroConfig || !config || !(config as { ligado?: boolean }).ligado) return { lidos: 0 };
+  if (erroConfig) {
+    // sem a migração (PGRST202), nada; outro erro aparece no log e no resumo das filas
+    if (erroConfig.code === "PGRST202") return { lidos: 0 };
+    console.error("Publike: falha ao ler a configuração da leitura do currículo:", erroConfig.message);
+    return { lidos: 0, motivo: "Não foi possível ler a configuração da leitura do currículo." };
+  }
+  // desligado: nada
+  if (!config || !(config as { ligado?: boolean }).ligado) return { lidos: 0 };
   const modelo = (config as { modelo?: string | null }).modelo || MODELO_DA_LEITURA;
   const { data: linhas, error } = await cliente.rpc("servidor_curriculos_para_leitura", { p_chave: chave, p_limite: limite });
   if (error) {
