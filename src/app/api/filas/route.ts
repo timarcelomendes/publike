@@ -30,6 +30,7 @@ import {
   revisarAvaliacoesPendentes,
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
+import { avisarQuemAtende } from "@/lib/servidor/atendem-a-vaga";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { leiturasDosCurriculos } from "@/lib/servidor/leitura-curriculo";
 import { atividadesDasVagas } from "@/lib/servidor/atividades-da-vaga";
@@ -95,6 +96,9 @@ export async function GET(request: Request) {
   const vencimentos = await comTempo(() => avisarVencimentos());
   // procuraram e não acharam vaga: a empresa que já anunciou a função e as agências (uma vez por semana)
   const procuradas = await comTempo(() => avisarProcuradas());
+  // quem atende a vaga e ainda não curtiu: a cada 3 pessoas novas no "Atende a vaga", um por dia por vaga (migração
+  // 20270908120000; começa desligado)
+  const atendem = await comTempo(() => avisarQuemAtende());
   // as novidades do currículo: a cada 3 (empresas que abriram e convites), com uma dica (migrações 20270904120000 e 20270905120000; começa desligado)
   const curriculoSemana = await comTempo(() => avisarCurriculosDaSemana());
   // a rota do currículo: uma semana depois de entregar, "Alguém te chamou?" (migração 20270606120000)
@@ -206,6 +210,7 @@ export async function GET(request: Request) {
     respondeu.motivo,
     vencimentos.motivo,
     procuradas.motivo,
+    atendem.motivo,
     curriculoSemana.motivo,
     rotas.motivo,
     conquistas.motivo,
@@ -263,6 +268,7 @@ export async function GET(request: Request) {
       te_respondeu: respondeu.perguntas,
       vencimentos: vencimentos.avisos,
       procuradas: procuradas.avisos,
+      atendem: atendem.avisos,
       curriculo_semana: curriculoSemana.avisos,
       rotas_perguntadas: rotas.perguntas,
       conquistas: conquistas.perguntas,

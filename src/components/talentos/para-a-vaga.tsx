@@ -2,18 +2,12 @@ import { Briefcase, ChevronDown, ChevronLeft, ChevronRight, Clock, GraduationCap
 import { diaADiaDasVagas, jeitosDasPessoas } from "@/lib/servidor/jeito-de-trabalhar";
 import { IA } from "@/components/apelido-da-ia";
 import Link from "next/link";
-import {
-  calcularAderencia,
-  dizAFuncao,
-  ordemDaNota,
-  perfilDaVaga,
-  requisitosDaVaga,
-  type Aderencia,
-} from "@/lib/aderencia";
+import type { Aderencia } from "@/lib/aderencia";
+import { aderenciasDaVaga } from "@/lib/talentos-da-vaga";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 import { copilotoLiberado, obterAnuncio, talentosParaVaga } from "@/lib/dados";
 import { formatarLugar, plural, tempoRelativo } from "@/lib/formato";
-import { atendeAVaga, entraEmParaAVaga, MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
+import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 import { CurriculoResumo } from "../curriculo-resumo";
 import { SeloCortesia } from "../selo-cortesia";
 import { BotaoConvidar } from "../painel/botao-convidar";
@@ -86,41 +80,17 @@ export async function ParaAVaga({
     // se cada um fazia as mesmas atividades da vaga (a IA leu; migração 20270831120000)
     atividadesDaVaga(vaga.id),
   ]);
-  const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [], dia_a_dia: diaADia.get(vaga.id) ?? null };
-  // a vaga de entrada (aceita quem está começando) que diz a função: no "Atende a vaga", a função não precisa ser a mesma
-  const entrada = perfilDaVaga(requisitos) === "entrada" && dizAFuncao(requisitos);
-  const comAderencia = lista
-    .map((t, i) => ({
-      t,
-      a: calcularAderencia(
-        requisitos,
-        {
-          curriculo: {
-            escolaridade: t.escolaridade,
-            curso: t.curso,
-            experiencias: experiencias[i].experiencias ?? t.experiencias,
-            cursos: t.cursos,
-            cnh: t.cnh,
-            disponibilidade: t.disponibilidade,
-            estudos: t.estudos,
-            titulo: t.titulo,
-            habilidades: t.habilidades,
-            jeito: jeitos.get(t.perfil_id),
-          },
-          respostas: {},
-          cidade: t.cidade,
-          bairro: t.bairro,
-          atividades: atividades.get(t.perfil_id) ?? null,
-        },
-        agora,
-      ),
-    }))
-    .filter(({ a }) => entraEmParaAVaga(a))
-    .sort((x, y) => ordemDaNota(y.a) - ordemDaNota(x.a));
-  const rigidos = comAderencia.filter(({ a }) => atendeAVaga(a));
-  // "Ver mais gente" é só quem fica de fora do "Atende a vaga" (22/11/2026, Marcelo: "mais gente tem desconsiderar
-  // quem está na lista 'Atende a vaga'")
-  const mais = comAderencia.filter(({ a }) => !atendeAVaga(a));
+  const { entrada, comAderencia, rigidos, mais } = aderenciasDaVaga(
+    vagaComCbo,
+    lista,
+    {
+      experiencias: experiencias.map((e) => e.experiencias),
+      diaADia: diaADia.get(vaga.id) ?? null,
+      jeitos,
+      atividades,
+    },
+    agora,
+  );
   const todos = nivel === "rigida" ? rigidos : mais;
   const niveis = (
     <div role="group" aria-label="Quanto o currículo precisa combinar" className="flex flex-wrap gap-2">

@@ -1101,12 +1101,15 @@ async function mensagemDaBusca(
   /** as vagas que já foram nesta conversa */
   jaMandadas: ReadonlySet<string> = new Set(),
   anotarSemVaga?: (funcoes: string[]) => void,
+  /** toda função procurada, com vaga ou sem (Admin › Procuradas sem vaga, procura e oferta; migração 20270909120000) */
+  anotarProcura?: (funcoes: string[]) => void,
 ) {
   const texto = busca?.texto?.trim().slice(0, 40) ?? "";
   const jeito = [...new Set([...(busca?.jeito ?? []).filter(ehJeito), ...jeitoDoTexto(`${texto} ${textos.join(" ")}`)])];
   const funcoes = unicos((busca?.funcoes?.length ? busca.funcoes : [texto]).map(funcaoSemJeito), 3);
   if (!funcoes.length && jeito.some((j) => JEITOS_QUE_PEDEM_A_FUNCAO.includes(j)))
     return { abertura: perguntaDaFuncao(jeito, !local), aberturaPadrao: "", texto: "", botao: null, quantas: 0 };
+  if (funcoes.length) anotarProcura?.(funcoes);
   const vagas = await procurarVagas(
     { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas", jeito },
     { local },
@@ -1455,6 +1458,24 @@ async function anotarProcuraSemVaga(banco: ClienteBanco, chave: string, conversa
     p_origem: "whatsapp",
   });
   if (error && error.code !== "PGRST202") console.error("Publike: não deu para anotar a procura sem vaga:", error.message);
+}
+
+/**
+ * Toda função procurada, com vaga no ar ou sem (migração 20270909120000): a procura do "muita procura e pouca vaga".
+ * Como a de cima, só a função, a cidade e a região; quem procurou vira uma impressão no banco. Sem a migração, nada.
+ */
+async function anotarProcura(banco: ClienteBanco, chave: string, conversa: string, funcoes: string[], local: Local | null) {
+  const fs = unicos(funcoes.map((f) => f.trim()).filter((f) => f.length >= 3), 3);
+  if (!fs.length) return;
+  const { error } = await banco.rpc("servidor_registrar_procura", {
+    p_chave: chave,
+    p_funcoes: fs,
+    p_cidade: local?.cidade ?? null,
+    p_regiao: local?.regiao ?? null,
+    p_quem: conversa,
+    p_origem: "whatsapp",
+  });
+  if (error && error.code !== "PGRST202") console.error("Publike: não deu para anotar a procura:", error.message);
 }
 
 /** O teto do mês (migração 20270808120000); sem a migração ou com erro, null (segue normal). */
@@ -2080,8 +2101,8 @@ export async function atenderConversa(
       if (!busca || (!busca.funcoes?.length && !busca.texto?.trim()))
         return saida(`${ola1}Quer ver as vagas? ${PARA_QUEM_PROCURA.replace(/^Que bom! 😊 /, "")}`, { perfil: "trabalho" });
       const local = lugarDaBusca(busca.cidade ?? "", busca.bairro ?? "");
-      const r = await mensagemDaBusca(busca, local, restam, [], vagasJaMandadas(e.historico), (fs) =>
-        void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+      const r = await mensagemDaBusca(busca, local, restam, [], vagasJaMandadas(e.historico), (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+        (fs) => void anotarProcura(banco, chave, e.chave, fs, local),
       );
       const abertura = r.abertura ?? r.aberturaPadrao;
       const c = await comCurriculoFalando(`${ola1}${abertura}${r.texto ? `\n\n${r.texto}` : ""}`, r.botao);
@@ -2254,8 +2275,8 @@ export async function atenderConversa(
     }
     // respondeu a pergunta da função ("Que tipo de trabalho de freelance…?"): o jeito dela continua valendo
     const jeitoDaPergunta = PERGUNTOU_A_FUNCAO.exec(minhaUltima)?.[1];
-    const r = await mensagemDaBusca(plano.busca, local, restam, jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos, vagasJaMandadas(e.historico), (fs) =>
-      void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+    const r = await mensagemDaBusca(plano.busca, local, restam, jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos, vagasJaMandadas(e.historico), (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+      (fs) => void anotarProcura(banco, chave, e.chave, fs, local),
     );
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
     const c = await comCurriculoFalando(

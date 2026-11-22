@@ -148,6 +148,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   interesse_local: Store,
   procura_na_regiao: UserSearch,
   curriculo_semana: FileText,
+  // quem atende a vaga e ainda não curtiu (migração 20270908120000)
+  atendem_a_vaga: UserCheck,
 };
 
 type Notificacao = {

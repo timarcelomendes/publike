@@ -3562,6 +3562,41 @@ export type Database = {
         Args: { p_modelos: Json; p_apelido: string | null };
         Returns: undefined;
       };
+      servidor_registrar_procura: {
+        Args: {
+          p_chave: string;
+          p_funcoes: string[];
+          p_cidade: string | null;
+          p_regiao: string | null;
+          p_quem: string;
+          p_origem?: string;
+        };
+        Returns: number;
+      };
+      admin_procura_e_oferta: {
+        Args: { p_dias?: number; p_minimo?: number };
+        Returns: { funcao: string; pessoas: number; vagas: number; por_vaga: number | null; desde: string | null }[];
+      };
+      servidor_atendem_vagas: {
+        Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
+        Returns: { anuncio_id: string; conta_id: string; titulo: string; minimo: number }[];
+      };
+      servidor_atendem_dados: {
+        Args: { p_chave: string; p_anuncio: string };
+        Returns: Json;
+      };
+      servidor_atendem_avisar: {
+        Args: { p_chave: string; p_anuncio: string; p_perfis: string[]; p_texto: string };
+        Returns: boolean;
+      };
+      admin_atendem: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      admin_atendem_config: {
+        Args: { p_ligado: boolean | null; p_minimo: number | null };
+        Returns: undefined;
+      };
       config_ia_usos: {
         Args: Record<PropertyKey, never>;
         Returns: Json;
