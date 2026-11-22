@@ -262,6 +262,24 @@ for (let i = 0; i < 4000; i++) {
     falhou(`na vaga de entrada, primeiro emprego (${notas[5].bruta}) e outra área (${notas[6].bruta}) ficaram diferentes`);
 }
 
+// "sistema" só diz a função de TI com o contexto (22/11/2026; Marcelo, com farmacêutica, professora e operadora de caixa
+// em "pessoas para Analista de sistemas"): "Sistema de gestão", "sistema ERP" e o SNGPC não são estudo da função
+{
+  const analista = vaga("Analista de sistemas", { experiencia: "sem", escolaridade_minima: "superior" });
+  const funcao = (o: Record<string, unknown>) => calcularAderencia(analista as never, P({ escolaridade: "superior", ...o }) as never, agora).funcao;
+  const casosSistema: [string, Record<string, unknown>, boolean][] = [
+    ["curso SNGPC (farmácia)", { titulo: "Farmacêutico", cursos: ["Sistema Nacional de Gerenciamento de Produtos Controlados"] }, false],
+    ["habilidade sistema ERP", { titulo: "Operadora de caixa", habilidades: ["Sistema ERP", "Sistema de gestão"] }, false],
+    ["cargo operador de sistema de monitoramento", { experiencias: [exp("Operador de sistema de monitoramento", "2023-01", "2024-01")] }, false],
+    ["faculdade de Sistemas de Informação", { curso: "Sistemas de Informação" }, true],
+    ["curso Análise e desenvolvimento de sistemas", { curso: "Análise e desenvolvimento de sistemas" }, true],
+  ];
+  for (const [nome, o, deveContar] of casosSistema) {
+    const f = funcao(o) ?? 0;
+    if (deveContar !== f >= 0.5) falhou(`Analista de sistemas · ${nome}: a função deu ${f}${deveContar ? ", devia contar" : ", não devia contar"}`);
+  }
+}
+
 if (falhas) {
   console.error(`\n${falhas} ${falhas === 1 ? "falha" : "falhas"}.`);
   process.exit(1);

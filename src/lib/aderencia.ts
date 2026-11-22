@@ -322,6 +322,22 @@ function palavrasDaFuncao(texto: string) {
     .filter((p) => p.length >= 4 && !GENERICAS.has(p));
 }
 
+/**
+ * Palavras que só dizem a função com o contexto dela (22/11/2026; Marcelo, com farmacêutica, professora e operadora de
+ * caixa entre as "pessoas para Analista de sistemas", de 46% a 75%): "Analista de sistemas" diz a função só por
+ * "sistemas" ("analista" é genérica), e "Sistema de gestão", "sistema ERP" ou "SNGPC" no curso, na habilidade ou no
+ * cargo davam "estudou na função" ou "área parecida: tecnologia". No currículo, a palavra só vale com o contexto.
+ */
+const PALAVRAS_COM_CONTEXTO: [RegExp, RegExp][] = [
+  [/^sistema/, /\b(analis\w*|desenvolv\w*|informac\w*|informat\w*|program\w*|computa\w*|software|ti|tecnologia)\b/],
+];
+
+/** As palavras da função do lado do currículo: sem as que precisam de contexto e não têm ("sistema" sem TI). */
+function palavrasDoCurriculo(texto: string) {
+  const t = simples(texto);
+  return palavrasDaFuncao(texto).filter((p) => PALAVRAS_COM_CONTEXTO.every(([palavra, contexto]) => !palavra.test(p) || contexto.test(t)));
+}
+
 /** Mesma raiz: 5 letras iguais no começo (4, se a raiz não for ambígua). "recepcionista" ~ "recepção". */
 function mesmaRaiz(a: string, b: string) {
   let n = 0;
@@ -433,7 +449,7 @@ function tipoDoTrabalho(
 ): { tipo: "mesma" | "parecida" | "outras"; area?: string } {
   const porCbo = pelaCbo(vaga.cbo, cbo);
   const daVaga = palavrasDaFuncao(vaga.titulo);
-  const doCargo = palavrasDaFuncao(cargo);
+  const doCargo = palavrasDoCurriculo(cargo);
   if (porCbo === "exata") return { tipo: "mesma" };
   if (porCbo === "familia") return { tipo: daVaga.length && batem(daVaga, doCargo) ? "mesma" : "parecida" };
   if (porCbo === "parecida") return { tipo: "parecida" };
@@ -472,7 +488,7 @@ function funcaoNoCurriculo(
 ): { parte: number; fator: number; detalhe: string; usado?: string } {
   const tituloDaVaga = vaga.titulo;
   const daVaga = palavrasDaFuncao(tituloDaVaga);
-  const bate = (texto: string) => daVaga.length > 0 && batem(daVaga, palavrasDaFuncao(texto));
+  const bate = (texto: string) => daVaga.length > 0 && batem(daVaga, palavrasDoCurriculo(texto));
   const lido = curriculoLido(cv);
   // a IA leu que as atividades não são as da vaga: o trabalho da mesma função conta como parecido
   const outrasAtividades = atividades?.resultado === "nao";
@@ -516,7 +532,7 @@ function funcaoNoCurriculo(
     // parecida abaixo de quem só estudou)
     return { parte: 0.6, fator: 1, detalhe };
   }
-  const area = cv.titulo && daVaga.length ? areaEmComum(daVaga, palavrasDaFuncao(cv.titulo)) : null;
+  const area = cv.titulo && daVaga.length ? areaEmComum(daVaga, palavrasDoCurriculo(cv.titulo)) : null;
   if (area) return { parte: 0.6, fator: 1, detalhe: `No currículo: ${cv.titulo} (área parecida: ${area})` };
   const formacao = [cv.curso, ...(cv.estudos ?? []).map((e) => e.curso)].find((x): x is string => Boolean(x && bate(x)));
   if (formacao) return { parte: 0.6, fator: 1, detalhe: `Estudou ${formacao} (sem trabalho na função)` };
