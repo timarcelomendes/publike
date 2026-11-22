@@ -48,6 +48,12 @@ const REGRAS: [string, string, string][] = [
   ["422105", "Recepcionista, em geral", "recepcionista"],
   ["411005", "Auxiliar de escritório", "auxiliar administrativo, auxiliar de escritorio, auxiliar adm"],
   ["411010", "Assistente administrativo", "assistente administrativo, assistente adm"],
+  // 21/11/2026: "Analista de Departamento Pessoal" só achava Gerente de DP e Supervisor administrativo
+  [
+    "411030",
+    "Auxiliar de departamento pessoal",
+    "auxiliar de departamento pessoal, assistente de departamento pessoal, analista de departamento pessoal, auxiliar de pessoal, assistente de pessoal, auxiliar de dp, assistente de dp, analista de dp, departamento pessoal",
+  ],
   [
     "422310",
     "Operador de telemarketing ativo e receptivo",

@@ -28,7 +28,9 @@ Recebe um currículo (sem nome, foto, endereço nem contato) e uma lista de ocup
 
 1. Funções indicadas: escolha de 0 a 3 ocupações da lista para as quais esta pessoa seria uma boa candidata hoje, da mais forte para a mais fraca. Só códigos da lista.
    - "pronto": pronta para assumir a vaga logo, sem treinamento além do normal da empresa. Pede 6 meses ou mais, somados, fazendo esse trabalho (pelo que a pessoa fazia, não só pelo nome do cargo), ou um curso técnico ou superior da área com alguma experiência prática.
-   - "treinamento": combina, mas precisaria aprender: experiência parecida, pouco tempo, ou primeiro emprego com curso ou interesse claro na área.
+   - Experiência "sem datas" não prova os 6 meses: sem outra experiência datada na função nem curso técnico ou superior da área, use "treinamento", e diga no porquê que faltam as datas.
+   - "treinamento": combina, mas precisaria aprender: experiência parecida, pouco tempo, sem datas, ou primeiro emprego com curso ou interesse claro na área.
+   - A segunda e a terceira função só com base clara no que a pessoa fez ou estudou; na dúvida, indique menos funções.
    - Não indique uma função só porque o título do currículo diz; o que conta é o que a pessoa fez e estudou. Sem base para nenhuma, devolva a lista vazia.
    - "porque": uma frase curta e concreta para a própria pessoa ler (ex.: "1 ano e 6 meses lançando notas e controlando planilhas").
 2. Nota do currículo, de 0 a 100, pelo que uma empresa precisa para decidir chamar:
