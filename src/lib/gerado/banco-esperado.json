@@ -386,7 +386,8 @@
   "20270907120000_ia_por_uso",
   "20270908120000_atendem_a_vaga",
   "20270909120000_procura_e_oferta",
-  "20270910120000_curriculo_da_semana_de_volta"
+  "20270910120000_curriculo_da_semana_de_volta",
+  "20270911120000_whatsapp_convite_instagram"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -730,6 +731,8 @@
   "c|privado.config_whatsapp.hora_fim": "a7ea0bef69",
   "c|privado.config_whatsapp.hora_inicio": "a7ea0bef69",
   "c|privado.config_whatsapp.id": "8966ae6046",
+  "c|privado.config_whatsapp.instagram_convite": "8966ae6046",
+  "c|privado.config_whatsapp.instagram_minutos": "a7ea0bef69",
   "c|privado.config_whatsapp.intervalo_conversa_horas": "a7ea0bef69",
   "c|privado.config_whatsapp.intervalo_vaga_horas": "a7ea0bef69",
   "c|privado.config_whatsapp.juntar_minutos": "a7ea0bef69",
@@ -3278,6 +3281,7 @@
   "f|public.admin_salvar_ia_por_funcionalidade(p_modelos jsonb, p_apelido text)": "d0e05ca539",
   "f|public.admin_salvar_ia_usos(p_usos jsonb)": "17fe313bba",
   "f|public.admin_salvar_impulso(p_precos jsonb, p_config jsonb)": "1675340c03",
+  "f|public.admin_salvar_instagram_whatsapp(p_ligado boolean, p_minutos integer)": "22412dd532",
   "f|public.admin_salvar_logo_emails(p_mostrar boolean, p_url text)": "6203895ef5",
   "f|public.admin_salvar_meta(p_indicador text, p_valor numeric)": "17c547a72f",
   "f|public.admin_salvar_meta_dataset(p_id text)": "e754ab299c",
@@ -3318,6 +3322,7 @@
   "f|public.admin_whatsapp_conversa_situacao(p_conversa text, p_situacao text)": "172e111416",
   "f|public.admin_whatsapp_conversas(p_filtro text)": "ea6fd36608",
   "f|public.admin_whatsapp_das_curtidas(p_anuncios uuid[])": "b050f5ff8e",
+  "f|public.admin_whatsapp_instagram()": "68bff82175",
   "f|public.admin_whatsapp_pedidos()": "b9013e5bb9",
   "f|public.admin_whatsapp_pedir_aceite()": "dbe0c307ae",
   "f|public.admin_whatsapp_resultados(p_dias integer, p_numeros text)": "d9b577cef0",
@@ -4000,6 +4005,7 @@
   "f|public.servidor_whatsapp_conversa_entrada(p_chave text, p_numero text, p_texto text, p_nome text, p_origem jsonb, p_payload text, p_wamid text)": "9687d930b1",
   "f|public.servidor_whatsapp_conversa_saida(p_chave text, p_conversa text, p_texto text, p_wamid text, p_perfil text, p_equipe boolean, p_motivo text)": "99c2ceac83",
   "f|public.servidor_whatsapp_conversa_ultima(p_chave text, p_conversa text)": "690ad0490f",
+  "f|public.servidor_whatsapp_convite_instagram(p_chave text, p_marca text, p_marcas_ok text[])": "7f3752b7d3",
   "f|public.servidor_whatsapp_juntar(p_chave text, p_nova uuid, p_numero text, p_conta uuid)": "04ff655ac2",
   "f|public.servidor_whatsapp_juntar_info(p_chave text, p_usuario uuid)": "e8ddf7e095",
   "f|public.servidor_whatsapp_leitura(p_chave text, p_conversa text, p_numero text, p_fonte text, p_resultado text, p_empresa text, p_motivo text, p_ms integer, p_vagas jsonb, p_midias text[])": "d38cc799d2",

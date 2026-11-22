@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuscaDeNovo } from "@/components/admin/busca-de-novo";
-import { TetoDoMesWhatsapp } from "@/components/admin/teto-whatsapp-dados";
+import { ConviteInstagramWhatsapp, TetoDoMesWhatsapp } from "@/components/admin/teto-whatsapp-dados";
 import {
   diaDaMensagem,
   horaDaMensagem,
@@ -1591,6 +1591,10 @@ function AbaConversas({
         {/* o teto do mês (migração 20270808120000) */}
         <Suspense fallback={null}>
           <TetoDoMesWhatsapp />
+        </Suspense>
+        {/* o convite do Instagram (migração 20270911120000) */}
+        <Suspense fallback={null}>
+          <ConviteInstagramWhatsapp />
         </Suspense>
       </Secao>
 

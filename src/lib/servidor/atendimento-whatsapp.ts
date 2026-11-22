@@ -1,7 +1,7 @@
 import "server-only";
 import { textoDaAjuda } from "@/lib/ajuda";
 import { BAIRROS } from "@/lib/bairros";
-import { SITE_URL } from "@/lib/config";
+import { REDES_DO_PUBLIKE, SITE_URL } from "@/lib/config";
 import { CATEGORIAS, CIDADES, LIMITES_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarLugar, valorDoAnuncio } from "@/lib/formato";
 import { modeloPara } from "@/lib/ia/funcionalidades";
@@ -2446,6 +2446,13 @@ export const LEMBRETE_PERGUNTA =
 export const LEMBRETE_SEMPRE =
   "Uma dica: sempre que quiser ver vagas, é só me chamar aqui no WhatsApp e dizer o que você procura. Entram vagas novas todo dia. 😊";
 const marca = (t: string) => t.slice(0, 24);
+/**
+ * O convite do Instagram (22/11/2026; migração 20270911120000): uma vez, uns 30 minutos depois das vagas, para quem não
+ * respondeu. Liga e desliga em Admin › WhatsApp › Conversas.
+ */
+export const CONVITE_INSTAGRAM =
+  "Enquanto isso, segue o Publike no Instagram 📲 Lá tem vagas novas, dicas de currículo e de entrevista e os golpes de vaga para fugir.";
+const BOTAO_INSTAGRAM: Botao = { titulo: "Seguir no Instagram", caminho: REDES_DO_PUBLIKE.instagram };
 
 /** Manda, da parte do atendimento, uma mensagem numa conversa e guarda (com o botão, se for). */
 async function mandarDoRobo(
@@ -2458,7 +2465,8 @@ async function mandarDoRobo(
   botao: Botao | null,
   botoes?: { id: string; titulo: string }[],
 ): Promise<{ ok: true } | { ok: false; erro: string }> {
-  const url = botao ? link(botao.caminho) : null;
+  // o endereço de fora (o Instagram) vai como está; os do site levam a origem do atendimento
+  const url = botao ? (botao.caminho.startsWith("https://") ? botao.caminho : link(botao.caminho)) : null;
   let r = botoes?.length
     ? await enviarComBotoes(cfg, numero, caber(texto), botoes)
     : botao && url
@@ -2527,6 +2535,22 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
       else {
         falhas++;
         console.error("Publike: a pergunta do currículo no WhatsApp não saiu:", r.erro);
+      }
+    }
+  // o convite do Instagram (migração 20270911120000; sem ela, nada): depois das vagas, ou da pergunta do currículo que
+  // ficou sem resposta
+  const { data: paraOInstagram, error: erroDoInstagram } = await banco.rpc("servidor_whatsapp_convite_instagram", {
+    p_chave: chave,
+    p_marca: marca(CONVITE_INSTAGRAM),
+    p_marcas_ok: [...MARCAS_DOS_LINKS_DAS_VAGAS, TEXTOS_DO_CURRICULO.pergunta.slice(0, 40)],
+  });
+  if (!erroDoInstagram)
+    for (const l of (paraOInstagram ?? []) as unknown as { chave: string; numero: string }[]) {
+      const r = await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, CONVITE_INSTAGRAM, BOTAO_INSTAGRAM);
+      if (r.ok) enviados++;
+      else {
+        falhas++;
+        console.error("Publike: o convite do Instagram no WhatsApp não saiu:", r.erro);
       }
     }
   // sem a migração: nada

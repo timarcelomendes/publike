@@ -3562,6 +3562,18 @@ export type Database = {
         Args: { p_modelos: Json; p_apelido: string | null };
         Returns: undefined;
       };
+      servidor_whatsapp_convite_instagram: {
+        Args: { p_chave: string; p_marca: string; p_marcas_ok: string[] };
+        Returns: Json;
+      };
+      admin_whatsapp_instagram: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      admin_salvar_instagram_whatsapp: {
+        Args: { p_ligado: boolean; p_minutos: number };
+        Returns: undefined;
+      };
       servidor_registrar_procura: {
         Args: {
           p_chave: string;
