@@ -164,6 +164,7 @@ export async function chamarClaude(
   const sistema = formatoNoTexto
     ? `${p.sistema}\n\nPrimeiro faça as buscas na internet (a ferramenta web_search), quantas precisar. No fim, responda só com um JSON válido, sem texto antes nem depois, neste formato (JSON Schema):\n${JSON.stringify(p.esquema!.schema)}`
     : p.sistema;
+  const opus = p.modelo.startsWith("claude-opus");
   const corpo: Record<string, unknown> = {
     model: p.modelo,
     system:
@@ -172,10 +173,18 @@ export async function chamarClaude(
         : sistema,
     max_tokens: p.buscaNaWeb ? p.maxTokens + 2000 : p.maxTokens,
     messages: [{ role: "user", content: conteudo }],
-    // o Haiku responde direto; o Sonnet só raciocina entre uma busca e outra
-    thinking: { type: p.raciocinio === "sem" ? "disabled" : "between_tools" },
-    ...(p.esquema && !formatoNoTexto
-      ? { output_config: { format: { type: "json_schema", schema: esquemaParaClaude(p.esquema.schema) } } }
+    // o Haiku responde direto; o Sonnet só raciocina entre uma busca e outra; o Opus só aceita o raciocínio
+    // adaptativo, com o esforço em output_config (21/11/2026: "thinking.type.disabled" e "between_tools" dão 400)
+    thinking: { type: opus ? "adaptive" : p.raciocinio === "sem" ? "disabled" : "between_tools" },
+    ...(opus || (p.esquema && !formatoNoTexto)
+      ? {
+          output_config: {
+            ...(opus ? { effort: "low" } : {}),
+            ...(p.esquema && !formatoNoTexto
+              ? { format: { type: "json_schema", schema: esquemaParaClaude(p.esquema.schema) } }
+              : {}),
+          },
+        }
       : {}),
     ...(p.buscaNaWeb
       ? {

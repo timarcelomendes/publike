@@ -137,7 +137,8 @@ export async function lerCurriculoComIA(
     modelo,
     sistema: SISTEMA,
     mensagem: mensagemDaLeitura(cv, opcoes),
-    maxTokens: 900,
+    // com folga para o raciocínio adaptativo do Opus (a resposta em si fica em uns 500)
+    maxTokens: 2500,
     esquema: { nome: "leitura_do_curriculo", schema: ESQUEMA },
     tempoLimite: 60_000,
   });
