@@ -65,8 +65,9 @@ function lerBusca(sp: Awaited<Parametros>) {
     pagina,
     vaga: primeiro(sp.vaga) ?? null,
     todos: primeiro(sp.ver) === "todos",
-    // "Para a sua vaga": a sugestão leve (padrão) ou a rígida (`nivel=rigida`)
-    nivel: primeiro(sp.nivel) === "rigida" ? ("rigida" as const) : ("leve" as const),
+    // "Para a sua vaga": quem atende a vaga (padrão desde 22/11/2026; Marcelo: "Atende a vaga precisa ser default e o
+    // usuário decide expandir") ou mais gente (`nivel=leve`)
+    nivel: primeiro(sp.nivel) === "leve" ? ("leve" as const) : ("rigida" as const),
   };
 }
 
@@ -357,7 +358,7 @@ async function Lista({
           vaga={vaga}
           pagina={f.pagina}
           href={(n, nivel) =>
-            `/talentos?vaga=${vaga.id}${nivel === "rigida" ? "&nivel=rigida" : ""}${n > 1 ? `&pagina=${n}` : ""}`
+            `/talentos?vaga=${vaga.id}${nivel === "leve" ? "&nivel=leve" : ""}${n > 1 ? `&pagina=${n}` : ""}`
           }
           agora={agora}
           nivel={f.nivel}

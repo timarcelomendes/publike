@@ -55,7 +55,7 @@ export async function ParaAVaga({
   pagina,
   href,
   agora,
-  nivel = "leve",
+  nivel = "rigida",
 }: {
   vaga: { id: string; titulo: string };
   pagina: number;
@@ -122,15 +122,6 @@ export async function ParaAVaga({
   const niveis = (
     <div role="group" aria-label="Quanto o currículo precisa combinar" className="flex flex-wrap gap-2">
       <Link
-        href={href(1, "leve")}
-        aria-current={nivel === "leve" ? "true" : undefined}
-        className={classesChip(nivel === "leve")}
-        scroll={false}
-      >
-        Mais gente
-        <span className="tabular-nums opacity-70">{comAderencia.length}</span>
-      </Link>
-      <Link
         href={href(1, "rigida")}
         aria-current={nivel === "rigida" ? "true" : undefined}
         className={classesChip(nivel === "rigida")}
@@ -138,6 +129,15 @@ export async function ParaAVaga({
       >
         Atende a vaga
         <span className="tabular-nums opacity-70">{rigidos.length}</span>
+      </Link>
+      <Link
+        href={href(1, "leve")}
+        aria-current={nivel === "leve" ? "true" : undefined}
+        className={classesChip(nivel === "leve")}
+        scroll={false}
+      >
+        Ver mais gente
+        <span className="tabular-nums opacity-70">{comAderencia.length}</span>
       </Link>
     </div>
   );
