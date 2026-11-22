@@ -107,7 +107,7 @@ export type DecisaoIA = { decisao: "aprovado" | "retido"; categorias: string[]; 
 
 export async function revisarAnuncio(a: AnuncioParaIA, modeloEscolhido: string): Promise<DecisaoIA> {
   const { texto, parada, modelo } = await chamarIA({
-    funcionalidade: "revisao",
+    uso: "revisar_anuncio",
     modelo: modeloEscolhido,
     sistema: SISTEMA_MODERACAO,
     // sem "<" e ">" no texto de quem publicou: ninguém fecha o <anuncio> para escrever instruções fora dele
@@ -185,7 +185,7 @@ export type TextoDeAvaliacao = {
 export async function revisarAvaliacao(a: TextoDeAvaliacao, modeloEscolhido: string): Promise<DecisaoIA> {
   const quem = a.parte === "resposta" ? "Resposta do profissional à avaliação" : "Comentário de quem contratou";
   const { texto, parada, modelo } = await chamarIA({
-    funcionalidade: "revisao",
+    uso: "revisar_avaliacao",
     modelo: modeloEscolhido,
     sistema: SISTEMA_AVALIACAO,
     mensagem: `<avaliacao>\nServiço: ${a.titulo_servico}\nNota: ${a.nota} de 5\n${quem}:\n${a.texto ?? ""}\n</avaliacao>`,
@@ -251,7 +251,7 @@ export type RecadoParaIA = { texto: string; citado: string | null };
 /** Revisa um recado da linha do tempo. */
 export async function revisarRecado(r: RecadoParaIA, modeloEscolhido: string): Promise<DecisaoIA> {
   const { texto, parada, modelo } = await chamarIA({
-    funcionalidade: "revisao",
+    uso: "revisar_recado",
     modelo: modeloEscolhido,
     sistema: SISTEMA_RECADO,
     mensagem: `<recado>\n${r.citado ? `Vaga ou serviço citado: ${r.citado}\n` : ""}Texto:\n${r.texto}\n</recado>`,
@@ -304,7 +304,7 @@ export type ComentarioParaIA = {
 
 export async function revisarComentario(c: ComentarioParaIA, modeloEscolhido: string): Promise<DecisaoIA> {
   const { texto, parada, modelo } = await chamarIA({
-    funcionalidade: "revisao",
+    uso: "revisar_comentario",
     modelo: modeloEscolhido,
     sistema: SISTEMA_COMENTARIO,
     mensagem: `<comentario>\nVaga: ${c.vaga}\n${c.respondendo ? `Respondendo ao comentário: ${c.respondendo}\n` : ""}Quem escreveu: ${c.de_quem_publicou ? "quem publicou a vaga" : "uma pessoa interessada"}\nTexto:\n${c.texto}\n</comentario>`,
@@ -351,7 +351,7 @@ const ESQUEMA_TEXTO = {
 
 export async function sugerirTexto(a: AnuncioParaIA, modelo: string): Promise<{ titulo: string; descricao: string }> {
   const { texto, parada } = await chamarIA({
-    funcionalidade: "textos",
+    uso: "melhorar_anuncio",
     modelo,
     sistema: SISTEMA_TEXTO,
     mensagem: `<rascunho>\n${descreverAnuncio(a)}\n</rascunho>`,
@@ -384,7 +384,7 @@ Não invente números: use só o que está nos dados. Seja direto, sem introduç
 
 export async function escreverResumo(dados: unknown, modeloEscolhido: string): Promise<{ texto: string; modelo: string }> {
   const { texto, modelo } = await chamarIA({
-    funcionalidade: "admin",
+    uso: "resumo_painel",
     modelo: modeloEscolhido,
     sistema: SISTEMA_RESUMO,
     mensagem: `<dados>\n${JSON.stringify(dados, null, 2)}\n</dados>`,
@@ -426,7 +426,7 @@ const ESQUEMA_CANDIDATO = {
 
 export async function resumirCandidato(dados: string, modelo: string): Promise<ResumoCandidato & { modelo: string }> {
   const r0 = await chamarIA({
-    funcionalidade: "empresa",
+    uso: "resumo_candidato",
     modelo,
     sistema: SISTEMA_CANDIDATO,
     mensagem: dados,
@@ -479,7 +479,7 @@ export async function resumirEntrevistaVideo(
   modelo: string,
 ): Promise<ResumoEntrevistaVideo & { modelo: string }> {
   const r0 = await chamarIA({
-    funcionalidade: "empresa",
+    uso: "entrevista_resumo",
     modelo,
     sistema: SISTEMA_ENTREVISTA_VIDEO,
     mensagem: dados,
@@ -524,7 +524,7 @@ const PROIBIDO_NA_PERGUNTA =
 
 export async function sugerirPerguntasVideo(dados: string, modelo: string): Promise<{ perguntas: string[]; modelo: string }> {
   const r0 = await chamarIA({
-    funcionalidade: "empresa",
+    uso: "entrevista_perguntas",
     modelo,
     sistema: SISTEMA_PERGUNTAS_VIDEO,
     mensagem: dados,

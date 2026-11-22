@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { protegerAcao } from "@/lib/acao-segura";
 import { salvarConfigIA } from "@/lib/acoes/admin";
-import { FUNCIONALIDADES_IA } from "@/lib/ia-nomes";
+import { ChevronDown } from "lucide-react";
+import { escolhasDosUsos, FUNCIONALIDADES_IA, GRUPOS_DO_USO, USOS_IA } from "@/lib/ia-nomes";
 import type { ConfigSite } from "@/lib/admin/dados";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
@@ -78,9 +79,12 @@ export function FormConfigIA({
   modelos,
   chaves,
   uso,
+  transcricao,
 }: {
   config: ConfigSite;
   modelos: readonly Modelo[];
+  /** os modelos de transcrição (só a OpenAI); o primeiro é o padrão */
+  transcricao: readonly { id: string; nome: string }[];
   chaves: Chaves;
   /** null: sem a migração do uso (não mostra a contagem) */
   uso: UsoDaFuncionalidade | null;
@@ -92,6 +96,7 @@ export function FormConfigIA({
     config.ia_modelos && typeof config.ia_modelos === "object" && !Array.isArray(config.ia_modelos)
       ? (config.ia_modelos as Record<string, string | undefined>)
       : {};
+  const escolhasUsos = escolhasDosUsos(config.ia_usos);
   return (
     <form action={acao} className="flex flex-col gap-6">
       <fieldset className="flex flex-col gap-1">
@@ -156,70 +161,112 @@ export function FormConfigIA({
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-label">Modelo de cada funcionalidade</legend>
+        <legend className="mb-1 text-label">Cada uso da IA</legend>
         <p className="text-body-sm text-ink-muted">
-          Ponha num modelo que escreve melhor só o que precisa (o chat, por exemplo) e deixe o resto no mais barato.
-          {uso && " Embaixo de cada uma, as chamadas dos últimos 30 dias e o custo estimado pelos tokens."}
+          Tudo o que chama a IA, um por um: desmarque para desligar só aquele uso e escolha o modelo dele. Sem escolha,
+          vale o modelo do grupo (ou o padrão). Ponha num modelo que escreve melhor só o que precisa e deixe o resto no
+          mais barato. Uma mudança vale em até meio minuto.
+          {uso && " Em cada um, as chamadas dos últimos 30 dias e o custo estimado pelos tokens."}
         </p>
         {uso && (
           <p className="text-label">
             {textoDoUso(somar(uso)).replace("em 30 dias", "em 30 dias, no total")}
           </p>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {FUNCIONALIDADES_IA.map((f) => {
-            const escolhido = escolhas[f.id];
+        <div className="flex flex-col divide-y divide-line rounded-md border border-line">
+          {GRUPOS_DO_USO.map((g) => {
+            const usos = USOS_IA.filter((u) => u.grupo === g.id);
+            const funcionalidade = FUNCIONALIDADES_IA.find((f) => f.id === g.id);
+            const doGrupo = escolhas[g.id];
+            const modeloDoGrupo = funcionalidade
+              ? (modelos.find((m) => m.id === doGrupo)?.nome ?? nomePadrao)
+              : g.id === "transcricao"
+                ? transcricao[0].nome
+                : "o do Admin › Qualificados";
+            const ligados = usos.filter((u) => escolhasUsos[u.id]?.ligado !== false).length;
+            // o uso do grupo: o de antes de 22/11/2026 (contado pelo grupo) e o de cada uso
+            const totalDoGrupo = uso ? somar(Object.fromEntries([g.id, ...usos.map((u) => u.id)].map((k) => [k, uso[k]]))) : null;
+            const opcoes = g.id === "transcricao" ? transcricao : modelos;
             return (
-              <label key={f.id} className="flex flex-col gap-1">
-                <span className="text-label">{f.nome}</span>
-                <span className="text-body-sm text-ink-muted">{f.ajuda}</span>
-                <select
-                  name={`modelo_${f.id}`}
-                  defaultValue={escolhido && modelos.some((m) => m.id === escolhido) ? escolhido : ""}
-                  className="mt-1 min-h-11 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
-                >
-                  <option value="">Padrão ({nomePadrao})</option>
-                  {modelos.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nome}
-                    </option>
-                  ))}
-                </select>
-                {uso && <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso[f.id])}</span>}
-              </label>
+              <details key={g.id} className="group">
+                <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
+                  <ChevronDown aria-hidden className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+                  <span className="text-label">{g.nome}</span>
+                  <span className={ligados < usos.length ? "text-body-sm text-terra-text" : "text-body-sm text-ink-muted"}>
+                    {ligados === usos.length
+                      ? usos.length === 1
+                        ? "ligado"
+                        : `${usos.length} ligados`
+                      : `${ligados} de ${usos.length} ligados`}
+                  </span>
+                  {totalDoGrupo && (
+                    <span className="basis-full pl-7 text-body-sm text-ink-muted tabular-nums">{textoDoUso(totalDoGrupo)}</span>
+                  )}
+                </summary>
+                <div className="flex flex-col gap-4 px-4 pb-4 pl-11">
+                  {funcionalidade && (
+                    <label className="flex flex-col gap-1">
+                      <span className="text-body-sm font-medium">Modelo do grupo</span>
+                      <span className="text-body-sm text-ink-muted">{funcionalidade.ajuda}</span>
+                      <select
+                        name={`modelo_${funcionalidade.id}`}
+                        defaultValue={doGrupo && modelos.some((m) => m.id === doGrupo) ? doGrupo : ""}
+                        className="mt-1 min-h-11 max-w-sm rounded-md border border-line-strong bg-surface-200 px-3 text-body"
+                      >
+                        <option value="">Padrão ({nomePadrao})</option>
+                        {modelos.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <ul className="flex flex-col gap-4">
+                    {usos.map((u) => {
+                      const e = escolhasUsos[u.id];
+                      return (
+                        <li key={u.id} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_16rem] sm:items-start">
+                          <label className="flex cursor-pointer items-start gap-3">
+                            <input
+                              type="checkbox"
+                              name={`uso_ligado_${u.id}`}
+                              defaultChecked={e?.ligado !== false}
+                              className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+                            />
+                            <span>
+                              <span className="block text-label">{u.nome}</span>
+                              <span className="block text-body-sm text-ink-muted">{u.ajuda}</span>
+                              {uso && (
+                                <span className="block text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso[u.id])}</span>
+                              )}
+                            </span>
+                          </label>
+                          <select
+                            name={`uso_modelo_${u.id}`}
+                            aria-label={`Modelo de ${u.nome}`}
+                            defaultValue={e?.modelo && opcoes.some((m) => m.id === e.modelo) ? e.modelo : ""}
+                            className="min-h-11 rounded-md border border-line-strong bg-surface-200 px-3 text-body"
+                          >
+                            <option value="">
+                              {g.id === "transcricao" ? `Padrão (${modeloDoGrupo})` : `Do grupo (${modeloDoGrupo})`}
+                            </option>
+                            {opcoes
+                              .filter((m) => g.id !== "transcricao" || m.id !== transcricao[0].id)
+                              .map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.nome}
+                                </option>
+                              ))}
+                          </select>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </details>
             );
           })}
-          {uso && (
-            // a transcrição não tem escolha de modelo (só a OpenAI transcreve): só o uso
-            <div className="flex flex-col gap-1">
-              <span className="text-label">Transcrição de áudio</span>
-              <span className="text-body-sm text-ink-muted">
-                O currículo falado e as respostas da entrevista em vídeo (sempre no gpt-4o-mini-transcribe).
-              </span>
-              <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.transcricao)}</span>
-            </div>
-          )}
-          {uso && (
-            // a leitura do currículo: o modelo é escolhido em Admin › Qualificados (migração 20270826120000)
-            <div className="flex flex-col gap-1">
-              <span className="text-label">Leitura do currículo</span>
-              <span className="text-body-sm text-ink-muted">
-                As funções indicadas dos currículos de Talentos. O modelo e o ligar ficam em Admin › Qualificados.
-              </span>
-              <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.qualificar)}</span>
-            </div>
-          )}
-          {uso && (
-            // as atividades da vaga: o modelo também é escolhido em Admin › Qualificados (migração 20270831120000)
-            <div className="flex flex-col gap-1">
-              <span className="text-label">Atividades da vaga</span>
-              <span className="text-body-sm text-ink-muted">
-                Se a pessoa fazia as mesmas atividades da vaga, para o % de combina. O modelo e o ligar ficam em Admin ›
-                Qualificados.
-              </span>
-              <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.atividades)}</span>
-            </div>
-          )}
         </div>
       </fieldset>
 

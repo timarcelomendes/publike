@@ -150,10 +150,13 @@ export async function lerCurriculoComIA(
   cv: CurriculoParaLer,
   opcoes: OpcaoDeFuncao[],
   modelo: string,
+  /** o modelo vale mesmo com outro escolhido no Admin › IA (a comparação do Admin › Qualificados) */
+  modeloFixo = false,
 ): Promise<(LeituraDoCurriculo & { modelo: string; tokens: { entrada: number; saida: number } | null }) | null> {
   const r = await chamarIA({
-    funcionalidade: "qualificar",
+    uso: "leitura_curriculo",
     modelo,
+    modeloFixo,
     sistema: SISTEMA,
     mensagem: mensagemDaLeitura(cv, opcoes),
     // com folga para o raciocínio adaptativo do Opus (a resposta em si fica em uns 500)

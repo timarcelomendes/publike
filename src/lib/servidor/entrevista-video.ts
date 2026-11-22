@@ -148,6 +148,7 @@ export async function processarIAVideo(d: {
         const blob = await resposta.blob();
         const ext = (blob.type || "").includes("mp4") ? "mp4" : "webm";
         transcricoes[r.pergunta_id] = await transcrever(
+          "transcricao_entrevista",
           blob,
           `resposta.${ext}`,
           `Uma pessoa responde a uma entrevista de emprego para a vaga de ${d.vaga.titulo}. A pergunta: ${r.pergunta}`,

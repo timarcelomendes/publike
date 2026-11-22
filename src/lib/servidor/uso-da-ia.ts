@@ -1,6 +1,6 @@
 import "server-only";
 import { MODO_DEMO } from "@/lib/config";
-import type { FuncionalidadeIA } from "@/lib/ia-nomes";
+import type { UsoIA } from "@/lib/ia-nomes";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { chaveDoServidor, chaveSecretaSupabase } from "./ambiente";
@@ -12,15 +12,9 @@ import { chaveDoServidor, chaveSecretaSupabase } from "./ambiente";
 /** Espera no máximo isso pelo banco (a pessoa está esperando a resposta da IA). */
 const ESPERA = 1500;
 
-/**
- * As funcionalidades com escolha de modelo (Admin › IA), a transcrição de áudio (só a OpenAI, sem escolha) e a leitura
- * do currículo e as atividades da vaga (o modelo é escolhido em Admin › Qualificados, migrações 20270826120000 e
- * 20270831120000).
- */
-export type FuncionalidadeDoUso = FuncionalidadeIA | "transcricao" | "qualificar" | "atividades";
-
 export async function contarUsoDaIA(
-  funcionalidade: FuncionalidadeDoUso,
+  /** o uso da IA (Admin › IA; antes de 22/11/2026, o grupo: "chat", "ler"...) */
+  funcionalidade: UsoIA,
   modelo: string,
   tokens: { entrada: number; saida: number } | null,
   falhou = false,

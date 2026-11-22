@@ -1355,7 +1355,7 @@ async function revisaoDasPalavras(
   const tentarDeNovo =
     !g || (g.erro && Date.parse(g.em ?? "") < Date.now() - 86_400_000);
   if (!tentarDeNovo) return { revisao: guardada, pronta: true };
-  const modelo = await modeloDoImpulso(a);
+  const modelo = await modeloDoImpulso(a, "impulso_revisar");
   if (!modelo) return { revisao: guardada, pronta: true };
   if (volta.revisoes >= 1 || Date.now() - volta.inicio > 12_000)
     return { revisao: guardada, pronta: false };

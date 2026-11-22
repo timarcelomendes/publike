@@ -382,7 +382,8 @@
   "20270903120000_curriculo_whatsapp_fase1",
   "20270904120000_curriculo_da_semana",
   "20270905120000_curriculo_novidades",
-  "20270906120000_procuradas_a_cada_3"
+  "20270906120000_procuradas_a_cada_3",
+  "20270907120000_ia_por_uso"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2065,6 +2066,7 @@
   "c|public.config_site.ia_noticias": "8966ae6046",
   "c|public.config_site.ia_reserva": "8966ae6046",
   "c|public.config_site.ia_resumo": "8966ae6046",
+  "c|public.config_site.ia_usos": "664d5eacff",
   "c|public.config_site.id": "8966ae6046",
   "c|public.config_site.metas": "664d5eacff",
   "c|public.config_site.noticias_ultima_busca": "de599dc94b",
@@ -3257,6 +3259,7 @@
   "f|public.admin_salvar_gasto(p_mes date, p_canal text, p_valor numeric)": "84f51f388a",
   "f|public.admin_salvar_grupos(p_config jsonb)": "87890ee76c",
   "f|public.admin_salvar_ia_por_funcionalidade(p_modelos jsonb, p_apelido text)": "d0e05ca539",
+  "f|public.admin_salvar_ia_usos(p_usos jsonb)": "17fe313bba",
   "f|public.admin_salvar_impulso(p_precos jsonb, p_config jsonb)": "1675340c03",
   "f|public.admin_salvar_logo_emails(p_mostrar boolean, p_url text)": "6203895ef5",
   "f|public.admin_salvar_meta(p_indicador text, p_valor numeric)": "17c547a72f",
@@ -3364,6 +3367,7 @@
   "f|public.comentarios_da_vaga(p_anuncio uuid)": "d13224cd67",
   "f|public.comentarios_das_minhas_vagas(p_anuncios uuid[])": "264d9904c9",
   "f|public.comentarios_das_vagas(p_ids uuid[])": "42fba2de7c",
+  "f|public.config_ia_usos()": "597b404249",
   "f|public.config_publica()": "c2daa8ca31",
   "f|public.confirmar_conquista(p_anuncio uuid, p_perfil uuid, p_sim boolean)": "64d0332335",
   "f|public.conquistas_para_confirmar(p_anuncio uuid)": "b04e8bf3ec",
@@ -3794,7 +3798,7 @@
   "f|public.servidor_compra_pacote(p_chave text, p_conta uuid, p_anuncio uuid, p_candidatos integer, p_forma text, p_sandbox boolean)": "8bf55f6a35",
   "f|public.servidor_config_atividades(p_chave text)": "2b913e48a1",
   "f|public.servidor_config_leitura(p_chave text)": "a394675275",
-  "f|public.servidor_contar_uso_da_ia(p_chave text, p_funcionalidade text, p_modelo text, p_falhou boolean, p_entrada integer, p_saida integer, p_buscas integer)": "c439a57460",
+  "f|public.servidor_contar_uso_da_ia(p_chave text, p_funcionalidade text, p_modelo text, p_falhou boolean, p_entrada integer, p_saida integer, p_buscas integer)": "6d16b110ac",
   "f|public.servidor_contas_com_vagas(p_chave text)": "36f93294d2",
   "f|public.servidor_conteudo_conferido(p_chave text, p_slug text, p_resultado text, p_dados jsonb, p_motivo text)": "f2173dc49e",
   "f|public.servidor_conteudos_para_conferir(p_chave text, p_slugs text[], p_quantos integer)": "f426c8cd39",

@@ -1639,6 +1639,7 @@ async function audioEmTexto(cfg: ConfigMeta, audio: { id: string; tipo: string |
     let relogio: ReturnType<typeof setTimeout> | undefined;
     const texto = await Promise.race([
       transcrever(
+        "transcricao_whatsapp",
         arquivo.dados,
         `audio.${extensao}`,
         `Uma pessoa manda um áudio no WhatsApp do Publike, um site de vagas de emprego em ${ONDE_FUNCIONA}, sobre vagas, currículo, candidatura ou como contratar.`,
@@ -2159,7 +2160,7 @@ export async function atenderConversa(
   const vagasPorAqui = Boolean(await configVagasWhatsapp(banco, chave).catch(() => null));
   try {
     const { texto } = await chamarIA({
-      funcionalidade: "chat",
+      uso: "whatsapp_atendimento",
       modelo,
       sistema: instrucoes(),
       mensagem: `${contexto(e, jaFalou, agora, vagasPorAqui)}\n\n${transcricao(e.historico.length ? e.historico : [{ de: "pessoa", texto: m.texto }])}`,
@@ -2328,7 +2329,7 @@ export async function conversasParaProcurarDeNovo(chaves: string[]) {
 async function buscaDaConversa(historico: Mensagem[], modelo: string): Promise<Busca | null> {
   try {
     const { texto } = await chamarIA({
-      funcionalidade: "chat",
+      uso: "whatsapp_busca",
       modelo,
       sistema: `Você lê uma conversa do WhatsApp do Publike (vagas de emprego em ${ONDE_FUNCIONA}) com alguém que procura trabalho, e diz o que procurar para ela. ${REGRAS_DA_BUSCA} "busca.categoria" só se tiver certeza (senão "todas"); "busca.cidade" com a cidade onde ela mora ou quer trabalhar, se ela disse (uma das cidades da lista; senão vazio); "busca.bairro" com o bairro, como ela escreveu (senão vazio); "busca.fora" com a cidade que ela disse quando fica fora de onde o Publike funciona (senão vazio). Se ela não disse a função, "busca.texto" e "busca.funcoes" ficam vazios.`,
       mensagem: transcricao(historico),

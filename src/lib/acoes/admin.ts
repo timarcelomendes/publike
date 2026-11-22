@@ -28,7 +28,8 @@ import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 import { tituloLegivel } from "@/lib/conferir-anuncio";
 import { modeloPara } from "@/lib/ia/funcionalidades";
-import { FUNCIONALIDADES_IA, limparApelido } from "@/lib/ia-nomes";
+import { FUNCIONALIDADES_IA, limparApelido, USOS_IA, type EscolhaDoUso } from "@/lib/ia-nomes";
+import { MODELOS_TRANSCRICAO } from "@/lib/ia/transcrever";
 import { TAG_APELIDO_IA } from "@/lib/servidor/apelido-ia";
 import { emailValido } from "@/lib/email-valido";
 
@@ -1067,6 +1068,25 @@ export async function salvarConfigIA(_anterior: EstadoForm, formData: FormData):
     };
   }
   if (erroModelos) return { ok: false, erro: mensagemDeErro(erroModelos) };
+  // cada uso: desligado e o modelo próprio (migração 20270907120000); só o que foge do normal vai para o banco
+  const usos: Record<string, EscolhaDoUso> = {};
+  for (const u of USOS_IA) {
+    const modelo = texto(formData, `uso_modelo_${u.id}`);
+    const opcoes: readonly { id: string }[] = u.grupo === "transcricao" ? MODELOS_TRANSCRICAO : MODELOS_IA;
+    const e: EscolhaDoUso = {
+      ...(marcado(formData, `uso_ligado_${u.id}`) ? {} : { ligado: false }),
+      ...(modelo && opcoes.some((m) => m.id === modelo) ? { modelo } : {}),
+    };
+    if (Object.keys(e).length) usos[u.id] = e;
+  }
+  const { error: erroUsos } = await c.rpc("admin_salvar_ia_usos", { p_usos: usos });
+  if (erroUsos?.code === "PGRST202") {
+    return {
+      ok: false,
+      erro: "O resto foi salvo. Para ligar, desligar e escolher o modelo de cada uso, rode a migração 20270907120000_ia_por_uso.sql no Supabase.",
+    };
+  }
+  if (erroUsos) return { ok: false, erro: mensagemDeErro(erroUsos) };
   if (semReserva) {
     return {
       ok: false,

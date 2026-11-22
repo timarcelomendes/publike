@@ -13,6 +13,7 @@ import {
 } from "@/lib/email/montar";
 import { EMAIL_DA_EQUIPE } from "@/lib/mensagem-equipe";
 import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
+import { nomeDoUso, usoLigado } from "@/lib/ia/usos";
 import { revisarAnuncio, revisarAvaliacao, revisarComentario, revisarRecado, type DecisaoIA } from "@/lib/ia/tarefas";
 import { criarClienteAdmin, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
@@ -227,6 +228,8 @@ export async function revisarAnunciosPendentes(limite = 5): Promise<ResultadoIA>
   }
   const { cliente, chave } = acesso;
   // o modelo escolhido para a revisão em Admin › IA (sem escolha, o padrão que a fila traz)
+  // desligado em Admin › IA: a fila fica como está, sem tentar
+  if (!(await usoLigado("revisar_anuncio"))) return { ...resultado, motivo: `${nomeDoUso("revisar_anuncio")} está desligado em Admin › IA.` };
   const revisao = await modeloDaRevisao(cliente);
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_revisoes_ia", { p_chave: chave, p_limite: limite });
@@ -280,6 +283,8 @@ export async function revisarAvaliacoesPendentes(limite = 5): Promise<ResultadoI
   }
   const { cliente, chave } = acesso;
   // o modelo escolhido para a revisão em Admin › IA (sem escolha, o padrão que a fila traz)
+  // desligado em Admin › IA: a fila fica como está, sem tentar
+  if (!(await usoLigado("revisar_avaliacao"))) return { ...resultado, motivo: `${nomeDoUso("revisar_avaliacao")} está desligado em Admin › IA.` };
   const revisao = await modeloDaRevisao(cliente);
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_avaliacoes_ia", {
@@ -335,6 +340,8 @@ export async function revisarRecadosPendentes(limite = 5): Promise<ResultadoIA> 
   }
   const { cliente, chave } = acesso;
   // o modelo escolhido para a revisão em Admin › IA (sem escolha, o padrão que a fila traz)
+  // desligado em Admin › IA: a fila fica como está, sem tentar
+  if (!(await usoLigado("revisar_recado"))) return { ...resultado, motivo: `${nomeDoUso("revisar_recado")} está desligado em Admin › IA.` };
   const revisao = await modeloDaRevisao(cliente);
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_recados_ia", { p_chave: chave, p_limite: limite });
@@ -386,6 +393,8 @@ export async function revisarComentariosPendentes(limite = 5): Promise<Resultado
     return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
   }
   const { cliente, chave } = acesso;
+  // desligado em Admin › IA: a fila fica como está, sem tentar
+  if (!(await usoLigado("revisar_comentario"))) return { ...resultado, motivo: `${nomeDoUso("revisar_comentario")} está desligado em Admin › IA.` };
   const revisao = await modeloDaRevisao(cliente);
   const { data: itens, error } = await cliente.rpc("servidor_pegar_comentarios_ia", { p_chave: chave, p_limite: limite });
   if (error) {

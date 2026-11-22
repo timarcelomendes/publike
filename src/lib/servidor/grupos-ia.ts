@@ -52,7 +52,7 @@ export async function palavrasDoGrupoComIA(
   if (!modelo) return { palavras: base, negativas: [], modelo: null };
   try {
     const { texto, parada } = await chamarIA({
-      funcionalidade: "impulso",
+      uso: "impulso_palavras",
       modelo,
       sistema: SISTEMA,
       mensagem: [

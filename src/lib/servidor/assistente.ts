@@ -207,7 +207,7 @@ export async function responderAssistente(
   modelo: string | null,
 ): Promise<{ texto: string; acao: AcaoChat; cartoes: CartaoChat[]; verMais: string | null }> {
   const { texto } = await chamarIA({
-    funcionalidade: "chat",
+    uso: "assistente",
     modelo: modeloDaIA(modelo).id,
     sistema: instrucoes(pessoa),
     mensagem: transcricao(historico),

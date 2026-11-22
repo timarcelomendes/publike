@@ -1,7 +1,9 @@
 import "server-only";
 import { chaveClaude, chaveIA, enderecoIA } from "@/lib/servidor/ambiente";
 import { criarClientePublico } from "@/lib/supabase/servidor";
-import { contarUsoDaIA, type FuncionalidadeDoUso } from "@/lib/servidor/uso-da-ia";
+import type { UsoIA } from "@/lib/ia-nomes";
+import { contarUsoDaIA } from "@/lib/servidor/uso-da-ia";
+import { escolhaDoUso } from "./usos";
 import { chamarClaude, ErroClaude, motivoDaApi } from "./claude";
 
 // Conversa com a IA: a da OpenAI (Responses API) ou o Claude (./claude.ts), conforme o modelo escolhido no
@@ -126,8 +128,13 @@ async function usarReserva() {
 
 type Pedido = {
   modelo: string;
-  /** de qual funcionalidade é a chamada (Admin › IA conta as chamadas e o custo de cada uma) */
-  funcionalidade: FuncionalidadeDoUso;
+  /**
+   * o que chama a IA (Admin › IA liga e desliga cada uso, pode trocar o modelo dele e conta as chamadas e o custo de
+   * cada um)
+   */
+  uso: UsoIA;
+  /** o modelo vale mesmo com um modelo próprio do uso no Admin › IA (as comparações de modelos do Admin) */
+  modeloFixo?: boolean;
   sistema: string;
   mensagem: string;
   maxTokens: number;
@@ -198,16 +205,23 @@ type RespostaIA = {
  * Manda o pedido para a IA do modelo escolhido; com a reserva ligada, o par na outra IA cobre a falha. Cada chamada
  * conta no uso da funcionalidade (só os números: o modelo que respondeu e os tokens).
  */
-export async function chamarIA(p: Pedido): Promise<RespostaIA> {
+export async function chamarIA(pedido: Pedido): Promise<RespostaIA> {
+  // o uso desligado no Admin › IA não chama a IA; com modelo próprio, ele vale no lugar do que veio
+  const escolha = await escolhaDoUso(pedido.uso);
+  if (!escolha.ligado) throw new ErroIA(USO_DESLIGADO);
+  const p = !pedido.modeloFixo && escolha.modelo && MODELOS_IA.some((m) => m.id === escolha.modelo) ? { ...pedido, modelo: escolha.modelo } : pedido;
   try {
     const r = await chamarComReserva(p);
-    await contarUsoDaIA(p.funcionalidade, r.modelo, r.tokens ?? null, false, r.buscas ?? 0);
+    await contarUsoDaIA(p.uso, r.modelo, r.tokens ?? null, false, r.buscas ?? 0);
     return r;
   } catch (e) {
-    await contarUsoDaIA(p.funcionalidade, modeloDaIA(p.modelo).id, null, true);
+    await contarUsoDaIA(p.uso, modeloDaIA(p.modelo).id, null, true);
     throw e;
   }
 }
+
+/** A mensagem de quando o uso está desligado no Admin › IA (pode chegar a quem usa o site). */
+export const USO_DESLIGADO = "Esta ajuda da IA está desligada agora.";
 
 async function chamarComReserva(p: Pedido): Promise<RespostaIA> {
   const escolhido = modeloDaIA(p.modelo);

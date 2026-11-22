@@ -64,7 +64,7 @@ export async function compararUmCurriculo(
     MODELOS_DA_COMPARACAO.map(async (m): Promise<[string, ResultadoDoModelo]> => {
       const inicio = Date.now();
       try {
-        const leitura = await lerCurriculo(cv, m);
+        const leitura = await lerCurriculo(cv, m, true);
         return [m, leitura ? { ok: true, leitura, ms: Date.now() - inicio } : { ok: false, erro: "A resposta não serviu." }];
       } catch (e) {
         return [m, { ok: false, erro: e instanceof Error ? e.message : String(e) }];
@@ -125,7 +125,7 @@ export async function compararUmPar(
     MODELOS_DA_COMPARACAO_DAS_ATIVIDADES.map(async (m): Promise<[string, RespostaDoModelo]> => {
       const inicio = Date.now();
       try {
-        const r = await compararAtividadesComIA(par.vaga, par.trabalhos, m);
+        const r = await compararAtividadesComIA(par.vaga, par.trabalhos, m, true);
         const preco = MODELOS_IA.find((x) => x.id === (r?.modelo ?? m))?.preco;
         const custo =
           r?.tokens && preco ? (r.tokens.entrada * preco.entrada + r.tokens.saida * preco.saida) / 1_000_000 : 0;

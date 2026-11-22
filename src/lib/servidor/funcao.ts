@@ -7,6 +7,7 @@ import { iaConfigurada } from "@/lib/ia/openai";
 import { opcoesParaIA } from "./opcoes-da-funcao";
 import { acessoFila } from "./filas";
 import { modeloPara } from "@/lib/ia/funcionalidades";
+import { usoLigado } from "@/lib/ia/usos";
 import { chaveDaExperiencia } from "./funcoes-pelo-contexto";
 
 // A função (CBO) de uma vaga (claude/plano-salario-e-curriculo.md, parte 2): as regras do título primeiro; sem
@@ -117,7 +118,7 @@ async function funcaoSoPeloTitulo(
 
 /** O modelo da IA, se ela está configurada e ligada no admin (o mesmo interruptor da ajuda da IA nos textos). */
 export async function modeloDaFuncao(acesso: Acesso | null = acessoFila()): Promise<string | null> {
-  if (!acesso || !iaConfigurada()) return null;
+  if (!acesso || !iaConfigurada() || !(await usoLigado("funcao_cbo"))) return null;
   const { data } = await acesso.cliente.rpc("config_publica");
   const c = data?.[0];
   return c?.ia_melhorar_texto ? modeloPara(c, "funcao") : null;

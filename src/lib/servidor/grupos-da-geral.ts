@@ -357,7 +357,7 @@ export async function cuidarDosGrupos(a: Acesso, prazo: number) {
         plano.criar.push(c);
       }
     }
-    const modelo = plano.criar.length ? await modeloDoImpulso(a) : null;
+    const modelo = plano.criar.length ? await modeloDoImpulso(a, "impulso_palavras") : null;
     let novos = 0;
     for (const c of plano.criar) {
       if (novos >= NOVOS_POR_VOLTA || Date.now() > prazo) {

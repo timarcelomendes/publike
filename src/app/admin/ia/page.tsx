@@ -18,6 +18,7 @@ import {
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { tempoRelativo } from "@/lib/formato";
 import { MODELOS_IA, modeloDaIA, temChave } from "@/lib/ia/openai";
+import { MODELOS_TRANSCRICAO } from "@/lib/ia/transcrever";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -102,7 +103,13 @@ async function Conteudo() {
       </Secao>
 
       <Secao titulo="Configurações">
-        <FormConfigIA config={config} modelos={MODELOS_IA} chaves={chaves} uso={usoPorFuncionalidade(uso)} />
+        <FormConfigIA
+          config={config}
+          modelos={MODELOS_IA}
+          transcricao={MODELOS_TRANSCRICAO}
+          chaves={chaves}
+          uso={usoPorFuncionalidade(uso)}
+        />
       </Secao>
 
       {copiloto && (

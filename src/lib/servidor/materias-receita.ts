@@ -105,7 +105,7 @@ async function escrever(n: NumerosDoMes, guardar: (itens: unknown[]) => Promise<
     }));
     try {
       const r = await chamarIA({
-        funcionalidade: "admin",
+        uso: "materias_receita",
         modelo,
         sistema: `${REGRAS}\nA matéria é "Os negócios que abriram em ${n.por_cidade[0].cidade} e região em ${nomeMes}", a partir dos dados abertos do CNPJ da Receita Federal. Comece pela cidade com mais aberturas; diga o total, os bairros e os ramos que mais abriram; cite até 10 destaques pelo nome (só os da lista, que são empresas, nunca pessoas); e termine convidando quem procura trabalho a levar o currículo, com o Quem contrata perto do Publike (publike.org/quem-contrata-perto), que mostra no mapa os lugares perto de casa.`,
         mensagem: JSON.stringify(numeros),
@@ -142,7 +142,7 @@ async function escrever(n: NumerosDoMes, guardar: (itens: unknown[]) => Promise<
     const ate = n.mais_contratadas[0].ate;
     try {
       const r = await chamarIA({
-        funcionalidade: "admin",
+        uso: "materias_receita",
         modelo,
         sistema: `${REGRAS}\nA matéria é "As funções que mais contrataram com carteira em Goiânia e região", pelo Novo Caged do Ministério do Trabalho, de ${de.slice(0, 7)} a ${ate.slice(0, 7)} (12 meses, só contratações em jornada integral). Diga as funções da lista, quantas contratações e quanto a maioria ganhou (a faixa e o meio). Termine dizendo que no Publike cada vaga mostra quanto o mercado paga para a função.`,
         mensagem: JSON.stringify(numeros),

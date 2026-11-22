@@ -102,10 +102,10 @@ export function nomeDaFuncao(cbo: string) {
 }
 
 /** Lê um currículo: a leitura com o nome de cada função, ou null (nada para ler ou a IA não respondeu certo). */
-export async function lerCurriculo(c: LinhaDoCurriculo, modelo: string) {
+export async function lerCurriculo(c: LinhaDoCurriculo, modelo: string, modeloFixo = false) {
   const cv = paraLer(c);
   const opcoes = await opcoesDaLeitura(cv);
-  const r = await lerCurriculoComIA(cv, opcoes, modelo);
+  const r = await lerCurriculoComIA(cv, opcoes, modelo, modeloFixo);
   if (!r) return null;
   return { ...r, funcoes: r.funcoes.map((f) => ({ ...f, nome: nomeDaFuncao(f.cbo) })), opcoes: opcoes.length };
 }

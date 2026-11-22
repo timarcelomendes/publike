@@ -1,13 +1,14 @@
 import type { UsoDaFuncionalidade } from "@/components/admin/ia";
 import type { usoDaIA } from "@/lib/admin/dados";
 import { MODELOS_IA, PRECO_BUSCA } from "@/lib/ia/openai";
-import { MODELO_TRANSCRICAO, PRECO_TRANSCRICAO } from "@/lib/ia/transcrever";
+import { MODELOS_TRANSCRICAO } from "@/lib/ia/transcrever";
 
 // O custo estimado da IA, num lugar só: Admin › IA e o Painel › Dinheiro (claude/plano-indicadores-do-admin.md,
 // parte 4) fazem a mesma conta.
 
 /**
- * As chamadas e o custo estimado de cada funcionalidade nos últimos 30 dias (null: sem a migração): os tokens pelo
+ * As chamadas e o custo estimado de cada uso (desde 22/11/2026; antes, de cada grupo: "chat", "ler"...) nos últimos 30
+ * dias (null: sem a migração): os tokens pelo
  * preço do modelo e as buscas na internet, cobradas à parte.
  */
 export function usoPorFuncionalidade(uso: Awaited<ReturnType<typeof usoDaIA>>): UsoDaFuncionalidade | null {
@@ -15,7 +16,7 @@ export function usoPorFuncionalidade(uso: Awaited<ReturnType<typeof usoDaIA>>): 
   const porFuncionalidade: UsoDaFuncionalidade = {};
   for (const u of uso) {
     const preco =
-      u.modelo === MODELO_TRANSCRICAO ? PRECO_TRANSCRICAO : (MODELOS_IA.find((m) => m.id === u.modelo)?.preco ?? null);
+      MODELOS_TRANSCRICAO.find((m) => m.id === u.modelo)?.preco ?? MODELOS_IA.find((m) => m.id === u.modelo)?.preco ?? null;
     const atual = porFuncionalidade[u.funcionalidade] ?? {
       chamadas: 0,
       falhas: 0,

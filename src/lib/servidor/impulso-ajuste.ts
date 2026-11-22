@@ -197,7 +197,7 @@ async function ajustar(a: AcessoDoRobo, item: ItemDoAjuste, regras: Regras) {
     }
 
     // os números da janela (sem os dias, o Google soma) e as buscas de verdade desde que entrou no ar
-    const modelo = item.vagas.length ? await modeloDoImpulso(a) : null;
+    const modelo = item.vagas.length ? await modeloDoImpulso(a, "impulso_buscas") : null;
     const [linhas, buscasReais] = await Promise.all([
       j.dias > 0
         ? consultar<LinhaDaJanela>(

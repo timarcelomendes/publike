@@ -169,7 +169,11 @@ export async function lerFalaDoCurriculo(
 
   let fala: string;
   try {
-    fala = await transcrever(new Blob([bytes], { type: audio.type || "application/octet-stream" }), nome);
+    fala = await transcrever(
+      "transcricao_curriculo",
+      new Blob([bytes], { type: audio.type || "application/octet-stream" }),
+      nome,
+    );
   } catch (e) {
     console.error("Publike: a transcrição do currículo falado falhou:", e instanceof Error ? e.message : e);
     return { ok: false, erro: "Não deu para ouvir a gravação agora. Tente de novo ou preencha aqui embaixo." };
@@ -205,7 +209,11 @@ export async function transcreverFalaDoCurriculo(audio: File): Promise<{ ok: tru
   if (!nome) return { ok: false, erro: "Não deu para abrir a gravação. Tente de novo." };
   let fala: string;
   try {
-    fala = await transcrever(new Blob([bytes], { type: audio.type || "application/octet-stream" }), nome);
+    fala = await transcrever(
+      "transcricao_curriculo",
+      new Blob([bytes], { type: audio.type || "application/octet-stream" }),
+      nome,
+    );
   } catch (e) {
     console.error("Publike: a transcrição da fala falhou:", e instanceof Error ? e.message : e);
     return { ok: false, erro: "Não deu para ouvir a gravação agora. Tente de novo ou escreva." };

@@ -232,7 +232,7 @@ export async function lerCurriculoDoArquivo(
   hoje: string,
 ): Promise<CurriculoLido | null> {
   const { texto: resposta, parada } = await chamarIA({
-    funcionalidade: "ler",
+    uso: "curriculo_arquivo",
     modelo,
     sistema: instrucoes(hoje),
     mensagem: entrada.pdf
@@ -259,7 +259,7 @@ export async function lerCurriculoDoArquivo(
  */
 export async function lerCurriculoDaFala(fala: string, modelo: string, hoje: string): Promise<CurriculoLido | null> {
   const { texto: resposta, parada } = await chamarIA({
-    funcionalidade: "ler",
+    uso: "curriculo_fala",
     modelo,
     sistema: instrucoesDaFala(hoje),
     mensagem: `O que a pessoa contou:\n\n${fala.slice(0, 8000)}`,

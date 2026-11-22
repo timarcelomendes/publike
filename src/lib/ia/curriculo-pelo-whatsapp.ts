@@ -129,7 +129,7 @@ export async function proximaPergunta(
     : "";
   try {
     const { texto, parada } = await chamarIA({
-      funcionalidade: "ler",
+      uso: "curriculo_whatsapp_pergunta",
       modelo,
       sistema: SISTEMA_DA_PROXIMA,
       mensagem: `A conversa até agora:\n\n${conversa.slice(-5000)}\n\nEscreva a pergunta ${n} de 3.${base}`,
@@ -169,7 +169,7 @@ export async function perguntasDaFuncaoComIA(
     .map((v, i) => `Vaga ${i + 1}: ${v.titulo}\n${v.descricao.replace(/\s+/g, " ").slice(0, 700)}`)
     .join("\n\n");
   const { texto, parada } = await chamarIA({
-    funcionalidade: "ler",
+    uso: "curriculo_whatsapp_funcao",
     modelo,
     sistema: SISTEMA_DA_FUNCAO,
     mensagem: `Função: ${nome} (CBO ${cbo})\n\n${vagas}`,
@@ -228,7 +228,7 @@ Regras:
  */
 export async function montarCurriculoDaConversa(conversa: string, modelo: string, hoje: string): Promise<CurriculoMontado | null> {
   const { texto, parada } = await chamarIA({
-    funcionalidade: "ler",
+    uso: "curriculo_whatsapp_montar",
     modelo,
     sistema: sistemaDoMontado(hoje),
     mensagem: `A conversa do currículo:\n\n${conversa.slice(-9000)}`,

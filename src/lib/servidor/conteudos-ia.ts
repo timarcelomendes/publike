@@ -87,7 +87,7 @@ export async function atualizarConteudos({ agora = Date.now() } = {}): Promise<R
     let falhou = false;
     try {
       const r = await chamarIA({
-        funcionalidade: "admin",
+        uso: "conteudos",
         modelo,
         sistema: instrucoes(hoje),
         mensagem: JSON.stringify({

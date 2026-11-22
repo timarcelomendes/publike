@@ -8,6 +8,7 @@ import {
   type VagaDoImpulso,
 } from "@/lib/impulso";
 import { modeloPara } from "@/lib/ia/funcionalidades";
+import { usoLigado } from "@/lib/ia/usos";
 import { chamarIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
 import type { Regime } from "@/lib/tipos";
 import type { acessoFila } from "./filas";
@@ -63,8 +64,12 @@ export type RevisaoGuardada = RevisaoDasPalavras & {
 };
 
 /** O modelo da IA para o impulso, ou null: sem a chave da IA ou com a IA desligada no Admin. */
-export async function modeloDoImpulso(a: Acesso): Promise<string | null> {
-  if (!iaConfigurada()) return null;
+export async function modeloDoImpulso(
+  a: Acesso,
+  /** o uso (Admin › IA): desligado lá, null */
+  uso: "impulso_palavras" | "impulso_buscas" | "impulso_revisar",
+): Promise<string | null> {
+  if (!iaConfigurada() || !(await usoLigado(uso))) return null;
   const { data } = await a.cliente.rpc("config_publica");
   const c = data?.[0];
   return c?.ia_melhorar_texto ? modeloPara(c, "impulso") : null;
@@ -162,7 +167,7 @@ export async function julgarBuscasComIA(
     .join("\n\n");
   try {
     const { texto, parada } = await chamarIA({
-      funcionalidade: "impulso",
+      uso: "impulso_buscas",
       modelo,
       sistema: SISTEMA_BUSCAS,
       mensagem,
@@ -210,7 +215,7 @@ export async function revisarComIA(
   const em = new Date().toISOString();
   try {
     const { texto, parada } = await chamarIA({
-      funcionalidade: "impulso",
+      uso: "impulso_revisar",
       modelo,
       sistema: SISTEMA,
       mensagem: `<vaga>\n${descrever(v, descricao)}\n</vaga>\n\n<lista>\n${lista.join("\n")}\n</lista>`,

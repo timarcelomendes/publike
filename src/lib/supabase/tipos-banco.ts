@@ -864,6 +864,8 @@ export type Database = {
           ia_modelo: string;
           /** {funcionalidade: modelo} (20270208120000) */
           ia_modelos?: Json;
+          /** {uso: {ligado, modelo}} (migração 20270907120000) */
+          ia_usos?: Json;
           ia_apelido?: string | null;
           /** com a escolhida sem chave, sem créditos ou fora do ar, usa o par na outra IA (migração 20261201120000) */
           ia_reserva?: boolean;
@@ -3558,6 +3560,14 @@ export type Database = {
       };
       admin_salvar_ia_por_funcionalidade: {
         Args: { p_modelos: Json; p_apelido: string | null };
+        Returns: undefined;
+      };
+      config_ia_usos: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      admin_salvar_ia_usos: {
+        Args: { p_usos: Json };
         Returns: undefined;
       };
       config_publica: {

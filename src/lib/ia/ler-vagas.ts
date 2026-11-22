@@ -327,7 +327,7 @@ export async function lerVagas(
     "Leia as vagas do material.",
   ].filter(Boolean);
   const { texto: resposta, parada } = await chamarIA({
-    funcionalidade: "ler",
+    uso: "ler_vagas",
     modelo,
     sistema: instrucoes(),
     mensagem: partes.join("\n\n"),

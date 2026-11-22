@@ -100,7 +100,7 @@ export async function sugerirMelhoriasNoCurriculo(
     ? `\n<vagas>\n${vagas.map((v, i) => `${i + 1}. ${limpo(v.titulo, 90)}. Pede: ${v.pede || "não diz"}. ${limpo(v.descricao, 220)}`).join("\n")}\n</vagas>`
     : "";
   const { texto, parada } = await chamarIA({
-    funcionalidade: "textos",
+    uso: "melhorar_curriculo",
     modelo,
     sistema: SISTEMA,
     mensagem: `<curriculo>\n${textoDoCurriculo(c)}\n</curriculo>${doMercado}`,

@@ -79,10 +79,13 @@ export async function compararAtividadesComIA(
   vaga: { titulo: string; descricao: string },
   trabalhos: TrabalhoParaComparar[],
   modelo: string,
+  /** o modelo vale mesmo com outro escolhido no Admin › IA (a comparação do Admin › Qualificados) */
+  modeloFixo = false,
 ): Promise<(ResultadoDasAtividades & { modelo: string; tokens: { entrada: number; saida: number } | null }) | null> {
   const r = await chamarIA({
-    funcionalidade: "atividades",
+    uso: "atividades_vaga",
     modelo,
+    modeloFixo,
     sistema: SISTEMA,
     mensagem: mensagemDasAtividades(vaga, trabalhos),
     maxTokens: 400,
