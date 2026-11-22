@@ -1,8 +1,7 @@
 import "server-only";
 import { chaveClaude, chaveIA, enderecoIA } from "@/lib/servidor/ambiente";
 import { criarClientePublico } from "@/lib/supabase/servidor";
-import type { FuncionalidadeIA } from "@/lib/ia-nomes";
-import { contarUsoDaIA } from "@/lib/servidor/uso-da-ia";
+import { contarUsoDaIA, type FuncionalidadeDoUso } from "@/lib/servidor/uso-da-ia";
 import { chamarClaude, ErroClaude, motivoDaApi } from "./claude";
 
 // Conversa com a IA: a da OpenAI (Responses API) ou o Claude (./claude.ts), conforme o modelo escolhido no
@@ -51,6 +50,17 @@ export const MODELOS_IA = [
     preco: { entrada: 2, saida: 10 },
     nome: "Claude Sonnet 5.5",
     ajuda: "Escreve melhor, o mesmo preço do Sol. Gasta os créditos do Claude.",
+    esforco: "low",
+    provedor: "claude",
+    par: "gpt-6.1-sol",
+  },
+  {
+    // 21/11/2026: a leitura do currículo (Admin › Qualificados) compara o Sonnet com o Opus
+    id: "claude-opus-5-5",
+    /** dólares por milhão de tokens (entrada / saída), em novembro de 2026 */
+    preco: { entrada: 4, saida: 20 },
+    nome: "Claude Opus 5.5",
+    ajuda: "O mais capaz, o dobro do Sonnet. Gasta os créditos do Claude.",
     esforco: "low",
     provedor: "claude",
     par: "gpt-6.1-sol",
@@ -116,7 +126,7 @@ async function usarReserva() {
 type Pedido = {
   modelo: string;
   /** de qual funcionalidade é a chamada (Admin › IA conta as chamadas e o custo de cada uma) */
-  funcionalidade: FuncionalidadeIA;
+  funcionalidade: FuncionalidadeDoUso;
   sistema: string;
   mensagem: string;
   maxTokens: number;

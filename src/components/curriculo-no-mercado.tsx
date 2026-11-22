@@ -9,7 +9,9 @@ import {
   type NivelDaNota,
   type NotaDoCurriculo,
 } from "@/lib/servidor/curriculo-mercado";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Curriculo } from "@/lib/tipos";
+import { TirarFuncaoIndicada } from "./tirar-funcao-indicada";
 
 /** Os níveis da nota, com o começo e o fim de cada um (a barra é dividida assim). */
 const NIVEIS: { nivel: NivelDaNota; de: number; ate: number }[] = [
@@ -66,6 +68,8 @@ export async function CurriculoNoMercado({
       </div>
 
       <Nota nota={nota} funcao={funcao?.nome ?? null} comProfissao={Boolean(curriculo.titulo?.trim())} />
+
+      <LeituraDoCurriculo />
 
       {faixa && funcao && (
         <div className="flex flex-col gap-1 border-t border-line pt-4">
@@ -192,6 +196,62 @@ function Nota({
               ? "Ainda há poucas vagas da sua área perto de você para comparar. Por enquanto, a nota é o quanto o currículo está completo."
               : "Para comparar com as vagas, diga a sua profissão em “O que você faz” (como Auxiliar de cozinha ou Vendedora). Por enquanto, a nota é o quanto o currículo está completo."}
       </p>
+    </div>
+  );
+}
+
+type Leitura = {
+  em_talentos: boolean;
+  funcoes: { cbo: string; nome: string; nivel: "pronto" | "treinamento"; porque: string }[];
+  melhorar: string[];
+  lido_em: string | null;
+  desatualizada: boolean;
+};
+
+/**
+ * A leitura do currículo pela IA (migração 20270826120000; claude/plano-curriculos-qualificados.md): para que vagas a
+ * pessoa está pronta e o que melhorar. Só para quem está em Talentos e já foi lido; a pessoa pode tirar uma função.
+ * A nota da leitura não aparece aqui (a nota de cima é a do currículo no mercado): ela serve à equipe.
+ */
+async function LeituraDoCurriculo() {
+  const c = await criarClienteServidor();
+  const { data, error } = await c.rpc("minha_leitura_do_curriculo");
+  if (error || !data) return null;
+  const l = data as unknown as Leitura;
+  if (!l.em_talentos || !l.lido_em || (!l.funcoes.length && !l.melhorar.length)) return null;
+  return (
+    <div className="flex flex-col gap-3 border-t border-line pt-4">
+      <h3 className="text-label">Para que vagas você está pronto</h3>
+      {l.funcoes.length ? (
+        <ul className="flex flex-col gap-2">
+          {l.funcoes.map((f) => (
+            <li key={f.cbo} className="flex flex-col gap-0.5 rounded-md bg-surface-300 px-4 py-3">
+              <span className="text-body">
+                <strong className="font-semibold">{f.nome}</strong>
+                <span className="text-ink-muted"> · {f.nivel === "pronto" ? "pronto para assumir" : "com treinamento"}</span>
+              </span>
+              {f.porque && <span className="text-body-sm text-ink-muted">{f.porque}</span>}
+              <TirarFuncaoIndicada cbo={f.cbo} nome={f.nome} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-body-sm text-ink-muted">Ainda não deu para indicar uma função pelo que está no currículo.</p>
+      )}
+      <p className="text-body-sm text-ink-muted">
+        As empresas acham você em Talentos por essas funções.
+        {l.desatualizada && " Você mudou o currículo: a leitura nova sai em instantes."}
+      </p>
+      {l.melhorar.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-label">O que mais ajudaria</h3>
+          <ul className="list-disc pl-5 text-body-sm">
+            {l.melhorar.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

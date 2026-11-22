@@ -2901,6 +2901,55 @@ export type Database = {
       admin_meta_conversoes: { Args: Record<string, never>; Returns: Json };
       servidor_meta_dataset: { Args: { p_chave: string }; Returns: string | null };
       admin_salvar_meta_dataset: { Args: { p_id: string }; Returns: undefined };
+      servidor_config_leitura: { Args: { p_chave: string }; Returns: Json };
+      servidor_curriculos_para_leitura: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: {
+          perfil_id: string;
+          impressao: string;
+          titulo: string | null;
+          experiencias: Json;
+          escolaridade: string | null;
+          curso: string | null;
+          estudos: Json;
+          cursos: string[] | null;
+          habilidades: string[] | null;
+          cnh: string | null;
+          disponibilidade: string[] | null;
+          tiradas: string[];
+        }[];
+      };
+      servidor_guardar_leitura: {
+        Args: {
+          p_chave: string;
+          p_perfil: string;
+          p_impressao: string;
+          p_funcoes: Json;
+          p_nota: number;
+          p_melhorar: string[];
+          p_modelo: string;
+        };
+        Returns: undefined;
+      };
+      minha_leitura_do_curriculo: { Args: Record<string, never>; Returns: Json };
+      tirar_funcao_indicada: { Args: { p_cbo: string }; Returns: undefined };
+      admin_qualificados: { Args: Record<string, never>; Returns: Json };
+      admin_config_leitura: { Args: { p_ligado: boolean | null; p_modelo: string | null }; Returns: undefined };
+      admin_curriculos_para_comparar: {
+        Args: { p_limite?: number };
+        Returns: {
+          perfil_id: string;
+          titulo: string | null;
+          experiencias: Json;
+          escolaridade: string | null;
+          curso: string | null;
+          estudos: Json;
+          cursos: string[] | null;
+          habilidades: string[] | null;
+          cnh: string | null;
+          disponibilidade: string[] | null;
+        }[];
+      };
       minhas_perguntas_de_resposta: {
         Args: Record<string, never>;
         Returns: { anuncio_id: string; titulo: string; empresa_nome: string; perguntas: number }[];

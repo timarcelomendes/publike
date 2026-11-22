@@ -31,7 +31,7 @@ type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
  * As opções da IA: as ocupações da CBO que mais parecem com o título e, pelo contexto, também a das regras do
  * título e as que aparecem na descrição (ou no "o que você fazia").
  */
-function opcoesParaIA(titulo: string, descricao: string | null, contexto = false) {
+export function opcoesParaIA(titulo: string, descricao: string | null, contexto = false) {
   const vistas = new Set<string>();
   const opcoes: Ocupacao[] = [];
   const regra = contexto ? ocupacao(funcaoPeloTitulo(titulo)?.cbo) : null;

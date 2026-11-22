@@ -199,6 +199,16 @@ export function FormConfigIA({
               <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.transcricao)}</span>
             </div>
           )}
+          {uso && (
+            // a leitura do currículo: o modelo é escolhido em Admin › Qualificados (migração 20270826120000)
+            <div className="flex flex-col gap-1">
+              <span className="text-label">Leitura do currículo</span>
+              <span className="text-body-sm text-ink-muted">
+                As funções indicadas dos currículos de Talentos. O modelo e o ligar ficam em Admin › Qualificados.
+              </span>
+              <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.qualificar)}</span>
+            </div>
+          )}
         </div>
       </fieldset>
 

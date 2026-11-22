@@ -12,8 +12,11 @@ import { chaveDoServidor, chaveSecretaSupabase } from "./ambiente";
 /** Espera no máximo isso pelo banco (a pessoa está esperando a resposta da IA). */
 const ESPERA = 1500;
 
-/** As funcionalidades com escolha de modelo (Admin › IA) e a transcrição de áudio (só a OpenAI, sem escolha). */
-export type FuncionalidadeDoUso = FuncionalidadeIA | "transcricao";
+/**
+ * As funcionalidades com escolha de modelo (Admin › IA), a transcrição de áudio (só a OpenAI, sem escolha) e a leitura
+ * do currículo (o modelo é escolhido em Admin › Qualificados, migração 20270826120000).
+ */
+export type FuncionalidadeDoUso = FuncionalidadeIA | "transcricao" | "qualificar";
 
 export async function contarUsoDaIA(
   funcionalidade: FuncionalidadeDoUso,
