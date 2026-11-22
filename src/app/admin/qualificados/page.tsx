@@ -67,10 +67,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/qual
         titulo="Leitura do currículo"
         descricao={
           <>
-            A IA lê uma vez cada currículo visível em Talentos (sem nome, foto, bairro nem contato) e guarda até 3 funções
-            indicadas, cada uma “pronto” ou “com treinamento”, a nota de 0 a 100 e até 3 pontos a melhorar. A nota e os
-            pontos são só da pessoa; as empresas acham pela função indicada na busca de Talentos. Lê de novo quando o
-            currículo muda.
+            A IA lê cada currículo de Talentos e diz para que trabalho a pessoa serve: até 3 funções, cada uma “pronto
+            para assumir” ou “precisa de treinamento”. Quem publica uma vaga vê, em Talentos, as pessoas prontas para a
+            função da vaga, e a Triagem com IA lê essas pessoas primeiro. A pessoa vê as funções e dicas para melhorar o
+            currículo. A IA não vê nome, foto, bairro nem contato, e lê de novo quando o currículo muda.
           </>
         }
       >
