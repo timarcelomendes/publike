@@ -2050,6 +2050,23 @@ export async function atenderConversa(
       return saida(`${oi(nome, comeco)} ${PARA_QUEM_PROCURA.replace(/^Que bom! 😊 /, "")}`, { perfil: "trabalho" });
     if (!jaFalou) return saida(boasVindas(nome, comeco, doAnuncio), { menu: semPerfil });
     const deNovo = /^(Oi|Bom dia|Boa tarde|Boa noite|Estou por aqui)\b/.test(minhaUltima);
+    // quem procura trabalho e volta com "Oi" (22/11/2026; Marcelo, com "Oi, Raimundo! Em que posso te ajudar?": "certamente
+    // quer vagas"): as vagas novas do que ela já disse (a função e o bairro, lidos da conversa); sem a função, a pergunta
+    if (!deNovo && (e.perfil === "trabalho" || (!e.perfil && vagasJaMandadas(e.historico).size > 0))) {
+      const ola1 = `${oi(nome, comeco)} 😊 `;
+      const restam = VAGAS_POR_DIA - (await vagasDeHoje());
+      if (restam <= 0) return saida(`${ola1}${ACABARAM_AS_DE_HOJE}`, { perfil: "trabalho", botao: LINKS.vagas });
+      const modelo = await modeloDoAtendimento();
+      const busca = modelo ? await buscaDaConversa(e.historico, modelo) : null;
+      if (!busca || (!busca.funcoes?.length && !busca.texto?.trim()))
+        return saida(`${ola1}Quer ver as vagas? ${PARA_QUEM_PROCURA.replace(/^Que bom! 😊 /, "")}`, { perfil: "trabalho" });
+      const local = lugarDaBusca(busca.cidade ?? "", busca.bairro ?? "");
+      const r = await mensagemDaBusca(busca, local, restam, [], vagasJaMandadas(e.historico), (fs) =>
+        void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+      );
+      const abertura = r.abertura ?? r.aberturaPadrao;
+      return saida(`${ola1}${abertura}${r.texto ? `\n\n${r.texto}` : ""}`, { perfil: "trabalho", botao: r.botao });
+    }
     return saida(
       deNovo
         ? semPerfil

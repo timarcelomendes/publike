@@ -499,10 +499,29 @@ async function main() {
   conferir(corpo(r.msgs[0]).includes("escrever *equipe*"), "Quero contratar: a equipe por escrito");
 
   // 5. "Oi" de novo
+  // quem procura trabalho e volta com "Oi" (22/11/2026; Marcelo: "certamente quer vagas"): sem a função na conversa,
+  // a pergunta; com ela, as vagas
+  respostaIA = { busca: { texto: "", funcoes: [], parecidas: [], jeito: [], categoria: "todas", cidade: "", bairro: "", fora: "" } };
   r = await rodar("oi", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "oi" }] });
   conferir(
+    corpo(r.msgs[0]).startsWith("Oi, Raphael! 😊 Quer ver as vagas?") && corpo(r.msgs[0]).includes("Me conta o que você faz e o bairro"),
+    "Oi de novo de quem procura trabalho, sem a função: pergunta",
+    corpo(r.msgs[0]),
+  );
+  respostaIA = { busca: { texto: "cozinheira", funcoes: ["cozinheira"], parecidas: [], jeito: [], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" } };
+  r = await rodar("Oi", {
+    perfil: "trabalho",
+    historico: [...procurando, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }, { de: "robo", texto: "Que pena, agora não achei." }, { de: "pessoa", texto: "Oi" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).startsWith("Oi, Raphael! 😊 Olha as vagas de cozinheira") && corpo(r.msgs[0]).includes("*Cozinheira*"),
+    "Oi de novo de quem procura trabalho, com a função: as vagas",
+    corpo(r.msgs[0]),
+  );
+  r = await rodar("oi", { perfil: "contratar", historico: [...comeco, { de: "robo", texto: "Publique a vaga grátis." }, { de: "pessoa", texto: "oi" }] });
+  conferir(
     corpo(r.msgs[0]) === "Oi, Raphael! Em que posso te ajudar?",
-    "Oi de novo, sabendo o que quer",
+    "Oi de novo de quem contrata: como antes",
     corpo(r.msgs[0]),
   );
   r = await rodar("Oi", { historico: [...comeco, { de: "pessoa", texto: "Oi" }] });
