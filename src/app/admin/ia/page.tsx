@@ -5,7 +5,9 @@ import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FormConfigIA } from "@/components/admin/ia";
 import { usoPorFuncionalidade } from "@/lib/admin/custo-ia";
-import { Secao, Situacao } from "@/components/admin/ui";
+import { Paginacao, Secao, Situacao } from "@/components/admin/ui";
+import { Segmentos } from "@/components/painel/segmentos";
+import { CircleDollarSign, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Selo } from "@/components/ui/basicos";
 import {
   configDoSite,
@@ -16,7 +18,7 @@ import {
   usoDaIA,
 } from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
-import { tempoRelativo } from "@/lib/formato";
+import { primeiro, tempoRelativo } from "@/lib/formato";
 import { MODELOS_IA, modeloDaIA, temChave } from "@/lib/ia/openai";
 import { MODELOS_TRANSCRICAO } from "@/lib/ia/transcrever";
 import { situacaoFilas } from "@/lib/servidor/filas";
@@ -34,85 +36,161 @@ const CUSTOS = [
   { tarefa: "Resumo do painel", luna: "menos de US$ 0,001 cada", sol: "cerca de US$ 0,01 cada" },
 ];
 
-export default function IA() {
+// As partes da tela em sub-abas (22/11/2026, Marcelo: "paginar, talvez colocar sub-abas na página de IA")
+const ABAS = [
+  { id: "configuracoes", nome: "Configurações", icone: SlidersHorizontal },
+  { id: "revisoes", nome: "Revisões", icone: ShieldCheck },
+  { id: "triagem", nome: "Triagem e testes", icone: Sparkles },
+  { id: "custos", nome: "Quanto custa", icone: CircleDollarSign },
+] as const;
+type Aba = (typeof ABAS)[number]["id"];
+
+/** As revisões: as últimas 200 (o máximo do banco), 20 por página, com o filtro pela decisão. */
+const POR_PAGINA = 20;
+const DECISOES = [
+  { id: "", nome: "Todas" },
+  { id: "retido", nome: "Retidas" },
+  { id: "aprovado", nome: "Aprovadas" },
+  { id: "erro", nome: "Falharam" },
+] as const;
+type Decisao = (typeof DECISOES)[number]["id"];
+
+export default function IA({ searchParams }: PageProps<"/admin/ia">) {
   return (
     <Suspense fallback={<EsqueletoAdmin />}>
-      <Conteudo />
+      {searchParams.then((sp) => {
+        const pedida = primeiro(sp.aba);
+        const aba: Aba = ABAS.some((a) => a.id === pedida) ? (pedida as Aba) : "configuracoes";
+        const decisao = primeiro(sp.decisao) ?? "";
+        return (
+          <Conteudo
+            aba={aba}
+            decisao={DECISOES.some((d) => d.id === decisao) ? (decisao as Decisao) : ""}
+            pagina={Math.max(1, Math.floor(Number(primeiro(sp.pagina)) || 1))}
+          />
+        );
+      })}
     </Suspense>
   );
 }
 
-async function Conteudo() {
+function SubAbas({ ativa, retidas }: { ativa: Aba; retidas: number }) {
+  return (
+    <nav aria-label="IA" className="sem-barra relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+      {ABAS.map(({ id, nome, icone: Icone }) => {
+        const atual = id === ativa;
+        return (
+          <Link
+            key={id}
+            href={id === "configuracoes" ? "/admin/ia" : `/admin/ia?aba=${id}`}
+            scroll={false}
+            aria-current={atual ? "page" : undefined}
+            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
+              atual
+                ? "border-ink bg-ink text-surface-100"
+                : "border-line bg-surface-300 text-ink hover:border-line-strong"
+            }`}
+          >
+            <Icone aria-hidden className="size-4" />
+            {nome}
+            {id === "revisoes" && retidas > 0 && (
+              <span className="rounded-pill bg-danger px-1.5 text-caption text-on-terra tabular-nums">
+                {retidas}
+                <span className="sr-only"> retidas em 7 dias</span>
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+async function Conteudo({ aba, decisao, pagina }: { aba: Aba; decisao: Decisao; pagina: number }) {
   const c = await exigirAdminLocal();
+  const nada = Promise.resolve(null);
   const [config, decisoes, numeros, agora, copiloto, experimentos, uso] = await Promise.all([
     configDoSite(c),
-    decisoesDaIA(c, 40),
-    numerosDoPainel(c),
+    // as retidas dos últimos 7 dias contam na aba em qualquer parte da tela
+    decisoesDaIA(c, 200),
+    aba === "configuracoes" ? numerosDoPainel(c) : nada,
     agoraDaRequisicao(),
-    contasDoCopiloto(c),
-    experimentosDosRecursos(c),
-    usoDaIA(c, 30).catch(() => null),
+    aba === "triagem" ? contasDoCopiloto(c) : nada,
+    aba === "triagem" ? experimentosDosRecursos(c) : nada,
+    aba === "configuracoes" ? usoDaIA(c, 30).catch(() => null) : nada,
   ]);
   const filas = situacaoFilas();
   const chaves = { openai: temChave("openai"), claude: temChave("claude") };
   const escolhido = modeloDaIA(config.ia_modelo);
+  const retidas7 = decisoes.filter(
+    (d) => d.decisao === "retido" && agora - new Date(d.criado_em).getTime() < 7 * 24 * 3600 * 1000,
+  ).length;
 
   return (
     <div className="flex flex-col gap-6">
-      <Secao
-        titulo="Chaves da IA"
-        descricao={
-          <>
-            A IA pode ser a da OpenAI ou o Claude, da Anthropic. As chaves ficam só nas variáveis de ambiente do
-            servidor, nunca aqui: <code>OPENAI_API_KEY</code> (crie em platform.openai.com, em API keys) e{" "}
-            <code>ANTHROPIC_API_KEY</code> (crie em platform.claude.com, em API keys). Ponha no <code>.env.local</code>{" "}
-            e na Vercel. Nenhuma das duas guarda o texto enviado nos modelos usados aqui.
-          </>
-        }
-      >
-        <div className="flex flex-col gap-2">
-          <Situacao ok={chaves.openai}>
-            {chaves.openai ? "Chave da OpenAI configurada neste servidor." : "Falta OPENAI_API_KEY neste servidor."}
-          </Situacao>
-          <Situacao ok={chaves.claude}>
-            {chaves.claude ? "Chave do Claude configurada neste servidor." : "Falta ANTHROPIC_API_KEY neste servidor."}
-          </Situacao>
-          <Situacao ok={chaves[escolhido.provedor]}>
-            {chaves[escolhido.provedor]
-              ? `O site usa o ${escolhido.nome}.`
-              : `O ${escolhido.nome} está escolhido, mas falta a chave dele${
-                  config.ia_reserva !== false && chaves[escolhido.provedor === "claude" ? "openai" : "claude"]
-                    ? ": a reserva cobre com a outra IA."
-                    : "."
-                }`}
-          </Situacao>
-          <Situacao ok={Boolean(filas.acesso)}>
-            {filas.acesso
-              ? `A fila da IA roda com a ${filas.acesso}.`
-              : "Falta a chave do servidor para o site publicado rodar a fila da IA."}{" "}
-            {filas.acesso !== "chave do servidor" && (
-              <Link href="/admin/chaves" className="underline">
-                Ver chaves
-              </Link>
-            )}
-          </Situacao>
-          {numeros.ia.na_fila > 0 && (
-            <p className="text-body-sm text-ink-muted">{numeros.ia.na_fila} anúncio(s) esperando a IA revisar.</p>
-          )}
-        </div>
-      </Secao>
+      <SubAbas ativa={aba} retidas={retidas7} />
+      {aba === "configuracoes" && (
+        <>
+          <Secao
+            titulo="Chaves da IA"
+            descricao={
+              <>
+                A IA pode ser a da OpenAI ou o Claude, da Anthropic. As chaves ficam só nas variáveis de ambiente do
+                servidor, nunca aqui: <code>OPENAI_API_KEY</code> (crie em platform.openai.com, em API keys) e{" "}
+                <code>ANTHROPIC_API_KEY</code> (crie em platform.claude.com, em API keys). Ponha no <code>.env.local</code>{" "}
+                e na Vercel. Nenhuma das duas guarda o texto enviado nos modelos usados aqui.
+              </>
+            }
+          >
+            <div className="flex flex-col gap-2">
+              <Situacao ok={chaves.openai}>
+                {chaves.openai ? "Chave da OpenAI configurada neste servidor." : "Falta OPENAI_API_KEY neste servidor."}
+              </Situacao>
+              <Situacao ok={chaves.claude}>
+                {chaves.claude ? "Chave do Claude configurada neste servidor." : "Falta ANTHROPIC_API_KEY neste servidor."}
+              </Situacao>
+              <Situacao ok={chaves[escolhido.provedor]}>
+                {chaves[escolhido.provedor]
+                  ? `O site usa o ${escolhido.nome}.`
+                  : `O ${escolhido.nome} está escolhido, mas falta a chave dele${
+                      config.ia_reserva !== false && chaves[escolhido.provedor === "claude" ? "openai" : "claude"]
+                        ? ": a reserva cobre com a outra IA."
+                        : "."
+                    }`}
+              </Situacao>
+              <Situacao ok={Boolean(filas.acesso)}>
+                {filas.acesso
+                  ? `A fila da IA roda com a ${filas.acesso}.`
+                  : "Falta a chave do servidor para o site publicado rodar a fila da IA."}{" "}
+                {filas.acesso !== "chave do servidor" && (
+                  <Link href="/admin/chaves" className="underline">
+                    Ver chaves
+                  </Link>
+                )}
+              </Situacao>
+              {numeros && numeros.ia.na_fila > 0 && (
+                <p className="text-body-sm text-ink-muted">{numeros.ia.na_fila} anúncio(s) esperando a IA revisar.</p>
+              )}
+            </div>
+          </Secao>
 
-      <Secao titulo="Configurações">
-        <FormConfigIA
-          config={config}
-          modelos={MODELOS_IA}
-          transcricao={MODELOS_TRANSCRICAO}
-          chaves={chaves}
-          uso={usoPorFuncionalidade(uso)}
-        />
-      </Secao>
+          <Secao titulo="Configurações">
+            <FormConfigIA
+              config={config}
+              modelos={MODELOS_IA}
+              transcricao={MODELOS_TRANSCRICAO}
+              chaves={chaves}
+              uso={usoPorFuncionalidade(uso)}
+            />
+          </Secao>
+        </>
+      )}
 
-      {copiloto && (
+      {aba === "triagem" && !copiloto && !experimentos && (
+        <p className="text-body-sm text-ink-muted">Nenhuma conta com a Triagem com IA nem nos 15 dias grátis.</p>
+      )}
+
+      {aba === "triagem" && copiloto && (
         <Secao
           titulo="Triagem com IA"
           descricao="As contas com a Triagem com IA (sem prazo ou nos 15 dias grátis). Para liberar ou tirar, abra a conta em Usuários."
@@ -137,7 +215,7 @@ async function Conteudo() {
         </Secao>
       )}
 
-      {experimentos && (
+      {aba === "triagem" && experimentos && (
         <Secao
           titulo="15 dias grátis da Triagem com IA e do Teste Prático"
           descricao="Quem pediu para experimentar. Primeiro, quem tocou em “Quero continuar”: chame essas contas."
@@ -163,38 +241,82 @@ async function Conteudo() {
         </Secao>
       )}
 
-      <Secao
-        titulo="Quanto custa"
-        descricao="Valores aproximados. O Claude Haiku 5.5 custa o mesmo que o Luna, e o Sonnet 5.5, o mesmo que o Sol: cada IA cobra na conta dela (no Claude, saem dos créditos)."
-      >
-        <div className="-mx-5 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[32rem] text-left text-body-sm">
-            <thead className="text-ink-muted">
-              <tr className="border-b border-line">
-                <th scope="col" className="px-5 py-2 font-semibold sm:px-2">Tarefa</th>
-                <th scope="col" className="px-2 py-2 font-semibold">GPT-6 Luna</th>
-                <th scope="col" className="px-2 py-2 font-semibold">GPT-6.1 Sol</th>
-              </tr>
-            </thead>
-            <tbody>
-              {CUSTOS.map((c) => (
-                <tr key={c.tarefa} className="border-b border-line last:border-0">
-                  <td className="px-5 py-2.5 sm:px-2">{c.tarefa}</td>
-                  <td className="px-2 py-2.5">{c.luna}</td>
-                  <td className="px-2 py-2.5">{c.sol}</td>
+      {aba === "custos" && (
+        <Secao
+          titulo="Quanto custa"
+          descricao="Valores aproximados. O Claude Haiku 5.5 custa o mesmo que o Luna, e o Sonnet 5.5, o mesmo que o Sol: cada IA cobra na conta dela (no Claude, saem dos créditos)."
+        >
+          <div className="-mx-5 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[32rem] text-left text-body-sm">
+              <thead className="text-ink-muted">
+                <tr className="border-b border-line">
+                  <th scope="col" className="px-5 py-2 font-semibold sm:px-2">Tarefa</th>
+                  <th scope="col" className="px-2 py-2 font-semibold">GPT-6 Luna</th>
+                  <th scope="col" className="px-2 py-2 font-semibold">GPT-6.1 Sol</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Secao>
+              </thead>
+              <tbody>
+                {CUSTOS.map((c) => (
+                  <tr key={c.tarefa} className="border-b border-line last:border-0">
+                    <td className="px-5 py-2.5 sm:px-2">{c.tarefa}</td>
+                    <td className="px-2 py-2.5">{c.luna}</td>
+                    <td className="px-2 py-2.5">{c.sol}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Secao>
+      )}
 
-      <Secao titulo="Últimas revisões" descricao="O que a moderação automática decidiu. Anúncio retido fica em Denúncias até alguém decidir.">
-        {decisoes.length === 0 ? (
-          <p className="text-body-sm text-ink-muted">A IA ainda não revisou nenhum anúncio.</p>
+      {aba === "revisoes" && <Revisoes decisoes={decisoes} decisao={decisao} pagina={pagina} agora={agora} />}
+    </div>
+  );
+}
+
+function Revisoes({
+  decisoes,
+  decisao,
+  pagina,
+  agora,
+}: {
+  decisoes: Awaited<ReturnType<typeof decisoesDaIA>>;
+  decisao: Decisao;
+  pagina: number;
+  agora: number;
+}) {
+  const filtradas = decisao ? decisoes.filter((d) => d.decisao === decisao) : decisoes;
+  const paginas = Math.max(1, Math.ceil(filtradas.length / POR_PAGINA));
+  const aqui = Math.min(pagina, paginas);
+  const daPagina = filtradas.slice((aqui - 1) * POR_PAGINA, aqui * POR_PAGINA);
+  const link = (d: Decisao, p = 1) => {
+    const q = new URLSearchParams({ aba: "revisoes" });
+    if (d) q.set("decisao", d);
+    if (p > 1) q.set("pagina", String(p));
+    return `/admin/ia?${q}`;
+  };
+  return (
+    <Secao
+      titulo="Revisões"
+      descricao={`O que a moderação automática decidiu, das mais novas para as mais antigas (as últimas ${decisoes.length}). Anúncio retido fica em Denúncias até alguém decidir.`}
+    >
+      <div className="flex flex-col gap-4">
+        <Segmentos
+          rotulo="Decisão"
+          opcoes={DECISOES.map((d) => ({
+            nome: d.nome,
+            href: link(d.id),
+            ativo: d.id === decisao,
+            numero: d.id ? decisoes.filter((x) => x.decisao === d.id).length : decisoes.length,
+          }))}
+        />
+        {daPagina.length === 0 ? (
+          <p className="text-body-sm text-ink-muted">
+            {decisoes.length === 0 ? "A IA ainda não revisou nenhum anúncio." : "Nenhuma revisão com essa decisão."}
+          </p>
         ) : (
           <ul className="flex flex-col divide-y divide-line">
-            {decisoes.map((d) => (
+            {daPagina.map((d) => (
               <li key={d.id} className="flex flex-col gap-1 py-3 text-body-sm">
                 <span className="flex flex-wrap items-center gap-2">
                   <Selo variante={d.decisao === "retido" ? "aviso" : d.decisao === "erro" ? "contorno" : "match"}>
@@ -216,7 +338,8 @@ async function Conteudo() {
             ))}
           </ul>
         )}
-      </Secao>
-    </div>
+        <Paginacao pagina={aqui} total={filtradas.length} porPagina={POR_PAGINA} link={(p) => link(decisao, p)} />
+      </div>
+    </Secao>
   );
 }

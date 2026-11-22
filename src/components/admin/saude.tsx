@@ -29,7 +29,7 @@ export function itensDaSaude(s: SaudeSite, agora: number): Item[] {
   // revisão da IA: anúncios, recados e avaliações esperando
   const ia: Item = {
     tema: "Revisão da IA",
-    href: "/admin/ia",
+    href: "/admin/ia?aba=revisoes",
     ok: s.ia.parados === 0 && s.ia.erros_24h === 0,
     texto:
       s.ia.parados > 0
