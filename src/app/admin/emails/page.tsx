@@ -18,6 +18,7 @@ import { LigarCombinam } from "@/components/admin/combinam";
 import { ConviteDeConversa } from "@/components/admin/convite-de-conversa";
 import { FormParametrosEmail, IntervaloEmail, LigarEmail } from "@/components/admin/emails-catalogo";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { SubAbasAdmin } from "@/components/admin/sub-abas";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
 import { Botao } from "@/components/ui/botao";
@@ -102,35 +103,12 @@ export default function Emails({ searchParams }: PageProps<"/admin/emails">) {
 
 function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
   return (
-    // relative: o texto só para leitores de tela do número de falhas (absolute) fica dentro da faixa que rola, sem
-    // alargar a página no celular
-    <nav aria-label="E-mails" className="sem-barra relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-      {ABAS.map(({ id, nome, icone: Icone }) => {
-        const atual = id === ativa;
-        return (
-          <Link
-            key={id}
-            href={id === "visao" ? "/admin/emails" : `/admin/emails?aba=${id}`}
-            scroll={false}
-            aria-current={atual ? "page" : undefined}
-            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
-              atual
-                ? "border-ink bg-ink text-surface-100"
-                : "border-line bg-surface-300 text-ink hover:border-line-strong"
-            }`}
-          >
-            <Icone aria-hidden className="size-4" />
-            {nome}
-            {id === "enviados" && falhas > 0 && (
-              <span className="rounded-pill bg-danger px-1.5 text-caption text-on-terra tabular-nums">
-                {falhas}
-                <span className="sr-only"> com falha</span>
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </nav>
+    <SubAbasAdmin
+      rotulo="E-mails"
+      base="/admin/emails"
+      abas={ABAS.map((a) => (a.id === "enviados" ? { ...a, alerta: { n: falhas, leitor: "com falha" } } : a))}
+      ativa={ativa}
+    />
   );
 }
 

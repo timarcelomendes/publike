@@ -25,8 +25,12 @@ export function SubAbasAdmin<T extends string>({
   ativa: T;
 }) {
   return (
-    // relative: o texto só para leitores de tela fica dentro da faixa que rola, sem alargar a página no celular
-    <nav aria-label={rotulo} className="sem-barra relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+    // abas de sublinhado (22/11/2026, Marcelo: "mudar o visual"), discretas sobre a linha de baixo; relative: o texto só
+    // para leitores de tela fica dentro da faixa que rola, sem alargar a página no celular
+    <nav
+      aria-label={rotulo}
+      className="sem-barra relative -mx-4 flex gap-6 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0"
+    >
       {abas.map(({ id, nome, icone: Icone, alerta }, i) => {
         const atual = id === ativa;
         return (
@@ -35,8 +39,8 @@ export function SubAbasAdmin<T extends string>({
             href={i === 0 ? base : `${base}?aba=${id}`}
             scroll={false}
             aria-current={atual ? "page" : undefined}
-            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
-              atual ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-300 text-ink hover:border-line-strong"
+            className={`relative inline-flex min-h-11 shrink-0 items-center gap-2 text-label transition-colors after:absolute after:inset-x-0 after:-bottom-px after:h-[3px] after:rounded-full ${
+              atual ? "text-ink after:bg-terra" : "text-ink-muted after:bg-transparent hover:text-ink hover:after:bg-line-strong"
             }`}
           >
             {Icone && <Icone aria-hidden className="size-4" />}
