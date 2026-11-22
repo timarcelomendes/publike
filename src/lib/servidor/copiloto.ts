@@ -232,9 +232,23 @@ export type PessoaDoCopiloto = {
   /** candidato: ficou fora por uma pergunta eliminatória (a IA não lê) */
   eliminado: boolean;
   curtido_em: string | null;
+  /** talento: a leitura do currículo indicou como pronto para a função da vaga ("mesma" ocupação ou da "familia") */
+  pronto?: "mesma" | "familia" | null;
 };
 
-/** Quem o copiloto pode ler na vaga: os talentos (até 500) ou os candidatos com currículo. */
+/** Os prontos para a função da vaga, pela leitura do currículo (migração 20270828120000); sem a migração, nenhum. */
+async function prontosDaTriagem(anuncioId: string): Promise<Map<string, "mesma" | "familia">> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("prontos_da_triagem", { p_anuncio: anuncioId });
+  if (error) return new Map();
+  return new Map((data ?? []).map((l) => [l.perfil_id, l.mesma ? "mesma" : "familia"] as const));
+}
+const pesoDoPronto = (p: PessoaDoCopiloto) => (p.pronto === "mesma" ? 2 : p.pronto === "familia" ? 1 : 0);
+
+/**
+ * Quem o copiloto pode ler na vaga: os talentos (até 500, os prontos para a função primeiro) ou os candidatos com
+ * currículo.
+ */
 export async function pessoasDoCopiloto(
   anuncio: AnuncioCompleto,
   origem: OrigemCopiloto,
@@ -242,7 +256,10 @@ export async function pessoasDoCopiloto(
   agora: number,
 ): Promise<PessoaDoCopiloto[]> {
   if (origem === "talento") {
-    const lista = await talentosParaVaga(anuncio.id).catch(() => []);
+    const [lista, prontos] = await Promise.all([
+      talentosParaVaga(anuncio.id).catch(() => []),
+      prontosDaTriagem(anuncio.id).catch(() => new Map<string, "mesma" | "familia">()),
+    ]);
     // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (claude/plano-match-pelo-contexto.md)
     const [[vagaComCbo], experiencias] = await Promise.all([
       comFuncaoDasVagas([anuncio]),
@@ -288,9 +305,11 @@ export async function pessoasDoCopiloto(
           status: null,
           eliminado: false,
           curtido_em: null,
+          pronto: prontos.get(t.perfil_id) ?? null,
         };
       })
-      .sort((a, b) => b.preNota - a.preNota);
+      // primeiro quem a leitura do currículo indicou como pronto para a função da vaga, depois pela pré-nota
+      .sort((a, b) => pesoDoPronto(b) - pesoDoPronto(a) || b.preNota - a.preNota);
   }
   const [{ cartoes }, curriculos] = await Promise.all([
     montarQuadro(anuncio, agora),

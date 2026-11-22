@@ -100,6 +100,8 @@ async function Conteudo({
   const pedida = sp.ver === "candidatos" ? "candidato" : sp.ver === "talentos" ? "talento" : null;
   const vista: OrigemCopiloto | null = pedida && origens.includes(pedida) ? pedida : null;
   const temCriterios = config.criterios.length > 0;
+  // vindo de "Prontos para assumir" (Talentos): a pessoa que a empresa quer conferir com os critérios
+  const foco = typeof sp.pessoa === "string" && /^[0-9a-f-]{36}$/i.test(sp.pessoa) ? sp.pessoa : null;
 
   const [listas, avaliacoes, registro] = await Promise.all([
     temCriterios
@@ -138,6 +140,9 @@ async function Conteudo({
   const ranking = lidas.filter((l) => !vista || l.p.origem === vista).map((l, i) => ({ ...l, posicao: i + 1 }));
   const temObrigatorios = config.criterios.some((c) => c.obrigatorio);
   const grupos = gruposDoRanking(ranking, temObrigatorios);
+  const pessoaFoco = foco ? comCurriculo.find((p) => p.perfil_id === foco) : undefined;
+  const focoNaFila = pessoaFoco && !lidas.some((l) => l.p.perfil_id === foco && !l.antiga);
+  const temProntos = talentos.some((p) => p.pronto);
   const vagaNoAr = anuncio.status === "ativo" && !anuncio.preenchida_em;
   const semCurriculo = candidatos.length - candidatos.filter((p) => p.curriculo).length;
   const href = (v: OrigemCopiloto | null) =>
@@ -244,6 +249,9 @@ async function Conteudo({
                     : config.busca
                       ? `${ia.Nome} lê primeiro os Talentos que mais parecem combinar.`
                       : `${ia.Nome} lê o currículo de quem se candidatou.`}
+                  {config.busca &&
+                    temProntos &&
+                    " Em Talentos, começa por quem a leitura do currículo indicou como pronto para a função da vaga."}
                   {config.busca && " Em Talentos só aparece quem deixou o currículo visível para as empresas."}
                 </p>
                 {config.triagem && candidatos.length > config.teto && (
@@ -257,6 +265,18 @@ async function Conteudo({
                   <p className="text-body-sm text-ink-muted">
                     {semCurriculo} {semCurriculo === 1 ? "candidato sem currículo" : "candidatos sem currículo"}: veja
                     as respostas no quadro.
+                  </p>
+                )}
+                {foco && !config.busca && (
+                  <p className="text-body-sm">
+                    Para conferir quem está em Talentos, ligue a busca em Talentos em “O que a triagem faz nesta vaga”.
+                  </p>
+                )}
+                {focoNaFila && pessoaFoco && (
+                  <p className="text-body-sm">
+                    O currículo de {pessoaFoco.nome} ainda não foi conferido com os critérios. Toque em “
+                    {lidas.length ? "Ler mais" : "Ler os currículos"}”: nos Talentos, quem está pronto para a função vem
+                    primeiro.
                   </p>
                 )}
                 <RodarCopiloto
@@ -325,7 +345,7 @@ async function Conteudo({
                           agora={agora}
                           vagaNoAr={vagaNoAr}
                           posicao={posicao}
-                          aberto={aberto}
+                          aberto={aberto || p.perfil_id === foco}
                         />
                       ))}
                     </ol>
@@ -342,7 +362,7 @@ async function Conteudo({
                 const fechado = g.grupo === 2 && grupos.length > 1;
                 return fechado ? (
                   <div key={g.grupo} className="flex flex-col gap-1">
-                    <details className="group/grupo">
+                    <details className="group/grupo" open={g.itens.some((i) => i.p.perfil_id === foco)}>
                       <summary className="flex min-h-11 cursor-pointer list-none flex-col justify-center gap-0.5 [&::-webkit-details-marker]:hidden">
                         <span className="flex items-center gap-2">
                           {titulo}

@@ -372,7 +372,8 @@
   "20270824120000_meta_conversoes",
   "20270825120000_meta_dataset",
   "20270826120000_leitura_do_curriculo",
-  "20270827120000_prontos_para_a_vaga"
+  "20270827120000_prontos_para_a_vaga",
+  "20270828120000_prontos_na_triagem"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3569,6 +3570,7 @@
   "f|public.preferencias_antes_de_salvar()": "8e142bd1be",
   "f|public.processo_da_conta()": "f6f4c6244c",
   "f|public.procurando_agora(p_ids uuid[])": "1ba1bf61d5",
+  "f|public.prontos_da_triagem(p_anuncio uuid)": "5010a59794",
   "f|public.prontos_para_a_vaga(p_anuncio uuid)": "2c9f3f641f",
   "f|public.propostas_da_vaga(p_anuncio uuid)": "26034f14f0",
   "f|public.publicar_vaga_do_whatsapp(p_token text, p_anuncio uuid)": "18d233862d",

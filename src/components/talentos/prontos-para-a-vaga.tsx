@@ -1,7 +1,7 @@
-import { BadgeCheck, MapPin } from "lucide-react";
+import { BadgeCheck, ListChecks, MapPin } from "lucide-react";
 import Link from "next/link";
 import { MODO_DEMO } from "@/lib/config";
-import { talentosParaVaga } from "@/lib/dados";
+import { recursosPagos, talentosParaVaga } from "@/lib/dados";
 import { plural } from "@/lib/formato";
 import { distanciaCurta } from "@/lib/rota-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -12,7 +12,9 @@ import { Avatar } from "../ui/basicos";
 // não tem assinatura pode ter 5 talentos qualificados", "5 por vaga no ar"). Quem a leitura do currículo indicou como
 // pronto para a função da vaga, dos que moram mais perto da vaga para os mais longe: 5 sem assinatura, todos (até 50)
 // com. Sem o contato e com o nome encurtado; a nota da leitura não aparece. Sem a função da vaga ou ninguém pronto
-// ainda, nada aparece.
+// ainda, nada aparece. A leitura diz quem faz esse trabalho; quem serve para a vaga, pelos critérios da empresa e com
+// o trecho do currículo, é a Triagem com IA: cada pessoa tem o "Conferir com os critérios da vaga", que abre a
+// Triagem nela (ou a oferta, com os 15 dias grátis para quem nunca usou).
 
 type Pronto = {
   perfil_id: string;
@@ -29,15 +31,19 @@ type Resposta = { plano: boolean; funcao: boolean; total: number; prontos: Pront
 export async function ProntosParaAVaga({ vaga }: { vaga: { id: string; titulo: string } }) {
   if (MODO_DEMO) return null;
   const c = await criarClienteServidor();
-  const [{ data, error }, lista] = await Promise.all([
+  const [{ data, error }, lista, recursos] = await Promise.all([
     c.rpc("prontos_para_a_vaga", { p_anuncio: vaga.id }),
     talentosParaVaga(vaga.id).catch(() => null),
+    recursosPagos().catch(() => null),
   ]);
   if (error || !data) return null;
   const r = data as unknown as Resposta;
   if (!r.funcao || !r.prontos.length) return null;
   const convidados = new Set((lista ?? []).filter((t) => t.convidado).map((t) => t.perfil_id));
   const faltam = r.total - r.prontos.length;
+  const triagem = recursos?.copiloto;
+  const experimentar = Boolean(triagem && !triagem.liberado && triagem.pode_experimentar);
+  const conferir = (perfil: string) => `/painel/anuncio/${vaga.id}/copiloto?ver=talentos&pessoa=${perfil}#p-${perfil}`;
   return (
     <section
       aria-labelledby="prontos-titulo"
@@ -71,10 +77,26 @@ export async function ProntosParaAVaga({ vaga }: { vaga: { id: string; titulo: s
                 </span>
               )}
             </div>
-            <BotaoConvidar anuncioId={vaga.id} perfilId={p.perfil_id} convidado={convidados.has(p.perfil_id)} />
+            <div className="flex flex-wrap items-start gap-2">
+              <BotaoConvidar anuncioId={vaga.id} perfilId={p.perfil_id} convidado={convidados.has(p.perfil_id)} />
+              <Link
+                href={conferir(p.perfil_id)}
+                className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-label underline-offset-2 hover:bg-surface-300 hover:underline"
+              >
+                <ListChecks aria-hidden className="size-[18px]" />
+                Conferir com os critérios da vaga
+              </Link>
+            </div>
           </li>
         ))}
       </ul>
+      <p className="text-body-sm">
+        Quer saber quem atende o que a sua vaga pede, com o trecho do currículo?{" "}
+        <Link href={`/painel/anuncio/${vaga.id}/copiloto`} className="text-label underline underline-offset-2">
+          Use a Triagem com IA
+        </Link>
+        {experimentar && ": 15 dias grátis"}.
+      </p>
       {!r.plano && faltam > 0 && (
         <p className="text-body-sm">
           {faltam === 1 ? "Mais 1 pessoa pronta" : `Mais ${faltam} pessoas prontas`} para esta vaga com a assinatura.{" "}

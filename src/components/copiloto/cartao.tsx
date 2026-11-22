@@ -231,7 +231,7 @@ export function CandidatoDoRanking(props: Props) {
   const cv = pessoa.curriculo;
   const porque = porqueCurto(numeros, leitura.resumo);
   return (
-    <li className="border-t border-line first:border-t-0">
+    <li id={`p-${pessoa.perfil_id}`} className="scroll-mt-32 border-t border-line first:border-t-0">
       <details className="group" open={aberto}>
         <summary className="flex min-h-16 cursor-pointer list-none items-start gap-3 py-3 [&::-webkit-details-marker]:hidden">
           <span
@@ -246,6 +246,7 @@ export function CandidatoDoRanking(props: Props) {
               <span className="text-label">{pessoa.nome}</span>
               {cv?.titulo && <span className="max-w-full truncate text-body-sm text-ink-muted">{cv.titulo}</span>}
               {pessoa.origem === "candidato" && <SeloDaOrigem origem="candidato" />}
+              {pessoa.pronto && <span className="text-body-sm text-cerrado-text">pronto para assumir</span>}
               {antiga && <span className="text-body-sm text-terra-text">leitura antiga</span>}
             </span>
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
