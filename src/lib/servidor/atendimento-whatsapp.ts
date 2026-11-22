@@ -931,6 +931,26 @@ async function procurarVagas(
     // parecida de diária
     await daFuncao();
     if (!achadas.length && soltarOJeito()) await daFuncao();
+    // a função não tem vaga nova (ou já foram todas) e ela pediu diária ou freelance: as outras vagas desse jeito, da
+    // mesma área e depois de qualquer função, vêm antes das parecidas de carteira assinada (22/11/2026; Marcelo, com
+    // "Não tem diária?" de uma diarista respondido com vagas de serviços gerais CLT e 4 vagas de diária no ar: "tem
+    // diária sim")
+    if (!achadas.length && semOJeito && jeitosPedidos.some((j) => j === "diaria" || j === "freelance")) {
+      jeitos = jeitosPedidos;
+      semOJeito = false;
+      await vizinhas();
+      if (!achadas.length) {
+        await semFuncao(true);
+        for (const x of achadas) {
+          x.parecida = true;
+          x.outras = true;
+        }
+      }
+      if (!achadas.length) {
+        jeitos = [];
+        semOJeito = true;
+      }
+    }
     if (!achadas.length) await vizinhas();
     if (!achadas.length && soltarOJeito()) {
       await daFuncao();
@@ -1028,6 +1048,11 @@ async function procurarVagas(
         : `Olha ${mais1 ? "mais " : "as "}vagas que entraram no ar agora há pouco, de todas as funções:`;
   else if (outroPrograma)
     abertura = `Agora não tem vaga de ${listaE(funcoes)} no ar. Olha as de ${NOME_DO_PROGRAMA[outroPrograma]}, que também são para quem está começando:`;
+  else if (usadas[0].outras && doJeito)
+    // as do jeito pedido, de outras funções ("de diária")
+    abertura = repetidas
+      ? `As vagas de ${listaE(funcoes)}${jeito1} que estão no ar eu já te mandei. Olha as outras vagas${jeito1}${aqui}, de outras funções: abra e veja se alguma te interessa.`
+      : `Agora não achei vaga de ${listaE(funcoes)}${jeito1}. Olha as vagas${jeito1}${aqui}, de outras funções: abra e veja se alguma te interessa.`;
   else if (usadas[0].outras)
     abertura = `Agora não achei vaga de ${listaE(funcoes)}${jeitoNao} nem parecida. Olha as vagas no ar mais perto de você, de outras funções: abra e veja se alguma te interessa.`;
   else if (parecidas)

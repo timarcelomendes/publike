@@ -138,6 +138,9 @@ globalThis.fetch = (async (url: any, init: any) => {
     // auxiliar de cozinha só longe (nas cidades em volta)
     if (t === "auxiliar de cozinha")
       return json(corpo.p_raio_km === 100 ? [vaga("5", "Auxiliar de cozinha", { cidade: "Trindade", bairro: "Centro", distancia_km: 24 })] : []);
+    // diarista: uma vaga (de diária); e as de diária de outras funções, perto (22/11/2026: "Não tem diária?")
+    if (t === "diarista" && corpo.p_regime === "diaria") return json([vaga("dd1", "Diarista", { regime: "diaria" })]);
+    if (!t && corpo.p_regime === "diaria" && corpo.p_por_distancia) return json([vaga("0a", "Ajudante de obra", { regime: "diaria" })]);
     if (/cozinh/.test(t) || (!t && corpo.p_por_distancia && corpo.p_raio_km !== 100)) return json([vagaCozinheira]);
     // as mais perto de qualquer função, só para quem disse uma função que não existe aqui
     if (!t && astronauta) return json([vagaCozinheira]);
@@ -1048,6 +1051,29 @@ async function main() {
       corpo(r.msgs[0]).includes("Agora não achei vaga de auxiliar de serviços gerais de diária") &&
       !corpo(r.msgs[0]).includes("currículo"),
     "sem vaga de diária: as de serviços gerais com carteira, dizendo que de diária não tem",
+    corpo(r.msgs[0]),
+  );
+  // 22b5b. "Não tem diária?" de uma diarista que já recebeu a vaga de diarista (22/11/2026; Marcelo: "tem diária sim"):
+  // as outras vagas de diária, de outras funções, e não as de carteira da mesma área
+  respostaIA = ia("Olha as vagas:", {
+    perfil: "trabalho",
+    acao: "buscar_vagas",
+    busca: { texto: "diarista", funcoes: ["diarista"], parecidas: ["auxiliar de limpeza"], jeito: ["diaria"], categoria: "todas", cidade: "Goiânia", bairro: "Setor Bueno", fora: "" },
+  });
+  r = await rodar("Não tem diária ?", {
+    perfil: "trabalho",
+    historico: [
+      ...procurando,
+      { de: "pessoa", texto: "sou diarista, moro no setor bueno" },
+      { de: "robo", texto: "Olha as vagas de diarista:\n\n• *Diarista* · Setor Bueno\nhttps://publike.org/w/dd1dd1dd" },
+      { de: "pessoa", texto: "Não tem diária ?" },
+    ],
+  });
+  conferir(
+    corpo(r.msgs[0]).includes("*Ajudante de obra*") &&
+      corpo(r.msgs[0]).includes("As vagas de diarista de diária que estão no ar eu já te mandei. Olha as outras vagas de diária") &&
+      !corpo(r.msgs[0]).includes("Auxiliar de limpeza"),
+    "diarista que pede diária: as outras vagas de diária, não as de carteira",
     corpo(r.msgs[0]),
   );
   // 22b6. a mesma área, pela lista do Publike: faxineira vê limpeza
