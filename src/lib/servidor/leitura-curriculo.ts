@@ -7,7 +7,7 @@ import { lerCurriculoComIA, type CurriculoParaLer, type LeituraDoCurriculo } fro
 import { iaConfigurada } from "@/lib/ia/openai";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { acessoFila } from "./filas";
-import { opcoesParaIA } from "./funcao";
+import { opcoesParaIA } from "./opcoes-da-funcao";
 import { chaveDaExperiencia } from "./funcoes-pelo-contexto";
 
 // A leitura do currículo (migração 20270826120000; claude/plano-curriculos-qualificados.md). O robô das filas lê os

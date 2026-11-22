@@ -1,9 +1,10 @@
 import "server-only";
-import { buscarOcupacoes, normalizarTexto, ocupacao, ocupacoesNoTexto, type Ocupacao } from "@/lib/cbo";
+import { normalizarTexto, ocupacao } from "@/lib/cbo";
 import { funcaoPeloTitulo, type FuncaoParaForm } from "@/lib/funcao-cbo";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { escolherFuncaoComIA } from "@/lib/ia/funcao";
 import { iaConfigurada } from "@/lib/ia/openai";
+import { opcoesParaIA } from "./opcoes-da-funcao";
 import { acessoFila } from "./filas";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { chaveDaExperiencia } from "./funcoes-pelo-contexto";
@@ -27,27 +28,6 @@ const DESCRICAO_QUE_CONTA = 80;
 
 type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
 
-/**
- * As opções da IA: as ocupações da CBO que mais parecem com o título e, pelo contexto, também a das regras do
- * título e as que aparecem na descrição (ou no "o que você fazia").
- */
-export function opcoesParaIA(titulo: string, descricao: string | null, contexto = false) {
-  const vistas = new Set<string>();
-  const opcoes: Ocupacao[] = [];
-  const regra = contexto ? ocupacao(funcaoPeloTitulo(titulo)?.cbo) : null;
-  const doTitulo = buscarOcupacoes(titulo, contexto ? 8 : 10);
-  const daDescricao = descricao
-    ? contexto
-      ? [...ocupacoesNoTexto(descricao, 8), ...buscarOcupacoes(descricao.slice(0, 200), 3)]
-      : buscarOcupacoes(descricao.slice(0, 200), 4)
-    : [];
-  for (const o of [...(regra ? [regra] : []), ...doTitulo, ...daDescricao]) {
-    if (vistas.has(o.cbo)) continue;
-    vistas.add(o.cbo);
-    opcoes.push({ cbo: o.cbo, nome: o.nome, sinonimos: o.sinonimos });
-  }
-  return opcoes.slice(0, contexto ? 18 : 12);
-}
 
 /** Com a descrição e a IA, a função sai do texto todo (null: a IA não achou ou falhou; aí valem as regras). */
 async function funcaoPeloContexto(
