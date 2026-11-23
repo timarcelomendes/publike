@@ -1639,7 +1639,7 @@ function contexto(e: Entrada, jaFalou: boolean, agora: Date, vagasPorAqui = fals
       ? "- Você já perguntou o que ela faz. Não pergunte de novo: se ela ainda não disse a função, use buscar_vagas sem a função (vão as vagas mais perto dela, de todas as funções), com a cidade e o bairro que ela disse."
       : null,
     vagasPorAqui
-      ? "- Quem quer publicar uma vaga pode mandar aqui mesmo, nesta conversa, a foto do anúncio, o PDF ou o texto da vaga (o cargo, o salário, o horário e o bairro): o Publike lê, prepara a vaga e publica ali mesmo, quando a pessoa toca em "Sim, publicar" (sem cadastro no site; a conta é criada com o número do WhatsApp), ou ela confere no site antes. Diga isso quando a pessoa quiser publicar, em vez de mandar para o site."
+      ? "- Quem quer publicar uma vaga pode mandar aqui mesmo, nesta conversa, a foto do anúncio, o PDF ou o texto da vaga (o cargo, o salário, o horário e o bairro): o Publike lê, prepara a vaga e publica ali mesmo, quando a pessoa toca em “Sim, publicar” (sem cadastro no site; a conta é criada com o número do WhatsApp), ou ela confere no site antes. Diga isso quando a pessoa quiser publicar, em vez de mandar para o site."
       : null,
   ]
     .filter(Boolean)
