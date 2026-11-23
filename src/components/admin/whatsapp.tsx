@@ -160,6 +160,10 @@ export function ConfigWhatsapp({
   );
   const [pendente, iniciar] = useTransition();
   const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  // desligar o envio ou deixar só para os testes descarta os avisos de verdade: pede confirmação antes de salvar
+  // (23/11/2026: o modo de teste ficou ligado um dia inteiro sem ninguém ver)
+  const [confirmar, setConfirmar] = useState(false);
+  const paraDeMandar = (inicial.ativo && !ativo) || (inicial.para_todos && !paraTodos && ativo);
   const mudar = (k: ParametroWhatsapp) => (v: string) => {
     setP((atual) => ({ ...atual, [k]: v }));
     setResposta(null);
@@ -204,6 +208,11 @@ export function ConfigWhatsapp({
       onSubmit={(e) => {
         e.preventDefault();
         setResposta(null);
+        if (paraDeMandar && !confirmar) {
+          setConfirmar(true);
+          return;
+        }
+        setConfirmar(false);
         iniciar(async () => {
           const r = await salvarWhatsapp({
             ativo,
@@ -551,8 +560,30 @@ export function ConfigWhatsapp({
         </p>
       </fieldset>
 
+      {confirmar && paraDeMandar && (
+        <div role="alert" className="flex max-w-2xl flex-col gap-3 rounded-lg border border-danger bg-surface-300 p-4">
+          <p className="text-label text-ink">
+            {!ativo
+              ? "Desligar o envio pelo WhatsApp? Ninguém recebe mais aviso nenhum."
+              : "Deixar o envio só para os números de teste? Quem aceitou receber pelo WhatsApp deixa de receber."}
+          </p>
+          <p className="text-body-sm text-ink">
+            Os avisos de quem aceitou são descartados e não saem depois. O Admin mostra uma faixa vermelha enquanto isso
+            durar.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={pendente} className={classesBotao("perigo", "sm")}>
+              {!ativo ? "Sim, desligar o envio" : "Sim, só para os testes"}
+            </button>
+            <button type="button" onClick={() => setConfirmar(false)} className={classesBotao("secundario", "sm")}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pendente || horarioRuim} className={classesBotao("primario")}>
+        <button type="submit" disabled={pendente || horarioRuim || (confirmar && paraDeMandar)} className={classesBotao("primario")}>
           {pendente ? "Salvando…" : "Salvar a configuração"}
         </button>
         <Resposta r={resposta} />

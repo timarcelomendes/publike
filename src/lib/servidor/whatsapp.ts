@@ -1041,8 +1041,18 @@ export async function enviarWhatsappPendentes(limite = 30): Promise<ResultadoWha
     if (eConf.code === "PGRST202") return resultado;
     return { ...resultado, motivo: "Não deu para ler a configuração do WhatsApp." };
   }
-  const c = (conf ?? {}) as { ativo?: boolean; modelos?: SituacaoModelos; conferidos_em?: string | null };
+  const c = (conf ?? {}) as {
+    ativo?: boolean;
+    modelos?: SituacaoModelos;
+    conferidos_em?: string | null;
+    para_todos?: boolean;
+    descartados_hora?: number;
+  };
   if (!c.ativo) return resultado;
+  // só para os números de teste, descartando avisos de verdade: o /api/filas acusa, e o alarme da fila avisa por
+  // e-mail (migração 20270916170000; 23/11/2026: 169 avisos descartados em um dia, sem ninguém ver)
+  if (c.para_todos === false && Number(c.descartados_hora) > 0)
+    resultado.motivo = `WhatsApp em modo de teste: ${c.descartados_hora} aviso(s) descartado(s) na última hora. Ligue "Todos que aceitaram" em Admin › WhatsApp › Parâmetros.`;
   let modelos = c.modelos ?? {};
   if (!c.conferidos_em || Date.now() - Date.parse(c.conferidos_em) > 30 * 60_000) {
     const r = await conferirModelos(cfg, modelos, async (m) => {

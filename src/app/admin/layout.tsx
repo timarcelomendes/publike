@@ -8,7 +8,8 @@ import { JanelaDasConversas } from "@/components/admin/janela-das-conversas";
 import { Aviso, Container, Logo } from "@/components/ui/basicos";
 import { telasNoSite } from "@/lib/servidor/telas-do-admin";
 import { numerosDoMenu } from "@/lib/admin/painel";
-import { adminSemCookie, ehAdminLocal, exigirAdminLocal } from "@/lib/supabase/admin";
+import { adminSemCookie, criarClienteAdmin, ehAdminLocal, exigirAdminLocal } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = {
   title: { default: "Admin", template: "%s · Admin · Publike" },
@@ -41,6 +42,13 @@ async function ConteudoComModo({ children }: { children: ReactNode }) {
   const modo: ModoAdmin = admin ? "admin" : telas.length ? "moderador" : null;
   if (!modo && (await adminSemCookie())) return <AbrirPeloTerminal />;
   // a janela flutuante das conversas do WhatsApp: em todas as telas do Admin, para quem vê Admin › WhatsApp
+  // o WhatsApp só para os números de teste: a faixa vermelha no alto de todas as telas (migração 20270916170000)
+  const modoTeste =
+    modo === "admin" || telas.includes("/admin/whatsapp") ? (
+      <Suspense fallback={null}>
+        <FaixaModoDeTeste admin={modo === "admin"} />
+      </Suspense>
+    ) : null;
   const conversas =
     modo === "admin" || telas.includes("/admin/whatsapp") ? (
       <Suspense fallback={null}>
@@ -51,6 +59,7 @@ async function ConteudoComModo({ children }: { children: ReactNode }) {
     return (
       <>
         <Topo modo={modo} telas={telas} />
+        {modoTeste}
         <div className="mt-6">{children}</div>
         {conversas}
       </>
@@ -60,6 +69,7 @@ async function ConteudoComModo({ children }: { children: ReactNode }) {
   return (
     <>
       <Topo modo={modo} />
+      {modoTeste}
       <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-10">
         <Suspense fallback={<MenuAdmin numeros={{}} />}>
           <MenuComNumeros />
@@ -122,6 +132,29 @@ function AbrirPeloTerminal() {
           <KeyRound aria-hidden className="size-4 shrink-0" />
           Sem esse link, ninguém abre o admin, mesmo que alcance o seu computador pela rede.
         </p>
+      </Aviso>
+    </div>
+  );
+}
+
+/**
+ * O envio pelo WhatsApp está só para os números de teste (23/11/2026: ficou assim um dia inteiro, sem ninguém ver, e
+ * 169 avisos foram descartados). Sem a migração 20270916170000, nada.
+ */
+async function FaixaModoDeTeste({ admin }: { admin: boolean }) {
+  const c = admin ? criarClienteAdmin() : await criarClienteServidor();
+  const { data, error } = await c.rpc("admin_whatsapp_modo_teste");
+  const r = (data ?? {}) as { teste?: boolean; descartados?: number };
+  if (error || !r.teste) return null;
+  const n = Number(r.descartados) || 0;
+  return (
+    <div className="mt-4">
+      <Aviso tipo="erro" titulo="O WhatsApp está só para os números de teste">
+        Quem aceitou receber pelo WhatsApp não está recebendo nada
+        {n > 0 ? `: ${n === 1 ? "1 aviso foi descartado" : `${n} avisos foram descartados`} nas últimas 24 horas` : ""}.{" "}
+        <Link href="/admin/whatsapp?aba=parametros" className="underline underline-offset-2">
+          Ligar para todos em Admin › WhatsApp › Parâmetros
+        </Link>
       </Aviso>
     </div>
   );

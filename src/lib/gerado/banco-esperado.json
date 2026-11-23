@@ -397,7 +397,8 @@
   "20270916130000_divulgar_convites",
   "20270916140000_publicar_lote_no_whatsapp",
   "20270916150000_lugar_da_vaga_no_whatsapp",
-  "20270916160000_whatsapp_mandar_de_novo"
+  "20270916160000_whatsapp_mandar_de_novo",
+  "20270916170000_whatsapp_modo_de_teste_avisado"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3355,6 +3356,7 @@
   "f|public.admin_whatsapp_das_curtidas(p_anuncios uuid[])": "b050f5ff8e",
   "f|public.admin_whatsapp_instagram()": "68bff82175",
   "f|public.admin_whatsapp_mandar_de_novo(p_vaga uuid)": "0ab38eb8e7",
+  "f|public.admin_whatsapp_modo_teste()": "dae1d751b4",
   "f|public.admin_whatsapp_pedidos()": "b9013e5bb9",
   "f|public.admin_whatsapp_pedir_aceite()": "dbe0c307ae",
   "f|public.admin_whatsapp_publicar_aqui()": "70f935ba25",
@@ -4037,7 +4039,7 @@
   "f|public.servidor_whatsapp_aceite_pela_conversa(p_chave text, p_conversa text)": "963dbc8acd",
   "f|public.servidor_whatsapp_aceite_pela_vaga(p_chave text, p_conversa text, p_vaga uuid)": "01ba270c7c",
   "f|public.servidor_whatsapp_codigo(p_chave text, p_numero text)": "36e60adc50",
-  "f|public.servidor_whatsapp_config(p_chave text)": "940efaf897",
+  "f|public.servidor_whatsapp_config(p_chave text)": "cb9f87e8e6",
   "f|public.servidor_whatsapp_contas_do_numero(p_chave text, p_numero text, p_usuario uuid)": "889b4d840c",
   "f|public.servidor_whatsapp_conversa_entrada(p_chave text, p_numero text, p_texto text, p_nome text, p_origem jsonb, p_payload text, p_wamid text)": "9687d930b1",
   "f|public.servidor_whatsapp_conversa_saida(p_chave text, p_conversa text, p_texto text, p_wamid text, p_perfil text, p_equipe boolean, p_motivo text)": "99c2ceac83",

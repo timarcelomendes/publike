@@ -3614,6 +3614,7 @@ export type Database = {
         Args: { p_conta: string; p_pessoas?: number };
         Returns: string;
       };
+      admin_whatsapp_modo_teste: { Args: never; Returns: Json };
       admin_whatsapp_mandar_de_novo: { Args: { p_vaga: string }; Returns: Json };
       servidor_whatsapp_reenvios: { Args: { p_chave: string }; Returns: Json };
       servidor_whatsapp_reenvio_feito: { Args: { p_chave: string; p_lote: string; p_resultado: string }; Returns: undefined };
