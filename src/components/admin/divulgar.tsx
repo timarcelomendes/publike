@@ -1,9 +1,11 @@
 "use client";
 
-import { Check, Copy, Download, MessageCircle } from "lucide-react";
+import { Ban, Check, Copy, Download, MessageCircle, Undo2 } from "lucide-react";
 import { useState } from "react";
+import { marcarDivulgacao, tirarDasListasDaReceita } from "@/lib/acoes/admin-convites";
 import { WHATSAPP_OFICIAL } from "@/lib/whatsapp-oficial";
 import { Botao, classesBotao } from "../ui/botao";
+import { useAcao } from "../ui/usar-acao";
 
 // Admin › Convites › Divulgar (23/11/2026; Marcelo: "vou encaminhar para algumas contabilidades e empresas de
 // gestão de pessoas"): a imagem do publicar pelo WhatsApp e as mensagens prontas, para copiar e mandar.
@@ -90,6 +92,85 @@ export function Divulgar() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** O número do WhatsApp do telefone da Receita (55 + DDD + número); null: não dá. `celular`: começa com 9 (ou 6 a 9). */
+export function whatsappDaReceita(telefone: string | null): { numero: string; celular: boolean } | null {
+  const d = (telefone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").replace(/^0/, "");
+  if (d.length !== 10 && d.length !== 11) return null;
+  const celular = d.length === 11 ? d[2] === "9" : /[6-9]/.test(d[2]);
+  return { numero: `55${d}`, celular };
+}
+
+/** Os botões de um contato: abrir no WhatsApp com a mensagem, copiar, marcar mandado, não mandar. */
+export function AcoesDoContato({
+  cnpj,
+  publico,
+  telefone,
+  mandado,
+}: {
+  cnpj: string;
+  publico: "contabilidades" | "gestao";
+  telefone: string | null;
+  mandado: boolean;
+}) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [copiado, setCopiado] = useState(false);
+  const texto = MENSAGENS_DE_DIVULGAR.find((m) => m.id === publico)!.texto;
+  const zap = whatsappDaReceita(telefone);
+  return (
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <div className="flex flex-wrap gap-2 sm:justify-end">
+        {zap && !mandado && (
+          <a
+            href={`https://wa.me/${zap.numero}?text=${encodeURIComponent(texto)}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => rodar(() => marcarDivulgacao(cnpj, publico, true))}
+            className={classesBotao("primario", "sm")}
+          >
+            <MessageCircle aria-hidden />
+            Abrir no WhatsApp
+          </a>
+        )}
+        {!zap && !mandado && (
+          <Botao
+            tamanho="sm"
+            variante="secundario"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(texto);
+                setCopiado(true);
+              } catch {
+                setCopiado(false);
+              }
+            }}
+          >
+            {copiado ? <Check aria-hidden /> : <Copy aria-hidden />}
+            {copiado ? "Copiado" : "Copiar o texto"}
+          </Botao>
+        )}
+        {mandado ? (
+          <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => marcarDivulgacao(cnpj, publico, false))}>
+            <Undo2 aria-hidden />
+            Desfazer
+          </Botao>
+        ) : (
+          <>
+            <Botao tamanho="sm" variante="secundario" disabled={pendente} onClick={() => rodar(() => marcarDivulgacao(cnpj, publico, true))}>
+              <Check aria-hidden />
+              Mandei
+            </Botao>
+            <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => tirarDasListasDaReceita(cnpj))}>
+              <Ban aria-hidden />
+              Não mandar
+            </Botao>
+          </>
+        )}
+      </div>
+      {mensagem}
     </div>
   );
 }

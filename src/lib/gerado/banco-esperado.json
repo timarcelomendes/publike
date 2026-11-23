@@ -392,7 +392,8 @@
   "20270913120000_convites_email_pela_caixa",
   "20270914120000_publicar_no_whatsapp",
   "20270915120000_whatsapp_aceite_pela_conversa",
-  "20270915130000_esperando_no_site"
+  "20270915130000_esperando_no_site",
+  "20270916120000_divulgar_contatos"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -917,6 +918,9 @@
   "c|privado.dicas_vistas.usou_em": "de599dc94b",
   "c|privado.dicas_vistas.usuario_id": "80d056fc62",
   "c|privado.dicas_vistas.vista_em": "0d502ae88a",
+  "c|privado.divulgacoes.cnpj": "0d83f26402",
+  "c|privado.divulgacoes.mandado_em": "0d502ae88a",
+  "c|privado.divulgacoes.publico": "0d83f26402",
   "c|privado.documentos_para_apagar.ate": "0d502ae88a",
   "c|privado.documentos_para_apagar.caminho": "0d83f26402",
   "c|privado.email_empresas.assunto": "0d83f26402",
@@ -3154,6 +3158,8 @@
   "f|public.admin_decidir_conteudo(p_id bigint, p_publicar boolean)": "d13d571a51",
   "f|public.admin_decisoes_ia(p_limite integer)": "fdd780a590",
   "f|public.admin_dinheiro(p_dias integer)": "2c7b1270fe",
+  "f|public.admin_divulgar_contatos(p_publico text, p_cidade text, p_mostrar text, p_limite integer, p_pagina integer)": "ead2b473ad",
+  "f|public.admin_divulgar_marcar(p_cnpj text, p_publico text, p_mandado boolean)": "d778eb02b0",
   "f|public.admin_email_empresas()": "5ad980a7a6",
   "f|public.admin_email_empresas_copia()": "2ef2a67d65",
   "f|public.admin_email_empresas_parada()": "9accfcd071",
@@ -4211,6 +4217,7 @@
   "i|privado.curriculos_preparados_pkey": "2bd4cff01f",
   "i|privado.curriculos_preparados_token_key": "6385d5cb7a",
   "i|privado.dicas_vistas_pkey": "2ace02dc94",
+  "i|privado.divulgacoes_pkey": "e266b7d6d7",
   "i|privado.documentos_para_apagar_pkey": "53dd389774",
   "i|privado.email_empresas_envios_email_idx": "d45a3ffd30",
   "i|privado.email_empresas_envios_fila_idx": "9d9dbacac8",

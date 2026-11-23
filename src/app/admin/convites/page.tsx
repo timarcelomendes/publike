@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ImportarConvites, ImportarPorImagens, ListaConvites } from "@/components/admin/convites";
 import { Divulgar } from "@/components/admin/divulgar";
+import { ContatosDeDivulgar } from "@/components/admin/divulgar-contatos";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { ListaDaReceitaAdmin } from "@/components/admin/listas-da-receita";
 import { ManterContato } from "@/components/admin/manter-contato";
@@ -44,7 +45,14 @@ export default function Convites({ searchParams }: PageProps<"/admin/convites">)
         return (
           <Conteudo
             aba={aba}
-            sp={{ cidade: texto("cidade"), dias: texto("dias"), oficio: texto("oficio"), pagina: texto("pagina") }}
+            sp={{
+              cidade: texto("cidade"),
+              dias: texto("dias"),
+              oficio: texto("oficio"),
+              pagina: texto("pagina"),
+              publico: texto("publico"),
+              mostrar: texto("mostrar"),
+            }}
           />
         );
       })}
@@ -123,6 +131,11 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
           descricao="A imagem e as mensagens prontas do publicar pelo WhatsApp, para mandar a contabilidades, empresas de gestão de pessoas e quem mais indica vagas. O link do WhatsApp já abre a conversa com “Quero publicar uma vaga pelo WhatsApp”."
         >
           <Divulgar />
+        </Secao>
+      )}
+      {aba === "divulgar" && (
+        <Secao titulo="Para quem mandar" descricao="As contabilidades e as empresas de gestão de pessoas das cidades do Publike.">
+          <ContatosDeDivulgar c={c} sp={sp} />
         </Secao>
       )}
       {aba === "imagens" && (

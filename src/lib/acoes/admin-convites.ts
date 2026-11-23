@@ -783,3 +783,20 @@ export async function tirarDasListasDaReceita(cnpj: string): Promise<Resultado> 
   refresh();
   return { ok: true, mensagem: "Esse CNPJ não aparece mais nas listas." };
 }
+
+/** Admin › Convites › Divulgar: marca (ou desmarca) que a mensagem foi mandada a esse CNPJ (migração 20270916120000). */
+export async function marcarDivulgacao(cnpj: string, publico: string, mandado: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { error } = await c.rpc("admin_divulgar_marcar", {
+    p_cnpj: String(cnpj ?? ""),
+    p_publico: publico,
+    p_mandado: mandado,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode antes a migração 20270916120000_divulgar_contatos.sql." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return { ok: true, mensagem: mandado ? "Marcado como mandado." : "Voltou para os que faltam." };
+}
