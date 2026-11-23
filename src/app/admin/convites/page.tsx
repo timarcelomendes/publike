@@ -1,8 +1,9 @@
-import { Building2, FileUp, HeartHandshake, ImageIcon, List, Store, Wrench } from "lucide-react";
+import { Building2, FileUp, HeartHandshake, ImageIcon, List, Megaphone, Store, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ImportarConvites, ImportarPorImagens, ListaConvites } from "@/components/admin/convites";
+import { Divulgar } from "@/components/admin/divulgar";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { ListaDaReceitaAdmin } from "@/components/admin/listas-da-receita";
 import { ManterContato } from "@/components/admin/manter-contato";
@@ -22,6 +23,8 @@ const ABAS = [
   { id: "lista", nome: "Convidados", icone: List },
   // quem veio do convite e publicou (migração 20270810120000)
   { id: "contato", nome: "Manter contato", icone: HeartHandshake },
+  // a imagem e as mensagens do publicar pelo WhatsApp, para contabilidades e RH (23/11/2026)
+  { id: "divulgar", nome: "Divulgar", icone: Megaphone },
   { id: "imagens", nome: "Importar pelas imagens", icone: ImageIcon },
   { id: "arquivo", nome: "Importar arquivo", icone: FileUp },
   // a base da Receita (migração 20270604120000)
@@ -112,6 +115,14 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
           descricao="As empresas que vieram dos convites e já publicaram. Cada uma tem a mensagem de hoje: com vaga no ar, pede a próxima; com a vaga saindo do ar, pergunta se contratou ou quer renovar; sem vaga no ar, pergunta por que não publicou de novo, com respostas numeradas. Abra no WhatsApp, mande e marque o que a empresa respondeu: os motivos se somam no topo. Depois do contato, a empresa volta para a lista em 30 dias."
         >
           <ContatoDasEmpresas c={c} agora={agora} />
+        </Secao>
+      )}
+      {aba === "divulgar" && (
+        <Secao
+          titulo="Divulgar"
+          descricao="A imagem e as mensagens prontas do publicar pelo WhatsApp, para mandar a contabilidades, empresas de gestão de pessoas e quem mais indica vagas. O link do WhatsApp já abre a conversa com “Quero publicar uma vaga pelo WhatsApp”."
+        >
+          <Divulgar />
         </Secao>
       )}
       {aba === "imagens" && (
