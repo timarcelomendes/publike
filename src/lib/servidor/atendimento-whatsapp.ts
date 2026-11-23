@@ -35,6 +35,8 @@ import {
   lugarRespondido,
   respostaDaOferta,
   tentarVagaPeloWhatsapp,
+  vagaPreparadaDeNovo,
+  type VagaDoLugar,
 } from "./vaga-pelo-whatsapp";
 import { caminhoDaVagaDoWhatsapp, MARCA_DO_LUGAR } from "@/lib/vagas-pelo-whatsapp";
 import { pedeOsCandidatosAqui } from "@/lib/whatsapp-oficial";
@@ -2654,6 +2656,25 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
   });
   let enviados = 0;
   let falhas = 0;
+  // a vaga preparada mandada de novo pela equipe (Admin › Publicar pelo WhatsApp; migração 20270916160000; sem ela, nada)
+  const { data: deNovo, error: erroDeNovo } = await banco.rpc("servidor_whatsapp_reenvios", { p_chave: chave });
+  if (!erroDeNovo)
+    for (const p of (deNovo ?? []) as unknown as { lote: string; conversa: string; numero: string; janela: boolean; vagas: VagaDoLugar[] }[]) {
+      const feito = (resultado: string) =>
+        banco.rpc("servidor_whatsapp_reenvio_feito", { p_chave: chave, p_lote: p.lote, p_resultado: resultado });
+      if (!p.janela || !p.vagas?.length) {
+        await feito(!p.janela ? "não saiu: a janela de 24 horas fechou ou a equipe pegou a conversa" : "não saiu: as vagas já foram publicadas");
+        continue;
+      }
+      const m = await vagaPreparadaDeNovo(banco, chave, p.conversa, p.vagas);
+      const r = await mandarDoRobo(cfg, banco, chave, p.conversa, p.numero, m.texto, m.botao ?? null, m.botoes);
+      await feito(r.ok ? "mandada" : `não saiu: ${r.erro}`);
+      if (r.ok) enviados++;
+      else {
+        falhas++;
+        console.error("Publike: a vaga mandada de novo não saiu:", r.erro);
+      }
+    }
   // quem chegou para publicar vaga e parou (migração 20270816120000; sem ela, nada)
   const { data: daVaga, error: erroDaVaga } = await banco.rpc("servidor_whatsapp_lembrete_vaga", {
     p_chave: chave,

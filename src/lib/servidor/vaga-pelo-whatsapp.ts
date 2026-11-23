@@ -310,7 +310,7 @@ export async function tentarVagaPeloWhatsapp(p: {
 
 // --- O lugar perguntado na conversa (migração 20270916150000) ------------------------------------------------------
 
-type VagaDoLugar = { token: string; rascunho: RascunhoConvite };
+export type VagaDoLugar = { token: string; rascunho: RascunhoConvite };
 
 /**
  * As vagas do último anúncio lido na conversa que ainda não foram publicadas, completando antes com o bairro e a
@@ -371,6 +371,45 @@ export async function lugarRespondido(
     texto: r.texto,
     botoes: depois.length === 1 ? botoesDaVagaPreparada(primeiro) : botoesDoLotePreparado(primeiro, depois.length),
   };
+}
+
+/** O começo da vaga mandada de novo pela equipe (Admin › Publicar pelo WhatsApp › Mandar de novo). */
+export const COMECO_DE_NOVO =
+  "Oi! Aqui é o Marcelo, do Publike. A vaga que você mandou ainda não está no ar, e agora dá para publicar aqui mesmo, sem entrar no site.";
+
+/**
+ * A vaga preparada, mandada de novo pela equipe (migração 20270916160000): com o "Sim, publicar" (ou "Sim, publicar
+ * as N"), a pergunta do lugar quando falta, ou, sem o cargo, o link do site. As vagas do mesmo anúncio ficam antes no
+ * mesmo lugar (e o banco guarda).
+ */
+export async function vagaPreparadaDeNovo(
+  banco: ClienteBanco,
+  chave: string,
+  conversa: string,
+  vagas: VagaDoLugar[],
+): Promise<{ texto: string; botoes?: { id: string; titulo: string }[]; botao?: { titulo: string; caminho: string } }> {
+  let lista = vagas;
+  const juntas = lugarDoLote(lista.map((v) => v.rascunho));
+  const comum = juntas.find((v) => (v.bairro ?? "").trim());
+  if (comum && lista.some((v) => !(v.rascunho.bairro ?? "").trim())) {
+    // o lugar das outras vagas do anúncio, guardado nas que não diziam
+    lista = (await vagasParaOLugar(banco, chave, conversa, { bairro: comum.bairro, cidade: (comum.cidade ?? "").trim() || null })) ?? lista;
+  }
+  const rascunhos = lista.map((v) => v.rascunho);
+  const primeiro = lista[0].token;
+  const n = lista.length;
+  const textos = (await configVagasWhatsapp(banco, chave))?.textos ?? {};
+  const comCargo = rascunhos.every((v) => (v.titulo ?? "").trim().length >= 5);
+  if (comCargo && rascunhos.every(podePublicarAqui)) {
+    const r = respostaDasVagas(textos, rascunhos, n, COMECO_DE_NOVO, [], { publicarAqui: true });
+    return { texto: r.texto, botoes: n === 1 ? botoesDaVagaPreparada(primeiro) : botoesDoLotePreparado(primeiro, n) };
+  }
+  if (comCargo && rascunhos.some(semLugar)) {
+    const r = respostaDasVagas(textos, rascunhos, n, COMECO_DE_NOVO, [], { perguntarLugar: true });
+    return { texto: r.texto, botoes: botoesDoLugar(primeiro, n) };
+  }
+  const r = respostaDasVagas(textos, rascunhos, n, COMECO_DE_NOVO.replace(", e agora dá para publicar aqui mesmo, sem entrar no site", ""));
+  return { texto: r.texto, botao: { titulo: r.botao, caminho: caminhoDaVagaDoWhatsapp(primeiro, r.lote) } };
 }
 
 // --- Depois de publicar ------------------------------------------------------------------------------------------

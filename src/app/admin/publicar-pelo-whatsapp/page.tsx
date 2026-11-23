@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Barras, Ranking } from "@/components/admin/grafico";
 import { Filtros, linkCom, Numero, Secao, Situacao } from "@/components/admin/ui";
+import { MandarVagaDeNovo } from "@/components/admin/mandar-vaga-de-novo";
 import { ConfigVagasPeloWhatsapp } from "@/components/admin/vagas-pelo-whatsapp";
 import { PublicarAquiWhatsapp } from "@/components/admin/publicar-aqui-whatsapp";
 import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
@@ -350,6 +351,8 @@ async function Conteudo({ periodo }: { periodo: Periodo }) {
                     {u.publicada_em && (
                       <span className="text-ink-muted tabular-nums">no ar em {formatarDataHora(u.publicada_em)}</span>
                     )}
+                    {/* a vaga preparada que não foi publicada: de novo pela conversa, com o "Sim, publicar" (a primeira do anúncio) */}
+                    {!u.publicada_em && u.ordem === 1 && <MandarVagaDeNovo vagaId={u.id} />}
                   </span>
                 </li>
               );

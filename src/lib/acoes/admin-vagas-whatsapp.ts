@@ -74,3 +74,30 @@ export async function salvarVagasPeloWhatsapp(dados: ConfigVagasDoAdmin): Promis
   refresh();
   return { ok: true, mensagem: "Salvo. Vale para a próxima mensagem que chegar." };
 }
+
+/**
+ * Manda de novo, pela conversa, a vaga preparada que não foi publicada, com o "Sim, publicar" (migração
+ * 20270916160000): o robô das filas manda em até um minuto.
+ */
+export async function mandarVagaDeNovo(vagaId: string): Promise<Resultado> {
+  const c = await banco();
+  if (!c) return { ok: false, erro: "Só a equipe do Publike." };
+  const { data, error } = await c.rpc("admin_whatsapp_mandar_de_novo", { p_vaga: String(vagaId ?? "") });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode antes a migração 20270916160000_whatsapp_mandar_de_novo.sql." };
+    return { ok: false, erro: error.message || "Não deu para pedir agora." };
+  }
+  const r = (data ?? {}) as { ok?: boolean; erro?: string };
+  if (!r.ok) {
+    const motivo: Record<string, string> = {
+      nao_achou: "Não achamos essa vaga.",
+      publicada: "As vagas desse anúncio já foram publicadas.",
+      outro_mais_novo: "A empresa mandou outra vaga depois desta: mande de novo a mais nova.",
+      janela: "Passaram 24 horas desde a última mensagem da empresa: a Meta só deixa mandar com modelo aprovado.",
+      equipe: "A equipe está com essa conversa: devolva para o automático e tente de novo.",
+    };
+    return { ok: false, erro: motivo[r.erro ?? ""] ?? "Não deu para pedir agora." };
+  }
+  refresh();
+  return { ok: true, mensagem: "Pedido feito: a vaga sai pela conversa em até 1 minuto, com o botão de publicar." };
+}
