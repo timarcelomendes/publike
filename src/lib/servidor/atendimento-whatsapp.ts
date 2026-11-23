@@ -405,6 +405,10 @@ export function quandoAEquipeResponde(agora = new Date()) {
   return "na segunda de manhã";
 }
 
+/** Quem procura trabalho e passou das respostas do dia: as vagas do site, sem a equipe. */
+export const LIMITE_DE_QUEM_PROCURA =
+  "Hoje já te mandei bastante coisa por aqui 😊 Para ver todas as vagas no ar, com filtro por bairro e função, toque em *Ver vagas*. Amanhã eu continuo te ajudando por aqui.";
+
 /** "Certo! Vou pedir para alguém da equipe…", com quando a equipe responde. */
 export function passarParaEquipe(
   comeco: "Certo!" | "Para continuar," | "Para te ajudar direitinho,",
@@ -1845,13 +1849,6 @@ export async function atenderConversa(
       equipe: true,
       motivo: "a pessoa pediu",
     });
-  // passou das respostas do dia: a equipe continua
-  if (e.respostas_hoje >= e.limite)
-    return saida(passarParaEquipe("Para continuar,", agora), {
-      equipe: true,
-      motivo: "o número passou das respostas do dia",
-    });
-
   const nome = primeiroNome(e.nome);
   const respostas = e.historico.filter((x) => x.de !== "pessoa");
   const jaFalou = respostas.length > 0;
@@ -2243,6 +2240,21 @@ export async function atenderConversa(
       }`,
       { menu: !jaFalou && semPerfil },
     );
+  }
+
+  // passou das respostas do dia: vale só para a IA, depois dos caminhos prontos (o currículo pelo WhatsApp, as perguntas
+  // da vaga, os botões), que não são cortados no meio (23/11/2026: uma pessoa parou no meio do currículo). Quem procura
+  // trabalho não vai para a equipe (Marcelo: "ela quer vaga, não falar com a equipe"): o botão das vagas do site, uma
+  // vez, e o resto do dia em silêncio. Quem contrata (ou ainda não disse), a equipe continua
+  if (e.respostas_hoje >= e.limite) {
+    if (e.perfil === "trabalho") {
+      if (minhaUltima === LIMITE_DE_QUEM_PROCURA) return;
+      return saida(LIMITE_DE_QUEM_PROCURA, { perfil: "trabalho", botao: LINKS.vagas });
+    }
+    return saida(passarParaEquipe("Para continuar,", agora), {
+      equipe: true,
+      motivo: "o número passou das respostas do dia",
+    });
   }
 
   // o resto, a IA

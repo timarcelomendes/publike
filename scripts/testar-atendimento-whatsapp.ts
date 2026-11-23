@@ -761,14 +761,33 @@ async function main() {
     JSON.stringify(pedidosIA[0]?.input).includes("alguém responde por aqui em breve"),
     "a IA sabe quando a equipe responde",
   );
-  r = await rodar("oi?", {
+  r = await rodar("tem vaga de pedreiro?", {
     perfil: "trabalho",
     respostas_hoje: 30,
-    historico: [...procurando, { de: "pessoa", texto: "oi?" }],
+    historico: [...procurando, { de: "pessoa", texto: "tem vaga de pedreiro?" }],
+  });
+  // quem procura trabalho não vai para a equipe: as vagas do site (23/11/2026; Marcelo: "ela quer vaga")
+  conferir(
+    !saidas.some((x) => x.p_equipe) && corpo(r.msgs[0]) === a.LIMITE_DE_QUEM_PROCURA && botao(r.msgs[0]) === "Ver vagas",
+    "passou do limite do dia, procura trabalho: as vagas do site, sem a equipe",
+    corpo(r.msgs[0]),
+  );
+  // e depois disso, no mesmo dia, silêncio
+  r = await rodar("e de servente?", {
+    perfil: "trabalho",
+    respostas_hoje: 31,
+    historico: [...procurando, { de: "pessoa", texto: "tem vaga de pedreiro?" }, { de: "robo", texto: `${a.LIMITE_DE_QUEM_PROCURA}\n\n[Botão: Ver vagas]` }, { de: "pessoa", texto: "e de servente?" }],
+  });
+  conferir(r.msgs.length === 0 && !saidas.some((x) => x.p_equipe), "depois do aviso do limite, silêncio", r.msgs);
+  // quem contrata: a equipe continua
+  r = await rodar("quanto custa o impulso?", {
+    perfil: "contratar",
+    respostas_hoje: 30,
+    historico: [...comeco, { de: "pessoa", texto: "quanto custa o impulso?" }],
   });
   conferir(
     saidas[0]?.p_equipe === true && corpo(r.msgs[0]).startsWith("Para continuar, vou pedir"),
-    "passou do limite do dia",
+    "passou do limite do dia, quem contrata: a equipe",
     corpo(r.msgs[0]),
   );
 
@@ -1597,6 +1616,9 @@ async function main() {
       r.msgs[0],
     );
     conferir(JSON.stringify(pedidosIA[0] ?? {}).includes("De 50 a 150") && JSON.stringify(pedidosIA[0]).includes("pergunta 2 de 3"), "a pergunta 2: a IA vê a resposta da 1");
+    // passou das respostas do dia no meio do currículo: o currículo continua (23/11/2026)
+    r = await rodar("De 50 a 150", { perfil: "trabalho", respostas_hoje: 30, historico: [...procurando, p1, { de: "pessoa", texto: relato }, q1, { de: "pessoa", texto: "De 50 a 150" }] }, { payload: "a:cv-op:2" });
+    conferir(corpo(r.msgs[0]).startsWith(M.pergunta2) && !saidas.some((x) => x.p_equipe), "limite do dia no meio do currículo: continua, sem a equipe", corpo(r.msgs[0]));
     // a resposta da 3: o passo 3, sem a IA
     const q3 = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.perguntaDoPasso2(3, "Você mexia com o caixa?", false) };
     r = await rodar("sim, fechava o caixa", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, q3, { de: "pessoa", texto: "sim, fechava o caixa" }] });
