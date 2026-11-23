@@ -13,7 +13,16 @@ import { caminhoDaVagaDoWhatsapp, respostaDasVagas, textoDasVagas, type ChaveTex
 import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
 import { botoesDaVagaPreparada, podePublicarAqui } from "./publicar-no-whatsapp";
-import { baixarFotoOuPdf, configMeta, enviarComBotoes, enviarComLink, marcarLidaDigitando, type ConfigMeta } from "./whatsapp";
+import {
+  baixarFotoOuPdf,
+  codigoPeloModeloPode,
+  configMeta,
+  enviarComBotoes,
+  enviarComLink,
+  marcarLidaDigitando,
+  type ConfigMeta,
+  type SituacaoModelos,
+} from "./whatsapp";
 
 // Publicar pelo WhatsApp (19/11/2026; migração 20270806120000; claude/plano-vagas-novas.md, item 3). A empresa manda
 // para o número do Publike a foto do anúncio (ou várias), o PDF ou o texto da vaga; a IA lê (src/lib/ia/ler-vagas.ts)
@@ -290,6 +299,12 @@ export async function tentarVagaPeloWhatsapp(p: {
  */
 export const CONTA_NOVA_PELO_WHATSAPP =
   "Criei sua conta no Publike com este WhatsApp. Para ver os candidatos quando quiser: entre em publike.org/entrar, toque em *Entrar com o WhatsApp* e digite este número. O código para entrar chega aqui, nesta conversa. Não precisa de e-mail nem de senha.";
+/**
+ * Enquanto a Meta não libera o modelo de autenticação (23/11/2026: "Esta conta do WhatsApp Business não tem permissão
+ * para criar um modelo de mensagem"; pede a verificação da empresa), o código só sai nas 24 horas depois da última
+ * mensagem da pessoa: a conta nova fica sabendo do "oi".
+ */
+export const CONTA_NOVA_SEM_MODELO = "Se fizer mais de um dia que você não fala com o Publike, mande um *oi* aqui antes de pedir o código.";
 
 export async function confirmarVagaPublicada(
   token: string,
@@ -334,7 +349,7 @@ export async function confirmarVagaPublicada(
       : "";
   const conta = opcoes.contaNova
     ? LOGIN_CELULAR
-      ? `\n\n${CONTA_NOVA_PELO_WHATSAPP}`
+      ? `\n\n${CONTA_NOVA_PELO_WHATSAPP}${(await modeloDoCodigoLiberado(banco, chave)) ? "" : ` ${CONTA_NOVA_SEM_MODELO}`}`
       : "\n\nCriei sua conta no Publike com este WhatsApp: os candidatos ficam guardados nela."
     : "";
   const texto = `${t("no_ar", { titulo: v.titulo })}${restantes}${conta}`;
@@ -389,4 +404,11 @@ export async function respostaDaOferta(
   return !erroLogin && (login as { ligou?: boolean } | null)?.ligou
     ? `${combinado}\n\nE este WhatsApp ficou vinculado à sua conta: da próxima vez, você entra no Publike com um código que chega aqui, sem e-mail. Para desvincular, é em Meu perfil.`
     : combinado;
+}
+
+/** O modelo de autenticação do código de entrar já pode sair (src/lib/servidor/codigo-whatsapp.ts). */
+async function modeloDoCodigoLiberado(banco: ClienteBanco, chave: string) {
+  const { data, error } = await banco.rpc("servidor_whatsapp_config", { p_chave: chave });
+  if (error) return false;
+  return codigoPeloModeloPode(((data ?? {}) as { modelos?: SituacaoModelos }).modelos ?? {});
 }
