@@ -27,8 +27,10 @@ export function InstagramWhatsapp({ ligado: ligadoAntes, minutos: minutosAntes }
     >
       <p className="text-label">Convite do Instagram</p>
       <p className="text-caption text-ink-muted">
-        Quem procura trabalho e recebeu vagas, sem responder depois, recebe uma vez só o convite para seguir o Publike no
-        Instagram, com o botão. Só na janela das 24 horas, das 8h às 21h, e fora do teto do mês.
+        Quem procura trabalho e já recebeu vagas na conversa recebe uma vez só o convite para seguir o Publike no
+        Instagram, com o botão, quando para de responder: depois dos minutos abaixo ou, se o Publike fez uma pergunta (o
+        currículo, por exemplo), depois de 2 horas. Até 22 horas depois da última mensagem da pessoa, das 8h às 21h, e
+        fora do teto do mês.
       </p>
       <label className="flex items-center gap-2 text-body-sm">
         <input type="checkbox" checked={ligado} onChange={(ev) => setLigado(ev.target.checked)} className="size-5" />

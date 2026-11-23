@@ -2447,8 +2447,9 @@ export const LEMBRETE_SEMPRE =
   "Uma dica: sempre que quiser ver vagas, é só me chamar aqui no WhatsApp e dizer o que você procura. Entram vagas novas todo dia. 😊";
 const marca = (t: string) => t.slice(0, 24);
 /**
- * O convite do Instagram (22/11/2026; migração 20270911120000): uma vez, uns 30 minutos depois das vagas, para quem não
- * respondeu. Liga e desliga em Admin › WhatsApp › Conversas.
+ * O convite do Instagram (22/11/2026; migrações 20270911120000 e 20270912120000): uma vez, para quem já recebeu vagas e
+ * parou de responder (30 minutos depois da última mensagem do Publike; 2 horas, se ela era uma pergunta). Liga e
+ * desliga em Admin › WhatsApp › Conversas.
  */
 export const CONVITE_INSTAGRAM =
   "Enquanto isso, segue o Publike no Instagram 📲 Lá tem vagas novas, dicas de currículo e de entrevista e os golpes de vaga para fugir.";
@@ -2537,12 +2538,12 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
         console.error("Publike: a pergunta do currículo no WhatsApp não saiu:", r.erro);
       }
     }
-  // o convite do Instagram (migração 20270911120000; sem ela, nada): depois das vagas, ou da pergunta do currículo que
-  // ficou sem resposta
+  // o convite do Instagram (migrações 20270911120000 e 20270912120000; sem elas, nada): para quem já recebeu link de
+  // vaga na conversa, até 22 horas depois da última mensagem da pessoa; depois de uma pergunta do Publike, espera 2 horas
   const { data: paraOInstagram, error: erroDoInstagram } = await banco.rpc("servidor_whatsapp_convite_instagram", {
     p_chave: chave,
     p_marca: marca(CONVITE_INSTAGRAM),
-    p_marcas_ok: [...MARCAS_DOS_LINKS_DAS_VAGAS, TEXTOS_DO_CURRICULO.pergunta.slice(0, 40)],
+    p_marcas_ok: MARCAS_DOS_LINKS_DAS_VAGAS,
   });
   if (!erroDoInstagram)
     for (const l of (paraOInstagram ?? []) as unknown as { chave: string; numero: string }[]) {
