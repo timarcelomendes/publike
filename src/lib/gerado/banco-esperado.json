@@ -391,7 +391,8 @@
   "20270912120000_whatsapp_convite_instagram_mais",
   "20270913120000_convites_email_pela_caixa",
   "20270914120000_publicar_no_whatsapp",
-  "20270915120000_whatsapp_aceite_pela_conversa"
+  "20270915120000_whatsapp_aceite_pela_conversa",
+  "20270915130000_esperando_no_site"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -2864,6 +2865,7 @@
   "f|privado.exigir_conta_ativa()": "4715c5e90e",
   "f|privado.exigir_equipe()": "c36c30f85b",
   "f|privado.exigir_equipe_email_empresas()": "3554eefa97",
+  "f|privado.exigir_equipe_esperando()": "4f3e007292",
   "f|privado.exigir_impulsos_admin()": "ca30ec31d3",
   "f|privado.exigir_quem_administra()": "578c079863",
   "f|privado.exigir_servidor(p_chave text)": "1399e5f8b0",
@@ -3504,7 +3506,10 @@
   "f|public.enviar_sugestao(p_tipo text, p_texto text, p_pagina text, p_email text)": "394a8e91f9",
   "f|public.equipe_conversas_moderacao(p_anuncios uuid[])": "ad5eed6ffe",
   "f|public.equipe_da_conta()": "703ea4abe2",
+  "f|public.equipe_empresas_esperando(p_conta uuid)": "1925781e4c",
   "f|public.equipe_explicacoes_pendentes()": "bc1e7284cf",
+  "f|public.equipe_link_de_acesso_esperando(p_conta uuid)": "816f825922",
+  "f|public.equipe_marcar_empresa_avisada(p_conta uuid, p_pessoas integer)": "3319e8c341",
   "f|public.equipe_retorno(p_desde timestamp with time zone, p_conta uuid, p_dias integer)": "6c18a5e85a",
   "f|public.escolher_conta(p_conta uuid)": "581e1ffbd1",
   "f|public.escolher_horario(p_id uuid, p_quando timestamp with time zone)": "075d7b0594",

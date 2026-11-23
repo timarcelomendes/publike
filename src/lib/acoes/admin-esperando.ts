@@ -1,15 +1,22 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { empresasComGenteEsperando, type PessoaEsperando } from "@/lib/admin/dados";
+import { type EmpresaEsperando, empresasComGenteEsperando, empresasEsperandoPeloBanco, type PessoaEsperando } from "@/lib/admin/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { tempoRelativo } from "@/lib/formato";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 import { linkDoAceite } from "@/lib/whatsapp-oficial";
 
-const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
+const FORA = "Só a equipe do Publike usa esta tela.";
+
+/** No site no ar, a equipe publike.org (migração 20270915130000): o cliente de quem entrou, e as funções `equipe_*`. */
+async function clienteDaEquipe() {
+  return (await possoVerTela("/admin/esperando")) ? await criarClienteServidor() : null;
+}
 
 /**
  * A mensagem para a empresa com gente esperando (Admin › Esperando): quem curtiu e espera o aceite, quem
@@ -20,21 +27,35 @@ const FORA = "O admin só funciona no seu computador, com o site rodando em modo
 export async function mensagemParaEmpresaEsperando(
   contaId: string,
 ): Promise<{ ok: true; whatsapp: string | null; mensagem: string } | { ok: false; erro: string }> {
-  const c = await clienteAdminOuNulo();
-  if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const c = await clienteAdminOuNulo();
+  const equipe = c ? null : await clienteDaEquipe();
+  if (!c && !equipe) return { ok: false, erro: FORA };
   const agora = Date.now();
-  const [empresa] = await empresasComGenteEsperando(c, agora, contaId).catch(() => []);
+  const [empresa] = await (c
+    ? empresasComGenteEsperando(c, agora, contaId)
+    : empresasEsperandoPeloBanco(equipe!, contaId).then((l): EmpresaEsperando[] => l ?? [])
+  ).catch((): EmpresaEsperando[] => []);
   if (!empresa) return { ok: false, erro: "Ninguém está esperando esta empresa agora. Atualize a página." };
 
   const site = urlDosEmails() ?? "https://publike.org";
-  const { data: u } = await c.auth.admin.getUserById(contaId);
   let link = `${site}/painel/caixa${empresa.esperando.length ? "?aba=novos" : ""}`;
   let comoEntrar = "Para ver os currículos e responder:";
-  if (u?.user && !u.user.email) {
-    const token = randomBytes(32).toString("hex");
-    const { error } = await c.from("acessos_conta").insert({ token, perfil_id: contaId });
+  // a conta sem e-mail (nunca entrou pelo site): o link de acesso, como no "Mandar acesso pelo WhatsApp"
+  let token: string | null = null;
+  if (c) {
+    const { data: u } = await c.auth.admin.getUserById(contaId);
+    if (u?.user && !u.user.email) {
+      token = randomBytes(32).toString("hex");
+      const { error } = await c.from("acessos_conta").insert({ token, perfil_id: contaId });
+      if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para gerar o link de acesso.") };
+    }
+  } else {
+    const { data, error } = await equipe!.rpc("equipe_link_de_acesso_esperando", { p_conta: contaId });
     if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para gerar o link de acesso.") };
+    token = data ?? null;
+  }
+  if (token) {
     link = `${site}/acesso/${token}`;
     comoEntrar =
       "Para ver os currículos e responder, abra este link e coloque o e-mail da empresa (é por ele que vocês entram, sem senha; o link vale 30 dias):";
@@ -68,13 +89,14 @@ export async function marcarEmpresaAvisada(
   contaId: string,
   pessoas: number,
 ): Promise<{ ok: true; avisadaEm: string } | { ok: false; erro: string }> {
-  const c = await clienteAdminOuNulo();
-  if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
-  const { data, error } = await c.rpc("admin_marcar_empresa_avisada", {
-    p_conta: contaId,
-    p_pessoas: Math.max(0, Math.round(pessoas) || 0),
-  });
+  const c = await clienteAdminOuNulo();
+  const equipe = c ? null : await clienteDaEquipe();
+  if (!c && !equipe) return { ok: false, erro: FORA };
+  const args = { p_conta: contaId, p_pessoas: Math.max(0, Math.round(pessoas) || 0) };
+  const { data, error } = c
+    ? await c.rpc("admin_marcar_empresa_avisada", args)
+    : await equipe!.rpc("equipe_marcar_empresa_avisada", args);
   if (error || !data) {
     return {
       ok: false,

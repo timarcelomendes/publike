@@ -116,6 +116,8 @@ export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" |
   { href: "/admin/impulsos", nome: "Impulsos", precisa: "equipe" },
   // o retorno aos candidatos e "A empresa respondeu o candidato?" (migração 20270531120000; só a equipe publike.org)
   { href: "/admin/retorno", nome: "Retorno", precisa: "equipe" },
+  // as empresas com gente esperando e a mensagem pronta (migração 20270915130000; só a equipe publike.org)
+  { href: "/admin/esperando", nome: "Esperando", precisa: "equipe" },
   // a base de empresas da Receita (migração 20270602120000; só a equipe publike.org)
   { href: "/admin/receita", nome: "Base da Receita", precisa: "equipe" },
   // o WhatsApp oficial (migração 20270619120000; só a equipe publike.org)

@@ -6,9 +6,18 @@ import { AvisarEmpresa } from "@/components/admin/avisar-empresa";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Selo, Vazio } from "@/components/ui/basicos";
-import { type EmpresaEsperando, empresasComGenteEsperando, type PessoaEsperando } from "@/lib/admin/dados";
+import {
+  type EmpresaEsperando,
+  empresasComGenteEsperando,
+  empresasEsperandoPeloBanco,
+  type PessoaEsperando,
+} from "@/lib/admin/dados";
 import { formatarTelefone, plural, primeiro, rotuloConta, tempoRelativo } from "@/lib/formato";
-import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { notFound } from "next/navigation";
+import { Aviso } from "@/components/ui/basicos";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Esperando" };
@@ -29,11 +38,22 @@ export default function Esperando({ searchParams }: PageProps<"/admin/esperando"
 const ESPERAS = [24, 48, 72];
 
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/esperando">["searchParams"] }) {
-  const c = await exigirAdminLocal();
+  // o admin do computador do dono ou, no site no ar, a equipe publike.org (migração 20270915130000; Admin › Quem vê
+  // cada tela)
+  const admin = await ehAdminLocal();
+  if (!admin && !(await possoVerTela("/admin/esperando"))) notFound();
   const agora = await agoraDaRequisicao();
   const pedido = Number(primeiro((await searchParams).mais_de));
   const horas = ESPERAS.includes(pedido) ? pedido : null;
-  const todas = await empresasComGenteEsperando(c, agora);
+  const doBanco = admin ? null : await empresasEsperandoPeloBanco(await criarClienteServidor());
+  if (!admin && !doBanco) {
+    return (
+      <Aviso tipo="alerta" titulo="Rode a migração de Esperando">
+        Falta a migração 20270915130000_esperando_no_site.sql neste banco.
+      </Aviso>
+    );
+  }
+  const todas = admin ? await empresasComGenteEsperando(criarClienteAdmin(), agora) : doBanco!;
   // com o filtro: só quem curtiu há mais de N horas (e as empresas delas); o "deram match sem mensagem" fica de fora
   const filtrar = (h: number) =>
     todas

@@ -3593,6 +3593,18 @@ export type Database = {
         Args: { p_chave: string; p_conversa: string; p_token: string };
         Returns: Json;
       };
+      equipe_empresas_esperando: {
+        Args: { p_conta?: string };
+        Returns: Json;
+      };
+      equipe_link_de_acesso_esperando: {
+        Args: { p_conta: string };
+        Returns: string | null;
+      };
+      equipe_marcar_empresa_avisada: {
+        Args: { p_conta: string; p_pessoas?: number };
+        Returns: string;
+      };
       servidor_whatsapp_aceite_pela_conversa: {
         Args: { p_chave: string; p_conversa: string };
         Returns: Json;

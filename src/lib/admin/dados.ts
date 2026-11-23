@@ -1684,6 +1684,55 @@ export async function empresasComGenteEsperando(
   return empresas.sort((a, b) => Number(b.semEmail) - Number(a.semEmail) || a.maisAntiga.localeCompare(b.maisAntiga));
 }
 
+type EsperandoDoBanco = {
+  id: string;
+  nome: string;
+  tipo: string;
+  whatsapp: string | null;
+  esperando: PessoaEsperando[];
+  sem_conversa: PessoaEsperando[];
+  mais_antiga: string;
+  tem_login: boolean;
+  email_confirmado: boolean;
+  ultimo_login: string | null;
+  visto_em: string | null;
+  avisada_em: string | null;
+};
+
+/**
+ * O mesmo de `empresasComGenteEsperando`, pela função do banco que confere a equipe (migração 20270915130000): a tela
+ * no site no ar. `null`: o banco sem a migração.
+ */
+export async function empresasEsperandoPeloBanco(
+  c: ClienteBanco,
+  contaId: string | null = null,
+): Promise<EmpresaEsperando[] | null> {
+  const { data, error } = await c.rpc("equipe_empresas_esperando", { p_conta: contaId ?? undefined });
+  if (error) {
+    if (error.code === "PGRST202") return null;
+    falha("quem está esperando", error);
+  }
+  const curto = (l: PessoaEsperando[]) => l.map((p) => ({ ...p, nome: nomeCurtoDoCandidato(p.nome) }));
+  const empresas = ((data ?? []) as unknown as EsperandoDoBanco[]).map((e): EmpresaEsperando => {
+    const nuncaEntrou = e.tem_login && !e.ultimo_login;
+    const quando = [e.ultimo_login, e.visto_em].filter((x): x is string => Boolean(x)).map((x) => Date.parse(x));
+    return {
+      id: e.id,
+      nome: e.nome,
+      tipo: e.tipo,
+      whatsapp: e.whatsapp,
+      esperando: curto(e.esperando),
+      semConversa: curto(e.sem_conversa),
+      maisAntiga: e.mais_antiga,
+      semEmail: e.tem_login && !e.email_confirmado,
+      avisadaEm: e.avisada_em,
+      nuncaEntrou,
+      ultimoAcesso: nuncaEntrou || !quando.length ? null : new Date(Math.max(...quando)).toISOString(),
+    };
+  });
+  return empresas.sort((a, b) => Number(b.semEmail) - Number(a.semEmail) || a.maisAntiga.localeCompare(b.maisAntiga));
+}
+
 /** O rastro de uma conta apagada (migração 20270113120000). null: sem rastro ou o banco sem a migração. */
 export async function contaApagada(c: ClienteBanco, id: string): Promise<ContaApagada | null> {
   const { data, error } = await c.rpc("admin_conta_apagada", { p_id: id });
