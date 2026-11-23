@@ -14,7 +14,18 @@ const TEXTO_DO_PUBLICAR = "Olá! Quero publicar uma vaga pelo WhatsApp.";
 const LINK_DO_WHATSAPP = `https://wa.me/${WHATSAPP_OFICIAL.numero}?text=${encodeURIComponent(TEXTO_DO_PUBLICAR)}`;
 const LINKS = `👉 Pelo WhatsApp: ${LINK_DO_WHATSAPP}\n👉 Pelo site: https://publike.org/publicar`;
 
+/** Para a empresa que anunciou vaga em outro lugar: a vaga dela no começo, quando se sabe. */
+export function mensagemParaEmpresa(vaga?: string | null) {
+  const v = (vaga ?? "").trim();
+  return `Olá! Vi que vocês estão contratando${v ? ` (${v})` : ""}. Sou o Marcelo, do Publike, o site de vagas de Goiânia e Anápolis.
+
+Vocês podem publicar a vaga grátis direto pelo WhatsApp: é só mandar a vaga em texto ou foto, e o Publike monta, publica e já mostra as pessoas prontas para assumir, perto da empresa.
+
+${LINKS}`;
+}
+
 export const MENSAGENS_DE_DIVULGAR = [
+  { id: "empresas", nome: "Para empresas que anunciam vaga", texto: mensagemParaEmpresa() },
   {
     id: "contabilidades",
     nome: "Para contabilidades",
@@ -102,15 +113,18 @@ export function AcoesDoContato({
   publico,
   telefone,
   mandado,
+  texto: textoProprio,
 }: {
   cnpj: string;
-  publico: "contabilidades" | "gestao";
+  publico: "contabilidades" | "gestao" | "empresas";
   telefone: string | null;
   mandado: boolean;
+  /** a mensagem própria do contato (a da empresa, com a vaga dela) */
+  texto?: string;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [copiado, setCopiado] = useState(false);
-  const texto = MENSAGENS_DE_DIVULGAR.find((m) => m.id === publico)!.texto;
+  const texto = textoProprio ?? MENSAGENS_DE_DIVULGAR.find((m) => m.id === publico)!.texto;
   const zap = whatsappDaReceita(telefone);
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
@@ -155,10 +169,12 @@ export function AcoesDoContato({
               <Check aria-hidden />
               Mandei
             </Botao>
-            <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => tirarDasListasDaReceita(cnpj))}>
-              <Ban aria-hidden />
-              Não mandar
-            </Botao>
+            {publico !== "empresas" && (
+              <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => tirarDasListasDaReceita(cnpj))}>
+                <Ban aria-hidden />
+                Não mandar
+              </Botao>
+            )}
           </>
         )}
       </div>
