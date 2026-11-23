@@ -301,7 +301,7 @@ export const CONTA_NOVA_PELO_WHATSAPP =
   "Criei sua conta no Publike com este WhatsApp. Para ver os candidatos quando quiser: entre em publike.org/entrar, toque em *Entrar com o WhatsApp* e digite este número. O código para entrar chega aqui, nesta conversa. Não precisa de e-mail nem de senha.";
 /**
  * Enquanto a Meta não libera o modelo de autenticação (23/11/2026: "Esta conta do WhatsApp Business não tem permissão
- * para criar um modelo de mensagem"; pede a verificação da empresa), o código só sai nas 24 horas depois da última
+ * para criar um modelo de mensagem"; além da empresa verificada, pede o número numa faixa de limite alta), o código só sai nas 24 horas depois da última
  * mensagem da pessoa: a conta nova fica sabendo do "oi".
  */
 export const CONTA_NOVA_SEM_MODELO = "Se fizer mais de um dia que você não fala com o Publike, mande um *oi* aqui antes de pedir o código.";
