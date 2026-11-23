@@ -284,6 +284,13 @@ export async function tentarVagaPeloWhatsapp(p: {
  * A vaga do WhatsApp foi publicada: "Sua vaga está no ar" (uma vez, se a empresa falou com o Publike nas últimas 23
  * horas) e, para quem ainda não recebe, a oferta dos candidatos pelo WhatsApp. Roda depois da resposta do publicar.
  */
+/**
+ * A conta criada no "Sim, publicar": como entrar depois (23/11/2026; Marcelo: "seria bom ela ter essa informação, logo
+ * após publicar a vaga"). Fora das 24 horas, o código chega pelo modelo de autenticação (src/lib/servidor/codigo-whatsapp.ts).
+ */
+export const CONTA_NOVA_PELO_WHATSAPP =
+  "Criei sua conta no Publike com este WhatsApp. Para ver os candidatos quando quiser: entre em publike.org/entrar, toque em *Entrar com o WhatsApp* e digite este número. O código para entrar chega aqui, nesta conversa. Não precisa de e-mail nem de senha.";
+
 export async function confirmarVagaPublicada(
   token: string,
   /**
@@ -327,7 +334,7 @@ export async function confirmarVagaPublicada(
       : "";
   const conta = opcoes.contaNova
     ? LOGIN_CELULAR
-      ? "\n\nCriei sua conta no Publike com este WhatsApp. Para ver os candidatos no site, é só entrar com este número: o código chega aqui."
+      ? `\n\n${CONTA_NOVA_PELO_WHATSAPP}`
       : "\n\nCriei sua conta no Publike com este WhatsApp: os candidatos ficam guardados nela."
     : "";
   const texto = `${t("no_ar", { titulo: v.titulo })}${restantes}${conta}`;

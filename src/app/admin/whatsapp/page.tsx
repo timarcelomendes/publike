@@ -38,6 +38,7 @@ import {
   erroPassageiro,
   explicarErro,
   MODELOS,
+  MODELO_DO_CODIGO,
   RODAPE_WHATSAPP,
   situacaoWhatsapp,
   type SituacaoModelos,
@@ -1377,6 +1378,26 @@ function AbaModelos({ r, p, conferir }: { r: Resumo; p: ParametrosWhatsapp; conf
             </li>
           );
         })}
+        {(() => {
+          // o código de entrar fora das 24 horas (autenticação; 23/11/2026)
+          const st = r.config.modelos?.[MODELO_DO_CODIGO];
+          const info = STATUS[st?.status ?? "FALTA"] ?? { nome: st?.status ?? "—", variante: "contorno" as const };
+          return (
+            <li className="flex flex-col gap-1.5 p-4">
+              <p className="flex flex-wrap items-center gap-2">
+                <span className="text-label break-all text-ink">{MODELO_DO_CODIGO}</span>
+                <Selo variante={info.variante}>{info.nome}</Selo>
+                <Selo variante="contorno">Autenticação</Selo>
+              </p>
+              <p className="text-body-sm text-ink-muted">
+                Conta que já existe: o código de entrar fora das 24 horas, sem pedir o “oi” antes
+              </p>
+              <p className="text-body-sm text-ink">*123456* é seu código de verificação. Para sua segurança, não o compartilhe.</p>
+              <p className="text-body-sm text-ink-muted">Botões: Copiar código</p>
+              {st?.motivo && <p className="text-body-sm text-danger">{st.motivo}</p>}
+            </li>
+          );
+        })()}
       </ul>
     </Secao>
   );

@@ -273,6 +273,35 @@ export const MODELOS: Modelo[] = [
 
 const POR_NOME = new Map(MODELOS.map((m) => [m.nome, m]));
 
+/**
+ * O código de entrar fora da janela de 24 horas (23/11/2026; Marcelo: "acho necessário"): o modelo de autenticação da
+ * Meta, que sai a qualquer hora, com o botão "Copiar código". O texto é o da Meta ("*123456* é seu código de
+ * verificação. Para sua segurança, não o compartilhe."), sem variável nossa. Cadastrado pelo `conferirModelos`, como
+ * os outros; sai só para conta que já existe (src/lib/servidor/codigo-whatsapp.ts).
+ */
+export const MODELO_DO_CODIGO = "publike_codigo_de_acesso";
+export const VALIDADE_DO_CODIGO_MINUTOS = 10;
+
+export function cadastroDoModeloDoCodigo() {
+  return {
+    name: MODELO_DO_CODIGO,
+    language: "pt_BR",
+    category: "AUTHENTICATION",
+    message_send_ttl_seconds: VALIDADE_DO_CODIGO_MINUTOS * 60,
+    components: [
+      { type: "BODY", add_security_recommendation: true },
+      { type: "FOOTER", code_expiration_minutes: VALIDADE_DO_CODIGO_MINUTOS },
+      { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: "COPY_CODE", text: "Copiar código" }] },
+    ],
+  };
+}
+
+/** O modelo do código pode sair: aprovado e na categoria de autenticação. */
+export function codigoPeloModeloPode(modelos: SituacaoModelos) {
+  const st = modelos[MODELO_DO_CODIGO];
+  return st?.status === "APPROVED" && (!st.categoria || st.categoria === "AUTHENTICATION");
+}
+
 /** As variáveis do corpo, na ordem: "{{nome}}" → "nome". */
 export function variaveisDoModelo(m: Modelo) {
   return [...m.corpo.matchAll(/\{\{([a-z_]+)\}\}/g)].map((x) => x[1]);
@@ -380,6 +409,32 @@ function limpar(t: unknown, max = 120) {
 }
 
 export type Envio = { ok: true; wamid: string } | { ok: false; erro: string; passageiro: boolean; configuracao: boolean };
+
+/** O código pelo modelo de autenticação (o código vai no corpo e no botão de copiar). */
+export async function enviarCodigoPeloModelo(cfg: ConfigMeta, numero: string, codigo: string): Promise<Envio> {
+  const r = await graph<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
+    metodo: "POST",
+    corpo: {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: numero.replace(/\D/g, ""),
+      type: "template",
+      template: {
+        name: MODELO_DO_CODIGO,
+        language: { code: "pt_BR" },
+        components: [
+          { type: "body", parameters: [{ type: "text", text: codigo }] },
+          { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: codigo }] },
+        ],
+      },
+    },
+  });
+  if (r.ok) {
+    const wamid = r.dados.messages?.[0]?.id;
+    return wamid ? { ok: true, wamid } : { ok: false, erro: "a Meta não devolveu o id da mensagem", passageiro: false, configuracao: false };
+  }
+  return { ok: false, erro: r.texto.slice(0, 300), passageiro: passageiro(r), configuracao: deConfiguracao(r) };
+}
 
 export async function enviarModelo(
   cfg: ConfigMeta,
@@ -801,6 +856,27 @@ export async function conferirModelos(
     novos[m.nome] = criado.ok
       ? { status: criado.dados.status ?? "PENDING", categoria: criado.dados.category, tentado_em: new Date().toISOString() }
       : { status: "ERRO", motivo: criado.texto.slice(0, 200), tentado_em: new Date().toISOString() };
+  }
+  // o modelo do código de entrar (autenticação), do mesmo jeito
+  {
+    const t = naMeta.get(MODELO_DO_CODIGO);
+    const tentado = antes[MODELO_DO_CODIGO]?.tentado_em ? Date.parse(antes[MODELO_DO_CODIGO].tentado_em!) : 0;
+    if (t)
+      novos[MODELO_DO_CODIGO] = {
+        status: t.status,
+        categoria: t.category,
+        motivo: t.rejected_reason && t.rejected_reason !== "NONE" ? t.rejected_reason : undefined,
+      };
+    else if (!forcar && agora - tentado < 6 * 3600_000) novos[MODELO_DO_CODIGO] = antes[MODELO_DO_CODIGO] ?? { status: "FALTA" };
+    else {
+      const criado = await graph<{ id?: string; status?: string; category?: string }>(cfg, `${cfg.wabaId}/message_templates`, {
+        metodo: "POST",
+        corpo: cadastroDoModeloDoCodigo(),
+      });
+      novos[MODELO_DO_CODIGO] = criado.ok
+        ? { status: criado.dados.status ?? "PENDING", categoria: criado.dados.category, tentado_em: new Date().toISOString() }
+        : { status: "ERRO", motivo: criado.texto.slice(0, 200), tentado_em: new Date().toISOString() };
+    }
   }
   await guardar(novos);
   return { ok: true, modelos: novos };

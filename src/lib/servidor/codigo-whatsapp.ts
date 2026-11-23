@@ -2,7 +2,14 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { MANDE_UM_OI } from "@/lib/whatsapp-oficial";
 import { acessoFila } from "./filas";
-import { configMeta, enviarTexto } from "./whatsapp";
+import {
+  codigoPeloModeloPode,
+  configMeta,
+  enviarCodigoPeloModelo,
+  enviarTexto,
+  type ConfigMeta,
+  type SituacaoModelos,
+} from "./whatsapp";
 
 // O código de entrar pelo WhatsApp (20/11/2026; migrações 20270817120000 e 20270818120000). O Supabase Auth, com o
 // login por celular ligado, gera o código e chama o gancho "Send SMS" (Authentication › Hooks, HTTPS, com o segredo em
@@ -139,8 +146,28 @@ export async function mandarCodigoPeloWhatsapp(
   const { data, error } = await banco.rpc("servidor_whatsapp_codigo", { p_chave: chave, p_numero: telefone });
   if (error) return { ok: false, status: 503, mensagem: "Não deu para conferir a conversa agora." };
   const c = data as unknown as { conversa: string | null; numero: string | null; na_janela: boolean };
-  if (!c.conversa || !c.numero || !c.na_janela)
+  if (!c.conversa || !c.numero || !c.na_janela) {
+    // fora da janela de 24 horas (23/11/2026; Marcelo: "acho necessário"): a conta que já existe recebe pelo modelo de
+    // autenticação da Meta, sem o "oi" antes. Quem está criando conta continua mandando o "oi": o modelo é pago, e o
+    // número digitado no site ainda não provou ser de ninguém
+    if (conta?.usuarioId && !conta.nova) {
+      const r = await codigoPeloModelo(cfg, banco, chave, c.numero ?? telefone, codigo);
+      if (typeof r === "object") {
+        if (c.conversa) {
+          await banco.rpc("servidor_whatsapp_conversa_saida", {
+            p_chave: chave,
+            p_conversa: c.conversa,
+            p_texto: MARCA_DO_CODIGO,
+            p_wamid: r.wamid,
+          });
+        }
+        return { ok: true };
+      }
+      if (r === "falhou")
+        return { ok: false, status: 502, mensagem: "O WhatsApp não mandou o código agora. Tente de novo em instantes." };
+    }
     return { ok: false, status: STATUS_FORA_DA_JANELA, mensagem: FORA_DA_JANELA };
+  }
   const r = await enviarTexto(cfg, c.numero, textoDoCodigo(codigo, extra));
   if (!r.ok) {
     console.error("Publike: o código de acesso não saiu pelo WhatsApp:", r.erro);
@@ -163,4 +190,28 @@ export function impressaoDoCodigoDeLigar(usuarioId: string, numero: string, codi
   const segredo = (process.env.SUPABASE_SMS_HOOK_SECRET ?? "").trim();
   if (!segredo) return null;
   return createHmac("sha256", segredo).update(`ligar|${usuarioId}|${numero}|${codigo}`).digest("hex");
+}
+
+/**
+ * O código pelo modelo de autenticação, se a Meta já aprovou (o `conferirModelos` cadastra). "sem_modelo": ainda não
+ * pode (o "oi" de antes). O `servidor_whatsapp_codigo` dá a conversa só quando ela existe: sem ela, vai para o
+ * celular do login.
+ */
+async function codigoPeloModelo(
+  cfg: ConfigMeta,
+  banco: NonNullable<ReturnType<typeof acessoFila>>["cliente"],
+  chave: string,
+  numero: string,
+  codigo: string,
+): Promise<{ wamid: string } | "falhou" | "sem_modelo"> {
+  const { data, error } = await banco.rpc("servidor_whatsapp_config", { p_chave: chave });
+  if (error) return "sem_modelo";
+  const conf = (data ?? {}) as { ativo?: boolean; modelos?: SituacaoModelos };
+  if (!conf.ativo || !codigoPeloModeloPode(conf.modelos ?? {})) return "sem_modelo";
+  const r = await enviarCodigoPeloModelo(cfg, numero, codigo);
+  if (!r.ok) {
+    console.error("Publike: o código de acesso não saiu pelo modelo:", r.erro);
+    return "falhou";
+  }
+  return { wamid: r.wamid };
 }

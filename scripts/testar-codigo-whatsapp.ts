@@ -35,12 +35,15 @@ function conferir(ok: boolean, nome: string, detalhe?: unknown) {
 let conversa: any = { conversa: "556282028335", numero: "556282028335", na_janela: true };
 /** o que o banco responde sobre as contas do número; null: a função ainda não existe (404) */
 let contas: any = { conta: null, declaradas: [] };
+/** a configuração do WhatsApp (o modelo do código de entrar, migração nenhuma: o `modelos` de sempre) */
+let config: any = { ativo: true, modelos: {} };
 const meta: any[] = [];
 const saidas: any[] = [];
 const pedidosDeContas: any[] = [];
 globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
   const u = String(url);
   const corpo = init?.body ? JSON.parse(String(init.body)) : null;
+  if (u.includes("/rpc/servidor_whatsapp_config")) return new Response(JSON.stringify(config), { status: 200 });
   if (u.includes("/rpc/servidor_whatsapp_codigo")) return new Response(JSON.stringify(conversa), { status: 200 });
   if (u.includes("/rpc/servidor_whatsapp_contas_do_numero")) {
     pedidosDeContas.push(corpo);
@@ -64,6 +67,7 @@ function zerar() {
   pedidosDeContas.length = 0;
   conversa = { conversa: "556282028335", numero: "556282028335", na_janela: true };
   contas = { conta: null, declaradas: [] };
+  config = { ativo: true, modelos: {} };
 }
 
 async function main() {
@@ -230,6 +234,47 @@ async function main() {
   conversa = { conversa: "556282028335", numero: "556282028335", na_janela: false };
   r = await c.codigoDoGancho({ id: "u-nova", phone: "5562982028335" }, "999000");
   conferir(!r.ok && r.status === 403 && r.mensagem === c.FORA_DA_JANELA && meta.length === 0 && saidas.length === 0, "fora da janela: nada sai", r);
+
+  // fora da janela, conta que já existe, o modelo de autenticação aprovado: o código sai pelo modelo (23/11/2026)
+  const w = await import("../src/lib/servidor/whatsapp");
+  zerar();
+  config = { ativo: true, modelos: { [w.MODELO_DO_CODIGO]: { status: "APPROVED", categoria: "AUTHENTICATION" } } };
+  conversa = { conversa: "556282028335", numero: "556282028335", na_janela: false };
+  r = await c.codigoDoGancho({ id: "u-velha", phone: "5562982028335", phone_confirmed_at: "2026-11-20T10:00:00Z" }, "424242");
+  const modelo = meta[0]?.template;
+  conferir(
+    r.ok && meta[0]?.type === "template" && modelo?.name === w.MODELO_DO_CODIGO &&
+      modelo?.components?.[0]?.parameters?.[0]?.text === "424242" && modelo?.components?.[1]?.parameters?.[0]?.text === "424242" &&
+      meta[0]?.to === "556282028335",
+    "fora da janela, conta antiga: o código pelo modelo, para o número da conversa",
+    meta[0],
+  );
+  conferir(saidas[0]?.p_texto === c.MARCA_DO_CODIGO && !JSON.stringify(saidas).includes("424242"), "pelo modelo: a conversa guarda só a marca", saidas);
+  // sem conversa nenhuma: vai para o celular do login
+  zerar();
+  config = { ativo: true, modelos: { [w.MODELO_DO_CODIGO]: { status: "APPROVED", categoria: "AUTHENTICATION" } } };
+  conversa = { conversa: null, numero: null, na_janela: false };
+  r = await c.codigoDoGancho({ id: "u-velha", phone: "5562982028335", email: "x@y.com" }, "135790");
+  conferir(r.ok && meta[0]?.to === "5562982028335" && saidas.length === 0, "sem conversa, conta com e-mail: pelo modelo, para o celular do login", { r, meta });
+  // a conta nova (o número ainda não provou ser de ninguém): o "oi" antes, mesmo com o modelo
+  zerar();
+  config = { ativo: true, modelos: { [w.MODELO_DO_CODIGO]: { status: "APPROVED", categoria: "AUTHENTICATION" } } };
+  conversa = { conversa: null, numero: null, na_janela: false };
+  r = await c.codigoDoGancho({ id: "u-nova", phone: "5562982028335" }, "135790");
+  conferir(!r.ok && r.status === 403 && meta.length === 0, "conta nova fora da janela: o oi antes", r);
+  // o modelo ainda em análise: o "oi" antes
+  zerar();
+  config = { ativo: true, modelos: { [w.MODELO_DO_CODIGO]: { status: "PENDING" } } };
+  conversa = { conversa: "556282028335", numero: "556282028335", na_janela: false };
+  r = await c.codigoDoGancho({ id: "u-velha", phone: "5562982028335", phone_confirmed_at: "2026-11-20T10:00:00Z" }, "424242");
+  conferir(!r.ok && r.status === 403 && meta.length === 0, "modelo em análise: o oi antes", r);
+  // o cadastro do modelo: autenticação, com o botão de copiar
+  const cad = w.cadastroDoModeloDoCodigo();
+  conferir(
+    cad.category === "AUTHENTICATION" && cad.components.some((x: any) => x.buttons?.[0]?.otp_type === "COPY_CODE"),
+    "o cadastro do modelo do código",
+    cad,
+  );
 
   // 5. a mensagem do código de ligar
   const ligar = c.textoDoCodigoDeLigar("246810");
