@@ -27,3 +27,12 @@ export function pedeOsCandidatosAqui(texto: string) {
   const t = texto.trim();
   return t.length <= 120 && /\breceber\b.{0,20}\bcandidat/i.test(t);
 }
+
+/** O número do WhatsApp do telefone da Receita (55 + DDD + número); null: não dá. `celular`: começa com 9 (ou 6 a 9). */
+export function whatsappDaReceita(telefone: string | null): { numero: string; celular: boolean } | null {
+  const d = (telefone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").replace(/^0/, "");
+  if (d.length !== 10 && d.length !== 11) return null;
+  const celular = d.length === 11 ? d[2] === "9" : /[6-9]/.test(d[2]);
+  return { numero: `55${d}`, celular };
+}
+

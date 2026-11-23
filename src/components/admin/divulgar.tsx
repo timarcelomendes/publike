@@ -3,7 +3,7 @@
 import { Ban, Check, Copy, Download, MessageCircle, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { marcarDivulgacao, tirarDasListasDaReceita } from "@/lib/acoes/admin-convites";
-import { WHATSAPP_OFICIAL } from "@/lib/whatsapp-oficial";
+import { WHATSAPP_OFICIAL, whatsappDaReceita } from "@/lib/whatsapp-oficial";
 import { Botao, classesBotao } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
 
@@ -94,14 +94,6 @@ export function Divulgar() {
       </div>
     </div>
   );
-}
-
-/** O número do WhatsApp do telefone da Receita (55 + DDD + número); null: não dá. `celular`: começa com 9 (ou 6 a 9). */
-export function whatsappDaReceita(telefone: string | null): { numero: string; celular: boolean } | null {
-  const d = (telefone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").replace(/^0/, "");
-  if (d.length !== 10 && d.length !== 11) return null;
-  const celular = d.length === 11 ? d[2] === "9" : /[6-9]/.test(d[2]);
-  return { numero: `55${d}`, celular };
 }
 
 /** Os botões de um contato: abrir no WhatsApp com a mensagem, copiar, marcar mandado, não mandar. */
