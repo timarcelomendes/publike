@@ -349,10 +349,12 @@ export async function LinhaDoTempo({
         <div key={p.chave} className={`${GRADE} items-center pt-2 ${p.chave === "relevantes" ? "max-sm:sr-only" : ""}`}>
           <span className="hidden sm:block" />
           <Ponto />
-          {/* o título numa linha só; o que vem ao lado (a data ou o porquê da ordem) quebra para baixo inteiro */}
+          {/* o título numa linha só; o que vem ao lado (o porquê da ordem, nas relevantes) quebra para baixo inteiro */}
           <h2 className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 font-display text-[22px] leading-7 font-bold tracking-[-0.01em] sm:text-[24px] sm:leading-[30px]">
             <span className="whitespace-nowrap">{p.titulo}</span>
-            <span className="font-sans text-body-sm font-medium tracking-normal text-ink-muted">{p.data}</span>
+            {p.data && (
+              <span className="font-sans text-body-sm font-medium tracking-normal text-ink-muted">{p.data}</span>
+            )}
           </h2>
         </div>,
       );

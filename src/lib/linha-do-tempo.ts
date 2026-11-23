@@ -102,12 +102,12 @@ export function horaNaLinha(quando: number, agora: number, semDia = false) {
     return `${Math.floor(passou / HORA)} h`;
   }
   if (semDia) return dias === 1 ? "ontem" : `${dias} d`;
+  // de 7 dias para trás o separador junta vários dias ("Semana passada"): a hora sozinha não diz qual
+  if (dias >= 7) return `${dias} d`;
   return partes(quando).hora;
 }
 
 const fmt = (opcoes: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO, ...opcoes });
-const semanaEData = fmt({ weekday: "long", day: "numeric", month: "long" });
-const soData = fmt({ day: "numeric", month: "long" });
 const soSemana = fmt({ weekday: "long" });
 
 /** "quarta-feira" vira "quarta" (mais curto, como se fala). */
@@ -116,16 +116,22 @@ const semFeira = (s: string) => s.replace("-feira", "");
 const maiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
- * O separador de um dia: o nome grande e a data pequena ao lado.
- * Hoje · quarta, 21 de outubro; Ontem · terça, 20 de outubro; Segunda · 19 de outubro; 15 de outubro · quinta.
+ * O separador da linha, sem datas (23/11/2026, Marcelo: "não use datas, use dias da semana"): Hoje, Ontem e, na
+ * semana, o dia (Sábado, Sexta…); depois, um separador para vários dias: Semana passada, Há 2 semanas… Há 1 mês.
+ * `grupo`: os dias com o mesmo grupo ficam embaixo de um separador só.
  */
-export function separadorDoDia(quando: number, agora: number): { titulo: string; data: string } {
+export function separadorDoDia(quando: number, agora: number): { titulo: string; data: string; grupo: string } {
   const d = diasAtras(quando, agora);
-  const data = new Date(quando);
-  if (d <= 0) return { titulo: "Hoje", data: semFeira(semanaEData.format(data)) };
-  if (d === 1) return { titulo: "Ontem", data: semFeira(semanaEData.format(data)) };
-  if (d < 7) return { titulo: maiuscula(semFeira(soSemana.format(data))), data: soData.format(data) };
-  return { titulo: soData.format(data), data: semFeira(soSemana.format(data)) };
+  if (d <= 0) return { titulo: "Hoje", data: "", grupo: "hoje" };
+  if (d === 1) return { titulo: "Ontem", data: "", grupo: "ontem" };
+  if (d < 7) return { titulo: maiuscula(semFeira(soSemana.format(new Date(quando)))), data: "", grupo: `d${d}` };
+  if (d < 14) return { titulo: "Semana passada", data: "", grupo: "semana-passada" };
+  if (d < 30) {
+    const semanas = Math.floor(d / 7);
+    return { titulo: `Há ${semanas} semanas`, data: "", grupo: `semanas-${semanas}` };
+  }
+  const meses = Math.floor(d / 30);
+  return { titulo: meses === 1 ? "Há 1 mês" : `Há ${meses} meses`, data: "", grupo: `meses-${meses}` };
 }
 
 /** "ontem às 21h10", "hoje às 9h05", "segunda às 18h", "15 de outubro" (a frase do topo e a marca). */
@@ -136,7 +142,8 @@ export function quandoFoi(quando: number, agora: number) {
   if (d <= 0) return `hoje às ${hora}`;
   if (d === 1) return `ontem às ${hora}`;
   if (d < 7) return `${semFeira(soSemana.format(new Date(quando)))} às ${hora}`;
-  return soData.format(new Date(quando));
+  // sem datas na linha (23/11/2026): "há 9 dias"
+  return `há ${d} dias`;
 }
 
 /**
@@ -188,10 +195,11 @@ export function montarLinha<T>(
       partesDaLinha.push({ tipo: "marca", chave: "marca", quando: marca });
       marcou = true;
     }
-    const dia = diaDe(quando);
-    if (dia !== diaAtual) {
-      diaAtual = dia;
-      partesDaLinha.push({ tipo: "dia", chave: `dia-${dia}`, ...separadorDoDia(quando, agora) });
+    // um separador por grupo: cada dia da semana, e depois "Semana passada", "Há 2 semanas"...
+    const { grupo, ...separador } = separadorDoDia(quando, agora);
+    if (grupo !== diaAtual) {
+      diaAtual = grupo;
+      partesDaLinha.push({ tipo: "dia", chave: `dia-${grupo}`, ...separador });
     }
     partesDaLinha.push({ tipo: "item", chave: `${item.tipo}-${item.id}`, item });
   }
