@@ -45,7 +45,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/espe
   const agora = await agoraDaRequisicao();
   const pedido = Number(primeiro((await searchParams).mais_de));
   const horas = ESPERAS.includes(pedido) ? pedido : null;
-  const doBanco = admin ? null : await empresasEsperandoPeloBanco(await criarClienteServidor());
+  // as contas no banco (migração 20270915130000), também no computador do dono: a leitura antiga punha centenas de
+  // ids no endereço e, com muitos matches, falhava ("fetch failed"); ela fica só para o banco sem a migração
+  const doBanco = await empresasEsperandoPeloBanco(admin ? criarClienteAdmin() : await criarClienteServidor());
   if (!admin && !doBanco) {
     return (
       <Aviso tipo="alerta" titulo="Rode a migração de Esperando">
@@ -53,7 +55,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/espe
       </Aviso>
     );
   }
-  const todas = admin ? await empresasComGenteEsperando(criarClienteAdmin(), agora) : doBanco!;
+  const todas = doBanco ?? (await empresasComGenteEsperando(criarClienteAdmin(), agora));
   // com o filtro: só quem curtiu há mais de N horas (e as empresas delas); o "deram match sem mensagem" fica de fora
   const filtrar = (h: number) =>
     todas

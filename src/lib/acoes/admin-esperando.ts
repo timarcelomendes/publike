@@ -32,10 +32,10 @@ export async function mensagemParaEmpresaEsperando(
   const equipe = c ? null : await clienteDaEquipe();
   if (!c && !equipe) return { ok: false, erro: FORA };
   const agora = Date.now();
-  const [empresa] = await (c
-    ? empresasComGenteEsperando(c, agora, contaId)
-    : empresasEsperandoPeloBanco(equipe!, contaId).then((l): EmpresaEsperando[] => l ?? [])
-  ).catch((): EmpresaEsperando[] => []);
+  // pela função do banco (migração 20270915130000); a leitura antiga só no banco sem ela
+  const [empresa] = await empresasEsperandoPeloBanco((c ?? equipe)!, contaId)
+    .then((l) => l ?? (c ? empresasComGenteEsperando(c, agora, contaId) : []))
+    .catch((): EmpresaEsperando[] => []);
   if (!empresa) return { ok: false, erro: "Ninguém está esperando esta empresa agora. Atualize a página." };
 
   const site = urlDosEmails() ?? "https://publike.org";
