@@ -190,6 +190,9 @@ async function main() {
   let ultima: any = null; // null: a mesma mensagem e a conversa da entrada
   let entradas: any[] = [];
   let wamidAtual = "w1";
+  // publicar aqui mesmo (migração 20270914120000)
+  let paraPublicar: any = { ligado: false };
+  let publicados: any[] = [];
   const base = (x: any) => ({
     chave: "557799255259",
     nova: false,
@@ -223,6 +226,14 @@ async function main() {
         };
       // o Publicar pelo WhatsApp (migração 20270806120000) fica desligado nesta bateria: não é uma saída
       if (nome === "servidor_whatsapp_vagas_config") return { data: { ligado: false }, error: null };
+      if (nome === "servidor_whatsapp_vaga_para_publicar") return { data: paraPublicar, error: null };
+      if (nome === "servidor_whatsapp_publicar_aqui") {
+        publicados.push(args);
+        return {
+          data: { ok: true, anuncio_id: "11111111-2222-3333-4444-555555555555", conta_nova: true, restantes: 0 },
+          error: null,
+        };
+      }
       // o currículo pelo WhatsApp (migração 20270902120000): desligado, a não ser nos testes dele
       if (nome === "servidor_curriculo_whatsapp_ligado") return { data: cvLigado, error: null };
       if (nome === "servidor_guardar_curriculo_preparado") {
@@ -1734,6 +1745,69 @@ async function main() {
     conferir(cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11") === "há 1 ano e meio, até hoje", "desde 06/2025: 1 ano e meio, até hoje", cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11"));
     conferir(cv.tempoDoTrabalho({ inicio: "2026-05", fim: "2026-10", atual: false }, "2026-11") === "6 meses", "6 meses");
     cvLigado = false;
+  }
+
+  // --- Publicar a vaga aqui mesmo (migração 20270914120000) -------------------------------------------------------
+  {
+    const pn = await import("../src/lib/servidor/publicar-no-whatsapp");
+    const vw = await import("../src/lib/vagas-pelo-whatsapp");
+    const token = "d".repeat(64);
+    const rascunho = { titulo: "Operadora de caixa", descricao: "", categoria: "", regime: "clt", salario: null, salario_ate: null, unidade: "mes", beneficios: [], cidade: "Goiânia", bairro: "Setor Urias Magalhães", quantidade: 1 };
+    // a vaga preparada com os botões: pergunta se pode publicar assim, e o salário que faltou sai a combinar
+    const preparada = vw.respostaDasVagas({}, [rascunho as any], 1, "", [], { publicarAqui: true });
+    conferir(
+      preparada.texto.includes("Posso publicar assim?") && preparada.texto.includes("o salário sai como a combinar") && !preparada.texto.includes("Confira, ajuste"),
+      "a vaga preparada para publicar aqui",
+      preparada.texto,
+    );
+    const vagaComBotoes = {
+      de: "robo",
+      texto: `${preparada.texto}\n\n[Botões: Sim, publicar · Conferir no site · Procuro emprego]`,
+    };
+    const antes = [{ de: "pessoa", texto: "Operadora de caixa, a combinar, Setor Urias Magalhães" }, vagaComBotoes];
+    // "Sim, publicar" sem conta e sem o nome lido: pergunta o nome
+    paraPublicar = { ligado: true, achou: true, token, rascunho, empresa: null, publicada: false, conta: null, tem_perfil: false };
+    publicados = [];
+    r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+    conferir(corpo(r.msgs[0]) === pn.PERGUNTA_DO_NOME && publicados.length === 0, "sem conta: pergunta o nome da empresa", r.msgs[0]);
+    // a resposta do nome publica, com o token da última vaga da conversa
+    const comPergunta = [...antes, { de: "pessoa", texto: "Sim, publicar" }, { de: "robo", texto: pn.PERGUNTA_DO_NOME }];
+    r = await rodar("Supermercado Bom Preço", { perfil: "contratar", historico: [...comPergunta, { de: "pessoa", texto: "Supermercado Bom Preço" }] });
+    conferir(
+      publicados.length === 1 && publicados[0].p_nome === "Supermercado Bom Preço" && publicados[0].p_token === token &&
+        publicados[0].p_registro?.titulo === "Operadora de caixa" && /^SRID=4326;POINT/.test(publicados[0].p_registro?.local ?? ""),
+      "o nome publica a vaga, com as regras do site",
+      publicados[0],
+    );
+    // o nome com telefone: pede de novo (a pergunta segue valendo)
+    publicados = [];
+    r = await rodar("62 98477-1907", { perfil: "contratar", historico: [...comPergunta, { de: "pessoa", texto: "62 98477-1907" }] });
+    conferir(publicados.length === 0 && corpo(r.msgs[0]).includes(pn.MARCA_DA_PERGUNTA_DO_NOME), "nome com telefone: pergunta de novo", r.msgs[0]);
+    // com o nome lido no anúncio, o "Sim, publicar" publica direto
+    paraPublicar = { ...paraPublicar, empresa: "Padaria Pão Quente" };
+    publicados = [];
+    r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+    conferir(publicados.length === 1 && publicados[0].p_nome === "Padaria Pão Quente", "com o nome lido: publica no toque", publicados[0]);
+    // a conta que já tem perfil: publica sem nome
+    paraPublicar = { ...paraPublicar, empresa: null, conta: "c", tem_perfil: true };
+    publicados = [];
+    r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+    conferir(publicados.length === 1 && publicados[0].p_nome === "", "conta com perfil: publica sem perguntar", publicados[0]);
+    // "Conferir no site": o link de antes, já preenchido
+    r = await rodar("Conferir no site", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Conferir no site" }] }, { payload: `a:conferir:${token}` });
+    conferir(String(r.msgs[0]?.interactive?.action?.parameters?.url ?? "").includes(`/publicar?whatsapp=${token}`), "Conferir no site: o link do publicar", r.msgs[0]);
+    // sem bairro nas regras do site: vai para o site, com o link
+    paraPublicar = { ...paraPublicar, rascunho: { ...rascunho, bairro: "" } };
+    publicados = [];
+    r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+    conferir(publicados.length === 0 && corpo(r.msgs[0]).startsWith("Para publicar, falta acertar") && botao(r.msgs[0]) === "Conferir e publicar", "sem bairro: completa no site", r.msgs[0]);
+    // desligado no Admin: o botão leva ao site
+    paraPublicar = { ligado: false };
+    r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+    conferir(botao(r.msgs[0]) === "Conferir e publicar", "desligado: o link do site", r.msgs[0]);
+    // depois dos botões, o que a pessoa completa ("de manhã") ainda é a vaga preparada
+    conferir(a.textosDaVagaPreparada([{ de: "robo", texto: pn.botoesDaVagaPreparada(token).map((b) => b.titulo).join(" · ") }]) === null, "só a marca guardada conta como vaga preparada");
+    paraPublicar = { ligado: false };
   }
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);

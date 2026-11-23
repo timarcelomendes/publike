@@ -12,6 +12,7 @@ import type { Json } from "@/lib/supabase/tipos-banco";
 import { caminhoDaVagaDoWhatsapp, respostaDasVagas, textoDasVagas, type ChaveTextoVagas } from "@/lib/vagas-pelo-whatsapp";
 import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
+import { botoesDaVagaPreparada, podePublicarAqui } from "./publicar-no-whatsapp";
 import { baixarFotoOuPdf, configMeta, enviarComBotoes, enviarComLink, marcarLidaDigitando, type ConfigMeta } from "./whatsapp";
 
 // Publicar pelo WhatsApp (19/11/2026; migração 20270806120000; claude/plano-vagas-novas.md, item 3). A empresa manda
@@ -29,6 +30,8 @@ export type ConfigVagasWhatsapp = {
   leituras_dia: number;
   confirmar: boolean;
   oferecer_avisos: boolean;
+  /** a vaga preparada (uma só) vem com "Sim, publicar" e sai daqui mesmo (migração 20270914120000) */
+  publicar_aqui: boolean;
   textos: Partial<Record<ChaveTextoVagas, string>>;
 };
 
@@ -36,7 +39,14 @@ type Botao = { titulo: string; caminho: string };
 /** A saída do atendimento: manda e guarda a resposta na conversa (src/lib/servidor/atendimento-whatsapp.ts). */
 export type Saida = (
   texto: string,
-  extra?: { perfil?: string | null; equipe?: boolean; motivo?: string; menu?: boolean; botao?: Botao | null },
+  extra?: {
+    perfil?: string | null;
+    equipe?: boolean;
+    motivo?: string;
+    menu?: boolean;
+    botao?: Botao | null;
+    botoes?: { id: string; titulo: string }[];
+  },
 ) => Promise<void>;
 
 /** O que a IA tem para ler, no máximo: 4 fotos e 2 PDFs de cada vez, até 8 MB cada. */
@@ -60,6 +70,8 @@ export async function configVagasWhatsapp(banco: ClienteBanco, chave: string): P
     leituras_dia: Math.max(1, Math.min(50, Number(c.leituras_dia) || 10)),
     confirmar: c.confirmar !== false,
     oferecer_avisos: c.oferecer_avisos !== false,
+    // sem a migração 20270914120000, o campo não vem: o link de antes
+    publicar_aqui: c.publicar_aqui === true,
     textos: c.textos && typeof c.textos === "object" ? (c.textos as ConfigVagasWhatsapp["textos"]) : {},
   };
 }
@@ -246,6 +258,16 @@ export async function tentarVagaPeloWhatsapp(p: {
     );
     return true;
   }
+  // uma vaga só, com o cargo e o bairro, de quem não disse que procura emprego: publica aqui mesmo, com os botões
+  // (migração 20270914120000). Várias vagas, ou faltando o bairro: o link do site, como antes
+  const aqui =
+    config.publicar_aqui && vagas.length === 1 && lida.vagas.length === 1 && links.length === 1 &&
+    p.perfil !== "trabalho" && podePublicarAqui(vagas[0]);
+  if (aqui) {
+    const r = respostaDasVagas(config.textos, vagas, 1, ola, p.jaDisse, { publicarAqui: true });
+    await p.saida(r.texto, { perfil: "contratar", botoes: botoesDaVagaPreparada(links[0]) });
+    return true;
+  }
   const resposta = respostaDasVagas(config.textos, vagas, lida.vagas.length, ola, p.jaDisse);
   // com a entrada pelo código no WhatsApp ligada, a pessoa já sabe que não precisa de e-mail para publicar
   const comCodigo = LOGIN_CELULAR ? `${resposta.texto}\n\nPara publicar, você recebe um código aqui mesmo no WhatsApp: não precisa de e-mail nem senha.` : resposta.texto;
@@ -262,13 +284,20 @@ export async function tentarVagaPeloWhatsapp(p: {
  * A vaga do WhatsApp foi publicada: "Sua vaga está no ar" (uma vez, se a empresa falou com o Publike nas últimas 23
  * horas) e, para quem ainda não recebe, a oferta dos candidatos pelo WhatsApp. Roda depois da resposta do publicar.
  */
-export async function confirmarVagaPublicada(token: string) {
+export async function confirmarVagaPublicada(
+  token: string,
+  /**
+   * publicada aqui mesmo (migração 20270914120000): o "está no ar" sai sempre (é a resposta do botão), e a conta nova
+   * ganha a explicação de como entrar
+   */
+  opcoes: { aqui?: boolean; contaNova?: boolean } = {},
+) {
   const acesso = acessoFila();
   const cfg = configMeta();
   if (!acesso || !cfg) return;
   const { cliente: banco, chave } = acesso;
   const config = await configVagasWhatsapp(banco, chave);
-  if (!config?.confirmar) return;
+  if (!config || (!config.confirmar && !opcoes.aqui)) return;
   const { data, error } = await banco.rpc("servidor_whatsapp_vaga_publicada", { p_chave: chave, p_token: token });
   if (error || !data) return;
   const v = data as unknown as {
@@ -296,7 +325,12 @@ export async function confirmarVagaPublicada(token: string) {
     v.restantes > 0
       ? `\n\n${v.restantes === 1 ? "Ainda falta 1 vaga" : `Ainda faltam ${v.restantes} vagas`} do seu anúncio: é só voltar ao link e publicar.`
       : "";
-  const texto = `${t("no_ar", { titulo: v.titulo })}${restantes}`;
+  const conta = opcoes.contaNova
+    ? LOGIN_CELULAR
+      ? "\n\nCriei sua conta no Publike com este WhatsApp. Para ver os candidatos no site, é só entrar com este número: o código chega aqui."
+      : "\n\nCriei sua conta no Publike com este WhatsApp: os candidatos ficam guardados nela."
+    : "";
+  const texto = `${t("no_ar", { titulo: v.titulo })}${restantes}${conta}`;
   const url = comOrigem(`${urlDosEmails() ?? SITE_URL}/anuncio/${v.anuncio_id}`, "whatsapp", "publicar-pelo-whatsapp");
   const r = await enviarComLink(cfg, v.numero, texto, { titulo: "Ver a vaga", url });
   if (!r.ok) {

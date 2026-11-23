@@ -107,6 +107,13 @@ export function textoDasVagas(
     .slice(0, TEXTOS_VAGAS[chave].max);
 }
 
+/**
+ * O fim da vaga preparada que dá para publicar aqui (migração 20270914120000), antes dos botões "Sim, publicar",
+ * "Conferir no site" e "Procuro emprego".
+ */
+export const FIM_PUBLICAR_AQUI =
+  "Posso publicar assim? É grátis. Para mudar alguma coisa antes, toque em *Conferir no site*. Ao publicar, você concorda com as regras do Publike: publike.org/regras";
+
 /** A mensagem com botão da Meta vai até 1.024 letras (o atendimento corta em 1.000, no fim de uma frase). */
 const MAX_MENSAGEM = 1000;
 
@@ -123,6 +130,11 @@ export function respostaDasVagas(
   comeco = "",
   /** o que a pessoa já disse e a leitura não guarda (o salário "a combinar", nas 3 perguntas): sai do "Faltou dizer" */
   jaDisse: string[] = [],
+  /**
+   * publicar aqui mesmo, com os botões "Sim, publicar" e "Conferir no site" (migração 20270914120000): o fim pergunta se
+   * pode publicar assim, no lugar do "Confira, ajuste e publique"
+   */
+  { publicarAqui = false }: { publicarAqui?: boolean } = {},
 ): { texto: string; botao: string; lote: boolean } {
   const t = (k: ChaveTextoVagas, marcas?: Record<string, string | number>) => textoDasVagas(personalizados, k, marcas);
   const ola = comeco.trim();
@@ -137,7 +149,12 @@ export function respostaDasVagas(
   if (vagas.length === 1) {
     const v = vagas[0];
     const falta = faltaNaVaga(v).filter((f) => !jaDisse.includes(f));
-    const faltou = falta.length ? `Faltou dizer ${juntarComE(falta)}: você completa quando conferir.` : "";
+    const faltou = falta.length
+      ? publicarAqui
+        ? `Faltou dizer ${juntarComE(falta)}.${falta.includes("o salário") ? " Se publicar assim, o salário sai como a combinar." : ""}`
+        : `Faltou dizer ${juntarComE(falta)}: você completa quando conferir.`
+      : "";
+    const fim = publicarAqui ? FIM_PUBLICAR_AQUI : t("fim");
     const resumo = resumoDaVaga(v);
     // passou de 1.024 letras: sem os benefícios e o que a vaga pede (aparecem no publicar), e por fim cortado
     const curto = resumo
@@ -145,9 +162,9 @@ export function respostaDasVagas(
       .filter((l) => !/^(Benefícios|Pede):/.test(l))
       .join("\n");
     const texto =
-      caber([ola, t("intro"), resumo, faltou, sobrou, t("fim")]) ??
-      caber([ola, t("intro"), curto, faltou, sobrou, t("fim")]) ??
-      `${[ola, t("intro"), curto, faltou, t("fim")].filter(Boolean).join("\n\n").slice(0, MAX_MENSAGEM - 1)}…`;
+      caber([ola, t("intro"), resumo, faltou, sobrou, fim]) ??
+      caber([ola, t("intro"), curto, faltou, sobrou, fim]) ??
+      `${[ola, t("intro"), curto, faltou, fim].filter(Boolean).join("\n\n").slice(0, MAX_MENSAGEM - 1)}…`;
     return { texto, botao: t("botao"), lote: false };
   }
   const linhas = vagas.map(linhaDaVaga);

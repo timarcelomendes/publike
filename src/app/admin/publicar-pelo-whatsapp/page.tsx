@@ -7,6 +7,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Barras, Ranking } from "@/components/admin/grafico";
 import { Filtros, linkCom, Numero, Secao, Situacao } from "@/components/admin/ui";
 import { ConfigVagasPeloWhatsapp } from "@/components/admin/vagas-pelo-whatsapp";
+import { PublicarAquiWhatsapp } from "@/components/admin/publicar-aqui-whatsapp";
 import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
 import { formatarDataHora, plural, primeiro } from "@/lib/formato";
 import { iaConfigurada } from "@/lib/ia/openai";
@@ -121,9 +122,11 @@ async function Conteudo({ periodo }: { periodo: Periodo }) {
   const admin = await ehAdminLocal();
   if (!admin && !(await possoVerTela("/admin/publicar-pelo-whatsapp"))) notFound();
   const c = admin ? criarClienteAdmin() : await criarClienteServidor();
-  const [{ data, error }, contato] = await Promise.all([
+  const [{ data, error }, contato, aqui] = await Promise.all([
     c.rpc("admin_whatsapp_vagas", { p_dias: Number(periodo) }),
     contatoDasVagasPeloWhatsapp(),
+    // publicar aqui mesmo (migração 20270914120000; sem ela, null: o controle não aparece)
+    c.rpc("admin_whatsapp_publicar_aqui").then(({ data: d, error: e }) => (e ? null : Boolean(d))),
   ]);
   if (error || !data) {
     return (
@@ -412,6 +415,7 @@ async function Conteudo({ periodo }: { periodo: Periodo }) {
             textos: cfg.textos ?? {},
           }}
         />
+        {aqui !== null && <PublicarAquiWhatsapp ligado={aqui} />}
       </Secao>
     </div>
   );

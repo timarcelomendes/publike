@@ -3581,6 +3581,22 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Json;
       };
+      admin_whatsapp_publicar_aqui: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      admin_salvar_whatsapp_publicar_aqui: {
+        Args: { p_ligado: boolean };
+        Returns: undefined;
+      };
+      servidor_whatsapp_vaga_para_publicar: {
+        Args: { p_chave: string; p_conversa: string; p_token: string };
+        Returns: Json;
+      };
+      servidor_whatsapp_publicar_aqui: {
+        Args: { p_chave: string; p_conversa: string; p_token: string; p_nome: string; p_registro: Json };
+        Returns: Json;
+      };
       admin_salvar_instagram_whatsapp: {
         Args: { p_ligado: boolean; p_minutos: number };
         Returns: undefined;

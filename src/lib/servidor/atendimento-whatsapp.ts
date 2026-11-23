@@ -28,7 +28,22 @@ import {
 } from "./whatsapp";
 import { BOTAO_AGORA_NAO, BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
 import { curriculoPeloWhatsappLigado, seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
-import { configVagasWhatsapp, deveTentarVaga, respostaDaOferta, tentarVagaPeloWhatsapp } from "./vaga-pelo-whatsapp";
+import {
+  configVagasWhatsapp,
+  confirmarVagaPublicada,
+  deveTentarVaga,
+  respostaDaOferta,
+  tentarVagaPeloWhatsapp,
+} from "./vaga-pelo-whatsapp";
+import { caminhoDaVagaDoWhatsapp } from "@/lib/vagas-pelo-whatsapp";
+import { avisarMetaDaVaga } from "./meta-conversoes";
+import {
+  MARCA_DA_PERGUNTA_DO_NOME,
+  PAYLOAD_CONFERIR,
+  PAYLOAD_PUBLICAR,
+  PERGUNTA_DO_NOME,
+  publicarPeloWhatsapp,
+} from "./publicar-no-whatsapp";
 
 // O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000,
 // 20270803120000 e 20270805120000). Pedido do Marcelo: "Quero automatizar o atendimento do WhatsApp, explicar aos
@@ -1344,7 +1359,8 @@ export function respostasDaVaga(historico: Mensagem[], agora: string[]) {
   return { cargo: respostas[0], salario: respostas[1], lugar: respostas[2] };
 }
 
-const BOTAO_DA_VAGA_PREPARADA = /\[Botão: (Conferir e publicar|Ver as vagas)\]/;
+// a vaga preparada com o link (antes) ou com os botões "Sim, publicar" (migração 20270914120000)
+const BOTAO_DA_VAGA_PREPARADA = /\[Botão: (Conferir e publicar|Ver as vagas)\]|\[Botões: Sim, publicar/;
 
 /**
  * A vaga escrita que já virou o link (a última mensagem do robô é a vaga preparada): o texto lido, para ler de novo com
@@ -1852,6 +1868,66 @@ export async function atenderConversa(
 
   // a equipe devolveu com os botões
   if (opcoes.retomada && opcoes.comBotoes) return saida(VOLTEI_COM_BOTOES, { menu: true });
+
+  // publicar a vaga aqui mesmo (23/11/2026, migração 20270914120000): o "Sim, publicar", o "Conferir no site" e a
+  // resposta à pergunta do nome da empresa
+  {
+    const publicar = PAYLOAD_PUBLICAR.exec(m.payload ?? "")?.[1] ?? null;
+    const conferir = PAYLOAD_CONFERIR.exec(m.payload ?? "")?.[1] ?? null;
+    const escrito = textos.join(" ").trim();
+    const nomeRespondido =
+      !m.payload &&
+      minhaUltima.includes(MARCA_DA_PERGUNTA_DO_NOME) &&
+      Boolean(escrito) &&
+      !midias.some(Boolean) &&
+      !escrito.endsWith("?");
+    const peloSite = (token: string, texto: string) =>
+      saida(texto, {
+        perfil: "contratar",
+        botao: { titulo: "Conferir e publicar", caminho: caminhoDaVagaDoWhatsapp(token) },
+      });
+    if (conferir) return peloSite(conferir, "Aqui você confere tudo, muda o que precisar e publica. É grátis e leva um minuto.");
+    if (publicar || nomeRespondido) {
+      const r = await publicarPeloWhatsapp({
+        banco,
+        chave,
+        conversa: e.chave,
+        token: publicar,
+        nome: nomeRespondido ? escrito : null,
+      });
+      if (r.tipo === "publicada") {
+        // o "está no ar", com o botão da vaga, a conta nova e a oferta dos candidatos por aqui
+        await confirmarVagaPublicada(r.token, { aqui: true, contaNova: r.contaNova });
+        // chegou por um anúncio de clique para o WhatsApp: a Meta fica sabendo que o clique publicou vaga
+        await avisarMetaDaVaga(r.anuncioId).catch(() => undefined);
+        return;
+      }
+      if (r.tipo === "ja")
+        return saida(
+          "Essa vaga já está no ar! 🎉",
+          r.anuncioId ? { perfil: "contratar", botao: { titulo: "Ver a vaga", caminho: `/anuncio/${r.anuncioId}` } } : { perfil: "contratar" },
+        );
+      if (r.tipo === "pedir_nome") return saida(PERGUNTA_DO_NOME, { perfil: "contratar" });
+      if (r.tipo === "nome_ruim")
+        return saida(
+          "Não consegui usar esse nome. Pode mandar de novo: qual é o nome da empresa? Só o nome, sem telefone nem link (por exemplo: _Padaria Pão Quente_).",
+          { perfil: "contratar" },
+        );
+      if (r.tipo === "site")
+        return peloSite(
+          r.token,
+          `Para publicar, falta acertar uma coisa na vaga${r.erros.length ? `: ${r.erros.join(" ")}` : "."} Toque em *Conferir e publicar* para completar no site.`,
+        );
+      if (r.tipo === "nao_achou")
+        return saida("Não achei a vaga para publicar. Pode mandar a foto ou o texto dela de novo?", { perfil: "contratar" });
+      if (r.tipo === "erro")
+        return r.token
+          ? peloSite(r.token, `Não consegui publicar por aqui: ${r.mensagem} Dá para publicar pelo site, já preenchido:`)
+          : saida(`Não consegui publicar por aqui: ${r.mensagem}`, { perfil: "contratar", botao: LINKS.publicar });
+      // desligado no Admin: o botão leva ao site, como antes; a resposta do nome segue o atendimento normal
+      if (publicar) return peloSite(publicar, "Aqui você confere tudo e publica. É grátis e leva um minuto.");
+    }
+  }
 
   // o currículo pelo WhatsApp (migração 20270902120000): o botão "Montar meu currículo", quem escreve "currículo" e os
   // passos da conversa; desligado (Admin › Qualificados), segue tudo como antes
