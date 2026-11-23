@@ -70,8 +70,11 @@ export function SeletorLocal({
   erro?: string;
   /** o ponto é o endereço exato (comércio, empresa ou agência com endereço) */
   exato?: boolean;
-  /** leva o mapa (e o pino, a não ser com `marcar: false`) até este ponto; `vez` muda a cada busca */
-  irPara?: (Ponto & { vez: number; zoom?: number; marcar?: boolean }) | null;
+  /**
+   * leva o mapa (e o pino, a não ser com `marcar: false`) até este ponto; `vez` muda a cada busca; `aviso`: a frase
+   * embaixo do mapa (o bairro escolhido)
+   */
+  irPara?: (Ponto & { vez: number; zoom?: number; marcar?: boolean; aviso?: string }) | null;
   /** depois de marcar o ponto pela localização do aparelho (para preencher o endereço) */
   aoUsarLocalizacao?: (p: Ponto) => void;
   /** cidade e bairro do ponto marcado, para o formulário; devolve se o bairro mudou */
@@ -234,7 +237,7 @@ export function SeletorLocal({
   if (irPara && irPara.vez !== vezAtendida) {
     setVezAtendida(irPara.vez);
     if (irPara.marcar !== false) setPonto({ lat: irPara.lat, lng: irPara.lng });
-    setAviso(null);
+    setAviso(irPara.aviso ?? null);
   }
   useEffect(() => {
     if (!irPara || !pronto) return;

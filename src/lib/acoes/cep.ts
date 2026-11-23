@@ -68,3 +68,14 @@ export async function buscarEnderecoDoPonto(
   }
   return { ...r, manterBairro };
 }
+
+/**
+ * O meio do bairro no mapa, para o mapa do formulário ir até o bairro escolhido (23/11/2026; Marcelo: "quando
+ * seleciona o bairro, o mapa não move a localização para o lugar correto"). `null`: o mapa não achou o bairro.
+ */
+export async function buscarCentroDoBairro(bairro: string, cidade: string): Promise<{ lat: number; lng: number } | null> {
+  if (typeof bairro !== "string" || typeof cidade !== "string") return null;
+  const b = bairro.trim().slice(0, 80);
+  if (b.length < 2 || !(await podeConsultar())) return null;
+  return centroDoBairro(b, cidade.slice(0, 60)).catch(() => null);
+}

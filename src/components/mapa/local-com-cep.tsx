@@ -1,14 +1,37 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useId, useRef, useState, useTransition, type ReactNode } from "react";
-import { buscarCep, buscarEnderecoDoPonto } from "@/lib/acoes/cep";
+import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
+import { buscarCentroDoBairro, buscarCep, buscarEnderecoDoPonto } from "@/lib/acoes/cep";
 import { formatarCep, limparCep, montarEndereco, TEXTO_PRECISAO } from "@/lib/cep";
+import { distanciaKm } from "@/lib/descobrir";
+import { cidadeDoPublike } from "@/lib/pracas";
+import { centroDaCidade, chaveBairro } from "@/lib/regioes";
 import { Botao } from "../ui/botao";
 import { classesEntrada, MensagemErro } from "../ui/campo";
 import { bairroEscrito, type LugarDoPonto, SeletorLocal } from "./seletor-local";
 
 type Ponto = { lat: number; lng: number };
+
+/** O pino marcado já fica no bairro escolhido: perto do meio dele, o mapa não mexe (o toque da pessoa vale mais). */
+const PINO_NO_BAIRRO_KM = 1.5;
+
+/** O bairro e a cidade escritos no formulário, e o pino marcado (os campos escondidos do mapa). */
+function lugarDoFormulario(raiz: HTMLElement | null) {
+  const f = raiz?.closest("form");
+  const valor = (nome: string) => {
+    const campo = f?.elements.namedItem(nome);
+    return campo instanceof HTMLInputElement || campo instanceof HTMLSelectElement ? campo.value.trim() : "";
+  };
+  const lat = Number(valor("lat"));
+  const lng = Number(valor("lng"));
+  return {
+    bairro: valor("bairro"),
+    cidade: valor("cidade"),
+    pino: valor("lat") && valor("lng") && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null,
+  };
+}
+const chaveDoLugar = (bairro: string, cidade: string) => `${chaveBairro(bairro)}|${cidade}`;
 
 /**
  * "Onde é" do anúncio: CEP + número levam o pino até a porta e preenchem a
@@ -57,9 +80,82 @@ export function LocalComCep({
   const [rua, setRua] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
-  const [irPara, setIrPara] = useState<(Ponto & { vez: number; zoom?: number; marcar?: boolean }) | null>(null);
+  const [irPara, setIrPara] = useState<(Ponto & { vez: number; zoom?: number; marcar?: boolean; aviso?: string }) | null>(null);
   const [buscando, iniciar] = useTransition();
   const [preenchendo, iniciarPreencher] = useTransition();
+
+  // escolher o bairro (ou trocar a cidade) leva o mapa até lá (23/11/2026): o último lugar levado ao mapa, ou posto
+  // pelo CEP, pela localização ou pelo toque no mapa, não é procurado de novo
+  const lugarNoMapa = useRef<string | null>(null);
+  const [, iniciarBairro] = useTransition();
+  function achou(lugar: LugarDoPonto) {
+    const mudou = aoAchar(lugar);
+    // o formulário acerta a cidade e o bairro agora; o lugar levado ao mapa passa a ser esse
+    setTimeout(() => {
+      const f = lugarDoFormulario(raiz.current);
+      lugarNoMapa.current = chaveDoLugar(f.bairro, f.cidade);
+    }, 0);
+    return mudou;
+  }
+  useEffect(() => {
+    const el = raiz.current;
+    if (!el) return;
+    const inicio = lugarDoFormulario(el);
+    lugarNoMapa.current = chaveDoLugar(inicio.bairro, inicio.cidade);
+    let espera: ReturnType<typeof setTimeout> | null = null;
+    let vez = 0;
+    const levar = () => {
+      const { bairro, cidade: c, pino } = lugarDoFormulario(el);
+      const chave = chaveDoLugar(bairro, c);
+      if (chave === lugarNoMapa.current) return;
+      const trocouACidade = !lugarNoMapa.current?.endsWith(`|${c}`);
+      lugarNoMapa.current = chave;
+      const minha = ++vez;
+      if (bairro.length < 2) {
+        // só a cidade: o mapa vai para o centro dela, sem marcar
+        const daCidade = cidadeDoPublike(c);
+        if (trocouACidade && daCidade) setIrPara({ ...centroDaCidade(daCidade), vez: Date.now(), zoom: 13, marcar: false });
+        return;
+      }
+      iniciarBairro(async () => {
+        const centro = await buscarCentroDoBairro(bairro, c);
+        if (minha !== vez) return;
+        if (!centro) {
+          setAviso(
+            `Não achamos “${bairro}” no mapa. ${pino ? "Confira se o local marcado no mapa é o do trabalho." : "Se quiser, toque no mapa no lugar do trabalho."}`,
+          );
+          return;
+        }
+        // o pino já está no bairro (a pessoa tocou no lugar certo): fica
+        if (pino && distanciaKm(pino.lat, pino.lng, centro.lat, centro.lng) < PINO_NO_BAIRRO_KM) return;
+        setAviso(null);
+        setIrPara({
+          ...centro,
+          vez: Date.now(),
+          zoom: 15,
+          aviso: `Levamos o mapa para ${bairro}. Se o trabalho é em outro ponto do bairro, toque no mapa no lugar certo.`,
+        });
+      });
+    };
+    const aoMudar = (e: Event) => {
+      const alvo = e.target;
+      if (!(alvo instanceof HTMLInputElement || alvo instanceof HTMLSelectElement)) return;
+      if (alvo.name !== "bairro" && alvo.name !== "cidade") return;
+      // digitando o bairro: espera escolher na lista ou sair do campo
+      const tipo = (e as InputEvent).inputType;
+      if (e.type === "input" && alvo.name === "bairro" && tipo && tipo !== "insertReplacementText") return;
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(levar, 250);
+    };
+    el.addEventListener("input", aoMudar);
+    el.addEventListener("change", aoMudar);
+    return () => {
+      el.removeEventListener("input", aoMudar);
+      el.removeEventListener("change", aoMudar);
+      if (espera) clearTimeout(espera);
+      vez++;
+    };
+  }, []);
 
   // "Usar minha localização": o pino já foi para onde a pessoa está; agora o endereço
   // acompanha (rua, bairro, cidade e o CEP, quando o mapa tem). O número quase nunca vem.
@@ -78,7 +174,7 @@ export function LocalComCep({
       setRua(e.rua);
       if (publico) setEndereco(montarEndereco(e.rua, e.numero) ?? "");
       // o bairro escrito fica perto do ponto: fica (o nome do mapa nem sempre é o do povo)
-      aoAchar({ cidade: e.cidade, bairro: r.manterBairro ? null : e.bairro });
+      achou({ cidade: e.cidade, bairro: r.manterBairro ? null : e.bairro });
       setAviso(
         !e.rua
           ? "Preenchemos a cidade e o bairro pela sua localização. Confira."
@@ -101,7 +197,7 @@ export function LocalComCep({
       setCep(formatarCep(r.endereco.cep));
       setRua(r.endereco.rua);
       if (r.endereco.rua) setEndereco(montarEndereco(r.endereco.rua, numero) ?? "");
-      aoAchar({ cidade: r.endereco.cidade, bairro: r.endereco.bairro });
+      achou({ cidade: r.endereco.cidade, bairro: r.endereco.bairro });
       if (r.ponto) {
         setIrPara({ ...r.ponto, vez: Date.now(), zoom: r.precisao === "bairro" ? 15 : 17 });
         setAviso(
@@ -233,7 +329,7 @@ export function LocalComCep({
           exato={publico && endereco.trim() !== ""}
           irPara={irPara}
           aoUsarLocalizacao={preencherPeloPonto}
-          preencher={aoAchar}
+          preencher={achou}
           recolhido={mapaOpcional}
           cidade={cidade}
         />
