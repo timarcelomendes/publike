@@ -3,7 +3,8 @@ import { formatarData, formatarTelefone } from "@/lib/formato";
 import type { criarClienteAdmin } from "@/lib/supabase/admin";
 import { Aviso, Selo, Vazio } from "../ui/basicos";
 import { whatsappDaReceita } from "@/lib/whatsapp-oficial";
-import { AcoesDoContato, mensagemParaEmpresa } from "./divulgar";
+import { mensagemParaEmpresa } from "@/lib/divulgar";
+import { AcoesDoContato } from "./divulgar";
 import { Filtros, linkCom, Paginacao } from "./ui";
 
 // Os contatos de Admin › Convites › Divulgar (migração 20270916120000): as contabilidades e as empresas de gestão de
