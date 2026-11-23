@@ -3593,6 +3593,10 @@ export type Database = {
         Args: { p_chave: string; p_conversa: string; p_token: string };
         Returns: Json;
       };
+      servidor_whatsapp_aceite_pela_conversa: {
+        Args: { p_chave: string; p_conversa: string };
+        Returns: Json;
+      };
       servidor_whatsapp_publicar_aqui: {
         Args: { p_chave: string; p_conversa: string; p_token: string; p_nome: string; p_registro: Json };
         Returns: Json;

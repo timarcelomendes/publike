@@ -11,3 +11,19 @@ export const MANDE_UM_OI = `Para receber o código no WhatsApp, mande antes um o
 export function linkDoOi(numero: string = WHATSAPP_OFICIAL.numero) {
   return `https://wa.me/${numero}?text=${encodeURIComponent("Oi")}`;
 }
+
+/**
+ * O aceite dos avisos pela conversa (23/11/2026, migração 20270915120000): o wa.me com o pedido já escrito. A empresa
+ * toca e envia; o atendimento liga o aviso pelo WhatsApp das contas do número e responde com quem está esperando.
+ */
+export const TEXTO_DO_ACEITE = "Quero receber meus candidatos pelo WhatsApp";
+
+export function linkDoAceite(numero: string = WHATSAPP_OFICIAL.numero) {
+  return `https://wa.me/${numero}?text=${encodeURIComponent(TEXTO_DO_ACEITE)}`;
+}
+
+/** A mensagem é o pedido do aceite (a do link, ou parecida e curta: "quero receber os candidatos aqui"). */
+export function pedeOsCandidatosAqui(texto: string) {
+  const t = texto.trim();
+  return t.length <= 120 && /\breceber\b.{0,20}\bcandidat/i.test(t);
+}

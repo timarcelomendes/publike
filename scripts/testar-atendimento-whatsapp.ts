@@ -151,6 +151,7 @@ globalThis.fetch = (async (url: any, init: any) => {
 
 async function main() {
   const a = await import("../src/lib/servidor/atendimento-whatsapp");
+  const wo = await import("../src/lib/whatsapp-oficial");
 
   // --- Ler a mensagem -------------------------------------------------------------------------------------------
   conferir(a.soCumprimento("Oi"), "Oi é cumprimento");
@@ -193,6 +194,8 @@ async function main() {
   // publicar aqui mesmo (migração 20270914120000)
   let paraPublicar: any = { ligado: false };
   let publicados: any[] = [];
+  let aceites: any[] = [];
+  let aceite: any = { data: { ok: true, contas: [] }, error: null };
   const base = (x: any) => ({
     chave: "557799255259",
     nova: false,
@@ -233,6 +236,11 @@ async function main() {
           data: { ok: true, anuncio_id: "11111111-2222-3333-4444-555555555555", conta_nova: true, restantes: 0 },
           error: null,
         };
+      }
+      // o aceite pela conversa (migração 20270915120000)
+      if (nome === "servidor_whatsapp_aceite_pela_conversa") {
+        aceites.push(args);
+        return aceite;
       }
       // o currículo pelo WhatsApp (migração 20270902120000): desligado, a não ser nos testes dele
       if (nome === "servidor_curriculo_whatsapp_ligado") return { data: cvLigado, error: null };
@@ -761,6 +769,47 @@ async function main() {
     JSON.stringify(pedidosIA[0]?.input).includes("alguém responde por aqui em breve"),
     "a IA sabe quando a equipe responde",
   );
+  // o aceite pela conversa (23/11/2026, migração 20270915120000): o link de Admin › Esperando
+  aceite = {
+    data: {
+      ok: true,
+      contas: [
+        { id: "c1", nome: "Padaria Pão Quente", esperando: 3, vagas: [{ titulo: "Atendente", n: 2 }, { titulo: "Padeiro", n: 1 }] },
+      ],
+    },
+    error: null,
+  };
+  aceites = [];
+  r = await rodar(wo.TEXTO_DO_ACEITE, { historico: [{ de: "pessoa", texto: wo.TEXTO_DO_ACEITE }] });
+  conferir(
+    aceites.length === 1 &&
+      corpo(r.msgs[0]).includes("Padaria Pão Quente agora chegam aqui") &&
+      corpo(r.msgs[0]).includes("Tem 3 pessoas esperando") &&
+      corpo(r.msgs[0]).includes("• Atendente: 2 pessoas") &&
+      corpo(r.msgs[0]).includes("PARAR") &&
+      botao(r.msgs[0]) === "Ver os candidatos" &&
+      !saidas.some((x) => x.p_equipe),
+    "aceite pela conversa: liga e diz quem espera",
+    corpo(r.msgs[0]),
+  );
+  aceite = { data: { ok: true, contas: [{ id: "c1", nome: "Loja X", esperando: 0, vagas: [] }] }, error: null };
+  r = await rodar("quero receber os candidatos aqui", { historico: [{ de: "pessoa", texto: "quero receber os candidatos aqui" }] });
+  conferir(
+    corpo(r.msgs[0]).includes("Quando alguém se candidatar, eu aviso por aqui") && botao(r.msgs[0]) === null,
+    "aceite sem ninguém esperando: sem botão",
+    corpo(r.msgs[0]),
+  );
+  aceite = { data: { ok: true, contas: [] }, error: null };
+  r = await rodar(wo.TEXTO_DO_ACEITE, { historico: [{ de: "pessoa", texto: wo.TEXTO_DO_ACEITE }] });
+  conferir(corpo(r.msgs[0]).startsWith("Não achei uma conta"), "aceite sem conta: explica como", corpo(r.msgs[0]));
+  aceite = { data: null, error: { code: "PGRST202", message: "sem a função" } };
+  aceites = [];
+  r = await rodar(wo.TEXTO_DO_ACEITE, { historico: [{ de: "pessoa", texto: wo.TEXTO_DO_ACEITE }] });
+  conferir(aceites.length === 1 && r.msgs.length > 0 && !corpo(r.msgs[0]).startsWith("Pronto!"), "aceite sem a migração: segue o de sempre");
+  aceite = { data: { ok: true, contas: [] }, error: null };
+  conferir(!wo.pedeOsCandidatosAqui("tem vaga de atendente? quero receber o salário de 2 mil"), "não é aceite: procura de vaga");
+  conferir(wo.linkDoAceite() === "https://wa.me/556284771907?text=Quero%20receber%20meus%20candidatos%20pelo%20WhatsApp", "o link do aceite");
+
   r = await rodar("tem vaga de pedreiro?", {
     perfil: "trabalho",
     respostas_hoje: 30,

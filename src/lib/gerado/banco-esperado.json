@@ -390,7 +390,8 @@
   "20270911120000_whatsapp_convite_instagram",
   "20270912120000_whatsapp_convite_instagram_mais",
   "20270913120000_convites_email_pela_caixa",
-  "20270914120000_publicar_no_whatsapp"
+  "20270914120000_publicar_no_whatsapp",
+  "20270915120000_whatsapp_aceite_pela_conversa"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -4012,6 +4013,7 @@
   "f|public.servidor_vagas_sem_funcao(p_chave text, p_limite integer, p_com_contexto boolean)": "04c09d8a37",
   "f|public.servidor_video_guardar_ia(p_chave text, p_id uuid, p_transcricoes jsonb, p_resumo jsonb)": "adc68d151f",
   "f|public.servidor_video_prazos(p_chave text, p_agora timestamp with time zone)": "02153e456d",
+  "f|public.servidor_whatsapp_aceite_pela_conversa(p_chave text, p_conversa text)": "963dbc8acd",
   "f|public.servidor_whatsapp_aceite_pela_vaga(p_chave text, p_conversa text, p_vaga uuid)": "01ba270c7c",
   "f|public.servidor_whatsapp_codigo(p_chave text, p_numero text)": "36e60adc50",
   "f|public.servidor_whatsapp_config(p_chave text)": "940efaf897",

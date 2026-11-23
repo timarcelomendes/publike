@@ -7,6 +7,7 @@ import { tempoRelativo } from "@/lib/formato";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
+import { linkDoAceite } from "@/lib/whatsapp-oficial";
 
 const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
 
@@ -53,6 +54,8 @@ export async function mensagemParaEmpresaEsperando(
     );
   }
   partes.push(`${comoEntrar}\n${link}`);
+  // o aceite pela conversa (migração 20270915120000): um toque e os próximos candidatos chegam pelo WhatsApp
+  partes.push(`Para receber os próximos candidatos direto no WhatsApp, toque aqui e envie a mensagem:\n${linkDoAceite()}`);
   partes.push("Qualquer dúvida, é só responder aqui.");
   return { ok: true, whatsapp: empresa.whatsapp, mensagem: partes.join("\n\n") };
 }

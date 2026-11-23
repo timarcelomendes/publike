@@ -36,6 +36,7 @@ import {
   tentarVagaPeloWhatsapp,
 } from "./vaga-pelo-whatsapp";
 import { caminhoDaVagaDoWhatsapp } from "@/lib/vagas-pelo-whatsapp";
+import { pedeOsCandidatosAqui } from "@/lib/whatsapp-oficial";
 import { avisarMetaDaVaga } from "./meta-conversoes";
 import {
   MARCA_DA_PERGUNTA_DO_NOME,
@@ -1866,6 +1867,12 @@ export async function atenderConversa(
   // a equipe devolveu com os botões
   if (opcoes.retomada && opcoes.comBotoes) return saida(VOLTEI_COM_BOTOES, { menu: true });
 
+  // "Quero receber meus candidatos pelo WhatsApp" (o link de Admin › Esperando; migração 20270915120000): pedir na
+  // conversa é o aceite; liga o aviso das contas do número e responde com quem está esperando
+  if (!m.payload && !midias.some(Boolean) && textos.some(pedeOsCandidatosAqui)) {
+    const resposta = await aceitePelaConversa(banco, chave, e.chave);
+    if (resposta) return saida(resposta.texto, { perfil: "contratar", botao: resposta.botao });
+  }
   // publicar a vaga aqui mesmo (23/11/2026, migração 20270914120000): o "Sim, publicar", o "Conferir no site" e a
   // resposta à pergunta do nome da empresa
   {
@@ -2727,4 +2734,51 @@ export async function mandarVagasDoCurriculo(
     console.error("Publike: as vagas do currículo pelo WhatsApp falharam:", e instanceof Error ? e.message : e);
     return "falhou";
   }
+}
+
+type ContaDoAceite = { id: string; nome: string; esperando: number; vagas: { titulo: string; n: number }[] };
+
+/**
+ * O aceite pela conversa (migração 20270915120000): as contas que contratam com o número passam a receber pelo
+ * WhatsApp, e a resposta diz quem está esperando. `null`: sem a migração (segue o atendimento de sempre).
+ */
+export async function aceitePelaConversa(
+  banco: ClienteBanco,
+  chave: string,
+  conversa: string,
+): Promise<{ texto: string; botao: Botao | null } | null> {
+  const { data, error } = await banco.rpc("servidor_whatsapp_aceite_pela_conversa", { p_chave: chave, p_conversa: conversa });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: o aceite pela conversa não foi gravado:", error.message);
+    return null;
+  }
+  const r = (data ?? {}) as { ok?: boolean; contas?: ContaDoAceite[] };
+  if (!r.ok) return null;
+  const contas = r.contas ?? [];
+  if (!contas.length)
+    return {
+      texto:
+        "Não achei uma conta de quem contrata com este WhatsApp. Para receber os candidatos aqui, entre no Publike com este número (o código chega aqui) ou ponha este WhatsApp no perfil da empresa, e me mande a mensagem de novo.",
+      botao: LINKS.entrar,
+    };
+  const nomes = contas.map((c) => c.nome).join(" e ");
+  const partes = [`Pronto! Os candidatos de ${nomes} agora chegam aqui pelo WhatsApp ✅`];
+  const esperando = contas.reduce((t, c) => t + (Number(c.esperando) || 0), 0);
+  if (esperando > 0) {
+    const linhas = contas
+      .flatMap((c) => c.vagas ?? [])
+      .slice(0, 5)
+      .map((v) => `• ${v.titulo}: ${v.n === 1 ? "1 pessoa" : `${v.n} pessoas`}`);
+    partes.push(
+      `${esperando === 1 ? "Tem 1 pessoa esperando" : `Tem ${esperando} pessoas esperando`} a resposta de vocês:\n${linhas.join("\n")}`,
+    );
+    partes.push("Toque em *Ver os candidatos* para ver os currículos e responder.");
+  } else {
+    partes.push("Quando alguém se candidatar, eu aviso por aqui.");
+  }
+  partes.push("Para parar de receber, é só responder PARAR.");
+  return {
+    texto: partes.join("\n\n"),
+    botao: esperando > 0 ? { titulo: "Ver os candidatos", caminho: "/painel/caixa?aba=novos" } : null,
+  };
 }
