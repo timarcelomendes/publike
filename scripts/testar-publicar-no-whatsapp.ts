@@ -85,6 +85,46 @@ async function main() {
   conferir("payload do publicar", m.PAYLOAD_PUBLICAR.exec(botoes[0].id)?.[1] === token);
   conferir("payload do conferir", m.PAYLOAD_CONFERIR.exec(botoes[1].id)?.[1] === token);
 
+  // o lugar respondido na conversa (migração 20270916150000)
+  const { lugarDaResposta } = await import("../src/lib/lugar-da-resposta");
+  const vw = await import("../src/lib/vagas-pelo-whatsapp");
+  const lugares: [string, string | null, unknown][] = [
+    ["Setor Bueno, Goiânia", null, { bairro: "Setor Bueno", cidade: "Goiânia" }],
+    ["Passeio das Águas em Goiânia", null, { bairro: "Passeio das Águas", cidade: "Goiânia" }],
+    ["Goiânia", null, { bairro: "", cidade: "Goiânia" }],
+    ["goiania - go", null, { bairro: "", cidade: "Goiânia" }],
+    ["Passeio das Águas", null, { bairro: "Passeio das Águas", cidade: null }],
+    ["Passeio das Águas", "Goiânia", { bairro: "Passeio das Águas", cidade: "Goiânia" }],
+    ["Setor Garavelo, Aparecida", null, { bairro: "Setor Garavelo", cidade: "Aparecida de Goiânia" }],
+    ["Jundiaí, Anápolis", null, { bairro: "Jundiaí", cidade: "Anápolis" }],
+    ["Vila Trindade", null, { bairro: "Vila Trindade", cidade: null }],
+    ["Fica no Setor Bueno", null, { bairro: "Setor Bueno", cidade: "Goiânia" }],
+    ["Centro", "Anápolis", { bairro: "Centro", cidade: "Anápolis" }],
+    ["Goiânia, Setor Bueno", null, { bairro: "Setor Bueno", cidade: "Goiânia" }],
+    ["Shopping Passeio das Águas, Goiânia - GO", null, { bairro: "Shopping Passeio das Águas", cidade: "Goiânia" }],
+    ["não sei", null, null],
+    ["okay", null, null],
+    ["Quanto custa para publicar", null, null],
+    ["precisa de CNPJ?", null, null],
+    ["62 98477-1907", null, null],
+    ["https://publike.org", null, null],
+    ["[a pessoa mandou uma foto]", null, null],
+  ];
+  for (const [texto, daVaga, esperado] of lugares) {
+    const lido = lugarDaResposta(texto, daVaga);
+    conferir(`o lugar: ${texto}${daVaga ? ` (vaga em ${daVaga})` : ""}`, JSON.stringify(lido) === JSON.stringify(esperado), lido);
+  }
+  // o lugar do lote: com lugares diferentes, nada muda
+  const doisLugares = vw.lugarDoLote([
+    { ...base, bairro: "Setor Bueno" },
+    { ...base, titulo: "Vendedora", bairro: "Setor Oeste" },
+    { ...base, titulo: "Estoquista", bairro: "" },
+  ] as any);
+  conferir("lugares diferentes: a vaga sem lugar fica sem", doisLugares[2].bairro === "", doisLugares);
+  const umLugar = vw.lugarDoLote([{ ...base, bairro: "", cidade: "" }, { ...base, titulo: "Vendedora", bairro: "Setor Oeste", cidade: "Goiânia" }] as any);
+  conferir("um lugar só: a vaga sem lugar fica com ele", umLugar[0].bairro === "Setor Oeste" && umLugar[0].cidade === "Goiânia", umLugar);
+  conferir("o botão do lugar: conferir o lote", m.botoesDoLugar(token, 2)[0].id === `a:conferir_lote:${token}` && m.botoesDoLugar(token, 1)[0].id === `a:conferir:${token}`);
+
   if (falhas) {
     console.error(`\n${falhas} falha(s)`);
     process.exit(1);

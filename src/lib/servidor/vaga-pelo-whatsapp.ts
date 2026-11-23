@@ -9,10 +9,20 @@ import { comOrigem } from "@/lib/origem";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
-import { caminhoDaVagaDoWhatsapp, respostaDasVagas, textoDasVagas, type ChaveTextoVagas } from "@/lib/vagas-pelo-whatsapp";
+import type { RascunhoConvite } from "@/lib/convites";
+import { lugarDaResposta } from "@/lib/lugar-da-resposta";
+import {
+  caminhoDaVagaDoWhatsapp,
+  lugarDoLote,
+  perguntaDoLugar,
+  respostaDasVagas,
+  semLugar,
+  textoDasVagas,
+  type ChaveTextoVagas,
+} from "@/lib/vagas-pelo-whatsapp";
 import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
-import { botoesDaVagaPreparada, botoesDoLotePreparado, podePublicarAqui } from "./publicar-no-whatsapp";
+import { botoesDaVagaPreparada, botoesDoLotePreparado, botoesDoLugar, podePublicarAqui } from "./publicar-no-whatsapp";
 import {
   baixarFotoOuPdf,
   codigoPeloModeloPode,
@@ -256,7 +266,8 @@ export async function tentarVagaPeloWhatsapp(p: {
     return true;
   }
 
-  const vagas = lida.vagas.slice(0, config.por_mensagem);
+  // as vagas do mesmo anúncio no mesmo lugar: a que não diz fica com o lugar das outras (migração 20270916150000)
+  const vagas = lugarDoLote(lida.vagas.slice(0, config.por_mensagem));
   const { data: gravada, error: erroGravar } = await registrar("vaga", { empresa: lida.empresa.nome, ms, vagas });
   const links = ((gravada as unknown as { vagas?: { token: string }[] } | null)?.vagas ?? []).map((v) => v.token);
   if (erroGravar || !links.length) {
@@ -267,23 +278,24 @@ export async function tentarVagaPeloWhatsapp(p: {
     );
     return true;
   }
-  // uma vaga só, com o cargo e o bairro, de quem não disse que procura emprego: publica aqui mesmo, com os botões
-  // (migração 20270914120000). Várias vagas, ou faltando o bairro: o link do site, como antes
-  const aqui =
-    config.publicar_aqui && vagas.length === 1 && lida.vagas.length === 1 && links.length === 1 &&
-    p.perfil !== "trabalho" && podePublicarAqui(vagas[0]);
-  if (aqui) {
-    const r = respostaDasVagas(config.textos, vagas, 1, ola, p.jaDisse, { publicarAqui: true });
-    await p.saida(r.texto, { perfil: "contratar", botoes: botoesDaVagaPreparada(links[0]) });
+  // publicar aqui mesmo, com os botões, para quem não disse que procura emprego, quando todas as vagas do anúncio foram
+  // preparadas e têm o cargo: uma vaga (migração 20270914120000) ou várias (20270916140000). Faltando o bairro ou a
+  // cidade, a pergunta do lugar (20270916150000); sem o cargo, ou com mais vagas que o limite do Admin: o link do site
+  const todas =
+    config.publicar_aqui && p.perfil !== "trabalho" && vagas.length === lida.vagas.length && links.length === vagas.length &&
+    vagas.every((v) => (v.titulo ?? "").trim().length >= 5);
+  if (todas && vagas.every(podePublicarAqui)) {
+    const r = respostaDasVagas(config.textos, vagas, vagas.length, ola, p.jaDisse, { publicarAqui: true });
+    await p.saida(r.texto, {
+      perfil: "contratar",
+      botoes: vagas.length === 1 ? botoesDaVagaPreparada(links[0]) : botoesDoLotePreparado(links[0], vagas.length),
+    });
     return true;
   }
-  // várias vagas, todas com o cargo e o bairro, e todas preparadas (migração 20270916140000): publica todas aqui
-  const loteAqui =
-    config.publicar_aqui && vagas.length > 1 && vagas.length === lida.vagas.length && links.length === vagas.length &&
-    p.perfil !== "trabalho" && vagas.every(podePublicarAqui);
-  if (loteAqui) {
-    const r = respostaDasVagas(config.textos, vagas, vagas.length, ola, p.jaDisse, { publicarAqui: true });
-    await p.saida(r.texto, { perfil: "contratar", botoes: botoesDoLotePreparado(links[0], vagas.length) });
+  // a pergunta do lugar só sai com a resposta garantida (a função do banco no ar e o recurso ligado)
+  if (todas && vagas.some(semLugar) && (await vagasParaOLugar(p.banco, p.chave, p.conversa))) {
+    const r = respostaDasVagas(config.textos, vagas, vagas.length, ola, p.jaDisse, { perguntarLugar: true });
+    await p.saida(r.texto, { perfil: "contratar", botoes: botoesDoLugar(links[0], vagas.length) });
     return true;
   }
   const resposta = respostaDasVagas(config.textos, vagas, lida.vagas.length, ola, p.jaDisse);
@@ -294,6 +306,71 @@ export async function tentarVagaPeloWhatsapp(p: {
     botao: { titulo: resposta.botao, caminho: caminhoDaVagaDoWhatsapp(links[0], resposta.lote) },
   });
   return true;
+}
+
+// --- O lugar perguntado na conversa (migração 20270916150000) ------------------------------------------------------
+
+type VagaDoLugar = { token: string; rascunho: RascunhoConvite };
+
+/**
+ * As vagas do último anúncio lido na conversa que ainda não foram publicadas, completando antes com o bairro e a
+ * cidade respondidos. `null`: sem a função no banco, o recurso desligado, ou nenhuma vaga esperando.
+ */
+async function vagasParaOLugar(
+  banco: ClienteBanco,
+  chave: string,
+  conversa: string,
+  lugar: { bairro: string; cidade: string | null } | null = null,
+): Promise<VagaDoLugar[] | null> {
+  const { data, error } = await banco.rpc("servidor_whatsapp_lugar_das_vagas", {
+    p_chave: chave,
+    p_conversa: conversa,
+    p_bairro: lugar?.bairro || null,
+    p_cidade: lugar?.cidade || null,
+  });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: o lugar da vaga do WhatsApp não foi gravado:", error.message);
+    return null;
+  }
+  const r = (data ?? {}) as { ligado?: boolean; ok?: boolean; vagas?: VagaDoLugar[] };
+  return r.ligado && r.ok && r.vagas?.length ? r.vagas : null;
+}
+
+/**
+ * A resposta à pergunta do lugar: completa as vagas e manda a vaga preparada com "Sim, publicar" (ou, faltando ainda a
+ * cidade ou o bairro, pergunta o que falta). `null`: a mensagem não parece um lugar, ou não há vaga esperando o lugar
+ * (o atendimento segue normal).
+ */
+export async function lugarRespondido(
+  banco: ClienteBanco,
+  chave: string,
+  conversa: string,
+  texto: string,
+): Promise<{ texto: string; botoes?: { id: string; titulo: string }[]; botao?: { titulo: string; caminho: string } } | null> {
+  const antes = await vagasParaOLugar(banco, chave, conversa);
+  if (!antes || !antes.some((v) => semLugar(v.rascunho))) return null;
+  const cidades = [...new Set(antes.map((v) => (v.rascunho.cidade ?? "").trim()).filter(Boolean))];
+  const lugar = lugarDaResposta(texto, cidades.length === 1 ? cidades[0] : null);
+  if (!lugar) return null;
+  const depois = await vagasParaOLugar(banco, chave, conversa, lugar);
+  if (!depois) return null;
+  const rascunhos = depois.map((v) => v.rascunho);
+  const primeiro = depois[0].token;
+  if (rascunhos.some(semLugar)) return { texto: perguntaDoLugar(rascunhos), botoes: botoesDoLugar(primeiro, depois.length) };
+  if (!rascunhos.every(podePublicarAqui))
+    return {
+      texto: "Anotado! Para publicar, falta acertar uma coisa na vaga: toque no botão para completar no site, já preenchido.",
+      botao: {
+        titulo: depois.length > 1 ? "Conferir as vagas" : "Conferir e publicar",
+        caminho: caminhoDaVagaDoWhatsapp(primeiro, depois.length > 1),
+      },
+    };
+  const textos = (await configVagasWhatsapp(banco, chave))?.textos ?? {};
+  const r = respostaDasVagas(textos, rascunhos, rascunhos.length, "Anotado! ✅", [], { publicarAqui: true });
+  return {
+    texto: r.texto,
+    botoes: depois.length === 1 ? botoesDaVagaPreparada(primeiro) : botoesDoLotePreparado(primeiro, depois.length),
+  };
 }
 
 // --- Depois de publicar ------------------------------------------------------------------------------------------
@@ -352,8 +429,9 @@ export async function confirmarVagaPublicada(
       p_wamid: wamid,
       p_perfil: "contratar",
     });
+  // no lote publicado aqui, as que faltam ganham a mensagem delas (atendimento-whatsapp.ts)
   const restantes =
-    v.restantes > 0 && !(opcoes.lote ?? []).length
+    v.restantes > 0 && !opcoes.lote
       ? `\n\n${v.restantes === 1 ? "Ainda falta 1 vaga" : `Ainda faltam ${v.restantes} vagas`} do seu anúncio: é só voltar ao link e publicar.`
       : "";
   const conta = opcoes.contaNova
@@ -377,7 +455,8 @@ export async function confirmarVagaPublicada(
   }
   await guardar(`${texto}\n\n[Botão: ${titulo}]`, r.wamid);
   if (!config.oferecer_avisos || v.ja_recebe) return;
-  const oferta = t("oferta");
+  // no lote, "destas vagas" (o texto do Admin pode não ter "desta vaga": aí fica como está)
+  const oferta = lote ? t("oferta").replace(/\bdesta vaga\b/i, "destas vagas") : t("oferta");
   const o = await enviarComBotoes(cfg, v.numero, oferta, [
     { id: `a:receber:${v.id}`, titulo: "Sim, quero receber" },
     { id: "a:nao_receber", titulo: "Agora não" },

@@ -3614,6 +3614,10 @@ export type Database = {
         Args: { p_conta: string; p_pessoas?: number };
         Returns: string;
       };
+      servidor_whatsapp_lugar_das_vagas: {
+        Args: { p_chave: string; p_conversa: string; p_bairro?: string | null; p_cidade?: string | null };
+        Returns: Json;
+      };
       servidor_whatsapp_tokens_do_lote: {
         Args: { p_chave: string; p_conversa: string; p_token: string };
         Returns: string[];

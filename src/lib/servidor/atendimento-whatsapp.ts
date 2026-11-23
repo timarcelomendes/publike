@@ -32,10 +32,11 @@ import {
   configVagasWhatsapp,
   confirmarVagaPublicada,
   deveTentarVaga,
+  lugarRespondido,
   respostaDaOferta,
   tentarVagaPeloWhatsapp,
 } from "./vaga-pelo-whatsapp";
-import { caminhoDaVagaDoWhatsapp } from "@/lib/vagas-pelo-whatsapp";
+import { caminhoDaVagaDoWhatsapp, MARCA_DO_LUGAR } from "@/lib/vagas-pelo-whatsapp";
 import { pedeOsCandidatosAqui } from "@/lib/whatsapp-oficial";
 import { avisarMetaDaVaga } from "./meta-conversoes";
 import {
@@ -1895,6 +1896,12 @@ export async function atenderConversa(
         perfil: "contratar",
         botao: { titulo: "Conferir e publicar", caminho: caminhoDaVagaDoWhatsapp(token) },
       });
+    // a resposta à pergunta do lugar (migração 20270916150000): completa a vaga e vem o "Sim, publicar"; o que não
+    // parece um lugar segue o atendimento de sempre
+    if (!m.payload && MARCA_DO_LUGAR.test(minhaUltima) && escrito && !midias.some(Boolean)) {
+      const r = await lugarRespondido(banco, chave, e.chave, escrito);
+      if (r) return saida(r.texto, { perfil: "contratar", botoes: r.botoes, botao: r.botao ?? null });
+    }
     if (conferir) return peloSite(conferir, "Aqui você confere tudo, muda o que precisar e publica. É grátis e leva um minuto.");
     if (conferirLote)
       return saida("Aqui você confere as vagas, muda o que precisar e publica. É grátis e leva um minuto.", {
@@ -1915,19 +1922,29 @@ export async function atenderConversa(
         const titulos = [r.titulo];
         let ultima = r.token;
         const doSite: string[] = [];
-        if (r.restantes > 0 && (doLote || nomeRespondido)) {
-          for (const token of (await tokensDoLote(banco, chave, e.chave, r.token)).slice(0, 10)) {
+        let semSaberAsOutras = false;
+        const emLote = r.restantes > 0 && Boolean(doLote || nomeRespondido);
+        if (emLote) {
+          const outras = await tokensDoLote(banco, chave, e.chave, r.token);
+          if (!outras) semSaberAsOutras = true;
+          for (const token of (outras ?? []).slice(0, 10)) {
             const outra = await publicarPeloWhatsapp({ banco, chave, conversa: e.chave, token, nome: null });
             if (outra.tipo === "publicada") {
               titulos.push(outra.titulo);
               ultima = outra.token;
               await avisarMetaDaVaga(outra.anuncioId).catch(() => undefined);
-            } else if (outra.tipo === "site") doSite.push(outra.token);
+            } else if (outra.tipo !== "ja") doSite.push(token);
           }
         }
         // o "está no ar", com o botão da vaga (ou do painel, no lote), a conta nova e a oferta dos candidatos por aqui
-        await confirmarVagaPublicada(ultima, { aqui: true, contaNova: r.contaNova, lote: titulos });
-        if (doSite.length)
+        await confirmarVagaPublicada(ultima, { aqui: true, contaNova: r.contaNova, lote: emLote ? titulos : undefined });
+        // as que não saíram por aqui: o site, já preenchido
+        if (semSaberAsOutras)
+          await saida(
+            "As outras vagas do anúncio não saíram por aqui. Toque em *Conferir as vagas* para publicar no site, já preenchidas.",
+            { perfil: "contratar", botao: { titulo: "Conferir as vagas", caminho: caminhoDaVagaDoWhatsapp(r.token, true) } },
+          );
+        else if (doSite.length)
           await saida(
             doSite.length === 1
               ? "Uma das vagas precisa de um acerto antes de publicar. Toque em *Conferir e publicar* para completar no site."

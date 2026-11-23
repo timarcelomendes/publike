@@ -114,6 +114,48 @@ export function textoDasVagas(
 export const FIM_PUBLICAR_AQUI =
   "Posso publicar assim? É grátis. Para mudar alguma coisa antes, toque em *Conferir no site*. Ao publicar, você concorda com as regras do Publike: publike.org/regras";
 
+/**
+ * O lugar perguntado na conversa (migração 20270916150000): todas as perguntas do lugar levam esta marca, e a resposta
+ * seguinte da pessoa é lida como o lugar (`lugarDaResposta`).
+ */
+export const MARCA_DO_LUGAR = /para publicar aqui mesmo/i;
+
+/** A vaga ainda sem o bairro ou sem a cidade (não dá para publicar aqui). */
+export function semLugar(v: RascunhoConvite) {
+  return !(v.bairro ?? "").trim() || !(v.cidade ?? "").trim();
+}
+
+/**
+ * As vagas do mesmo anúncio ficam no mesmo lugar: quando as que dizem o lugar dizem o mesmo (um bairro e uma cidade),
+ * as que não dizem ficam com ele. Com lugares diferentes, nada muda.
+ */
+export function lugarDoLote(vagas: RascunhoConvite[]): RascunhoConvite[] {
+  if (vagas.length < 2) return vagas;
+  const chave = (x: string) => x.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const unicos = (lista: string[]) => [...new Map(lista.map((x) => [chave(x), x.trim()])).values()];
+  const bairros = unicos(vagas.map((v) => v.bairro ?? "").filter((x) => x.trim()));
+  const cidades = unicos(vagas.map((v) => v.cidade ?? "").filter((x) => x.trim()));
+  if (bairros.length > 1 || cidades.length > 1) return vagas;
+  return vagas.map((v) => ({
+    ...v,
+    bairro: (v.bairro ?? "").trim() || bairros[0] || v.bairro,
+    cidade: (v.cidade ?? "").trim() || cidades[0] || v.cidade,
+  }));
+}
+
+/** A pergunta do lugar, pelo que falta: só a cidade, só o bairro, ou os dois. */
+export function perguntaDoLugar(vagas: RascunhoConvite[]) {
+  const bairros = [...new Set(vagas.map((v) => (v.bairro ?? "").trim()).filter(Boolean))];
+  const cidades = [...new Set(vagas.map((v) => (v.cidade ?? "").trim()).filter(Boolean))];
+  const todasComBairro = vagas.every((v) => (v.bairro ?? "").trim());
+  const todasComCidade = vagas.every((v) => (v.cidade ?? "").trim());
+  if (todasComBairro && bairros.length === 1)
+    return `Para publicar aqui mesmo, só falta a cidade: ${bairros[0]} fica em qual cidade? Por exemplo: _Goiânia_.`;
+  if (todasComCidade && cidades.length === 1)
+    return `Para publicar aqui mesmo, só falta o bairro: em que bairro ou setor de ${cidades[0]} fica o trabalho? Por exemplo: _Setor Bueno_.`;
+  return "Para publicar aqui mesmo, só falta o lugar: em que bairro e cidade fica o trabalho? Por exemplo: _Setor Bueno, Goiânia_.";
+}
+
 /** A mensagem com botão da Meta vai até 1.024 letras (o atendimento corta em 1.000, no fim de uma frase). */
 const MAX_MENSAGEM = 1000;
 
@@ -134,7 +176,17 @@ export function respostaDasVagas(
    * publicar aqui mesmo, com os botões "Sim, publicar" e "Conferir no site" (migração 20270914120000): o fim pergunta se
    * pode publicar assim, no lugar do "Confira, ajuste e publique"
    */
-  { publicarAqui = false }: { publicarAqui?: boolean } = {},
+  {
+    publicarAqui = false,
+    perguntarLugar = false,
+  }: {
+    publicarAqui?: boolean;
+    /**
+     * a foto não disse o bairro ou a cidade (migração 20270916150000): no lugar da pergunta "Posso publicar assim?",
+     * a pergunta do lugar (`perguntaDoLugar`), e o que falta fica sem o lugar
+     */
+    perguntarLugar?: boolean;
+  } = {},
 ): { texto: string; botao: string; lote: boolean } {
   const t = (k: ChaveTextoVagas, marcas?: Record<string, string | number>) => textoDasVagas(personalizados, k, marcas);
   const ola = comeco.trim();
@@ -146,15 +198,18 @@ export function respostaDasVagas(
     const texto = partes.filter(Boolean).join("\n\n");
     return texto.length <= MAX_MENSAGEM ? texto : null;
   };
+  // perguntando o lugar, ele não entra no "Faltou dizer"
+  const semOLugar = (f: string) => !perguntarLugar || !f.startsWith("o bairro");
+  const aqui = publicarAqui || perguntarLugar;
   if (vagas.length === 1) {
     const v = vagas[0];
-    const falta = faltaNaVaga(v).filter((f) => !jaDisse.includes(f));
+    const falta = faltaNaVaga(v).filter((f) => !jaDisse.includes(f) && semOLugar(f));
     const faltou = falta.length
-      ? publicarAqui
+      ? aqui
         ? `Faltou dizer ${juntarComE(falta)}.${falta.includes("o salário") ? " Se publicar assim, o salário sai como a combinar." : ""}`
         : `Faltou dizer ${juntarComE(falta)}: você completa quando conferir.`
       : "";
-    const fim = publicarAqui ? FIM_PUBLICAR_AQUI : t("fim");
+    const fim = perguntarLugar ? perguntaDoLugar(vagas) : publicarAqui ? FIM_PUBLICAR_AQUI : t("fim");
     const resumo = resumoDaVaga(v);
     // passou de 1.024 letras: sem os benefícios e o que a vaga pede (aparecem no publicar), e por fim cortado
     const curto = resumo
@@ -169,10 +224,14 @@ export function respostaDasVagas(
   }
   const linhas = vagas.map(linhaDaVaga);
   // publicar aqui o lote (migração 20270916140000): o que falta em cada vaga e a pergunta, no lugar do link
-  const fimLote = publicarAqui ? FIM_PUBLICAR_AQUI.replace("Posso publicar assim?", `Posso publicar ${vagas.length === 2 ? "as duas" : `as ${vagas.length}`} assim?`) : t("fim");
-  const faltas = publicarAqui
+  const fimLote = perguntarLugar
+    ? perguntaDoLugar(vagas)
+    : publicarAqui
+      ? FIM_PUBLICAR_AQUI.replace("Posso publicar assim?", `Posso publicar ${vagas.length === 2 ? "as duas" : `as ${vagas.length}`} assim?`)
+      : t("fim");
+  const faltas = aqui
     ? vagas
-        .map((v) => ({ v, falta: faltaNaVaga(v).filter((f) => !jaDisse.includes(f)) }))
+        .map((v) => ({ v, falta: faltaNaVaga(v).filter((f) => !jaDisse.includes(f) && semOLugar(f)) }))
         .filter((x) => x.falta.length)
         .map((x) => `Em ${x.v.titulo}, faltou dizer ${juntarComE(x.falta)}.${x.falta.includes("o salário") ? " Sai como a combinar." : ""}`)
         .join("\n")

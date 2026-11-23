@@ -26,6 +26,11 @@ export const botoesDoLotePreparado = (token: string, n: number) => [
   { id: "a:trabalho", titulo: "Procuro emprego" },
 ];
 export const PAYLOAD_LOTE = /^a:lote:([0-9a-f]{64})$/;
+/** Com a pergunta do lugar (migração 20270916150000): conferir no site ou "Procuro emprego"; a resposta é escrita. */
+export const botoesDoLugar = (token: string, n: number) => [
+  { id: n > 1 ? `a:conferir_lote:${token}` : `a:conferir:${token}`, titulo: "Conferir no site" },
+  { id: "a:trabalho", titulo: "Procuro emprego" },
+];
 export const PAYLOAD_CONFERIR_LOTE = /^a:conferir_lote:([0-9a-f]{64})$/;
 export const PAYLOAD_CONFERIR = /^a:conferir:([0-9a-f]{64})$/;
 
@@ -204,12 +209,15 @@ export async function publicarPeloWhatsapp(p: {
   };
 }
 
-/** As vagas do lote que ainda não foram publicadas (a do botão primeiro, na ordem do anúncio). */
-export async function tokensDoLote(banco: ClienteBanco, chave: string, conversa: string, token: string): Promise<string[]> {
+/**
+ * As vagas do lote que ainda não foram publicadas, na ordem do anúncio (migração 20270916140000). `null`: não deu para
+ * saber (sem a função, ou erro do banco): quem chama manda o link do lote.
+ */
+export async function tokensDoLote(banco: ClienteBanco, chave: string, conversa: string, token: string): Promise<string[] | null> {
   const { data, error } = await banco.rpc("servidor_whatsapp_tokens_do_lote", { p_chave: chave, p_conversa: conversa, p_token: token });
   if (error) {
     if (error.code !== "PGRST202") console.error("Publike: as vagas do lote não vieram:", error.message);
-    return [token];
+    return null;
   }
-  return (data as string[] | null)?.length ? (data as string[]) : [];
+  return (data as string[] | null) ?? [];
 }

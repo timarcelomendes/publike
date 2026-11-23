@@ -395,7 +395,8 @@
   "20270915130000_esperando_no_site",
   "20270916120000_divulgar_contatos",
   "20270916130000_divulgar_convites",
-  "20270916140000_publicar_lote_no_whatsapp"
+  "20270916140000_publicar_lote_no_whatsapp",
+  "20270916150000_lugar_da_vaga_no_whatsapp"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -4045,6 +4046,7 @@
   "f|public.servidor_whatsapp_ligacao_pedir(p_chave text, p_usuario uuid, p_numero text, p_hash text)": "8c05c8df68",
   "f|public.servidor_whatsapp_login_desligar(p_chave text, p_usuario uuid)": "31151202e3",
   "f|public.servidor_whatsapp_login_pela_vaga(p_chave text, p_conversa text, p_vaga uuid)": "f9a1b2772c",
+  "f|public.servidor_whatsapp_lugar_das_vagas(p_chave text, p_conversa text, p_bairro text, p_cidade text)": "0c418e1720",
   "f|public.servidor_whatsapp_marcar(p_chave text, p_id bigint, p_situacao text, p_modelo text, p_wamid text, p_motivo text, p_tentar_em_minutos integer)": "47d933ec31",
   "f|public.servidor_whatsapp_midia(p_chave text, p_wamid text, p_numero text, p_tipo text, p_midia text, p_mime text, p_legenda text)": "5b01e3f257",
   "f|public.servidor_whatsapp_midias_da_vez(p_chave text, p_conversa text)": "d223c24efa",

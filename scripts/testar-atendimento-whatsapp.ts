@@ -199,6 +199,10 @@ async function main() {
   let pedidosDoLote: any[] = [];
   let aceites: any[] = [];
   let aceite: any = { data: { ok: true, contas: [] }, error: null };
+  // o lugar perguntado na conversa (migração 20270916150000): as vagas do último anúncio, sem publicar
+  let vagasDoLugar: { token: string; rascunho: any }[] = [];
+  let lugarLigado: any = true;
+  let pedidosDoLugar: any[] = [];
   const base = (x: any) => ({
     chave: "557799255259",
     nova: false,
@@ -233,6 +237,28 @@ async function main() {
       // o Publicar pelo WhatsApp (migração 20270806120000) fica desligado nesta bateria: não é uma saída
       if (nome === "servidor_whatsapp_vagas_config") return { data: { ligado: false }, error: null };
       if (nome === "servidor_whatsapp_vaga_para_publicar") return { data: paraPublicar, error: null };
+      if (nome === "servidor_whatsapp_lugar_das_vagas") {
+        pedidosDoLugar.push(args);
+        if (lugarLigado === "sem") return { data: null, error: { code: "PGRST202", message: "sem a função" } };
+        if (!lugarLigado) return { data: { ligado: false, ok: false }, error: null };
+        if (!vagasDoLugar.length) return { data: { ligado: true, ok: false }, error: null };
+        const b = (args.p_bairro ?? "").trim();
+        const c = (args.p_cidade ?? "").trim();
+        if (b || c)
+          vagasDoLugar = vagasDoLugar.map((v) => {
+            const semBairro = !(v.rascunho.bairro ?? "").trim();
+            const semCidade = !(v.rascunho.cidade ?? "").trim();
+            return {
+              ...v,
+              rascunho: {
+                ...v.rascunho,
+                ...(semBairro && b ? { bairro: b } : {}),
+                ...(c && (semCidade || (semBairro && b)) ? { cidade: c } : {}),
+              },
+            };
+          });
+        return { data: { ligado: true, ok: true, vagas: vagasDoLugar }, error: null };
+      }
       if (nome === "servidor_whatsapp_tokens_do_lote") {
         pedidosDoLote.push(args);
         return { data: tokensDoLoteMock, error: null };
@@ -1918,6 +1944,82 @@ async function main() {
     // "Conferir no site" do lote: a página do lote
     r = await rodar("Conferir no site", { perfil: "contratar", historico: [...antesLote, { de: "pessoa", texto: "Conferir no site" }] }, { payload: `a:conferir_lote:${token}` });
     conferir(String(r.msgs[0]?.interactive?.action?.parameters?.url ?? "").includes(`/publicar/whatsapp/${token}`), "Conferir no site do lote: a página do lote", r.msgs[0]);
+    // o lugar perguntado na conversa (migração 20270916150000): a foto da Hering, com uma vaga sem lugar e a outra com
+    // o shopping sem a cidade
+    {
+      const titulos = (e: any) => (e?.interactive?.action?.buttons ?? []).map((b: any) => b?.reply?.title);
+      const hering = [
+        { ...rascunho, titulo: "Operador de caixa", bairro: "", cidade: "" },
+        { ...rascunho, titulo: "Vendedor(a)", bairro: "Passeio das Águas", cidade: "" },
+      ];
+      const juntas = vw.lugarDoLote(hering as any);
+      conferir(juntas.every((v: any) => v.bairro === "Passeio das Águas" && v.cidade === ""), "o lugar do lote: a vaga sem lugar fica com o das outras", juntas);
+      const pergunta = vw.respostaDasVagas({}, juntas as any, 2, "", [], { perguntarLugar: true });
+      conferir(
+        pergunta.texto.includes("só falta a cidade: Passeio das Águas fica em qual cidade?") && !pergunta.texto.includes("faltou dizer o bairro") && vw.MARCA_DO_LUGAR.test(pergunta.texto),
+        "a pergunta do lugar: só a cidade",
+        pergunta.texto,
+      );
+      const comPergunta = (texto: string) => [
+        { de: "pessoa", texto: "[a pessoa mandou uma foto]" },
+        { de: "robo", texto: `${pergunta.texto}\n\n[Botões: Conferir no site · Procuro emprego]` },
+        { de: "pessoa", texto },
+      ];
+      // "Goiânia": completa as duas e vem o "Sim, publicar as 2"
+      vagasDoLugar = juntas.map((r: any, i: number) => ({ token: String(i + 1).repeat(64), rascunho: r }));
+      lugarLigado = true;
+      pedidosDoLugar = [];
+      r = await rodar("Goiânia", { perfil: "contratar", historico: comPergunta("Goiânia") });
+      conferir(
+        corpo(r.msgs[0]).startsWith("Anotado! ✅") && corpo(r.msgs[0]).includes("Posso publicar as duas assim?") &&
+          titulos(r.msgs[0])[0] === "Sim, publicar as 2" && r.msgs[0]?.interactive?.action?.buttons?.[0]?.reply?.id === `a:lote:${"1".repeat(64)}` &&
+          pedidosDoLugar.at(-1)?.p_cidade === "Goiânia" && vagasDoLugar.every((v) => v.rascunho.cidade === "Goiânia"),
+        "o lugar respondido: as vagas completas, com o Sim, publicar as 2",
+        corpo(r.msgs[0]),
+      );
+      // sem a cidade no lugar respondido: pergunta a cidade (e continua marcando a pergunta)
+      vagasDoLugar = hering.map((r: any, i: number) => ({ token: String(i + 1).repeat(64), rascunho: { ...r, bairro: "", cidade: "" } }));
+      const geral = vw.respostaDasVagas({}, vagasDoLugar.map((v) => v.rascunho) as any, 2, "", [], { perguntarLugar: true });
+      conferir(geral.texto.includes("só falta o lugar: em que bairro e cidade fica o trabalho?"), "a pergunta do lugar: o bairro e a cidade", geral.texto);
+      r = await rodar("Passeio das Águas", {
+        perfil: "contratar",
+        historico: [{ de: "robo", texto: `${geral.texto}\n\n[Botões: Conferir no site · Procuro emprego]` }, { de: "pessoa", texto: "Passeio das Águas" }],
+      });
+      conferir(
+        corpo(r.msgs[0]).includes("só falta a cidade: Passeio das Águas fica em qual cidade?") && vw.MARCA_DO_LUGAR.test(corpo(r.msgs[0])) &&
+          titulos(r.msgs[0]).join(" · ") === "Conferir no site · Procuro emprego" && r.msgs[0]?.interactive?.action?.buttons?.[0]?.reply?.id === `a:conferir_lote:${"1".repeat(64)}`,
+        "o bairro sem a cidade: pergunta a cidade",
+        corpo(r.msgs[0]),
+      );
+      // o que não é lugar segue o atendimento de sempre (sem gravar nada)
+      pedidosDoLugar = [];
+      respostaIA = ia("Pode me dizer o bairro e a cidade do trabalho?");
+      r = await rodar("não sei ainda", { perfil: "contratar", historico: comPergunta("não sei ainda") });
+      conferir(!corpo(r.msgs[0]).startsWith("Anotado") && pedidosDoLugar.every((x) => !x.p_bairro && !x.p_cidade), "não é lugar: segue normal", corpo(r.msgs[0]));
+      // uma vaga só, sem lugar: "Setor Bueno, Goiânia" e vem o "Sim, publicar"
+      vagasDoLugar = [{ token: "7".repeat(64), rascunho: { ...rascunho, bairro: "", cidade: "" } }];
+      r = await rodar("Setor Bueno, Goiânia", {
+        perfil: "contratar",
+        historico: [{ de: "robo", texto: vw.perguntaDoLugar([vagasDoLugar[0].rascunho]) }, { de: "pessoa", texto: "Setor Bueno, Goiânia" }],
+      });
+      conferir(
+        corpo(r.msgs[0]).includes("Posso publicar assim?") && titulos(r.msgs[0])[0] === "Sim, publicar" &&
+          r.msgs[0]?.interactive?.action?.buttons?.[0]?.reply?.id === `a:publicar:${"7".repeat(64)}` && vagasDoLugar[0].rascunho.bairro === "Setor Bueno",
+        "uma vaga: o lugar respondido e o Sim, publicar",
+        corpo(r.msgs[0]),
+      );
+      // sem a função no banco: não responde pelo lugar (segue normal)
+      lugarLigado = "sem";
+      vagasDoLugar = [{ token: "7".repeat(64), rascunho: { ...rascunho, bairro: "", cidade: "" } }];
+      respostaIA = ia("Certo!");
+      r = await rodar("Setor Bueno, Goiânia", {
+        perfil: "contratar",
+        historico: [{ de: "robo", texto: vw.perguntaDoLugar([vagasDoLugar[0].rascunho]) }, { de: "pessoa", texto: "Setor Bueno, Goiânia" }],
+      });
+      conferir(!corpo(r.msgs[0]).startsWith("Anotado"), "sem a função do lugar: segue normal", corpo(r.msgs[0]));
+      lugarLigado = true;
+      vagasDoLugar = [];
+    }
     paraPublicar = { ligado: false };
   }
 
