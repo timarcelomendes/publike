@@ -168,7 +168,16 @@ export function respostaDasVagas(
     return { texto, botao: t("botao"), lote: false };
   }
   const linhas = vagas.map(linhaDaVaga);
-  let texto = caber([ola, t("lote", { n: vagas.length }), linhas.join("\n"), sobrou, t("fim")]);
+  // publicar aqui o lote (migração 20270916140000): o que falta em cada vaga e a pergunta, no lugar do link
+  const fimLote = publicarAqui ? FIM_PUBLICAR_AQUI.replace("Posso publicar assim?", `Posso publicar ${vagas.length === 2 ? "as duas" : `as ${vagas.length}`} assim?`) : t("fim");
+  const faltas = publicarAqui
+    ? vagas
+        .map((v) => ({ v, falta: faltaNaVaga(v).filter((f) => !jaDisse.includes(f)) }))
+        .filter((x) => x.falta.length)
+        .map((x) => `Em ${x.v.titulo}, faltou dizer ${juntarComE(x.falta)}.${x.falta.includes("o salário") ? " Sai como a combinar." : ""}`)
+        .join("\n")
+    : "";
+  let texto = caber([ola, t("lote", { n: vagas.length }), linhas.join("\n"), faltas, sobrou, fimLote]);
   // muitas linhas longas: as primeiras e "e mais N" (todas aparecem na página do lote)
   for (let n = linhas.length - 1; !texto && n >= 1; n--)
     texto = caber([
@@ -176,7 +185,7 @@ export function respostaDasVagas(
       t("lote", { n: vagas.length }),
       `${linhas.slice(0, n).join("\n")}\ne mais ${linhas.length - n}`,
       sobrou,
-      t("fim"),
+      fimLote,
     ]);
   return {
     texto: texto ?? `${[ola, t("lote", { n: vagas.length })].filter(Boolean).join("\n\n").slice(0, MAX_MENSAGEM - 1)}…`,

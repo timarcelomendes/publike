@@ -194,6 +194,9 @@ async function main() {
   // publicar aqui mesmo (migração 20270914120000)
   let paraPublicar: any = { ligado: false };
   let publicados: any[] = [];
+  let restantesDoLote = 0;
+  let tokensDoLoteMock: string[] = [];
+  let pedidosDoLote: any[] = [];
   let aceites: any[] = [];
   let aceite: any = { data: { ok: true, contas: [] }, error: null };
   const base = (x: any) => ({
@@ -230,10 +233,14 @@ async function main() {
       // o Publicar pelo WhatsApp (migração 20270806120000) fica desligado nesta bateria: não é uma saída
       if (nome === "servidor_whatsapp_vagas_config") return { data: { ligado: false }, error: null };
       if (nome === "servidor_whatsapp_vaga_para_publicar") return { data: paraPublicar, error: null };
+      if (nome === "servidor_whatsapp_tokens_do_lote") {
+        pedidosDoLote.push(args);
+        return { data: tokensDoLoteMock, error: null };
+      }
       if (nome === "servidor_whatsapp_publicar_aqui") {
         publicados.push(args);
         return {
-          data: { ok: true, anuncio_id: "11111111-2222-3333-4444-555555555555", conta_nova: true, restantes: 0 },
+          data: { ok: true, anuncio_id: "11111111-2222-3333-4444-555555555555", conta_nova: publicados.length === 1, restantes: restantesDoLote },
           error: null,
         };
       }
@@ -1878,6 +1885,39 @@ async function main() {
     conferir(botao(r.msgs[0]) === "Conferir e publicar", "desligado: o link do site", r.msgs[0]);
     // depois dos botões, o que a pessoa completa ("de manhã") ainda é a vaga preparada
     conferir(a.textosDaVagaPreparada([{ de: "robo", texto: pn.botoesDaVagaPreparada(token).map((b) => b.titulo).join(" · ") }]) === null, "só a marca guardada conta como vaga preparada");
+    // o anúncio com várias vagas (migração 20270916140000): pergunta se publica as duas, e o botão publica todas
+    const caixa = rascunho;
+    const vendedor = { ...rascunho, titulo: "Vendedor(a)", bairro: "Setor Campinas" };
+    const doLote = vw.respostaDasVagas({}, [caixa as any, vendedor as any], 2, "", [], { publicarAqui: true });
+    conferir(
+      doLote.texto.includes("Posso publicar as duas assim?") && doLote.texto.includes("Em Vendedor(a), faltou dizer") && !doLote.texto.includes("Confira, ajuste"),
+      "o lote preparado para publicar aqui",
+      doLote.texto,
+    );
+    const botoesLote = pn.botoesDoLotePreparado(token, 2);
+    conferir(botoesLote[0].titulo === "Sim, publicar as 2" && botoesLote.every((b) => b.titulo.length <= 20) && pn.PAYLOAD_LOTE.exec(botoesLote[0].id)?.[1] === token, "os botões do lote");
+    const antesLote = [{ de: "pessoa", texto: "[a pessoa mandou uma foto]" }, { de: "robo", texto: `${doLote.texto}\n\n[Botões: Sim, publicar as 2 · Conferir no site · Procuro emprego]` }];
+    paraPublicar = { ligado: true, achou: true, token, rascunho, empresa: "Loja Boa", publicada: false, conta: null, tem_perfil: false };
+    publicados = [];
+    pedidosDoLote = [];
+    restantesDoLote = 1;
+    tokensDoLoteMock = ["e".repeat(64)];
+    r = await rodar("Sim, publicar as 2", { perfil: "contratar", historico: [...antesLote, { de: "pessoa", texto: "Sim, publicar as 2" }] }, { payload: `a:lote:${token}` });
+    conferir(
+      publicados.length === 2 && publicados[0].p_nome === "Loja Boa" && pedidosDoLote.length === 1 && pedidosDoLote[0].p_token === token,
+      "Sim, publicar as 2: publica as duas",
+      publicados.map((x) => x.p_token),
+    );
+    // o toque numa vaga sozinha não publica o resto do lote
+    publicados = [];
+    pedidosDoLote = [];
+    r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+    conferir(publicados.length === 1 && pedidosDoLote.length === 0, "Sim, publicar de uma vaga: só ela");
+    restantesDoLote = 0;
+    tokensDoLoteMock = [];
+    // "Conferir no site" do lote: a página do lote
+    r = await rodar("Conferir no site", { perfil: "contratar", historico: [...antesLote, { de: "pessoa", texto: "Conferir no site" }] }, { payload: `a:conferir_lote:${token}` });
+    conferir(String(r.msgs[0]?.interactive?.action?.parameters?.url ?? "").includes(`/publicar/whatsapp/${token}`), "Conferir no site do lote: a página do lote", r.msgs[0]);
     paraPublicar = { ligado: false };
   }
 

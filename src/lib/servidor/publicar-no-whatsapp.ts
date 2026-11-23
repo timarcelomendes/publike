@@ -19,6 +19,14 @@ export const botoesDaVagaPreparada = (token: string) => [
   { id: "a:trabalho", titulo: "Procuro emprego" },
 ];
 export const PAYLOAD_PUBLICAR = /^a:publicar:([0-9a-f]{64})$/;
+/** O anúncio com várias vagas (migração 20270916140000): o token da primeira; o lote vem do banco. */
+export const botoesDoLotePreparado = (token: string, n: number) => [
+  { id: `a:lote:${token}`, titulo: `Sim, publicar as ${n}`.slice(0, 20) },
+  { id: `a:conferir_lote:${token}`, titulo: "Conferir no site" },
+  { id: "a:trabalho", titulo: "Procuro emprego" },
+];
+export const PAYLOAD_LOTE = /^a:lote:([0-9a-f]{64})$/;
+export const PAYLOAD_CONFERIR_LOTE = /^a:conferir_lote:([0-9a-f]{64})$/;
 export const PAYLOAD_CONFERIR = /^a:conferir:([0-9a-f]{64})$/;
 
 /** A pergunta do nome, quando o número ainda não tem conta (a resposta seguinte é o nome). */
@@ -104,7 +112,7 @@ export async function registroDaVagaLida(
 }
 
 export type ResultadoPublicar =
-  | { tipo: "publicada"; token: string; anuncioId: string; contaNova: boolean; restantes: number }
+  | { tipo: "publicada"; token: string; anuncioId: string; contaNova: boolean; restantes: number; titulo: string }
   | { tipo: "ja"; anuncioId: string | null }
   | { tipo: "pedir_nome" }
   | { tipo: "nome_ruim" }
@@ -192,5 +200,16 @@ export async function publicarPeloWhatsapp(p: {
     anuncioId: r.anuncio_id,
     contaNova: Boolean(r.conta_nova),
     restantes: Number(r.restantes) || 0,
+    titulo: conferida.registro.titulo,
   };
+}
+
+/** As vagas do lote que ainda não foram publicadas (a do botão primeiro, na ordem do anúncio). */
+export async function tokensDoLote(banco: ClienteBanco, chave: string, conversa: string, token: string): Promise<string[]> {
+  const { data, error } = await banco.rpc("servidor_whatsapp_tokens_do_lote", { p_chave: chave, p_conversa: conversa, p_token: token });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: as vagas do lote não vieram:", error.message);
+    return [token];
+  }
+  return (data as string[] | null)?.length ? (data as string[]) : [];
 }

@@ -12,7 +12,7 @@ import type { Json } from "@/lib/supabase/tipos-banco";
 import { caminhoDaVagaDoWhatsapp, respostaDasVagas, textoDasVagas, type ChaveTextoVagas } from "@/lib/vagas-pelo-whatsapp";
 import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
-import { botoesDaVagaPreparada, podePublicarAqui } from "./publicar-no-whatsapp";
+import { botoesDaVagaPreparada, botoesDoLotePreparado, podePublicarAqui } from "./publicar-no-whatsapp";
 import {
   baixarFotoOuPdf,
   codigoPeloModeloPode,
@@ -277,6 +277,15 @@ export async function tentarVagaPeloWhatsapp(p: {
     await p.saida(r.texto, { perfil: "contratar", botoes: botoesDaVagaPreparada(links[0]) });
     return true;
   }
+  // várias vagas, todas com o cargo e o bairro, e todas preparadas (migração 20270916140000): publica todas aqui
+  const loteAqui =
+    config.publicar_aqui && vagas.length > 1 && vagas.length === lida.vagas.length && links.length === vagas.length &&
+    p.perfil !== "trabalho" && vagas.every(podePublicarAqui);
+  if (loteAqui) {
+    const r = respostaDasVagas(config.textos, vagas, vagas.length, ola, p.jaDisse, { publicarAqui: true });
+    await p.saida(r.texto, { perfil: "contratar", botoes: botoesDoLotePreparado(links[0], vagas.length) });
+    return true;
+  }
   const resposta = respostaDasVagas(config.textos, vagas, lida.vagas.length, ola, p.jaDisse);
   // com a entrada pelo código no WhatsApp ligada, a pessoa já sabe que não precisa de e-mail para publicar
   const comCodigo = LOGIN_CELULAR ? `${resposta.texto}\n\nPara publicar, você recebe um código aqui mesmo no WhatsApp: não precisa de e-mail nem senha.` : resposta.texto;
@@ -312,7 +321,7 @@ export async function confirmarVagaPublicada(
    * publicada aqui mesmo (migração 20270914120000): o "está no ar" sai sempre (é a resposta do botão), e a conta nova
    * ganha a explicação de como entrar
    */
-  opcoes: { aqui?: boolean; contaNova?: boolean } = {},
+  opcoes: { aqui?: boolean; contaNova?: boolean; lote?: string[] } = {},
 ) {
   const acesso = acessoFila();
   const cfg = configMeta();
@@ -344,7 +353,7 @@ export async function confirmarVagaPublicada(
       p_perfil: "contratar",
     });
   const restantes =
-    v.restantes > 0
+    v.restantes > 0 && !(opcoes.lote ?? []).length
       ? `\n\n${v.restantes === 1 ? "Ainda falta 1 vaga" : `Ainda faltam ${v.restantes} vagas`} do seu anúncio: é só voltar ao link e publicar.`
       : "";
   const conta = opcoes.contaNova
@@ -352,14 +361,21 @@ export async function confirmarVagaPublicada(
       ? `\n\n${CONTA_NOVA_PELO_WHATSAPP}${(await modeloDoCodigoLiberado(banco, chave)) ? "" : ` ${CONTA_NOVA_SEM_MODELO}`}`
       : "\n\nCriei sua conta no Publike com este WhatsApp: os candidatos ficam guardados nela."
     : "";
-  const texto = `${t("no_ar", { titulo: v.titulo })}${restantes}${conta}`;
-  const url = comOrigem(`${urlDosEmails() ?? SITE_URL}/anuncio/${v.anuncio_id}`, "whatsapp", "publicar-pelo-whatsapp");
-  const r = await enviarComLink(cfg, v.numero, texto, { titulo: "Ver a vaga", url });
+  // o lote publicado aqui (migração 20270916140000): um "estão no ar" só, com as vagas e o painel
+  const lote = (opcoes.lote ?? []).length > 1 ? opcoes.lote! : null;
+  const texto = lote
+    ? `Pronto! As ${lote.length} vagas estão no ar ✅\n${lote.map((x) => `• ${x}`).join("\n")}\n\nQuando alguém se candidatar, os currículos chegam no seu painel do Publike.${restantes}${conta}`
+    : `${t("no_ar", { titulo: v.titulo })}${restantes}${conta}`;
+  const url = lote
+    ? comOrigem(`${urlDosEmails() ?? SITE_URL}/painel`, "whatsapp", "publicar-pelo-whatsapp")
+    : comOrigem(`${urlDosEmails() ?? SITE_URL}/anuncio/${v.anuncio_id}`, "whatsapp", "publicar-pelo-whatsapp");
+  const titulo = lote ? "Ver minhas vagas" : "Ver a vaga";
+  const r = await enviarComLink(cfg, v.numero, texto, { titulo, url });
   if (!r.ok) {
     console.error("Publike: o \"está no ar\" do WhatsApp não saiu:", r.erro);
     return;
   }
-  await guardar(`${texto}\n\n[Botão: Ver a vaga]`, r.wamid);
+  await guardar(`${texto}\n\n[Botão: ${titulo}]`, r.wamid);
   if (!config.oferecer_avisos || v.ja_recebe) return;
   const oferta = t("oferta");
   const o = await enviarComBotoes(cfg, v.numero, oferta, [

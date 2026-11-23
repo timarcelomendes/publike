@@ -394,7 +394,8 @@
   "20270915120000_whatsapp_aceite_pela_conversa",
   "20270915130000_esperando_no_site",
   "20270916120000_divulgar_contatos",
-  "20270916130000_divulgar_convites"
+  "20270916130000_divulgar_convites",
+  "20270916140000_publicar_lote_no_whatsapp"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -4054,6 +4055,7 @@
   "f|public.servidor_whatsapp_salvar_modelos(p_chave text, p_modelos jsonb)": "7772c6410b",
   "f|public.servidor_whatsapp_status(p_chave text, p_wamid text, p_status text, p_erro text, p_cobrada boolean)": "92ee8b08f7",
   "f|public.servidor_whatsapp_teto(p_chave text, p_conversa text)": "69a384183e",
+  "f|public.servidor_whatsapp_tokens_do_lote(p_chave text, p_conversa text, p_token text)": "2b22650440",
   "f|public.servidor_whatsapp_vaga_para_publicar(p_chave text, p_conversa text, p_token text)": "c7f8704f73",
   "f|public.servidor_whatsapp_vaga_publicada(p_chave text, p_token text)": "7a786b85c2",
   "f|public.servidor_whatsapp_vagas_config(p_chave text)": "ac74ee91ea",

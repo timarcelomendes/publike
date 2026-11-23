@@ -41,9 +41,12 @@ import { avisarMetaDaVaga } from "./meta-conversoes";
 import {
   MARCA_DA_PERGUNTA_DO_NOME,
   PAYLOAD_CONFERIR,
+  PAYLOAD_CONFERIR_LOTE,
+  PAYLOAD_LOTE,
   PAYLOAD_PUBLICAR,
   PERGUNTA_DO_NOME,
   publicarPeloWhatsapp,
+  tokensDoLote,
 } from "./publicar-no-whatsapp";
 
 // O atendimento pelo WhatsApp (18/11/2026, claude/plano-whatsapp-atendimento.md; migrações 20270801120000,
@@ -1876,8 +1879,10 @@ export async function atenderConversa(
   // publicar a vaga aqui mesmo (23/11/2026, migração 20270914120000): o "Sim, publicar", o "Conferir no site" e a
   // resposta à pergunta do nome da empresa
   {
-    const publicar = PAYLOAD_PUBLICAR.exec(m.payload ?? "")?.[1] ?? null;
+    const doLote = PAYLOAD_LOTE.exec(m.payload ?? "")?.[1] ?? null;
+    const publicar = PAYLOAD_PUBLICAR.exec(m.payload ?? "")?.[1] ?? doLote;
     const conferir = PAYLOAD_CONFERIR.exec(m.payload ?? "")?.[1] ?? null;
+    const conferirLote = PAYLOAD_CONFERIR_LOTE.exec(m.payload ?? "")?.[1] ?? null;
     const escrito = textos.join(" ").trim();
     const nomeRespondido =
       !m.payload &&
@@ -1891,6 +1896,11 @@ export async function atenderConversa(
         botao: { titulo: "Conferir e publicar", caminho: caminhoDaVagaDoWhatsapp(token) },
       });
     if (conferir) return peloSite(conferir, "Aqui você confere tudo, muda o que precisar e publica. É grátis e leva um minuto.");
+    if (conferirLote)
+      return saida("Aqui você confere as vagas, muda o que precisar e publica. É grátis e leva um minuto.", {
+        perfil: "contratar",
+        botao: { titulo: "Conferir as vagas", caminho: caminhoDaVagaDoWhatsapp(conferirLote, true) },
+      });
     if (publicar || nomeRespondido) {
       const r = await publicarPeloWhatsapp({
         banco,
@@ -1900,8 +1910,36 @@ export async function atenderConversa(
         nome: nomeRespondido ? escrito : null,
       });
       if (r.tipo === "publicada") {
-        // o "está no ar", com o botão da vaga, a conta nova e a oferta dos candidatos por aqui
-        await confirmarVagaPublicada(r.token, { aqui: true, contaNova: r.contaNova });
+        // o lote (o botão "Sim, publicar as N", ou o nome respondido com mais vagas do mesmo anúncio esperando): as
+        // outras vagas, uma por uma, com as mesmas regras; a que não passar fica para o site
+        const titulos = [r.titulo];
+        let ultima = r.token;
+        const doSite: string[] = [];
+        if (r.restantes > 0 && (doLote || nomeRespondido)) {
+          for (const token of (await tokensDoLote(banco, chave, e.chave, r.token)).slice(0, 10)) {
+            const outra = await publicarPeloWhatsapp({ banco, chave, conversa: e.chave, token, nome: null });
+            if (outra.tipo === "publicada") {
+              titulos.push(outra.titulo);
+              ultima = outra.token;
+              await avisarMetaDaVaga(outra.anuncioId).catch(() => undefined);
+            } else if (outra.tipo === "site") doSite.push(outra.token);
+          }
+        }
+        // o "está no ar", com o botão da vaga (ou do painel, no lote), a conta nova e a oferta dos candidatos por aqui
+        await confirmarVagaPublicada(ultima, { aqui: true, contaNova: r.contaNova, lote: titulos });
+        if (doSite.length)
+          await saida(
+            doSite.length === 1
+              ? "Uma das vagas precisa de um acerto antes de publicar. Toque em *Conferir e publicar* para completar no site."
+              : `${doSite.length} vagas precisam de um acerto antes de publicar. Toque em *Conferir as vagas* para completar no site.`,
+            {
+              perfil: "contratar",
+              botao:
+                doSite.length === 1
+                  ? { titulo: "Conferir e publicar", caminho: caminhoDaVagaDoWhatsapp(doSite[0]) }
+                  : { titulo: "Conferir as vagas", caminho: caminhoDaVagaDoWhatsapp(doSite[0], true) },
+            },
+          );
         // chegou por um anúncio de clique para o WhatsApp: a Meta fica sabendo que o clique publicou vaga
         await avisarMetaDaVaga(r.anuncioId).catch(() => undefined);
         return;
