@@ -1,5 +1,6 @@
 "use server";
 
+import { diaADiaDoFormulario } from "@/lib/jeito-de-trabalhar";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -74,7 +75,8 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
   const leitura = lerAnuncio(formData, { equipe: true });
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
   const d = leitura.dados;
-  const { data, error } = await gravarVaga(registroDoAnuncio(d), (r) =>
+  const diaADia = diaADiaDoFormulario(formData, d.tipo);
+  const { data, error } = await gravarVaga({ ...registroDoAnuncio(d), ...(diaADia ? { dia_a_dia: diaADia } : {}) }, (r) =>
     acesso.cliente.from("anuncios").update(r).eq("id", id).select("id"),
   );
   if (error) return { ok: false, erro: mensagemDeErro(error) };

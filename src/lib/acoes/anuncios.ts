@@ -1,6 +1,6 @@
 "use server";
 
-import { lerDiaADia } from "@/lib/jeito-de-trabalhar";
+import { diaADiaDoFormulario } from "@/lib/jeito-de-trabalhar";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -143,10 +143,7 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     clienteNovo = garantido.id;
   }
   // vaga: como é o dia a dia (o jeito de trabalhar, migração 20270309120000), só quando o formulário mandou
-  const diaADia =
-    d.tipo === "vaga" && formData.get("dia_a_dia_enviado") === "1"
-      ? lerDiaADia(formData.getAll("dia_a_dia"))
-      : undefined;
+  const diaADia = diaADiaDoFormulario(formData, d.tipo);
   const registro = {
     ...registroDoAnuncio(d),
     ...(clienteNovo ? { cliente_id: clienteNovo } : {}),
@@ -329,7 +326,8 @@ async function publicarOutrosCargos(
       falhas.push({ titulo, erro: Object.values(leitura.erros).join(" ") });
       continue;
     }
-    const { data, error } = await gravarVaga(registroDoAnuncio(leitura.dados), (r) =>
+    const diaADiaDoCargo = diaADiaDoFormulario(dados, "vaga");
+    const { data, error } = await gravarVaga({ ...registroDoAnuncio(leitura.dados), ...(diaADiaDoCargo ? { dia_a_dia: diaADiaDoCargo } : {}) }, (r) =>
       supabase
         .from("anuncios")
         .insert({ ...r, tipo: "vaga" })

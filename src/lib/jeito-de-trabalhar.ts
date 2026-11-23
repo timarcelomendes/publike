@@ -63,3 +63,12 @@ export function compararJeito(diaADia: string[] | null | undefined, jeito: strin
   }
   return combina.length || naoCombina.length ? { combina, naoCombina } : null;
 }
+
+/**
+ * Como é o dia a dia, do formulário da vaga: só quando o formulário mandou a parte dele (`dia_a_dia_enviado`); sem
+ * ela, `undefined` (a vaga fica como estava). Vale no publicar, no editar, na correção da equipe, no publicar em nome
+ * da conta e no convite (23/11/2026: só o publicar e o editar de quem publica gravavam).
+ */
+export function diaADiaDoFormulario(formData: FormData, tipo: string): ItemDoJeito[] | undefined {
+  return tipo === "vaga" && formData.get("dia_a_dia_enviado") === "1" ? lerDiaADia(formData.getAll("dia_a_dia")) : undefined;
+}

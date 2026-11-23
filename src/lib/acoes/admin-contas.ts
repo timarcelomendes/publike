@@ -1,5 +1,6 @@
 "use server";
 
+import { diaADiaDoFormulario } from "@/lib/jeito-de-trabalhar";
 import { randomBytes } from "node:crypto";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -209,7 +210,8 @@ async function gravarEmNomeDe(
   const d = leitura.dados;
   if (d.tipo !== "vaga") return { ok: false, erro: "Pelo admin dá para publicar só vagas." };
 
-  const { data, error } = await gravarVaga(registroDoAnuncio(d), (r) =>
+  const diaADia = diaADiaDoFormulario(formData, d.tipo);
+  const { data, error } = await gravarVaga({ ...registroDoAnuncio(d), ...(diaADia ? { dia_a_dia: diaADia } : {}) }, (r) =>
     c
       .from("anuncios")
       .insert({ ...r, tipo: d.tipo, autor_id: usuarioId })

@@ -1,4 +1,5 @@
 import { ArrowLeft } from "lucide-react";
+import { lerDiaADia } from "@/lib/jeito-de-trabalhar";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -34,10 +35,17 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
   if (!UUID.test(id)) notFound();
   const { data: a } = await acesso.cliente.rpc("obter_anuncio", { p_id: id }).maybeSingle();
   if (!a) notFound();
-  const [triagem, comecaJa, contatoPor] = await Promise.all([
+  const [triagem, comecaJa, contatoPor, diaADia] = await Promise.all([
     obterTriagem(id, acesso.cliente),
     comecaJaDaVaga(id, acesso.cliente),
     contatoPorDaVaga(id, acesso.cliente),
+    // como é o dia a dia (com o cliente da equipe, que lê também a vaga em análise)
+    acesso.cliente
+      .from("anuncios")
+      .select("dia_a_dia")
+      .eq("id", id)
+      .maybeSingle()
+      .then((r) => lerDiaADia(r.data?.dia_a_dia)),
   ]);
 
   return (
@@ -60,7 +68,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
         acaoSalvar={salvarAnuncioDaEquipe}
         agencia={a.autor_tipo === "agencia"}
         enderecoPublico={a.autor_tipo !== "pessoa"}
-        inicial={{ ...valoresDoAnuncio(a, { triagem }), comeca_ja: comecaJa, contato_por: contatoPor }}
+        inicial={{ ...valoresDoAnuncio(a, { triagem }), comeca_ja: comecaJa, contato_por: contatoPor, dia_a_dia: diaADia }}
       />
     </>
   );

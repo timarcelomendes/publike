@@ -1,5 +1,6 @@
 "use server";
 
+import { diaADiaDoFormulario } from "@/lib/jeito-de-trabalhar";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -409,7 +410,8 @@ export async function publicarConvitePeloAdmin(
   if ("erro" in conta) return { ok: false, erro: conta.erro };
   const { id: contaId, semEmail } = conta;
 
-  const { data: anuncio, error } = await gravarVaga(registroDoAnuncio(d), (r) =>
+  const diaADia = diaADiaDoFormulario(formData, d.tipo);
+  const { data: anuncio, error } = await gravarVaga({ ...registroDoAnuncio(d), ...(diaADia ? { dia_a_dia: diaADia } : {}) }, (r) =>
     c
       .from("anuncios")
       .insert({ ...r, tipo: d.tipo, autor_id: contaId })
