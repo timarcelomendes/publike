@@ -970,6 +970,7 @@ export type Database = {
           status: string;
           nota: string | null;
           enviada_em: string | null;
+          enviada_por: string | null;
           usuario_id: string | null;
           criado_em: string;
           atualizado_em: string;
@@ -999,12 +1000,14 @@ export type Database = {
           cnpj_receita?: string | null;
           status?: string;
           enviada_em?: string | null;
+          enviada_por?: string | null;
           link_vagas?: string | null;
         };
         Update: {
           status?: string;
           nota?: string | null;
           enviada_em?: string | null;
+          enviada_por?: string | null;
           usuario_id?: string | null;
           anuncio_id?: string | null;
           aceite_em?: string | null;
@@ -3560,6 +3563,14 @@ export type Database = {
       };
       admin_salvar_ia_por_funcionalidade: {
         Args: { p_modelos: Json; p_apelido: string | null };
+        Returns: undefined;
+      };
+      admin_convites_email: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      admin_convites_email_por_dia: {
+        Args: { p_por_dia: number };
         Returns: undefined;
       };
       servidor_whatsapp_convite_instagram: {

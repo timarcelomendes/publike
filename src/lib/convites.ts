@@ -52,6 +52,8 @@ export type Convite = {
   status: StatusConvite;
   nota: string | null;
   enviada_em: string | null;
+  /** por onde saiu (migração 20270913120000): o e-mail marca sozinho; o Enviei à mão, o WhatsApp */
+  enviada_por?: "whatsapp" | "email" | null;
   usuario_id: string | null;
   criado_em: string;
   /** o link do convite: /publicar?convite=<token> */

@@ -3,7 +3,6 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import nodemailer from "nodemailer";
 import {
   emailDoConvite,
   limparTelefone,
@@ -21,7 +20,7 @@ import {
 } from "@/lib/convites";
 import { CIDADES } from "@/lib/constantes";
 import { paginaDeVagasDaGupy } from "@/lib/gupy";
-import { configSmtp, urlDosEmails } from "@/lib/servidor/ambiente";
+import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
 import { lerVagas } from "@/lib/ia/ler-vagas";
@@ -33,6 +32,7 @@ import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio
 import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { processarFilas } from "@/lib/servidor/filas";
 import { salvarTriagem } from "@/lib/servidor/triagem";
+import { mandarPelaCaixa } from "@/lib/servidor/email-empresas";
 import { areasSemRepetir, oficio as dadosDoOficio } from "@/lib/constantes";
 import { tituloDaFuncao } from "@/lib/funcao-cbo";
 import { oficioDoRamo } from "@/lib/ramos-prestadores";
@@ -154,8 +154,13 @@ export async function mudarConvite(id: string, status: StatusConvite): Promise<R
   // "*": a escolha da mensagem só existe depois da migração 20270724120000
   const { data: antes } = await c.from("convites").select("*").eq("id", id).maybeSingle();
   if (!antes) return { ok: false, erro: "Este convite não existe mais. Atualize a página." };
-  const mudanca: { status: StatusConvite; enviada_em?: string; mensagem?: null } = { status };
-  if (status === "enviada" && !antes.enviada_em) mudanca.enviada_em = new Date().toISOString();
+  const mudanca: { status: StatusConvite; enviada_em?: string; mensagem?: null; enviada_por?: "whatsapp" } = { status };
+  if (status === "enviada" && !antes.enviada_em) {
+    mudanca.enviada_em = new Date().toISOString();
+    // marcado à mão como Enviei: foi pelo WhatsApp (o e-mail marca sozinho, em enviarConviteEmail); sem a coluna
+    // (migração 20270913120000), o select "*" não a traz e fica de fora
+    if ("enviada_por" in antes && !antes.enviada_por) mudanca.enviada_por = "whatsapp";
+  }
   // a mensagem escolhida era para a situação de antes: volta a sugerida (Enviei sugere retomar a conversa)
   if (antes.status !== status && antes.mensagem) mudanca.mensagem = null;
   const { error } = await c.from("convites").update(mudanca).eq("id", id);
@@ -279,8 +284,9 @@ export async function lerConviteDaImagem(
 }
 
 /**
- * Manda o convite por e-mail direto pelo Publike (o mesmo SMTP dos avisos do site): sem depender
- * do programa de e-mail do computador. Deu certo: o convite fica como "Enviei".
+ * Manda o convite por e-mail pela caixa do Marcelo (marcelo@publike.org, a do e-mail às empresas, com a cópia em
+ * Enviados; migração 20270913120000), até o limite do dia. Antes saía pelo ZeptoMail dos avisos do site, que só aceita
+ * e-mail transacional. Deu certo: o convite fica como "Enviei", por e-mail.
  */
 export async function enviarConviteEmail(
   id: string,
@@ -291,16 +297,19 @@ export async function enviarConviteEmail(
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
-  const smtp = configSmtp();
-  if (!smtp)
-    return {
-      ok: false,
-      erro: "O envio de e-mail não está configurado neste computador (SMTP no .env.local). Use Copiar mensagem.",
-    };
   // a chave fica em Admin › E-mails › Todos os e-mails (migração 20270201120000)
   const { data: ligado, error: semChave } = await c.rpc("admin_email_ligado", { p_modelo: "convite_convidado" });
   if (!semChave && ligado === false)
     return { ok: false, erro: "O convite por e-mail está desligado em Admin › E-mails › Todos os e-mails." };
+  // o limite do dia (sem a migração, 50)
+  const { data: dia } = await c.rpc("admin_convites_email");
+  const limite = dia as unknown as { por_dia: number; hoje: number; remetente_nome: string | null } | null;
+  const porDia = limite?.por_dia ?? 50;
+  if ((limite?.hoje ?? 0) >= porDia)
+    return {
+      ok: false,
+      erro: `Hoje já saíram ${porDia} convites por e-mail, o limite do dia. Amanhã tem mais (ou mude o limite aqui em cima).`,
+    };
   const { data: conv } = await c.from("convites").select("*").eq("id", id).maybeSingle();
   if (!conv) return { ok: false, erro: "Este convite não existe mais. Atualize a página." };
   const convite = conv as unknown as Convite;
@@ -314,31 +323,18 @@ export async function enviarConviteEmail(
     urlDosEmails() ?? "https://publike.org",
     pedida,
   );
-  const transporte = nodemailer.createTransport({
-    host: smtp.servidor,
-    port: smtp.porta,
-    secure: smtp.seguro,
-    requireTLS: !smtp.seguro,
-    auth: { user: smtp.usuario, pass: smtp.senha },
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
+  const r = await mandarPelaCaixa({
+    para,
+    assunto,
+    texto,
+    html,
+    remetenteNome: limite?.remetente_nome || "Marcelo, do Publike",
   });
-  try {
-    await transporte.sendMail({
-      from: { name: "Publike", address: smtp.remetente },
-      to: para,
-      subject: assunto,
-      text: texto,
-      html,
-    });
-  } catch (e) {
-    console.error("Publike: o convite por e-mail não saiu:", e instanceof Error ? e.message : String(e));
-    return { ok: false, erro: "O e-mail não saiu. Confira o SMTP no .env.local ou use Copiar mensagem." };
-  } finally {
-    transporte.close();
+  if (!r.ok) {
+    console.error("Publike: o convite por e-mail não saiu:", r.erro);
+    return { ok: false, erro: r.erro };
   }
-  // para os números e Enviados de Admin › E-mails
+  // para os números e Enviados de Admin › E-mails, e para o limite do dia
   const { error: semRegistro } = await c.rpc("admin_registrar_email_direto", {
     p_modelo: "convite_convidado",
     p_para: para,
@@ -346,11 +342,32 @@ export async function enviarConviteEmail(
   });
   if (semRegistro && semRegistro.code !== "PGRST202")
     console.error("Publike: o convite saiu, mas não ficou registrado:", semRegistro.message);
-  if (convite.status === "a_enviar") {
+  const mudanca: { status?: "enviada"; enviada_em?: string; enviada_por: "email" } = { enviada_por: "email" };
+  if (convite.status === "a_enviar") Object.assign(mudanca, { status: "enviada", enviada_em: new Date().toISOString() });
+  const { error: semCanal } = await c.from("convites").update(mudanca).eq("id", id);
+  // sem a migração, sem a coluna: marca como antes
+  if (semCanal && convite.status === "a_enviar")
     await c.from("convites").update({ status: "enviada", enviada_em: new Date().toISOString() }).eq("id", id);
+  refresh();
+  return {
+    ok: true,
+    mensagem: `E-mail enviado para ${para}, pela caixa marcelo@publike.org${r.copia ? ` (a cópia em Enviados falhou: ${r.copia})` : ""}.`,
+  };
+}
+
+/** O limite de convites por e-mail por dia (Admin › Convites; migração 20270913120000). */
+export async function salvarConvitesEmailPorDia(porDia: number | string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const n = Math.round(Number(String(porDia).replace(/\D/g, "")));
+  if (!Number.isFinite(n) || n < 1 || n > 300) return { ok: false, erro: "O limite vai de 1 a 300 por dia." };
+  const { error } = await c.rpc("admin_convites_email_por_dia", { p_por_dia: n });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode antes a migração 20270913120000 no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
   }
   refresh();
-  return { ok: true, mensagem: `E-mail enviado para ${para}.` };
+  return { ok: true, mensagem: `Salvo: até ${n} convites por e-mail por dia.` };
 }
 
 /**

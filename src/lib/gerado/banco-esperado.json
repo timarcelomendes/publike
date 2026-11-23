@@ -388,7 +388,8 @@
   "20270909120000_procura_e_oferta",
   "20270910120000_curriculo_da_semana_de_volta",
   "20270911120000_whatsapp_convite_instagram",
-  "20270912120000_whatsapp_convite_instagram_mais"
+  "20270912120000_whatsapp_convite_instagram_mais",
+  "20270913120000_convites_email_pela_caixa"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -918,6 +919,7 @@
   "c|privado.email_empresas.assunto_vagas": "0d83f26402",
   "c|privado.email_empresas.atualizado_em": "0d502ae88a",
   "c|privado.email_empresas.atualizado_por": "4516c61a19",
+  "c|privado.email_empresas.convites_por_dia": "a7ea0bef69",
   "c|privado.email_empresas.copia_em": "de599dc94b",
   "c|privado.email_empresas.copia_erro": "00bdf2fb04",
   "c|privado.email_empresas.devolvidos_lidos_em": "de599dc94b",
@@ -2143,6 +2145,7 @@
   "c|public.convites.criado_em": "0d502ae88a",
   "c|public.convites.email": "00bdf2fb04",
   "c|public.convites.enviada_em": "de599dc94b",
+  "c|public.convites.enviada_por": "00bdf2fb04",
   "c|public.convites.id": "80d056fc62",
   "c|public.convites.link_vagas": "00bdf2fb04",
   "c|public.convites.mensagem": "00bdf2fb04",
@@ -3125,6 +3128,8 @@
   "f|public.admin_conteudos_atualizados()": "52532857c2",
   "f|public.admin_convite_do_pacote()": "c94552fa28",
   "f|public.admin_convite_email_teste(p_modelo text, p_email text)": "0cb59ca26f",
+  "f|public.admin_convites_email()": "1c1537db05",
+  "f|public.admin_convites_email_por_dia(p_por_dia integer)": "3b79a58d7b",
   "f|public.admin_convites_por_email()": "8cf55d39cd",
   "f|public.admin_copiloto_contas()": "80259cfd8f",
   "f|public.admin_corrigir_nome(p_usuario uuid, p_nome text)": "96d0459471",

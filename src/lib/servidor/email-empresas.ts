@@ -362,3 +362,58 @@ export async function enviarEmailAsEmpresas(): Promise<{ enviados: number; motiv
   if (e3 && e3.code !== "PGRST202") console.error("Publike: não deu para guardar o resultado da cópia:", e3.message);
   return { enviados: 1, copia: !erroDaCopia };
 }
+
+/**
+ * Um e-mail pela caixa do Marcelo (a mesma do e-mail às empresas, com a cópia em Enviados): o convite de Admin ›
+ * Convites (22/11/2026; migração 20270913120000), que antes saía pelo ZeptoMail dos avisos do site. Sem as variáveis
+ * CAMPANHA_SMTP_*, devolve o erro e nada sai.
+ */
+export async function mandarPelaCaixa(p: {
+  para: string;
+  assunto: string;
+  texto: string;
+  html: string;
+  remetenteNome: string;
+}): Promise<{ ok: true; copia: string | null } | { ok: false; erro: string }> {
+  const smtp = configSmtpCampanha();
+  if (!smtp)
+    return {
+      ok: false,
+      erro: "A caixa marcelo@publike.org não está configurada (CAMPANHA_SMTP_USUARIO e CAMPANHA_SMTP_SENHA). Use Copiar mensagem.",
+    };
+  let mensagem: Buffer;
+  try {
+    mensagem = await new MailComposer({
+      from: { name: p.remetenteNome, address: smtp.usuario },
+      to: p.para,
+      subject: p.assunto,
+      text: p.texto,
+      html: p.html,
+      date: new Date(),
+      messageId: `<${randomUUID()}@publike.org>`,
+    })
+      .compile()
+      .build();
+  } catch (e) {
+    return { ok: false, erro: `O e-mail não foi montado: ${textoDoErro(e)}` };
+  }
+  const transporte = nodemailer.createTransport({
+    host: smtp.servidor,
+    port: smtp.porta,
+    secure: smtp.porta === 465,
+    requireTLS: smtp.porta === 587,
+    auth: { user: smtp.usuario, pass: smtp.senha },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
+  try {
+    await transporte.sendMail({ envelope: { from: smtp.usuario, to: [p.para] }, raw: mensagem });
+  } catch (e) {
+    const daCaixa = problemaDaCaixa(e);
+    return { ok: false, erro: daCaixa ? daCaixa.motivo : `A caixa não mandou: ${textoDoErro(e)}` };
+  } finally {
+    transporte.close();
+  }
+  return { ok: true, copia: await guardarEmEnviados(smtp, mensagem) };
+}

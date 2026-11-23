@@ -25,6 +25,7 @@ import {
   importarConvites,
   lerConviteDaImagem,
   mudarConvite,
+  salvarConvitesEmailPorDia,
   salvarLinkDasVagas,
 } from "@/lib/acoes/admin-convites";
 import {
@@ -454,7 +455,18 @@ const semAcento = (t: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-export function ListaConvites({ convites, agora, site }: { convites: Convite[]; agora: number; site: string }) {
+export function ListaConvites({
+  convites,
+  agora,
+  site,
+  emailDoDia,
+}: {
+  convites: Convite[];
+  agora: number;
+  site: string;
+  /** os convites por e-mail de hoje e o limite (migração 20270913120000; sem ela, null) */
+  emailDoDia?: { hoje: number; por_dia: number } | null;
+}) {
   const [filtro, setFiltro] = useState<StatusConvite | "todos">("todos");
   // filtros a mais (juntam com a situação): lida da imagem, agência, só telefone
   const [marcas, setMarcas] = useState<Set<Marca>>(new Set());
@@ -500,7 +512,10 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
   const visiveis = itens.filter(
     (c) => (filtro === "todos" || c.status === filtro) && [...marcas].every((m) => temMarca(m, c)) && achou(c),
   );
-  const naHora = itens.filter((c) => c.enviada_em && Date.parse(c.enviada_em) > agora - 3600e3).length;
+  // só o WhatsApp (o e-mail sai pela caixa, com o limite do dia; migração 20270913120000)
+  const naHora = itens.filter(
+    (c) => c.enviada_em && c.enviada_por !== "email" && Date.parse(c.enviada_em) > agora - 3600e3,
+  ).length;
 
   function marcar(c: Convite, status: StatusConvite) {
     if (c.status === status) return;
@@ -554,8 +569,8 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
           <p className="text-body-sm text-ink-muted">
             <span className="block text-label text-ink">
               {naHora >= POR_HORA
-                ? "Convites enviados na última hora. Faça uma pausa antes dos próximos."
-                : `de uns ${POR_HORA} convites por hora`}
+                ? "Convites pelo WhatsApp na última hora. Faça uma pausa antes dos próximos."
+                : `de uns ${POR_HORA} convites pelo WhatsApp por hora`}
             </span>
             Muitas mensagens para quem não tem o seu número fazem o WhatsApp bloquear a conta. O texto já muda um pouco
             de um convite para outro, mas o que mais conta é o ritmo e quem responde. Telefone fixo sem WhatsApp: ligue
@@ -579,6 +594,8 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
           <span className="text-body-sm font-normal text-ink-muted">“Sou {assinatura.trim() || "…"}, do Publike”</span>
         </label>
       </div>
+
+      {emailDoDia && <EmailDoDia hoje={emailDoDia.hoje} porDia={emailDoDia.por_dia} />}
 
       <div className="relative">
         <Search
@@ -718,7 +735,7 @@ function PreviaEmail({
     >
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body-sm">
         <dt className="text-ink-muted">De</dt>
-        <dd>Publike</dd>
+        <dd>Marcelo, do Publike &lt;marcelo@publike.org&gt;</dd>
         <dt className="text-ink-muted">Para</dt>
         <dd className="break-all">{c.email}</dd>
         <dt className="text-ink-muted">Assunto</dt>
@@ -1215,5 +1232,47 @@ function CartaoConvite({
         {apagar.mensagem}
       </div>
     </li>
+  );
+}
+
+/** Os convites por e-mail de hoje, pela caixa marcelo@publike.org, e o limite do dia (migração 20270913120000). */
+function EmailDoDia({ hoje, porDia }: { hoje: number; porDia: number }) {
+  const [n, setN] = useState(String(porDia));
+  const [pendente, iniciar] = useTransition();
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const cheio = hoje >= porDia;
+  return (
+    <form
+      className={`flex flex-wrap items-end gap-x-4 gap-y-2 rounded-md border p-4 ${cheio ? "border-terra bg-terra-soft" : "border-line bg-surface-100"}`}
+      onChange={() => setResposta(null)}
+      onSubmit={(ev) => {
+        ev.preventDefault();
+        iniciar(async () => {
+          const r = await salvarConvitesEmailPorDia(n);
+          setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "Salvo." } : { ok: false, texto: r.erro });
+        });
+      }}
+    >
+      <p className="min-w-0 flex-1 basis-72 text-body-sm text-ink-muted">
+        <span className="block text-label text-ink">
+          <span className="tabular-nums">{hoje}</span> de {porDia} convites por e-mail hoje
+          {cheio ? ": o limite do dia chegou" : ""}
+        </span>
+        Saem pela sua caixa marcelo@publike.org, com a cópia em Enviados, e as respostas chegam para você. A caixa aceita
+        até 500 por dia; suba aos poucos e acompanhe as devoluções.
+      </p>
+      <label className="flex flex-col gap-1 text-label">
+        Por dia
+        <input inputMode="numeric" value={n} onChange={(e) => setN(e.target.value)} className={`${classesEntrada} w-24`} />
+      </label>
+      <button type="submit" disabled={pendente} className={classesBotao("secundario", "sm")}>
+        {pendente ? "Salvando…" : "Salvar"}
+      </button>
+      {resposta && (
+        <p role="status" className={`basis-full text-body-sm ${resposta.ok ? "text-cerrado-text" : "text-danger"}`}>
+          {resposta.texto}
+        </p>
+      )}
+    </form>
   );
 }

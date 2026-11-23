@@ -78,9 +78,11 @@ function SubAbas({ ativa, total }: { ativa: Aba; total: number | null }) {
 
 async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | undefined> }) {
   const c = await exigirAdminLocal();
-  const [{ data, error }, agora] = await Promise.all([
+  const [{ data, error }, agora, emailDoDia] = await Promise.all([
     c.from("convites").select("*").order("criado_em").order("nome").limit(1000),
     agoraDaRequisicao(),
+    // os convites por e-mail de hoje e o limite (migração 20270913120000; sem ela, nada)
+    c.rpc("admin_convites_email").then((r) => (r.error ? null : (r.data as unknown as { hoje: number; por_dia: number }))),
   ]);
   return (
     <div className="flex flex-col gap-6">
@@ -99,6 +101,7 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
               convites={(data ?? []) as unknown as Convite[]}
               agora={agora}
               site={urlDosEmails() ?? "https://publike.org"}
+              emailDoDia={emailDoDia}
             />
           )}
         </Secao>
