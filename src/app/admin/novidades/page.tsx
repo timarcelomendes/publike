@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { AcoesNovidade, FormNovidade, type NovidadeParaEditar } from "@/components/admin/novidades";
+import { AcoesNovidade, DescobrirNovidades, FormNovidade, type NovidadeParaEditar } from "@/components/admin/novidades";
 import { Secao } from "@/components/admin/ui";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
@@ -99,6 +99,7 @@ async function Conteudo({ aba, editar, salvo }: { aba: string | null; editar: st
             Nova novidade
           </Link>
         )}
+        {!noForm && <DescobrirNovidades />}
       </nav>
 
       {salvo && !noForm && (

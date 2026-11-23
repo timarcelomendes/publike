@@ -23,3 +23,16 @@ export type ParaNovidade = keyof typeof PARA_NOVIDADE;
 export function paraDaNovidade(v: string | null | undefined): ParaNovidade {
   return v === "pessoas" || v === "empresas" ? v : "todos";
 }
+
+/** O recado de uma novidade no sino: "Título: texto" (até 240 letras), o público e o link dela (sem link, /novidades). */
+export function recadoDaNovidade(n: { titulo: string; texto: string; link: string | null; para: string }) {
+  const tudo = `${n.titulo}: ${n.texto}`;
+  return {
+    publico: (n.para === "pessoas" ? "pessoas" : n.para === "empresas" ? "empresas" : "todos") as
+      | "pessoas"
+      | "empresas"
+      | "todos",
+    texto: tudo.length > 240 ? `${tudo.slice(0, 239).trimEnd()}…` : tudo,
+    link: n.link ?? "/novidades",
+  };
+}

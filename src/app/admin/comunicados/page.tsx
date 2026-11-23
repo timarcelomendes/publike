@@ -6,8 +6,9 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { comunicadosMandados } from "@/lib/admin/dados";
-import { MODELOS_COMUNICADO, nomeDoPublico, type PublicoComunicado } from "@/lib/comunicados";
+import { MODELOS_COMUNICADO, nomeDoPublico } from "@/lib/comunicados";
 import { formatarDataHora, primeiro } from "@/lib/formato";
+import { recadoDaNovidade } from "@/lib/novidades";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 
@@ -15,16 +16,6 @@ export const metadata: Metadata = { title: "Comunicados" };
 
 // os comunicados prontos com nome (os do teste do app abrem pelo link de Admin › Testadores)
 const PRONTOS = Object.entries(MODELOS_COMUNICADO).filter(([, m]) => m.nome);
-
-/** O recado de uma novidade: "Título: texto" (até 240 letras) e o link dela (sem link, /novidades). */
-function recadoDaNovidade(n: { titulo: string; texto: string; link: string | null; para: string }) {
-  const tudo = `${n.titulo}: ${n.texto}`;
-  return {
-    publico: (n.para === "pessoas" ? "pessoas" : n.para === "empresas" ? "empresas" : "todos") as PublicoComunicado,
-    texto: tudo.length > 240 ? `${tudo.slice(0, 239).trimEnd()}…` : tudo,
-    link: n.link ?? "/novidades",
-  };
-}
 
 // Admin › Comunicados: um aviso no sino para um público (todas as contas, pessoas, empresas, agências ou pelo
 // aparelho), com o histórico do que já saiu. ?modelo= abre um comunicado pronto (o convite do teste do app).

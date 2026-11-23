@@ -1,10 +1,16 @@
 "use client";
 
-import { Bell, Check, ExternalLink, EyeOff, LayoutTemplate, Trash2 } from "lucide-react";
+import { Bell, BellRing, Check, ExternalLink, EyeOff, LayoutTemplate, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import { protegerAcao } from "@/lib/acao-segura";
-import { apagarNovidade, publicarNovidade, salvarNovidade } from "@/lib/acoes/admin-novidades";
+import {
+  apagarNovidade,
+  descobrirNovidades,
+  publicarEMandarNoSino,
+  publicarNovidade,
+  salvarNovidade,
+} from "@/lib/acoes/admin-novidades";
 import { PARA_NOVIDADE, type ParaNovidade } from "@/lib/novidades";
 import type { EstadoForm } from "@/lib/tipos";
 import { CartaoDoPublike } from "../home/cartao-do-publike";
@@ -218,9 +224,20 @@ export function AcoesNovidade({ id, publicada }: { id: string; publicada: boolea
         </Link>
       </div>
       <div className="flex flex-wrap gap-2 sm:justify-end">
+        {!publicada && (
+          <Botao
+            tamanho="sm"
+            variante="sucesso"
+            disabled={pendente}
+            onClick={() => rodar(() => publicarEMandarNoSino(id))}
+          >
+            <BellRing aria-hidden />
+            Publicar e mandar no sino
+          </Botao>
+        )}
         <Botao
           tamanho="sm"
-          variante={publicada ? "fantasma" : "sucesso"}
+          variante={publicada ? "fantasma" : "secundario"}
           disabled={pendente}
           onClick={() => rodar(() => publicarNovidade(id, !publicada))}
         >
@@ -244,6 +261,23 @@ export function AcoesNovidade({ id, publicada }: { id: string; publicada: boolea
           </Botao>
         )}
       </div>
+      {mensagem}
+    </div>
+  );
+}
+
+/**
+ * "Descobrir novidades": lê o que mudou no Publike desde a última novidade e a IA escreve os rascunhos (só o que quem
+ * usa o site percebe). Depois é conferir e tocar em "Publicar e mandar no sino".
+ */
+export function DescobrirNovidades() {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Botao tamanho="sm" variante="secundario" disabled={pendente} onClick={() => rodar(() => descobrirNovidades())}>
+        <Sparkles aria-hidden />
+        {pendente ? "Lendo o que mudou…" : "Descobrir novidades"}
+      </Botao>
       {mensagem}
     </div>
   );
