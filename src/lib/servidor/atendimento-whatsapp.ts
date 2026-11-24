@@ -28,6 +28,8 @@ import {
 } from "./whatsapp";
 import { BOTAO_AGORA_NAO, BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
 import { curriculoPeloWhatsappLigado, seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
+import { lerCurriculoMandado, responderCurriculoDoArquivo } from "./curriculo-por-arquivo";
+import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 import {
   configVagasWhatsapp,
   confirmarVagaPublicada,
@@ -1869,6 +1871,23 @@ export async function atenderConversa(
   // anúncio já recebeu a da Meta (`BOAS_VINDAS_DO_ANUNCIO`): nada de "Oi" duas vezes
   const doAnuncio = veioDoAnuncio(e.origem);
   const ola = jaFalou || doAnuncio ? "" : `${oi(nome, comeco)} 👋 Aqui é o ${QUEM_ATENDE}, do Publike.\n\n`;
+  // o currículo que a pessoa manda (foto ou PDF; migração 20270920120000): o Publike lê e manda o "Conferir e salvar"
+  // com o link de entrar com um toque. Desligado ou sem conseguir ler, segue como antes
+  const comumDoCurriculo = {
+    banco,
+    chave,
+    conversa: e.chave,
+    numero: m.numero,
+    nome: e.nome ?? null,
+    modelo: modeloDoLer,
+    saida: (texto: string, extra?: { perfil?: string | null; botao?: { titulo: string; caminho: string } | null }) =>
+      saida(texto, extra),
+    ola,
+    agora: opcoes.agora ?? new Date(),
+  };
+  const curriculoDoArquivo = (a: { imagens: string[]; pdf: string | null }) =>
+    responderCurriculoDoArquivo({ ...comumDoCurriculo, ...a });
+  const curriculoMandado = () => lerCurriculoMandado({ ...comumDoCurriculo, cfg, wamid: m.wamid });
 
   // a equipe devolveu com os botões
   if (opcoes.retomada && opcoes.comBotoes) return saida(VOLTEI_COM_BOTOES, { menu: true });
@@ -1990,6 +2009,17 @@ export async function atenderConversa(
     }
   }
 
+  // "entrar" na conversa (migração 20270920120000): o link de entrar com um toque, sem código (24 horas, uma vez)
+  if (!m.payload && textos.length === 1 && /^(entrar|acessar|login|logar|link para entrar|quero entrar)[!. ]*$/i.test(textos[0].trim())) {
+    const destino = e.perfil === "contratar" ? "/painel" : "/perfil/curriculo";
+    const entrar = await caminhoDeEntrar(m.numero, destino);
+    if (entrar)
+      return saida(
+        `${ola}Toque em *Entrar no Publike*: você entra com este WhatsApp, sem digitar código. O link vale uma vez, por 24 horas, e só para este número.`,
+        { botao: { titulo: "Entrar no Publike", caminho: entrar } },
+      );
+  }
+
   // o currículo pelo WhatsApp (migração 20270902120000): o botão "Montar meu currículo", quem escreve "currículo" e os
   // passos da conversa; desligado (Admin › Qualificados), segue tudo como antes
   if (
@@ -2049,9 +2079,11 @@ export async function atenderConversa(
     // a foto ou o texto de uma vaga é de quem contrata: o Publicar pelo WhatsApp responde normal
     if (
       deveTentarVaga(textos, e.perfil) &&
-      (await tentarVagaPeloWhatsapp({ cfg, banco, chave, conversa: e.chave, numero: m.numero, wamid: m.wamid, perfil: e.perfil, textos, saida, comeco: ola }))
+      (await tentarVagaPeloWhatsapp({ cfg, banco, chave, conversa: e.chave, numero: m.numero, wamid: m.wamid, perfil: e.perfil, textos, saida, comeco: ola, curriculo: curriculoDoArquivo }))
     )
       return;
+    // o currículo em foto ou PDF de quem procura trabalho: lê mesmo no modo econômico (é o que mais traz gente)
+    if (midias.some((x) => x === "foto" || x === "arquivo") && (await curriculoMandado())) return;
     if (teto.respondida_hoje) return;
     return saida(
       `${ola}${e.perfil === "trabalho" || m.payload === "a:trabalho" ? ECONOMICO_TRABALHO : ECONOMICO_SEM_PERFIL}`,
@@ -2173,6 +2205,7 @@ export async function atenderConversa(
       textos,
       saida,
       comeco: ola,
+      curriculo: curriculoDoArquivo,
     }))
   )
     return;
@@ -2279,6 +2312,8 @@ export async function atenderConversa(
   // só áudio (que não virou texto), foto, vídeo ou arquivo: por aqui, só texto
   if (midias.every(Boolean)) {
     const tipo = midias.at(-1);
+    // quem procura trabalho (ou ainda não disse) mandou foto ou PDF: o currículo, lido aqui mesmo
+    if ((tipo === "foto" || tipo === "arquivo") && e.perfil !== "contratar" && (await curriculoMandado())) return;
     if (tipo === "foto" && e.perfil === "contratar")
       return saida(
         `${ola}Recebi a foto! Por aqui eu não consigo publicar, mas no site é rapidinho: toque em *Publicar vaga grátis* e envie a foto do anúncio lá. O Publike lê e preenche tudo para você conferir.`,

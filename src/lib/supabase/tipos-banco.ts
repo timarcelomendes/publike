@@ -2802,6 +2802,12 @@ export type Database = {
       curriculo_do_convite: { Args: { p_token: string }; Returns: Json };
       conta_atual: { Args: Record<PropertyKey, never>; Returns: string };
       papel_na_conta: { Args: Record<PropertyKey, never>; Returns: string };
+      // migração 20270920120000 (entrar com um toque pelo WhatsApp)
+      servidor_criar_entrada_whatsapp: { Args: { p_chave: string; p_numero: string; p_destino: string }; Returns: string };
+      servidor_ver_entrada_whatsapp: { Args: { p_chave: string; p_token: string }; Returns: Json };
+      servidor_usar_entrada_whatsapp: { Args: { p_chave: string; p_token: string; p_numero_do_login: string }; Returns: Json };
+      servidor_guardar_codigo_pego: { Args: { p_chave: string; p_numero: string; p_codigo: string }; Returns: boolean };
+      servidor_pegar_codigo: { Args: { p_chave: string; p_numero: string }; Returns: string | null };
       // migração 20270919120000 (ver como o dono)
       equipe_comecar_a_olhar: { Args: { p_conta: string }; Returns: undefined };
       parar_de_olhar: { Args: Record<PropertyKey, never>; Returns: string | null };

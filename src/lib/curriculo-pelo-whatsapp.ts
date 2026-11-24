@@ -65,7 +65,7 @@ export const TEXTOS_DO_CURRICULO = {
       `${MARCAS_DO_CURRICULO.previa}`,
       previa,
       "Escrevi só o que você me contou. Se quiser mudar ou acrescentar alguma coisa, é só me dizer aqui. Para mandar nos grupos ou imprimir, escreva *cartão* ou *PDF*.",
-      `Se estiver bom, toque em *${TITULO_CONFERIR_E_SALVAR}*: você entra com o seu WhatsApp, confere e salva. Aí as empresas da região já te acham. 😊`,
+      `Se estiver bom, toque em *${TITULO_CONFERIR_E_SALVAR}*: você entra com este WhatsApp, sem digitar código, confere e salva. Aí as empresas da região já te acham. 😊`,
     ].join("\n\n"),
   falha: `${MARCAS_DO_CURRICULO.falha} 😕 Me manda qualquer mensagem daqui a pouco que eu tento de novo, com tudo o que você já me contou.`,
   /** o que a pessoa contou não deu um currículo (nada de trabalho, estudo nem do que sabe fazer) */

@@ -27,6 +27,7 @@ import { iaConfigurada } from "@/lib/ia/openai";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
+import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 import { acessoFila } from "./filas";
 
 // O currículo pelo WhatsApp dentro do atendimento (migrações 20270902120000 e 20270903120000; os textos e os passos
@@ -242,9 +243,12 @@ export async function seguirCurriculoPeloWhatsapp(p: {
     await p.saida(TEXTOS_DO_CURRICULO.falha, { perfil });
     return true;
   }
+  // o "Conferir e salvar" entra com um toque, sem código (migração 20270920120000); sem ela, o link de antes
+  const destino = `/perfil/curriculo?preparado=${token}`;
+  const entrar = await caminhoDeEntrar(p.numero, destino);
   await p.saida(TEXTOS_DO_CURRICULO.previa(previaDoCurriculo(montado, hoje)), {
     perfil,
-    botao: { titulo: TITULO_CONFERIR_E_SALVAR, caminho: `/perfil/curriculo?preparado=${token}` },
+    botao: { titulo: TITULO_CONFERIR_E_SALVAR, caminho: entrar ?? destino },
   });
   return true;
 }

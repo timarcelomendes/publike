@@ -105,7 +105,7 @@ async function modeloDaLeitura() {
  * A foto em JPEG de até 1.600 pixels (a IA lê igual e o pedido fica leve). Sem a biblioteca de imagem no servidor, vai
  * como veio, se couber.
  */
-async function fotoParaLer(bytes: Buffer, mime: string) {
+export async function fotoParaLer(bytes: Buffer, mime: string) {
   try {
     const sharp = (await import("sharp")).default;
     const jpeg = await sharp(bytes, { failOn: "none" })
@@ -151,6 +151,8 @@ export async function tentarVagaPeloWhatsapp(p: {
   montada?: boolean;
   /** o que a pessoa já disse e a leitura não guarda ("o salário", quando é a combinar): sai do "Faltou dizer" */
   jaDisse?: string[];
+  /** era um currículo: lê como currículo e manda o "Conferir e salvar" (migração 20270920120000); false, o texto de antes */
+  curriculo?: (a: { imagens: string[]; pdf: string | null }) => Promise<boolean>;
 }): Promise<boolean> {
   if (!p.montada && !deveTentarVaga(p.textos, p.perfil)) return false;
   const config = await configVagasWhatsapp(p.banco, p.chave);
@@ -254,6 +256,8 @@ export async function tentarVagaPeloWhatsapp(p: {
 
   if (lida.tipo !== "vaga") {
     await registrar(lida.tipo, { empresa: lida.empresa.nome, motivo: lida.motivo, ms });
+    if (lida.tipo === "curriculo" && p.curriculo && (imagens.length || arquivos.length) && (await p.curriculo({ imagens, pdf: arquivos[0] ?? null })))
+      return true;
     if (lida.tipo === "curriculo")
       await saida(t("curriculo"), {
         perfil: "trabalho",

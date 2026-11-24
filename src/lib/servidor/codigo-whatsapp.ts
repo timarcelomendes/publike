@@ -143,6 +143,10 @@ export async function mandarCodigoPeloWhatsapp(
     if (info && conta.temEmail) extra = { conta: info.conta ?? null };
     else if (info && conta.nova) extra = { declaradas: (info.declaradas ?? []).slice(0, 2) };
   }
+  // entrar com um toque (migração 20270920120000): o site tocou no link da conversa deste número no último minuto e
+  // pega o código ele mesmo; não vai mensagem. Sem a migração, segue como antes
+  const { data: pego } = await banco.rpc("servidor_guardar_codigo_pego", { p_chave: chave, p_numero: telefone, p_codigo: codigo });
+  if (pego === true) return { ok: true };
   const { data, error } = await banco.rpc("servidor_whatsapp_codigo", { p_chave: chave, p_numero: telefone });
   if (error) return { ok: false, status: 503, mensagem: "Não deu para conferir a conversa agora." };
   const c = data as unknown as { conversa: string | null; numero: string | null; na_janela: boolean };
