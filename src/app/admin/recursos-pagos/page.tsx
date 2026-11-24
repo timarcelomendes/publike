@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Numero, Secao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
+import { classesBotao } from "@/components/ui/botao";
 import {
   formatarDataCurta,
   formatarMoeda,
@@ -381,6 +382,14 @@ async function Conteudo() {
       </Secao>
 
       <Secao
+        acoes={
+          <Link
+            href="/admin/convites?aba=divulgar&publico=limite"
+            className={classesBotao("secundario", "sm")}
+          >
+            Mandar mensagem a quem chegou ao limite
+          </Link>
+        }
         titulo={`Grátis de ${mes}`}
         descricao={`Quem usa a parte grátis deste mês: a IA lê ${d.limite_triagem} candidatos e a empresa pede ${d.limite_gravadas} entrevistas gravadas. Quem chegou ao limite é quem mais precisa do plano.`}
       >

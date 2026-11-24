@@ -1940,6 +1940,10 @@ export type Database = {
         Args: { p_mostrar?: string; p_limite?: number; p_pagina?: number };
         Returns: Json;
       };
+      admin_divulgar_limite: {
+        Args: { p_mostrar?: string; p_limite?: number; p_pagina?: number };
+        Returns: Json;
+      };
       admin_divulgar_marcar: { Args: { p_cnpj: string; p_publico: string; p_mandado?: boolean }; Returns: string | null };
       abriu_perto_de_mim: {
         Args: { p_cbos: string[]; p_dias?: number; p_limite?: number };

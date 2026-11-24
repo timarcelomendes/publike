@@ -2,7 +2,10 @@
 
 import { Ban, Check, Copy, Download, MessageCircle, Undo2 } from "lucide-react";
 import { useState } from "react";
-import { marcarDivulgacao, tirarDasListasDaReceita } from "@/lib/acoes/admin-convites";
+import {
+  marcarDivulgacao,
+  tirarDasListasDaReceita,
+} from "@/lib/acoes/admin-convites";
 import { MENSAGENS_DE_DIVULGAR } from "@/lib/divulgar";
 import { whatsappDaReceita } from "@/lib/whatsapp-oficial";
 import { Botao, classesBotao } from "../ui/botao";
@@ -35,20 +38,40 @@ export function Divulgar() {
           height={1080}
           className="w-full rounded-lg border border-line"
         />
-        <a href={IMAGEM} download="publike-vaga-pelo-whatsapp.png" className={`${classesBotao("secundario", "sm")} self-start`}>
+        <a
+          href={IMAGEM}
+          download="publike-vaga-pelo-whatsapp.png"
+          className={`${classesBotao("secundario", "sm")} self-start`}
+        >
           <Download aria-hidden />
           Baixar a imagem
         </a>
-        <p className="text-body-sm text-ink-muted">Mande a imagem primeiro e o texto depois: os links ficam no fim da conversa.</p>
+        <p className="text-body-sm text-ink-muted">
+          Mande a imagem primeiro e o texto depois: os links ficam no fim da
+          conversa.
+        </p>
       </div>
       <div className="flex flex-col gap-5">
         {MENSAGENS_DE_DIVULGAR.map((m) => (
-          <div key={m.id} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-300 p-4">
+          <div
+            key={m.id}
+            className="flex flex-col gap-3 rounded-lg border border-line bg-surface-300 p-4"
+          >
             <p className="text-label">{m.nome}</p>
-            <p className="whitespace-pre-line break-words text-body-sm">{m.texto}</p>
+            <p className="whitespace-pre-line break-words text-body-sm">
+              {m.texto}
+            </p>
             <div className="flex flex-wrap gap-2">
-              <Botao tamanho="sm" variante="primario" onClick={() => copiar(m.id, m.texto)}>
-                {copiado === m.id ? <Check aria-hidden /> : <Copy aria-hidden />}
+              <Botao
+                tamanho="sm"
+                variante="primario"
+                onClick={() => copiar(m.id, m.texto)}
+              >
+                {copiado === m.id ? (
+                  <Check aria-hidden />
+                ) : (
+                  <Copy aria-hidden />
+                )}
                 {copiado === m.id ? "Copiado" : "Copiar o texto"}
               </Botao>
               <a
@@ -77,7 +100,7 @@ export function AcoesDoContato({
   texto: textoProprio,
 }: {
   cnpj: string;
-  publico: "contabilidades" | "gestao" | "empresas";
+  publico: "contabilidades" | "gestao" | "empresas" | "limite";
   telefone: string | null;
   mandado: boolean;
   /** a mensagem própria do contato (a da empresa, com a vaga dela) */
@@ -85,7 +108,10 @@ export function AcoesDoContato({
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [copiado, setCopiado] = useState(false);
-  const texto = textoProprio ?? MENSAGENS_DE_DIVULGAR.find((m) => m.id === publico)!.texto;
+  const texto =
+    textoProprio ??
+    MENSAGENS_DE_DIVULGAR.find((m) => m.id === publico)?.texto ??
+    "";
   const zap = whatsappDaReceita(telefone);
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
@@ -120,18 +146,33 @@ export function AcoesDoContato({
           </Botao>
         )}
         {mandado ? (
-          <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => marcarDivulgacao(cnpj, publico, false))}>
+          <Botao
+            tamanho="sm"
+            variante="fantasma"
+            disabled={pendente}
+            onClick={() => rodar(() => marcarDivulgacao(cnpj, publico, false))}
+          >
             <Undo2 aria-hidden />
             Desfazer
           </Botao>
         ) : (
           <>
-            <Botao tamanho="sm" variante="secundario" disabled={pendente} onClick={() => rodar(() => marcarDivulgacao(cnpj, publico, true))}>
+            <Botao
+              tamanho="sm"
+              variante="secundario"
+              disabled={pendente}
+              onClick={() => rodar(() => marcarDivulgacao(cnpj, publico, true))}
+            >
               <Check aria-hidden />
               Mandei
             </Botao>
-            {publico !== "empresas" && (
-              <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => rodar(() => tirarDasListasDaReceita(cnpj))}>
+            {(publico === "contabilidades" || publico === "gestao") && (
+              <Botao
+                tamanho="sm"
+                variante="fantasma"
+                disabled={pendente}
+                onClick={() => rodar(() => tirarDasListasDaReceita(cnpj))}
+              >
                 <Ban aria-hidden />
                 Não mandar
               </Botao>

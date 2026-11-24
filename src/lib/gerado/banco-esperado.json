@@ -399,7 +399,8 @@
   "20270916150000_lugar_da_vaga_no_whatsapp",
   "20270916160000_whatsapp_mandar_de_novo",
   "20270916170000_whatsapp_modo_de_teste_avisado",
-  "20270917120000_admin_recursos_pagos"
+  "20270917120000_admin_recursos_pagos",
+  "20270917130000_divulgar_limite_da_triagem"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3170,7 +3171,8 @@
   "f|public.admin_dinheiro(p_dias integer)": "2c7b1270fe",
   "f|public.admin_divulgar_contatos(p_publico text, p_cidade text, p_mostrar text, p_limite integer, p_pagina integer)": "ead2b473ad",
   "f|public.admin_divulgar_convites(p_mostrar text, p_limite integer, p_pagina integer)": "9844b595a3",
-  "f|public.admin_divulgar_marcar(p_cnpj text, p_publico text, p_mandado boolean)": "8541939b36",
+  "f|public.admin_divulgar_limite(p_mostrar text, p_limite integer, p_pagina integer)": "0dd1407b5a",
+  "f|public.admin_divulgar_marcar(p_cnpj text, p_publico text, p_mandado boolean)": "a0dce0ab5c",
   "f|public.admin_email_empresas()": "5ad980a7a6",
   "f|public.admin_email_empresas_copia()": "2ef2a67d65",
   "f|public.admin_email_empresas_parada()": "9accfcd071",

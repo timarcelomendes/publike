@@ -18,7 +18,11 @@ ${LINKS}`;
 }
 
 export const MENSAGENS_DE_DIVULGAR = [
-  { id: "empresas", nome: "Para empresas que anunciam vaga", texto: mensagemParaEmpresa() },
+  {
+    id: "empresas",
+    nome: "Para empresas que anunciam vaga",
+    texto: mensagemParaEmpresa(),
+  },
   {
     id: "contabilidades",
     nome: "Para contabilidades",
@@ -43,3 +47,45 @@ Qualquer dúvida, é só me chamar.`,
   },
 ] as const;
 
+/**
+ * Para a empresa que chegou ao limite do grátis da Triagem no mês (Admin › Convites › Divulgar › "Chegaram ao limite
+ * da Triagem", migração 20270917130000): quem ainda não experimentou ganha a oferta dos 15 dias; quem já experimentou,
+ * os preços à venda (sem preço, só o link).
+ */
+export function mensagemDoLimite(d: {
+  gratis: number;
+  /** "2026-11" */
+  mes: string;
+  vaga?: string | null;
+  experimentou: boolean;
+  precoTriagem: number | null;
+  precoPlano: number | null;
+}) {
+  const [ano, m] = d.mes.split("-").map(Number);
+  const nomeMes = (n: number) =>
+    new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" }).format(
+      new Date(Date.UTC(ano, n - 1, 15)),
+    );
+  const reais = (v: number) =>
+    `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+  const v = (d.vaga ?? "").trim();
+  const precos = [
+    d.precoTriagem !== null &&
+      `a Triagem sai por ${reais(d.precoTriagem)} por mês`,
+    d.precoPlano !== null &&
+      `o Plano Empresa, com todos os recursos, por ${reais(d.precoPlano)}`,
+  ].filter(Boolean);
+  const oferta = !d.experimentou
+    ? "Vocês ainda podem experimentar 15 dias grátis, com tudo liberado, e a IA lê todos os candidatos:"
+    : precos.length
+      ? `Para a IA ler todos os candidatos, ${precos.join(", ou ")}:`
+      : "Para a IA ler todos os candidatos:";
+  return `Olá! Sou o Marcelo, do Publike. Vi que a Triagem com IA já leu os ${d.gratis} candidatos grátis de ${nomeMes(m)} nas vagas de vocês${v ? ` (${v})` : ""}.
+
+A Triagem lê todos os currículos e separa quem atende os requisitos da vaga, sem olhar nome, foto ou contato. Quem decide são vocês.
+
+${oferta}
+👉 https://publike.org/painel/copiloto
+
+Em ${nomeMes(m === 12 ? 1 : m + 1)}, os ${d.gratis} grátis voltam. Qualquer dúvida, é só me chamar.`;
+}
