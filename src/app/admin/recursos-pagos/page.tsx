@@ -5,7 +5,9 @@ import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Numero, Secao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
-import { classesBotao } from "@/components/ui/botao";
+import { Botao, classesBotao } from "@/components/ui/botao";
+import { classesEntrada } from "@/components/ui/campo";
+import { agoraDaRequisicao } from "@/lib/tempo";
 import {
   formatarDataCurta,
   formatarMoeda,
@@ -133,11 +135,20 @@ export default function RecursosPagos({
     <Suspense fallback={<EsqueletoAdmin />}>
       {searchParams.then((sp) => {
         const pedida = primeiro(sp.aba);
+        const f = (k: string) => primeiro(sp[k])?.trim() || "";
         return (
           <Conteudo
             aba={
               ABAS.some((a) => a.id === pedida) ? (pedida as Aba) : "liberados"
             }
+            filtro={{
+              q: f("q").slice(0, 80),
+              recurso: f("recurso"),
+              como: f("como"),
+              situacao: f("situacao"),
+              mostrar: f("mostrar"),
+              origem: f("origem"),
+            }}
           />
         );
       })}
@@ -334,7 +345,115 @@ function TabelaDeLiberados({
   );
 }
 
-async function Conteudo({ aba }: { aba: Aba }) {
+type Filtro = {
+  /** o nome da empresa */
+  q: string;
+  recurso: string;
+  /** Liberados: assinatura, 15_dias, promocao, publike */
+  como: string;
+  /** Assinaturas: ativa, cancelada ou as outras */
+  situacao: string;
+  /** Liberados: agora (padrão), acabaram, todos; Promoção: acabam (em 7 dias); Grátis: limite; Assinaturas: testes */
+  mostrar: string;
+  /** Impulsos: compra, credito, cortesia, admin */
+  origem: string;
+};
+
+type Campo = {
+  nome: keyof Filtro;
+  rotulo: string;
+  opcoes: { valor: string; nome: string }[];
+};
+
+/** Os filtros de cada aba (no endereço da página): o nome da empresa e as escolhas da aba. */
+function FiltrosDaAba({
+  aba,
+  filtro,
+  campos,
+  mostrando,
+  total,
+}: {
+  aba: Aba;
+  filtro: Filtro;
+  campos: Campo[];
+  mostrando: number;
+  total: number;
+}) {
+  const filtrando = Boolean(
+    filtro.q ||
+    campos.some((c) => filtro[c.nome] && c.opcoes[0]?.valor !== filtro[c.nome]),
+  );
+  return (
+    <div className="flex flex-col gap-2">
+      <form
+        // um formulário novo a cada filtro: o "Limpar" e o voltar do navegador refazem os campos
+        key={JSON.stringify(filtro)}
+        action="/admin/recursos-pagos"
+        className="flex flex-wrap items-end gap-3"
+        aria-label="Filtrar"
+      >
+        {aba !== "liberados" && <input type="hidden" name="aba" value={aba} />}
+        <label className="flex min-w-48 flex-1 flex-col gap-1 sm:max-w-72">
+          <span className="text-label">Empresa</span>
+          <input
+            type="search"
+            name="q"
+            defaultValue={filtro.q}
+            placeholder="Nome da empresa"
+            className={classesEntrada}
+          />
+        </label>
+        {campos.map((c) => (
+          <label key={c.nome} className="flex flex-col gap-1">
+            <span className="text-label">{c.rotulo}</span>
+            <select
+              name={c.nome}
+              defaultValue={filtro[c.nome]}
+              className={`${classesEntrada} max-w-56`}
+            >
+              {c.opcoes.map((o) => (
+                <option key={o.valor} value={o.valor}>
+                  {o.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+        <Botao type="submit" variante="secundario">
+          Filtrar
+        </Botao>
+        {filtrando && (
+          <Link
+            href={linkDaAba(aba)}
+            scroll={false}
+            className={classesBotao("fantasma", "md")}
+          >
+            Limpar
+          </Link>
+        )}
+      </form>
+      {filtrando && (
+        <p className="text-body-sm text-ink-muted" role="status">
+          {mostrando === total
+            ? `${total} ${total === 1 ? "linha" : "linhas"}`
+            : `Mostrando ${mostrando} de ${total}`}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** O nome da empresa sem acento e sem caixa, para a busca. */
+function chave(t: string) {
+  return t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+const TODOS = { valor: "", nome: "Todos" };
+
+async function Conteudo({ aba, filtro }: { aba: Aba; filtro: Filtro }) {
   // o admin do computador do dono ou, no site no ar, a equipe publike.org (migração 20270918120000; Admin › Quem vê
   // cada tela)
   const admin = await ehAdminLocal();
@@ -383,6 +502,58 @@ async function Conteudo({ aba }: { aba: Aba }) {
     gratis: d.gratis.length,
     impulsos: d.impulsos.length,
   };
+  // os filtros
+  const daEmpresa = (x: { nome: string }) =>
+    !filtro.q || chave(x.nome).includes(chave(filtro.q));
+  const doRecurso = (x: { recurso: string }) =>
+    !filtro.recurso || x.recurso === filtro.recurso;
+  const recursosDe = (xs: { recurso: string }[]) =>
+    [...new Set(xs.map((x) => x.recurso))]
+      .map((r) => ({ valor: r, nome: nomeDoRecurso(r) }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const mostrarLib = ["acabaram", "todos"].includes(filtro.mostrar)
+    ? filtro.mostrar
+    : "agora";
+  const baseLib =
+    mostrarLib === "agora"
+      ? ativos
+      : mostrarLib === "acabaram"
+        ? acabaram
+        : d.liberados;
+  const libFiltrados = baseLib.filter(
+    (l) =>
+      daEmpresa(l) && doRecurso(l) && (!filtro.como || l.como === filtro.como),
+  );
+  const daqui7 = (await agoraDaRequisicao()) + 7 * 24 * 3600 * 1000;
+  const promoFiltrados = naPromocao.filter(
+    (l) =>
+      daEmpresa(l) &&
+      doRecurso(l) &&
+      (filtro.mostrar !== "acabam" ||
+        (l.ate !== null && new Date(l.ate).getTime() <= daqui7)),
+  );
+  const assFiltradas = d.assinaturas.filter(
+    (a) =>
+      daEmpresa(a) &&
+      doRecurso(a) &&
+      (!filtro.situacao ||
+        (filtro.situacao === "outras"
+          ? !["ativa", "cancelada"].includes(a.situacao)
+          : a.situacao === filtro.situacao)) &&
+      (filtro.mostrar === "testes" || (!a.sandbox && !a.conta_de_teste)),
+  );
+  const assSemTestes = d.assinaturas.filter(
+    (a) => !a.sandbox && !a.conta_de_teste,
+  );
+  const gratisFiltrados = d.gratis.filter(
+    (g) => daEmpresa(g) && (filtro.mostrar !== "limite" || noLimite(g)),
+  );
+  const impFiltrados = d.impulsos.filter(
+    (i) =>
+      daEmpresa(i) &&
+      (!["compra", "credito", "cortesia", "admin"].includes(filtro.origem) ||
+        i[filtro.origem as "compra" | "credito" | "cortesia" | "admin"] > 0),
+  );
   const mes = new Intl.DateTimeFormat("pt-BR", {
     month: "long",
     timeZone: "America/Sao_Paulo",
@@ -426,25 +597,52 @@ async function Conteudo({ aba }: { aba: Aba }) {
 
       {aba === "liberados" && (
         <Secao
-          titulo="Liberados agora"
-          descricao="Quem tem cada recurso pago ligado hoje e como ganhou: pela assinatura, nos 15 dias grátis, na promoção de lançamento ou liberado pelo Publike sem prazo."
+          titulo="Liberados"
+          descricao="Quem tem cada recurso pago e como ganhou: pela assinatura, nos 15 dias grátis, na promoção de lançamento ou liberado pelo Publike sem prazo."
         >
-          {ativos.length ? (
-            <TabelaDeLiberados linhas={ativos} admin={admin} />
+          <FiltrosDaAba
+            aba={aba}
+            filtro={{ ...filtro, mostrar: mostrarLib }}
+            mostrando={libFiltrados.length}
+            total={baseLib.length}
+            campos={[
+              {
+                nome: "mostrar",
+                rotulo: "Quando",
+                opcoes: [
+                  { valor: "agora", nome: `Valendo agora (${ativos.length})` },
+                  {
+                    valor: "acabaram",
+                    nome: `Já acabaram (${acabaram.length})`,
+                  },
+                  { valor: "todos", nome: "Todos" },
+                ],
+              },
+              {
+                nome: "recurso",
+                rotulo: "Recurso",
+                opcoes: [TODOS, ...recursosDe(d.liberados)],
+              },
+              {
+                nome: "como",
+                rotulo: "Como",
+                opcoes: [
+                  TODOS,
+                  ...(
+                    ["promocao", "assinatura", "15_dias", "publike"] as Como[]
+                  ).map((c) => ({ valor: c, nome: NOME_COMO[c] })),
+                ],
+              },
+            ]}
+          />
+          {libFiltrados.length ? (
+            <TabelaDeLiberados linhas={libFiltrados} admin={admin} />
           ) : (
             <p className="text-body-sm text-ink-muted">
-              Nenhuma conta tem recurso pago ligado agora.
+              {baseLib.length
+                ? "Nada com esses filtros. Troque ou limpe os filtros acima."
+                : "Nenhuma conta tem recurso pago ligado agora."}
             </p>
-          )}
-          {acabaram.length > 0 && (
-            <details className="text-body-sm">
-              <summary className="cursor-pointer font-semibold">
-                Já acabaram ({acabaram.length})
-              </summary>
-              <div className="mt-3">
-                <TabelaDeLiberados linhas={acabaram} admin={admin} />
-              </div>
-            </details>
           )}
         </Secao>
       )}
@@ -462,11 +660,36 @@ async function Conteudo({ aba }: { aba: Aba }) {
             titulo="Na promoção agora"
             descricao="As contas com a promoção valendo. “Acabar agora” tira só a promoção (a assinatura e os 15 dias ficam)."
           >
-            {naPromocao.length ? (
-              <TabelaDeLiberados linhas={naPromocao} admin={admin} />
+            {naPromocao.length > 0 && (
+              <FiltrosDaAba
+                aba={aba}
+                filtro={filtro}
+                mostrando={promoFiltrados.length}
+                total={naPromocao.length}
+                campos={[
+                  {
+                    nome: "recurso",
+                    rotulo: "Recurso",
+                    opcoes: [TODOS, ...recursosDe(naPromocao)],
+                  },
+                  {
+                    nome: "mostrar",
+                    rotulo: "Fim",
+                    opcoes: [
+                      TODOS,
+                      { valor: "acabam", nome: "Acabam em até 7 dias" },
+                    ],
+                  },
+                ]}
+              />
+            )}
+            {promoFiltrados.length ? (
+              <TabelaDeLiberados linhas={promoFiltrados} admin={admin} />
             ) : (
               <p className="text-body-sm text-ink-muted">
-                Ninguém na promoção ainda.
+                {naPromocao.length
+                  ? "Nada com esses filtros. Troque ou limpe os filtros acima."
+                  : "Ninguém na promoção ainda."}
               </p>
             )}
           </Secao>
@@ -476,13 +699,50 @@ async function Conteudo({ aba }: { aba: Aba }) {
       {aba === "assinaturas" && (
         <Secao
           titulo="Assinaturas"
-          descricao="As do sandbox e as das contas de teste vêm marcadas e não entram na conta de cima."
+          descricao="As do sandbox e as das contas de teste ficam de fora; para vê-las, escolha “Com sandbox e contas de teste”."
         >
-          {d.assinaturas.length ? (
+          {d.assinaturas.length > 0 && (
+            <FiltrosDaAba
+              aba={aba}
+              filtro={filtro}
+              mostrando={assFiltradas.length}
+              total={
+                filtro.mostrar === "testes"
+                  ? d.assinaturas.length
+                  : assSemTestes.length
+              }
+              campos={[
+                {
+                  nome: "situacao",
+                  rotulo: "Situação",
+                  opcoes: [
+                    TODOS,
+                    { valor: "ativa", nome: "Ativas" },
+                    { valor: "cancelada", nome: "Canceladas" },
+                    { valor: "outras", nome: "Outras (pendentes, vencidas)" },
+                  ],
+                },
+                {
+                  nome: "recurso",
+                  rotulo: "Plano",
+                  opcoes: [TODOS, ...recursosDe(d.assinaturas)],
+                },
+                {
+                  nome: "mostrar",
+                  rotulo: "Testes",
+                  opcoes: [
+                    { valor: "", nome: "Sem sandbox e contas de teste" },
+                    { valor: "testes", nome: "Com sandbox e contas de teste" },
+                  ],
+                },
+              ]}
+            />
+          )}
+          {assFiltradas.length ? (
             <Tabela
               cabecalho={["Empresa", "Plano", "Valor", "Situação", "Desde"]}
             >
-              {d.assinaturas.map((a) => (
+              {assFiltradas.map((a) => (
                 <tr
                   key={`${a.conta_id}-${a.recurso}-${a.criada_em}`}
                   className="align-top"
@@ -524,7 +784,9 @@ async function Conteudo({ aba }: { aba: Aba }) {
             </Tabela>
           ) : (
             <p className="text-body-sm text-ink-muted">
-              Ninguém assinou ainda.
+              {d.assinaturas.length
+                ? "Nada com esses filtros. Troque ou limpe os filtros acima."
+                : "Ninguém assinou ainda."}
             </p>
           )}
         </Secao>
@@ -546,12 +808,33 @@ async function Conteudo({ aba }: { aba: Aba }) {
           titulo={`Grátis de ${mes}`}
           descricao={`Quem usa a parte grátis deste mês: a IA lê ${d.limite_triagem} candidatos e a empresa pede ${d.limite_gravadas} entrevistas gravadas. Quem chegou ao limite é quem mais precisa do plano.`}
         >
-          {d.gratis.length ? (
+          {d.gratis.length > 0 && (
+            <FiltrosDaAba
+              aba={aba}
+              filtro={filtro}
+              mostrando={gratisFiltrados.length}
+              total={d.gratis.length}
+              campos={[
+                {
+                  nome: "mostrar",
+                  rotulo: "Limite",
+                  opcoes: [
+                    TODOS,
+                    {
+                      valor: "limite",
+                      nome: `Só no limite (${d.gratis.filter(noLimite).length})`,
+                    },
+                  ],
+                },
+              ]}
+            />
+          )}
+          {gratisFiltrados.length ? (
             <Tabela
               cabecalho={["Empresa", "Lidos pela IA", "Gravadas pedidas", ""]}
               min={560}
             >
-              {d.gratis.map((g) => (
+              {gratisFiltrados.map((g) => (
                 <tr key={g.conta_id} className="align-top">
                   <td className="px-2 py-2">
                     <Conta
@@ -585,7 +868,9 @@ async function Conteudo({ aba }: { aba: Aba }) {
             </Tabela>
           ) : (
             <p className="text-body-sm text-ink-muted">
-              Ninguém usou o grátis deste mês ainda.
+              {d.gratis.length
+                ? "Nada com esses filtros. Troque ou limpe os filtros acima."
+                : "Ninguém usou o grátis deste mês ainda."}
             </p>
           )}
         </Secao>
@@ -596,11 +881,32 @@ async function Conteudo({ aba }: { aba: Aba }) {
           titulo="Impulsos dos últimos 60 dias"
           descricao="Por conta: os comprados, os do crédito, as cortesias e os dados pela equipe (com os automáticos)."
         >
-          {d.impulsos.length ? (
+          {d.impulsos.length > 0 && (
+            <FiltrosDaAba
+              aba={aba}
+              filtro={filtro}
+              mostrando={impFiltrados.length}
+              total={d.impulsos.length}
+              campos={[
+                {
+                  nome: "origem",
+                  rotulo: "Como",
+                  opcoes: [
+                    TODOS,
+                    { valor: "compra", nome: "Comprados" },
+                    { valor: "credito", nome: "Do crédito" },
+                    { valor: "cortesia", nome: "Cortesias" },
+                    { valor: "admin", nome: "Pela equipe" },
+                  ],
+                },
+              ]}
+            />
+          )}
+          {impFiltrados.length ? (
             <Tabela
               cabecalho={["Empresa", "Total", "Como", "Valor pago", "Último"]}
             >
-              {d.impulsos.map((i) => (
+              {impFiltrados.map((i) => (
                 <tr key={i.conta_id} className="align-top">
                   <td className="px-2 py-2">
                     <Conta
@@ -635,7 +941,9 @@ async function Conteudo({ aba }: { aba: Aba }) {
             </Tabela>
           ) : (
             <p className="text-body-sm text-ink-muted">
-              Nenhum impulso nos últimos 60 dias.
+              {d.impulsos.length
+                ? "Nada com esses filtros. Troque ou limpe os filtros acima."
+                : "Nenhum impulso nos últimos 60 dias."}
             </p>
           )}
         </Secao>
