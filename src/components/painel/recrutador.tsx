@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   CalendarClock,
   Clock,
   FileCheck2,
@@ -41,6 +42,7 @@ import { TabelaDasVagas, type GrupoDeVagas, type LinhaDaVaga } from "./tabela-va
 import { DicaDeNovidade } from "@/components/ui/dica-de-novidade";
 import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
 import { meuWhatsapp } from "@/lib/acoes/whatsapp";
+import { linkDosProntos, prontosDasMinhasVagas } from "@/lib/servidor/prontos";
 
 /** As perguntas sem resposta de quem publicou, por vaga (migração 20270318120000; sem ela, nada). */
 async function perguntasSemResposta(ids: string[]) {
@@ -149,6 +151,7 @@ export async function PainelRecrutador({
     perguntas,
     paraConfirmar,
     whatsapp,
+    prontos,
   ] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
@@ -169,6 +172,8 @@ export async function PainelRecrutador({
     conquistasParaConfirmar(),
     // o WhatsApp dos candidatos novos (18/11/2026, Marcelo: "precisamos alcancar mais pessoas"): só com vaga no ar
     noAr.length > 0 ? meuWhatsapp().catch(() => null) : Promise.resolve(null),
+    // a chamada dos prontos para assumir (migração 20270922120000; sem ela, nenhuma)
+    noAr.length > 0 ? prontosDasMinhasVagas() : Promise.resolve(new Map<string, number>()),
   ]);
   const noPrazo = pedidosAg?.noPrazo ?? null;
   // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
@@ -349,6 +354,25 @@ export async function PainelRecrutador({
       texto: "Renove para continuar recebendo candidatos, ou marque como preenchida se já contratou.",
       href: "/painel/anuncios?tipo=vaga",
       acao: "Renovar",
+    });
+  }
+  // os prontos para assumir (24/11/2026, Marcelo: "ter uma chamada para o Pronto para assumir"): a vaga no ar com
+  // menos candidatos e alguém pronto primeiro (é a que mais precisa de gente)
+  const comProntos = noAr
+    .filter((a) => (prontos.get(a.id) ?? 0) > 0)
+    .sort((a, b) => a.curtidas_total - b.curtidas_total || (prontos.get(b.id) ?? 0) - (prontos.get(a.id) ?? 0));
+  if (comProntos.length) {
+    const v = comProntos[0];
+    const n = prontos.get(v.id) ?? 0;
+    cartoes.push({
+      icone: BadgeCheck,
+      quando: "Hoje",
+      titulo: `${plural(n, "pessoa pronta", "pessoas prontas")} para assumir ${v.titulo}`,
+      texto:
+        (comProntos.length > 1 ? `E mais ${plural(comProntos.length - 1, "vaga", "vagas")} com gente pronta. ` : "") +
+        "A leitura do currículo indicou quem já fez esse trabalho e ainda não curtiu a vaga. Convide: o contato aparece quando a pessoa aceitar.",
+      href: linkDosProntos(v.id),
+      acao: "Ver os prontos",
     });
   }
   if (paradas.length) {

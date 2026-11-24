@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   BarChart3,
   ChevronLeft,
   ChevronRight,
@@ -17,6 +18,8 @@ import {
   Workflow,
   type LucideIcon,
 } from "lucide-react";
+import { Suspense } from "react";
+import { linkDosProntos, prontosDasMinhasVagas } from "@/lib/servidor/prontos";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SITE_URL } from "@/lib/config";
@@ -208,6 +211,11 @@ export async function CabecalhoDaVaga({
         </div>
       </div>
       {contagem && <LinhaDosNumeros id={id} n={contagem} vagas={anuncio.vagas ?? 1} extra={extra} />}
+      {noAr && aba === "candidatos" && (
+        <Suspense fallback={null}>
+          <ProntosDaVaga id={id} />
+        </Suspense>
+      )}
       {/* as 4 abas sempre à vista: lado a lado, com as pílulas, quando cabem; no celular, o ícone em cima do nome */}
       <nav aria-label="Partes da vaga" className="@container/abas">
         <ul className="grid grid-cols-4 border-b border-line @[42rem]/abas:flex @[42rem]/abas:gap-2">
@@ -462,5 +470,33 @@ export function OrdemPeloCopiloto({ ativo, href }: { ativo: boolean; href: strin
       Ordenar pela triagem
       {!ativo && <Selo variante="novo">Novo</Selo>}
     </Link>
+  );
+}
+
+/**
+ * A chamada dos prontos para assumir, no alto dos candidatos da vaga (migração 20270922120000): quem a leitura do
+ * currículo indicou para a função e ainda não curtiu. Leva a Talentos › Para a sua vaga, na lista dos prontos.
+ */
+async function ProntosDaVaga({ id }: { id: string }) {
+  const n = (await prontosDasMinhasVagas()).get(id) ?? 0;
+  if (!n) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border-2 border-cerrado bg-surface-200 px-4 py-3">
+      <BadgeCheck aria-hidden className="size-5 shrink-0 text-cerrado-text" />
+      <p className="min-w-0 flex-[1_1_16rem] text-body-sm">
+        <strong className="font-semibold">{n === 1 ? "1 pessoa pronta" : `${n} pessoas prontas`} para assumir esta vaga.</strong>{" "}
+        <span className="text-ink-muted">
+          A leitura do currículo indicou quem já fez esse trabalho e ainda não curtiu. Convide: o contato aparece quando a
+          pessoa aceitar.
+        </span>
+      </p>
+      <Link
+        href={linkDosProntos(id)}
+        className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill bg-cerrado px-4 text-label text-white hover:bg-cerrado/90"
+      >
+        Ver os prontos
+        <ChevronRight aria-hidden className="size-4" />
+      </Link>
+    </div>
   );
 }

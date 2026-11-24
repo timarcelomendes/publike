@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
@@ -37,6 +37,7 @@ import { propostasDaVaga } from "@/lib/servidor/proposta";
 import { padroesDaConta, processoDaConta } from "@/lib/servidor/processo";
 import { testesDaVaga } from "@/lib/servidor/testes";
 import { UUID } from "@/lib/validacao";
+import { linkDosProntos, prontosDasMinhasVagas } from "@/lib/servidor/prontos";
 import { feitasDasRegras } from "@/lib/servidor/regras-tela";
 import { DicaUmaVez } from "../ui/dica-uma-vez";
 
@@ -261,6 +262,8 @@ export async function MesaDeCandidatos({
                 ))}
               </ul>
             )}
+            {/* o fim dos novos: quem está pronto para assumir e ainda não curtiu (migração 20270922120000) */}
+            {atual === "novos" && <MaisGentePronta vaga={vaga} />}
             {/* no pé da lista (como o "Recolher o menu"), sempre à vista quando a lista rola */}
             <div className="sticky bottom-0 mt-auto hidden border-t border-line bg-surface-200 lg:block">
               <RecolherLista />
@@ -480,5 +483,33 @@ function EtapasNoAlto({
         <div className="flex shrink-0 lg:min-w-0 lg:flex-1">{item("nao_seguiu")}</div>
       </div>
     </nav>
+  );
+}
+
+/**
+ * No fim da fila dos novos: "Quer mais gente?" com as pessoas prontas para assumir a vaga (a escolhida, ou a que tem
+ * mais prontas). Leva a Talentos › Para a sua vaga, na lista dos prontos.
+ */
+async function MaisGentePronta({ vaga }: { vaga: string | null }) {
+  const prontos = await prontosDasMinhasVagas();
+  const alvo = vaga ?? [...prontos.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const n = alvo ? (prontos.get(alvo) ?? 0) : 0;
+  if (!alvo || !n) return null;
+  return (
+    <Link
+      href={linkDosProntos(alvo)}
+      data-mesa-texto
+      className="flex items-start gap-2.5 border-t border-line bg-surface-300/60 px-4 py-3.5 text-body-sm hover:bg-surface-300"
+    >
+      <BadgeCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-cerrado-text" />
+      <span className="flex flex-col gap-0.5">
+        <span className="font-semibold text-ink">Quer mais gente?</span>
+        <span className="text-ink-muted">
+          {n === 1 ? "1 pessoa pronta" : `${n} pessoas prontas`} para assumir
+          {vaga ? " esta vaga" : " uma das suas vagas"} e ainda não {n === 1 ? "curtiu" : "curtiram"}. Ver e convidar
+        </span>
+      </span>
+      <ChevronRight aria-hidden className="mt-0.5 ml-auto size-4 shrink-0 text-ink-muted" />
+    </Link>
   );
 }

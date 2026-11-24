@@ -33,6 +33,7 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
 import { lerVisao, ordemPedeVoce, resumirVaga, VISOES_PAGAS, type VisaoDasVagas } from "@/lib/visoes-das-vagas";
+import { prontosDasMinhasVagas } from "@/lib/servidor/prontos";
 
 export const metadata: Metadata = { title: "Meus anúncios" };
 
@@ -128,9 +129,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   // a visão (11/11/2026, claude/plano-visoes-das-vagas.md): a Lista e "Pelo que pede você" grátis; o Mosaico e a
   // Linha do tempo nos planos, com 15 dias grátis (sem plano, a prévia com as vagas da conta). Cartões e Linhas,
   // as de antes, viram a Lista
-  const [entrevistas, acesso] = await Promise.all([
+  const [entrevistas, acesso, prontos] = await Promise.all([
     entrevistasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)),
     acessoAsVisoes(),
+    // a chamada dos prontos para assumir (migração 20270922120000; sem ela, nenhuma)
+    prontosDasMinhasVagas(),
   ]);
   const pedidaVisao = lerVisao(primeiro(sp.visao) ?? (await cookies()).get(COOKIE_VISAO_VAGAS)?.value);
   const visao: VisaoDasVagas = !acesso.disponivel && VISOES_PAGAS.includes(pedidaVisao) ? "lista" : pedidaVisao;
@@ -194,6 +197,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
           .filter(Boolean)
           .join(" · "),
         podeRenovar: r.status === "expirado" || r.status === "encerrado" || venceLogo,
+        prontos: r.estado === "ar" ? (prontos.get(a.id) ?? 0) : 0,
       },
     ];
   });

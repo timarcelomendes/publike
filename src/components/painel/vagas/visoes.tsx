@@ -1,4 +1,4 @@
-import { ChevronRight, Lightbulb } from "lucide-react";
+import { BadgeCheck, ChevronRight, Lightbulb } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Selo } from "@/components/ui/basicos";
@@ -17,7 +17,23 @@ export type VagaNaTela = ResumoDaVaga & {
   /** "CLT · Setor Bueno · 2 vagas" (na agência, o cliente vem primeiro) */
   meta: string;
   podeRenovar: boolean;
+  /** quantas pessoas prontas para assumir a vaga (Talentos › Para a sua vaga; migração 20270922120000) */
+  prontos?: number;
 };
+
+/** "4 prontos para assumir": leva a Talentos › Para a sua vaga, já na lista dos prontos. */
+function ChamadaDosProntos({ v }: { v: VagaNaTela }) {
+  if (!v.prontos) return null;
+  return (
+    <Link
+      href={`/talentos?vaga=${v.id}#prontos-titulo`}
+      className="inline-flex items-center gap-1.5 self-start text-body-sm font-semibold text-cerrado-text underline-offset-2 hover:underline"
+    >
+      <BadgeCheck aria-hidden className="size-4 shrink-0" />
+      {v.prontos === 1 ? "1 pessoa pronta para assumir" : `${v.prontos} pessoas prontas para assumir`}
+    </Link>
+  );
+}
 
 const ETAPAS = [
   { chave: "novos", nome: ["novo", "novos"], cor: "bg-ink/20" },
@@ -178,6 +194,7 @@ export function ListaDeVagas({ vagas }: { vagas: VagaNaTela[] }) {
                     {v.agora}
                   </span>
                   <span className="text-body-sm text-ink-muted">{v.detalhe}</span>
+                  <ChamadaDosProntos v={v} />
                 </div>
                 <Acoes v={v} inicio />
               </div>
@@ -260,6 +277,7 @@ export function VagasPorPrioridade({ vagas }: { vagas: VagaNaTela[] }) {
                         {v.dica.texto}
                       </Link>
                     )}
+                    <ChamadaDosProntos v={v} />
                   </div>
                   <div className="flex w-full justify-end sm:w-auto">
                     <Acoes v={v} />

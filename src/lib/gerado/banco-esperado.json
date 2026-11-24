@@ -406,7 +406,8 @@
   "20270918140000_promocao_visoes_e_contato",
   "20270919120000_ver_como_o_dono",
   "20270920120000_entrar_pelo_whatsapp",
-  "20270921120000_reler_curriculos_sem_abrir"
+  "20270921120000_reler_curriculos_sem_abrir",
+  "20270922120000_prontos_das_minhas_vagas"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3768,6 +3769,7 @@
   "f|public.processo_da_conta()": "f6f4c6244c",
   "f|public.procurando_agora(p_ids uuid[])": "1ba1bf61d5",
   "f|public.prontos_da_triagem(p_anuncio uuid)": "5010a59794",
+  "f|public.prontos_das_minhas_vagas()": "27e747e6fd",
   "f|public.prontos_para_a_vaga(p_anuncio uuid)": "2c9f3f641f",
   "f|public.propostas_da_vaga(p_anuncio uuid)": "26034f14f0",
   "f|public.publicar_vaga_do_whatsapp(p_token text, p_anuncio uuid)": "18d233862d",

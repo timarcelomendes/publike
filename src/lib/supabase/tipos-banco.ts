@@ -2802,6 +2802,8 @@ export type Database = {
       curriculo_do_convite: { Args: { p_token: string }; Returns: Json };
       conta_atual: { Args: Record<PropertyKey, never>; Returns: string };
       papel_na_conta: { Args: Record<PropertyKey, never>; Returns: string };
+      // migração 20270922120000 (a chamada dos prontos para assumir)
+      prontos_das_minhas_vagas: { Args: Record<PropertyKey, never>; Returns: { anuncio_id: string; total: number }[] };
       // migração 20270921120000 (os currículos que ficaram sem abrir)
       servidor_curriculos_sem_abrir: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
       servidor_curriculo_relido: { Args: { p_chave: string; p_conversa: string; p_resultado: string }; Returns: undefined };
