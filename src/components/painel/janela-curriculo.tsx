@@ -13,9 +13,12 @@ export function JanelaDoCurriculo({
   nome,
   rotulo = "Ver currículo completo",
   titulo,
+  destaque = false,
   children,
 }: {
   nome: string;
+  /** escuro e maior, no alto da ficha (24/11/2026; Marcelo: "E destaque") */
+  destaque?: boolean;
   rotulo?: string;
   titulo?: string;
   children: ReactNode;
@@ -32,9 +35,19 @@ export function JanelaDoCurriculo({
   }, [aberta]);
   return (
     <>
-      <button type="button" onClick={() => setAberta(true)} className={classesBotao("secundario", "sm", "self-start")}>
+      <button
+        type="button"
+        onClick={() => setAberta(true)}
+        className={
+          destaque
+            ? // sem misturar com as cores do classesBotao (as classes brigariam): escuro, com o tamanho normal
+              "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 self-start rounded-md border border-ink bg-ink px-3 text-label sm:px-4 whitespace-nowrap text-surface-100 transition-colors hover:opacity-90 [&_svg]:size-[18px] [&_svg]:shrink-0"
+            : classesBotao("secundario", "sm", "self-start")
+        }
+      >
         <FileText aria-hidden />
-        {rotulo}
+        {/* no celular, ao lado do nome, só o ícone (o nome não aperta); o texto fica para o leitor de tela */}
+        <span className={destaque ? "max-sm:sr-only" : undefined}>{rotulo}</span>
       </button>
       <dialog
         ref={ref}

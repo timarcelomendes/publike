@@ -239,8 +239,23 @@ export function FichaCandidato({
           </Link>
           {c.verificado && <SeloVerificado />}
         </h2>
-        <NavegarFichas anterior={anterior} proximo={proximo} />
-        <p className="col-span-2 col-start-2 mt-0.5 text-body-sm text-ink-muted">
+        {/* à direita do nome e da vaga: o currículo à mão (24/11/2026; Marcelo: "coloca na mesma linha do nome e
+            função, alinhado à direita") e o anterior e o próximo */}
+        <div className="col-start-3 row-span-2 flex items-center gap-2 self-center">
+          {c.curriculo && (
+            <JanelaDoCurriculo nome={primeiro} rotulo="Ver currículo" destaque>
+              <CurriculoResumo
+                curriculo={c.curriculo}
+                linkPdf={c.curriculo.link_pdf}
+                hoje={hoje}
+                empresas={empresas}
+                baixar={`/api/painel/curriculo/${c.anuncio_id}/${c.perfil_id}`}
+              />
+            </JanelaDoCurriculo>
+          )}
+          <NavegarFichas anterior={anterior} proximo={proximo} />
+        </div>
+        <p className="col-start-2 mt-0.5 text-body-sm text-ink-muted">
           <Link
             href={`/painel/anuncio/${c.anuncio_id}/quadro?candidato=${c.perfil_id}`}
             className="text-ink underline underline-offset-2"
@@ -269,20 +284,6 @@ export function FichaCandidato({
             </span>
           )}
         </p>
-        {/* o currículo à mão, no alto (24/11/2026; Marcelo: "adicione Ver currículo no alto do perfil do candidato") */}
-        {c.curriculo && (
-          <div className="col-span-2 col-start-2 mt-2">
-            <JanelaDoCurriculo nome={primeiro} rotulo="Ver currículo">
-              <CurriculoResumo
-                curriculo={c.curriculo}
-                linkPdf={c.curriculo.link_pdf}
-                hoje={hoje}
-                empresas={empresas}
-                baixar={`/api/painel/curriculo/${c.anuncio_id}/${c.perfil_id}`}
-              />
-            </JanelaDoCurriculo>
-          </div>
-        )}
       </header>
 
       {naModeracao ? (
