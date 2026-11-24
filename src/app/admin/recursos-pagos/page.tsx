@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CreditCard, Gift, Rocket, Sparkles, Unlock } from "lucide-react";
+import { CreditCard, Gift, History, Rocket, Sparkles, Unlock } from "lucide-react";
 import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Numero, Secao } from "@/components/admin/ui";
@@ -125,6 +125,8 @@ const ABAS = [
   { id: "assinaturas", nome: "Assinaturas", icone: CreditCard },
   { id: "gratis", nome: "Grátis do mês", icone: Sparkles },
   { id: "impulsos", nome: "Impulsos", icone: Rocket },
+  // o histórico de uso (migração 20270925120000)
+  { id: "uso", nome: "Uso", icone: History },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
 
@@ -167,7 +169,7 @@ function SubAbas({
   numeros,
 }: {
   ativa: Aba;
-  numeros: Record<Aba, number>;
+  numeros: Partial<Record<Aba, number>>;
 }) {
   return (
     <nav
@@ -190,7 +192,7 @@ function SubAbas({
           >
             <Icone aria-hidden className="size-4" />
             {nome}
-            <span className="tabular-nums opacity-70">{numeros[id]}</span>
+            {numeros[id] !== undefined && <span className="tabular-nums opacity-70">{numeros[id]}</span>}
           </Link>
         );
       })}
@@ -495,12 +497,17 @@ async function Conteudo({ aba, filtro }: { aba: Aba; filtro: Filtro }) {
   const impulsosComprados = d.impulsos.reduce((s, i) => s + i.compra, 0);
   const valorImpulsos = d.impulsos.reduce((s, i) => s + Number(i.valor), 0);
   const naPromocao = ativos.filter((l) => l.como === "promocao");
-  const numeros: Record<Aba, number> = {
+  // o uso dos recursos (migração 20270925120000): só quando a aba está aberta
+  const diasDoUso = ["7", "90"].includes(filtro.mostrar) ? Number(filtro.mostrar) : 30;
+  const usoLido = aba === "uso" ? await c.rpc("admin_uso_recursos_pagos", { p_dias: diasDoUso }) : null;
+  const uso = usoLido && !usoLido.error ? (usoLido.data as unknown as DadosDoUso) : null;
+  const numeros: Partial<Record<Aba, number>> = {
     liberados: ativos.length,
     promocao: naPromocao.length,
     assinaturas: d.assinaturas.filter((a) => a.situacao === "ativa").length,
     gratis: d.gratis.length,
     impulsos: d.impulsos.length,
+    ...(uso ? { uso: uso.eventos.filter((e) => !e.conta_de_teste).length } : {}),
   };
   // os filtros
   const daEmpresa = (x: { nome: string }) =>
@@ -948,6 +955,203 @@ async function Conteudo({ aba, filtro }: { aba: Aba; filtro: Filtro }) {
           )}
         </Secao>
       )}
+      {aba === "uso" && (
+        <UsoDosRecursos uso={uso} erro={usoLido?.error ?? null} filtro={filtro} dias={diasDoUso} admin={admin} agora={await agoraDaRequisicao()} />
+      )}
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ o histórico de uso (migração 20270925120000)
+
+type DadosDoUso = {
+  dias: number;
+  por_dia: { dia: string; recurso: string; usos: number }[];
+  contas: {
+    conta_id: string;
+    nome: string;
+    tipo: string;
+    recurso: string;
+    usos: number;
+    vagas: number;
+    primeiro: string;
+    ultimo: string;
+    conta_de_teste: boolean;
+  }[];
+  eventos: {
+    quando: string;
+    conta_id: string;
+    nome: string;
+    recurso: string;
+    o_que: string;
+    vaga: string | null;
+    conta_de_teste: boolean;
+  }[];
+};
+
+const RECURSOS_COM_USO = ["copiloto", "testes", "video", "automacoes", "salarios"];
+
+function UsoDosRecursos({
+  uso,
+  erro,
+  filtro,
+  dias,
+  admin,
+  agora,
+}: {
+  agora: number;
+  uso: DadosDoUso | null;
+  erro: { code?: string; message: string } | null;
+  filtro: Filtro;
+  dias: number;
+  admin: boolean;
+}) {
+  if (!uso) {
+    if (erro && erro.code !== "PGRST202") throw new Error(`Publike: falha ao ler o uso dos recursos (${erro.message}).`);
+    return (
+      <Aviso tipo="alerta" titulo="Rode a migração do uso dos recursos">
+        Falta a migração 20270925120000_uso_dos_recursos_pagos.sql neste banco.
+      </Aviso>
+    );
+  }
+  const comTestes = filtro.situacao === "testes";
+  const serve = (x: { nome: string; recurso: string; conta_de_teste: boolean }) =>
+    (!filtro.q || chave(x.nome).includes(chave(filtro.q))) &&
+    (!filtro.recurso || x.recurso === filtro.recurso) &&
+    (comTestes || !x.conta_de_teste);
+  const contas = uso.contas.filter(serve);
+  const eventos = uso.eventos.filter(serve);
+  // o gráfico: os usos de cada dia (sem as contas de teste), do recurso escolhido ou de todos
+  const porDia = new Map<string, number>();
+  for (const d of uso.por_dia)
+    if (!filtro.recurso || d.recurso === filtro.recurso) porDia.set(d.dia, (porDia.get(d.dia) ?? 0) + d.usos);
+  const hoje = new Date(agora);
+  const diasDoGrafico = Array.from({ length: dias }, (_, i) => {
+    const x = new Date(hoje.getTime() - (dias - 1 - i) * 24 * 3600 * 1000);
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(x);
+  });
+  const maior = Math.max(1, ...diasDoGrafico.map((d) => porDia.get(d) ?? 0));
+  const totalPorRecurso = RECURSOS_COM_USO.map((r) => ({
+    r,
+    n: uso.por_dia.filter((d) => d.recurso === r).reduce((s, d) => s + d.usos, 0),
+  }));
+  const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const quando = (iso: string) =>
+    new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date(iso));
+  return (
+    <Secao
+      titulo={`Uso dos recursos pagos nos últimos ${dias} dias`}
+      descricao="O que cada conta fez com cada recurso, de onde o uso fica registrado: candidatos avaliados na Triagem com IA, testes enviados, entrevistas em vídeo pedidas, o que as automações fizeram e as consultas de salário. Visões das vagas e Contato no convite não deixam registro de uso. O gráfico e os totais não contam as contas de teste."
+    >
+      <FiltrosDaAba
+        aba="uso"
+        filtro={filtro}
+        mostrando={contas.length}
+        total={uso.contas.length}
+        campos={[
+          {
+            nome: "recurso",
+            rotulo: "Recurso",
+            opcoes: [TODOS, ...RECURSOS_COM_USO.map((r) => ({ valor: r, nome: nomeDoRecurso(r) }))],
+          },
+          {
+            nome: "mostrar",
+            rotulo: "Período",
+            opcoes: [
+              { valor: "", nome: "30 dias" },
+              { valor: "7", nome: "7 dias" },
+              { valor: "90", nome: "90 dias" },
+            ],
+          },
+          {
+            nome: "situacao",
+            rotulo: "Contas de teste",
+            opcoes: [
+              { valor: "", nome: "Sem as de teste" },
+              { valor: "testes", nome: "Com as de teste" },
+            ],
+          },
+        ]}
+      />
+
+      <div className="flex flex-wrap gap-x-6 gap-y-1 text-body-sm">
+        {totalPorRecurso.map(({ r, n }) => (
+          <span key={r}>
+            <span className="text-ink-muted">{nomeDoRecurso(r)}:</span>{" "}
+            <span className="font-semibold tabular-nums">{formatarNumero(n)}</span>
+          </span>
+        ))}
+      </div>
+
+      <figure className="flex flex-col gap-2">
+        <div
+          className="flex h-32 items-end gap-px rounded-md border border-line bg-surface-300/40 px-2 pt-2"
+          role="img"
+          aria-label={`Usos por dia nos últimos ${dias} dias${filtro.recurso ? `, ${nomeDoRecurso(filtro.recurso)}` : ""}`}
+        >
+          {diasDoGrafico.map((d) => {
+            const n = porDia.get(d) ?? 0;
+            return (
+              <div
+                key={d}
+                title={`${ddmm(d)}: ${n} ${n === 1 ? "uso" : "usos"}`}
+                className={`min-w-0 flex-1 rounded-t-sm ${n ? "bg-cerrado" : "bg-line"}`}
+                style={{ height: `${Math.max(n ? 6 : 2, Math.round((n / maior) * 100))}%` }}
+              />
+            );
+          })}
+        </div>
+        <figcaption className="flex justify-between text-caption text-ink-muted">
+          <span>{ddmm(diasDoGrafico[0])}</span>
+          <span>{porDia.size ? `o dia com mais: ${maior}` : "nenhum uso no período"}</span>
+          <span>hoje</span>
+        </figcaption>
+      </figure>
+
+      <h3 className="text-h3">Por conta</h3>
+      {contas.length ? (
+        <Tabela cabecalho={["Empresa", "Recurso", "Total", "Vagas", "Primeiro uso", "Último uso"]}>
+          {contas.map((x) => (
+            <tr key={`${x.conta_id}:${x.recurso}`} className="align-top">
+              <td className="px-2 py-2">
+                <Conta admin={admin} id={x.conta_id} nome={x.nome} tipo={x.tipo} teste={x.conta_de_teste} />
+              </td>
+              <td className="px-2 py-2">{nomeDoRecurso(x.recurso)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{x.usos}</td>
+              <td className="px-2 py-2 tabular-nums">{x.vagas || "—"}</td>
+              <td className="px-2 py-2 whitespace-nowrap">{formatarDataCurta(x.primeiro)}</td>
+              <td className="px-2 py-2 whitespace-nowrap">{formatarDataCurta(x.ultimo)}</td>
+            </tr>
+          ))}
+        </Tabela>
+      ) : (
+        <p className="text-body-sm text-ink-muted">Nenhum uso com esses filtros neste período.</p>
+      )}
+
+      <h3 className="text-h3">Os últimos usos</h3>
+      {eventos.length ? (
+        <Tabela cabecalho={["Quando", "Empresa", "Recurso", "O que", "Vaga"]}>
+          {eventos.slice(0, 200).map((e, i) => (
+            <tr key={`${e.quando}:${e.conta_id}:${i}`} className="align-top">
+              <td className="px-2 py-2 whitespace-nowrap tabular-nums">{quando(e.quando)}</td>
+              <td className="px-2 py-2">
+                <Conta admin={admin} id={e.conta_id} nome={e.nome} teste={e.conta_de_teste} />
+              </td>
+              <td className="px-2 py-2">{nomeDoRecurso(e.recurso)}</td>
+              <td className="px-2 py-2">{e.o_que}</td>
+              <td className="px-2 py-2 text-ink-muted">{e.vaga ?? "—"}</td>
+            </tr>
+          ))}
+        </Tabela>
+      ) : (
+        <p className="text-body-sm text-ink-muted">Nenhum uso com esses filtros neste período.</p>
+      )}
+    </Secao>
   );
 }

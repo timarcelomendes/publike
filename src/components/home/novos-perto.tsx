@@ -42,7 +42,8 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
   const { novos, total, estados, agora, logado } = await contasNovas(QUANTOS[jeito]);
   // a coluna e a faixa são de quem entrou; a vitrine, de quem ainda não entrou
   if ((jeito === "vitrine") === logado || !novos.length) return null;
-  const totalTexto = textoDoTotal(total, novos.length);
+  // quem entrou não vê o número de contas novas (24/11/2026, Marcelo: "remover esse quantitativo na home da área logada")
+  const totalTexto = logado ? null : textoDoTotal(total, novos.length);
 
   // na vitrine, só o número (02/11/2026, claude/plano-home-visitante.md, item 6): os nomes das pessoas, com um
   // Conectar que o visitante não usa, não convenciam ninguém. Com menos de 20, nada (número pequeno parece vazio).

@@ -409,7 +409,8 @@
   "20270921120000_reler_curriculos_sem_abrir",
   "20270922120000_prontos_das_minhas_vagas",
   "20270923120000_email_de_candidatos_novos",
-  "20270924120000_escolhas_de_vagas"
+  "20270924120000_escolhas_de_vagas",
+  "20270925120000_uso_dos_recursos_pagos"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3405,6 +3406,7 @@
   "f|public.admin_ultimos_acessos(p_ids uuid[])": "991085ff26",
   "f|public.admin_uso_da_ia(p_dias integer)": "977b5da093",
   "f|public.admin_uso_da_triagem(p_dias integer)": "e7d874aba5",
+  "f|public.admin_uso_recursos_pagos(p_dias integer)": "a4e4d423ec",
   "f|public.admin_usuario(p_id uuid)": "c364350ade",
   "f|public.admin_vagas_para_impulso(p_busca text, p_tipo text, p_conta uuid)": "0196728f8a",
   "f|public.admin_velocidade(p_dias integer)": "eb24d5ad67",
