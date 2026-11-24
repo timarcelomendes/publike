@@ -16,6 +16,8 @@ export type AcessoAoContatoNoConvite = {
   ate: string | null;
   /** a conta já usou os 15 dias */
   testou: boolean;
+  /** liberado na promoção de lançamento, até `ate`, com os 30 do plano (migração 20270918140000) */
+  promocao: boolean;
   /** contatos a cada 24 horas: 30 no plano, 5 nos 15 dias grátis */
   limite: number;
   /** quantos já viu nas últimas 24 horas */
@@ -30,6 +32,7 @@ const SEM_ACESSO: AcessoAoContatoNoConvite = {
   plano: false,
   ate: null,
   testou: false,
+  promocao: false,
   limite: 0,
   hoje: 0,
   valeEm: null,
@@ -51,6 +54,7 @@ export async function acessoAoContatoNoConvite(): Promise<AcessoAoContatoNoConvi
     limite?: number;
     hoje?: number;
     vale_em?: string | null;
+    promocao?: boolean;
   };
   const plano = d.plano === true;
   const ate = typeof d.ate === "string" ? d.ate : null;
@@ -59,6 +63,7 @@ export async function acessoAoContatoNoConvite(): Promise<AcessoAoContatoNoConvi
     plano,
     ate,
     testou: d.testou === true,
+    promocao: d.promocao === true,
     liberado: plano || Boolean(ate) || d.sem_prazo === true,
     limite: Number(d.limite) || 0,
     hoje: Number(d.hoje) || 0,

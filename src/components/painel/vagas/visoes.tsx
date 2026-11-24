@@ -596,7 +596,8 @@ export function PreviaPaga({
       <div className="flex flex-col gap-3">
         {acesso.ate && !acesso.plano && (
           <p className="text-body-sm text-ink-muted">
-            Grátis até {dataCurta(acesso.ate)}. Depois, as visões de Vagas e de Candidatos com cadeado vêm nos{" "}
+            {acesso.promocao ? "Promoção de lançamento até" : "Grátis até"} {dataCurta(acesso.ate)}. Depois, as visões
+            de Vagas e de Candidatos com cadeado vêm nos{" "}
             <Link href="/painel/planos" className="font-semibold text-ink underline underline-offset-2">
               planos
             </Link>

@@ -195,8 +195,8 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
           <p className="text-body-sm text-ink-muted">{textoConectar}</p>
           {acesso?.liberado && !acesso.plano && acesso.ate && (
             <p className="text-body-sm text-ink-muted">
-              Nos 15 dias grátis, até {dataCurta(acesso.ate)}: {acesso.hoje} de {acesso.limite} contatos nas últimas 24
-              horas.
+              {acesso.promocao ? "Na promoção de lançamento" : "Nos 15 dias grátis"}, até {dataCurta(acesso.ate)}:{" "}
+              {acesso.hoje} de {acesso.limite} contatos nas últimas 24 horas.
             </p>
           )}
           <BotaoConectar

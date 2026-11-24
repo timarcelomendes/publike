@@ -12,9 +12,11 @@ export type AcessoAsVisoes = {
   ate: string | null;
   /** a conta já usou os 15 dias */
   testou: boolean;
+  /** liberadas na promoção de lançamento, até `ate` (migração 20270918140000) */
+  promocao: boolean;
 };
 
-const SEM: AcessoAsVisoes = { disponivel: false, liberado: false, plano: false, ate: null, testou: false };
+const SEM: AcessoAsVisoes = { disponivel: false, liberado: false, plano: false, ate: null, testou: false, promocao: false };
 
 export async function acessoAsVisoes(): Promise<AcessoAsVisoes> {
   if (MODO_DEMO) return SEM;
@@ -24,8 +26,15 @@ export async function acessoAsVisoes(): Promise<AcessoAsVisoes> {
     if (error && error.code !== "PGRST202") console.error("Publike: não deu para ler as visões das vagas:", error.message);
     return SEM;
   }
-  const d = data as { plano?: boolean; testou?: boolean; sem_prazo?: boolean; ate?: string | null };
+  const d = data as { plano?: boolean; testou?: boolean; sem_prazo?: boolean; ate?: string | null; promocao?: boolean };
   const plano = d.plano === true;
   const ate = typeof d.ate === "string" ? d.ate : null;
-  return { disponivel: true, plano, ate, testou: d.testou === true, liberado: plano || Boolean(ate) || d.sem_prazo === true };
+  return {
+    disponivel: true,
+    plano,
+    ate,
+    testou: d.testou === true,
+    promocao: d.promocao === true,
+    liberado: plano || Boolean(ate) || d.sem_prazo === true,
+  };
 }

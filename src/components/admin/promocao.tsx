@@ -22,6 +22,9 @@ const RECURSOS = [
   { id: "video", nome: "Entrevista em vídeo" },
   { id: "automacoes", nome: "Automações" },
   { id: "salarios", nome: "Consulta de salários" },
+  // migração 20270918140000
+  { id: "visoes", nome: "Visões das vagas" },
+  { id: "contato_no_convite", nome: "Contato no convite" },
 ];
 
 const TIPO: Record<string, string> = {
@@ -69,6 +72,8 @@ export function LiberarPromocao() {
     };
   }, [busca, conta]);
 
+  // os recursos que a conta escolhida ainda não tem (com "Tudo", vão todos de uma vez)
+  const livres = RECURSOS.map((r) => r.id).filter((id) => !conta?.ja_tem?.includes(id));
   const marcar = (id: string) =>
     setRecursos((rs) =>
       rs.includes(id) ? rs.filter((r) => r !== id) : [...rs, id],
@@ -160,6 +165,17 @@ export function LiberarPromocao() {
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-label">Recursos</legend>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {/* "Tudo": marca (ou desmarca) todos os que a conta ainda não tem */}
+          <label className="flex items-center gap-2 text-body-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={livres.length > 0 && livres.every((r) => recursos.includes(r))}
+              disabled={!livres.length}
+              onChange={(e) => setRecursos(e.target.checked ? livres : [])}
+              className="size-4"
+            />
+            Tudo
+          </label>
           {RECURSOS.map((r) => {
             const jaTem = Boolean(conta?.ja_tem?.includes(r.id));
             return (
