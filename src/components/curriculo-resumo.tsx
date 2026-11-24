@@ -1,5 +1,5 @@
 import { frasesDoJeito } from "@/lib/jeito-de-trabalhar";
-import { FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/basicos";
 import { nomeDisponibilidade } from "@/lib/constantes";
@@ -98,9 +98,12 @@ export function CurriculoResumo({
   hoje,
   empresas,
   compacto = false,
+  baixar,
 }: {
   curriculo: Curriculo;
   linkPdf: string | null;
+  /** o "Baixar currículo em PDF" de quem anunciou a vaga (`/api/painel/curriculo/<vaga>/<pessoa>`) */
+  baixar?: string;
   hoje: string;
   /** as empresas das experiências que têm conta no Publike (`empresasDosTrabalhos`) */
   empresas?: EmpresasDosTrabalhos;
@@ -180,16 +183,30 @@ export function CurriculoResumo({
           <Pilulas itens={curriculo.cursos} compacto={compacto} />
         </div>
       )}
-      {linkPdf && (
-        <a
-          href={linkPdf}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center gap-2 self-start rounded-md border border-line-strong bg-surface-200 px-4 text-label hover:bg-surface-300"
-        >
-          <FileText aria-hidden className="size-[18px]" />
-          Abrir currículo em PDF
-        </a>
+      {(linkPdf || baixar) && (
+        <div className="flex flex-wrap gap-2">
+          {baixar && (
+            <a
+              href={baixar}
+              download
+              className="inline-flex min-h-11 items-center gap-2 self-start rounded-md border border-line-strong bg-surface-200 px-4 text-label hover:bg-surface-300"
+            >
+              <Download aria-hidden className="size-[18px]" />
+              Baixar currículo em PDF
+            </a>
+          )}
+          {linkPdf && (
+            <a
+              href={linkPdf}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-2 self-start rounded-md border border-line-strong bg-surface-200 px-4 text-label hover:bg-surface-300"
+            >
+              <FileText aria-hidden className="size-[18px]" />
+              Abrir currículo em PDF
+            </a>
+          )}
+        </div>
       )}
     </div>
   );

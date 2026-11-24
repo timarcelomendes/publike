@@ -269,6 +269,20 @@ export function FichaCandidato({
             </span>
           )}
         </p>
+        {/* o currículo à mão, no alto (24/11/2026; Marcelo: "adicione Ver currículo no alto do perfil do candidato") */}
+        {c.curriculo && (
+          <div className="col-span-2 col-start-2 mt-2">
+            <JanelaDoCurriculo nome={primeiro} rotulo="Ver currículo">
+              <CurriculoResumo
+                curriculo={c.curriculo}
+                linkPdf={c.curriculo.link_pdf}
+                hoje={hoje}
+                empresas={empresas}
+                baixar={`/api/painel/curriculo/${c.anuncio_id}/${c.perfil_id}`}
+              />
+            </JanelaDoCurriculo>
+          </div>
+        )}
       </header>
 
       {naModeracao ? (
@@ -439,7 +453,13 @@ export function FichaCandidato({
               <div className="flex flex-col gap-3">
                 <ResumoDoCurriculo curriculo={c.curriculo} />
                 <JanelaDoCurriculo nome={primeiro}>
-                  <CurriculoResumo curriculo={c.curriculo} linkPdf={c.curriculo.link_pdf} hoje={hoje} empresas={empresas} />
+                  <CurriculoResumo
+                    curriculo={c.curriculo}
+                    linkPdf={c.curriculo.link_pdf}
+                    hoje={hoje}
+                    empresas={empresas}
+                    baixar={`/api/painel/curriculo/${c.anuncio_id}/${c.perfil_id}`}
+                  />
                 </JanelaDoCurriculo>
               </div>
             ) : c.curriculoFalhou ? (

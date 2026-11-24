@@ -411,6 +411,7 @@ async function Conteudo({
                             linkPdf={curriculo.link_pdf}
                             hoje={hoje}
                             empresas={empresas}
+                            baixar={`/api/painel/curriculo/${anuncio.id}/${p.perfil_id}`}
                           />
                         </div>
                       </details>

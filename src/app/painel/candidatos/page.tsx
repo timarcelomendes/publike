@@ -725,7 +725,13 @@ function CartaoCandidato({
         <div className="flex flex-col gap-3 border-t border-line px-4 py-4 sm:px-5">
           <Bloco titulo="Currículo" icone={<FileText aria-hidden className="size-4 shrink-0 text-ink-muted" />}>
             {curriculo ? (
-              <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} empresas={empresas} />
+              <CurriculoResumo
+                curriculo={curriculo}
+                linkPdf={curriculo.link_pdf}
+                hoje={hoje}
+                empresas={empresas}
+                baixar={`/api/painel/curriculo/${c.anuncio_id}/${c.perfil_id}`}
+              />
             ) : curriculoFalhou ? (
               <Link href={`/painel/anuncio/${c.anuncio_id}`} className="text-body-sm underline underline-offset-2">
                 Ver o currículo na vaga
