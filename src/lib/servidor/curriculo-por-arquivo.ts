@@ -88,7 +88,28 @@ export async function responderCurriculoDoArquivo(
   return true;
 }
 
-type Midia = { wamid: string; tipo: "imagem" | "pdf"; midia: string; mime: string | null };
+export type Midia = { wamid: string; tipo: "imagem" | "pdf"; midia: string; mime: string | null };
+
+/** Baixa da Meta as fotos (em JPEG para a IA) ou o PDF. */
+export async function baixarParaLer(cfg: ConfigMeta, midias: Midia[]) {
+  const imagens: string[] = [];
+  let pdf: string | null = null;
+  for (const m of midias) {
+    const r = await baixarFotoOuPdf(cfg, m.midia);
+    if (!r.ok) {
+      console.error("Publike: o currículo do WhatsApp não baixou:", r.erro);
+      continue;
+    }
+    if (m.tipo === "pdf" || r.mime === "application/pdf") {
+      if (!pdf && r.bytes.length <= MAX_PDF && r.bytes.subarray(0, 5).toString() === "%PDF-")
+        pdf = `data:application/pdf;base64,${r.bytes.toString("base64")}`;
+      continue;
+    }
+    const foto = await fotoParaLer(r.bytes, r.mime || m.mime || "");
+    if (foto && imagens.length < MAX_FOTOS) imagens.push(foto);
+  }
+  return { imagens, pdf };
+}
 
 /**
  * Quem procura trabalho mandou foto ou PDF: baixa o que chegou nesta vez e lê como currículo. false: segue como antes
@@ -106,22 +127,7 @@ export async function lerCurriculoMandado(p: Comum & { cfg: ConfigMeta; wamid: s
   if ((vez.leituras_hoje ?? 0) >= LEITURAS_POR_DIA) return false;
 
   await marcarLidaDigitando(p.cfg, p.wamid).catch(() => undefined);
-  const imagens: string[] = [];
-  let arquivo: string | null = null;
-  for (const m of pdf ? [pdf] : fotos) {
-    const r = await baixarFotoOuPdf(p.cfg, m.midia);
-    if (!r.ok) {
-      console.error("Publike: o currículo do WhatsApp não baixou:", r.erro);
-      continue;
-    }
-    if (m.tipo === "pdf" || r.mime === "application/pdf") {
-      if (r.bytes.length <= MAX_PDF && r.bytes.subarray(0, 5).toString() === "%PDF-")
-        arquivo = `data:application/pdf;base64,${r.bytes.toString("base64")}`;
-      continue;
-    }
-    const foto = await fotoParaLer(r.bytes, r.mime || m.mime || "");
-    if (foto) imagens.push(foto);
-  }
+  const { imagens, pdf: arquivo } = await baixarParaLer(p.cfg, pdf ? [pdf] : fotos);
   const inicio = Date.now();
   const respondeu = await responderCurriculoDoArquivo({ ...p, imagens, pdf: arquivo });
   // a leitura conta no limite do dia e as fotos ficam como lidas (o mesmo registro do Publicar pelo WhatsApp)

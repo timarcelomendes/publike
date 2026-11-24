@@ -28,7 +28,7 @@ import {
 } from "./whatsapp";
 import { BOTAO_AGORA_NAO, BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
 import { curriculoPeloWhatsappLigado, seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
-import { lerCurriculoMandado, responderCurriculoDoArquivo } from "./curriculo-por-arquivo";
+import { baixarParaLer, lerCurriculoMandado, responderCurriculoDoArquivo, type Midia } from "./curriculo-por-arquivo";
 import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 import {
   configVagasWhatsapp,
@@ -2691,6 +2691,45 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
   });
   let enviados = 0;
   let falhas = 0;
+  // os currículos que ficaram sem abrir antes da leitura pelo WhatsApp (migração 20270921120000; sem ela, nada; um por
+  // rodada, pelo tempo da IA): o
+  // arquivo que a pessoa mandou é lido agora e vai o currículo pronto, uma vez por conversa, dentro da janela
+  const { data: semAbrir, error: erroSemAbrir } = await banco.rpc("servidor_curriculos_sem_abrir", { p_chave: chave, p_limite: 1 });
+  if (!erroSemAbrir)
+    for (const c of (semAbrir ?? []) as unknown as { conversa: string; numero: string; nome: string | null; midias: Midia[] | null }[]) {
+      const feito = (resultado: string) =>
+        banco.rpc("servidor_curriculo_relido", { p_chave: chave, p_conversa: c.conversa, p_resultado: resultado });
+      const midias = c.midias ?? [];
+      const pdf = midias.find((x) => x.tipo === "pdf");
+      if (!midias.length) {
+        await feito("sem arquivo guardado");
+        continue;
+      }
+      // marca antes: se a leitura demorar e o robô rodar de novo, não manda duas vezes
+      await feito("lendo");
+      const baixado = await baixarParaLer(cfg, pdf ? [pdf] : midias.filter((x) => x.tipo === "imagem"));
+      const nome = primeiroNome(c.nome);
+      let saiu = false;
+      const respondeu = await responderCurriculoDoArquivo({
+        banco,
+        chave,
+        conversa: c.conversa,
+        numero: c.numero,
+        nome: c.nome,
+        modelo: modeloDoLer,
+        saida: async (texto, extra) => {
+          const r = await mandarDoRobo(cfg, banco, chave, c.conversa, c.numero, texto, extra?.botao ?? null);
+          saiu = r.ok;
+          if (!r.ok) console.error("Publike: o currículo relido não saiu:", r.erro);
+        },
+        ola: `${nome ? `Oi, ${nome}!` : "Oi!"} Mais cedo eu não consegui abrir o currículo que você mandou, mas agora já consigo. 😊\n\n`,
+        agora: new Date(),
+        ...baixado,
+      }).catch(() => false);
+      await feito(respondeu ? (saiu ? "mandado" : "não saiu") : "não deu para ler como currículo");
+      if (respondeu && saiu) enviados++;
+      else if (respondeu) falhas++;
+    }
   // a vaga preparada mandada de novo pela equipe (Admin › Publicar pelo WhatsApp; migração 20270916160000; sem ela, nada)
   const { data: deNovo, error: erroDeNovo } = await banco.rpc("servidor_whatsapp_reenvios", { p_chave: chave });
   if (!erroDeNovo)
