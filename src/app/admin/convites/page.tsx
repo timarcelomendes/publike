@@ -87,10 +87,32 @@ function SubAbas({ ativa, total }: { ativa: Aba; total: number | null }) {
   );
 }
 
+/**
+ * Todos os convites, de 1.000 em 1.000 (o banco devolve no máximo 1.000 por pedido). Antes era um pedido só, com
+ * `limit(1000)` dos mais antigos: com 1.072 convites, os 72 mais novos (as agências de 24/11/2026) sumiam da lista.
+ */
+async function todosOsConvites(c: Awaited<ReturnType<typeof exigirAdminLocal>>) {
+  const POR_VEZ = 1000;
+  const linhas: unknown[] = [];
+  for (let de = 0; de < 20_000; de += POR_VEZ) {
+    const { data, error } = await c
+      .from("convites")
+      .select("*")
+      .order("criado_em")
+      .order("nome")
+      .order("id")
+      .range(de, de + POR_VEZ - 1);
+    if (error) return { data: null, error };
+    linhas.push(...(data ?? []));
+    if (!data || data.length < POR_VEZ) break;
+  }
+  return { data: linhas, error: null };
+}
+
 async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | undefined> }) {
   const c = await exigirAdminLocal();
   const [{ data, error }, agora, emailDoDia] = await Promise.all([
-    c.from("convites").select("*").order("criado_em").order("nome").limit(1000),
+    todosOsConvites(c),
     agoraDaRequisicao(),
     // os convites por e-mail de hoje e o limite (migração 20270913120000; sem ela, nada)
     c.rpc("admin_convites_email").then((r) => (r.error ? null : (r.data as unknown as { hoje: number; por_dia: number }))),

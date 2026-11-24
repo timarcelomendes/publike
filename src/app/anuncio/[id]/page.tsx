@@ -168,6 +168,15 @@ async function paraAsParecidasOu404(id: string): Promise<never> {
   notFound();
 }
 
+/** A escolaridade mínima nas categorias que o Google Vagas aceita em `educationRequirements`. */
+function credencialDoGoogle(escolaridade: string | null | undefined) {
+  if (escolaridade === "medio" || escolaridade === "superior_incompleto") return "high school";
+  if (escolaridade === "tecnico") return "professional certificate";
+  if (escolaridade === "superior") return "bachelor degree";
+  if (escolaridade === "pos") return "postgraduate degree";
+  return null;
+}
+
 export default function PaginaAnuncio({ params, searchParams }: PageProps<"/anuncio/[id]">) {
   return (
     <Suspense fallback={<EsqueletoAnuncio />}>
@@ -266,7 +275,16 @@ function dadosVaga(a: AnuncioCompleto) {
           },
         }
       : {}),
-    ...(a.escolaridade_minima ? { educationRequirements: nomeEscolaridade(a.escolaridade_minima) } : {}),
+    // o Google só aceita as categorias dele (o Search Console avisava "Valor de enumeração inválido" com "Ensino médio
+    // completo"; 24/11/2026): o fundamental e o médio incompleto ficam de fora
+    ...(credencialDoGoogle(a.escolaridade_minima)
+      ? {
+          educationRequirements: {
+            "@type": "EducationalOccupationalCredential",
+            credentialCategory: credencialDoGoogle(a.escolaridade_minima),
+          },
+        }
+      : {}),
     // comissão, bônus, gorjeta...: o Google mostra junto do salário
     ...(ganhosDoBanco(a.ganhos_extras, a.comissao).length
       ? { incentiveCompensation: ganhosDoBanco(a.ganhos_extras, a.comissao).map(textoDoGanho).join("; ") }
