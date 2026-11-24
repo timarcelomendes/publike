@@ -450,3 +450,8 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 
 - `prontos_das_minhas_vagas()` conta, por vaga no ar da conta (até 30), as pessoas prontas com as regras de `prontos_para_a_vaga` (sem montar a lista). `src/lib/servidor/prontos.ts` (`prontosDasMinhasVagas`, `linkDosProntos`) leva a `/talentos?vaga=<id>#prontos-titulo`.
 - Aparece em quatro lugares: Hoje (um cartão em Para fazer, a vaga com menos candidatos primeiro), Vagas (na coluna Agora, nas visões Lista e Pelo que pede você), a vaga (faixa verde embaixo dos números, na aba Candidatos) e a Mesa (no fim dos Novos, "Quer mais gente?").
+
+## O e-mail dos candidatos novos (24/11/2026; migração 20270923120000)
+
+- A curtida não manda mais um e-mail por candidato por padrão: `enfileirar_email` olha `privado.email_candidatos` (sem linha = 'tres'). 'tres': junta os candidatos pendentes desde o último e-mail de candidatos (ou 7 dias) e, com 3 ou mais, manda um "candidatos_novos" (quantos e as vagas, para `/painel/candidatos?situacao=responder`; no máximo 1 por hora, em Admin › E-mails). 'cada': como antes. 'nenhum': sem e-mail de candidato.
+- Preferências › Avisos tem a escolha para quem publica (`PreferenciaEmailCandidatos`, `mudar_email_candidatos`; recrutador não muda). O lembrete de 24 h/72 h (lembrete_curtida) continua para quem tem 1 ou 2 parados.

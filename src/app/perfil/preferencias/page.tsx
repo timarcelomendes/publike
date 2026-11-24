@@ -6,6 +6,7 @@ import { FormAvisos } from "@/components/avisos/form-avisos";
 import { AtivarNotificacoes } from "@/components/notificacoes-celular";
 import { PreferenciaConviteAutomatico } from "@/components/convite-automatico/preferencia";
 import { EscolherAparencia } from "@/components/preferencias/aparencia";
+import { PreferenciaEmailCandidatos } from "@/components/preferencias/email-candidatos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { RolarParaAncora } from "@/components/ui/rolar-para-ancora";
@@ -57,13 +58,15 @@ async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/perfil/preferencias");
   const supabase = await criarClienteServidor();
-  const [perfil, { data: desligados, error }, whatsapp, leitura, convites] = await Promise.all([
+  const [perfil, { data: desligados, error }, whatsapp, leitura, convites, emailCandidatos] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     supabase.rpc("meus_avisos_desligados"),
     meuWhatsapp(),
     supabase.rpc("minha_confirmacao_de_leitura"),
     // o convite automático (migração 20270418120000): sem a migração, a opção não aparece
     supabase.rpc("recebo_convites_automaticos"),
+    // o e-mail dos candidatos novos (migração 20270923120000): sem a migração, a opção não aparece
+    supabase.rpc("meu_email_candidatos"),
   ]);
   if (error) console.error(`Publike: falha ao ler os avisos desligados: ${error.message}`);
   const vapid = vapidPublica();
@@ -118,6 +121,9 @@ async function Conteudo() {
           />
         )}
         {!empresa && !convites.error && <PreferenciaConviteAutomatico recebe={convites.data !== false} />}
+        {empresa && !emailCandidatos.error && typeof emailCandidatos.data === "string" && (
+          <PreferenciaEmailCandidatos inicial={emailCandidatos.data} pode={pode} />
+        )}
         <p className="text-body-sm text-ink-muted">
           Os avisos sobre a sua conta e a moderação dos anúncios chegam sempre. As buscas e as empresas que avisam de
           vaga nova ficam em{" "}
