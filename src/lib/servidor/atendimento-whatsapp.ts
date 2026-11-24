@@ -797,15 +797,16 @@ async function escolherVagasComIA<A extends { id: string; titulo: string; bairro
     const abertura = String(j.abertura ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
     return { escolhidas, abertura, modelo: r.modelo, ms: Date.now() - inicio };
   };
-  // a comparação (migração 20270924120000): até COMPARAR_ESCOLHA_ATE, o Haiku escolhe junto, ao mesmo tempo, só para
-  // guardar lado a lado; a pessoa recebe a do modelo de Admin › IA
+  // a comparação (migração 20270924120000): até COMPARAR_ESCOLHA_ATE, outro modelo escolhe junto, ao mesmo tempo, só
+  // para guardar lado a lado (o Haiku, ou o escolhido em Admin › IA para a comparação); a pessoa recebe a do modelo de
+  // Admin › IA para a escolha
   const comparar = Date.now() < Date.parse(COMPARAR_ESCOLHA_ATE);
   const [principal, outra] = await Promise.all([
     pedir("whatsapp_escolher_vagas", modelo, false).catch((erro) => {
       console.error("Publike: a IA não escolheu as vagas:", erro instanceof Error ? erro.message : erro);
       return null;
     }),
-    comparar ? pedir("whatsapp_escolher_vagas_comparar", MODELO_COMPARADO, true).catch(() => null) : Promise.resolve(null),
+    comparar ? pedir("whatsapp_escolher_vagas_comparar", MODELO_COMPARADO, false).catch(() => null) : Promise.resolve(null),
   ]);
   if (comparar) {
     const acesso = acessoFila();

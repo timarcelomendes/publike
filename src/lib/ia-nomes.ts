@@ -46,7 +46,7 @@ export const USOS_IA = [
     id: "whatsapp_escolher_vagas_comparar",
     grupo: "chat",
     nome: "Busca do WhatsApp: escolher as vagas (comparação)",
-    ajuda: "Até 7/12, o Haiku escolhe junto, só para comparar com o modelo de cima. A pessoa não recebe esta escolha.",
+    ajuda: "Até 7/12, este modelo escolhe junto (o Haiku, se não escolher outro), só para comparar com o de cima. A pessoa não recebe esta escolha.",
   },
   // a revisão
   { id: "revisar_anuncio", grupo: "revisao", nome: "Revisar anúncios", ajuda: "Cada anúncio novo ou editado: golpe, cobrança, discriminação." },
