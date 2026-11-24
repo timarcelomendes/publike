@@ -401,7 +401,8 @@
   "20270916170000_whatsapp_modo_de_teste_avisado",
   "20270917120000_admin_recursos_pagos",
   "20270917130000_divulgar_limite_da_triagem",
-  "20270918120000_promocao_de_lancamento"
+  "20270918120000_promocao_de_lancamento",
+  "20270918130000_buscar_contas_sem_os_liberados"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3541,7 +3542,7 @@
   "f|public.enviar_mensagem(p_anuncio uuid, p_perfil uuid, p_texto text)": "7063fb8f38",
   "f|public.enviar_mensagem_para(p_outro uuid, p_texto text)": "3f7729dbd8",
   "f|public.enviar_sugestao(p_tipo text, p_texto text, p_pagina text, p_email text)": "394a8e91f9",
-  "f|public.equipe_buscar_contas(p_busca text)": "68cb049716",
+  "f|public.equipe_buscar_contas(p_busca text)": "daa8b8f765",
   "f|public.equipe_conversas_moderacao(p_anuncios uuid[])": "ad5eed6ffe",
   "f|public.equipe_da_conta()": "703ea4abe2",
   "f|public.equipe_empresas_esperando(p_conta uuid)": "1925781e4c",

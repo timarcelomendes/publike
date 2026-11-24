@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CreditCard, Gift, Rocket, Sparkles, Unlock } from "lucide-react";
 import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Numero, Secao } from "@/components/admin/ui";
@@ -10,6 +11,7 @@ import {
   formatarMoeda,
   formatarNumero,
   rotuloConta,
+  primeiro,
 } from "@/lib/formato";
 import {
   ehProduto,
@@ -115,11 +117,73 @@ const NOME_COMO: Record<Como, string> = {
   promocao: "Promoção de lançamento",
 };
 
-export default function RecursosPagos() {
+const ABAS = [
+  { id: "liberados", nome: "Liberados", icone: Unlock },
+  { id: "promocao", nome: "Promoção de lançamento", icone: Gift },
+  { id: "assinaturas", nome: "Assinaturas", icone: CreditCard },
+  { id: "gratis", nome: "Grátis do mês", icone: Sparkles },
+  { id: "impulsos", nome: "Impulsos", icone: Rocket },
+] as const;
+type Aba = (typeof ABAS)[number]["id"];
+
+export default function RecursosPagos({
+  searchParams,
+}: PageProps<"/admin/recursos-pagos">) {
   return (
     <Suspense fallback={<EsqueletoAdmin />}>
-      <Conteudo />
+      {searchParams.then((sp) => {
+        const pedida = primeiro(sp.aba);
+        return (
+          <Conteudo
+            aba={
+              ABAS.some((a) => a.id === pedida) ? (pedida as Aba) : "liberados"
+            }
+          />
+        );
+      })}
     </Suspense>
+  );
+}
+
+const linkDaAba = (id: Aba) =>
+  id === "liberados"
+    ? "/admin/recursos-pagos"
+    : `/admin/recursos-pagos?aba=${id}`;
+
+/** As sub-abas da tela, com o número de cada uma. */
+function SubAbas({
+  ativa,
+  numeros,
+}: {
+  ativa: Aba;
+  numeros: Record<Aba, number>;
+}) {
+  return (
+    <nav
+      aria-label="Recursos pagos"
+      className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+    >
+      {ABAS.map(({ id, nome, icone: Icone }) => {
+        const atual = id === ativa;
+        return (
+          <Link
+            key={id}
+            href={linkDaAba(id)}
+            scroll={false}
+            aria-current={atual ? "page" : undefined}
+            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
+              atual
+                ? "border-ink bg-ink text-surface-100"
+                : "border-line bg-surface-300 text-ink hover:border-line-strong"
+            }`}
+          >
+            <Icone aria-hidden className="size-4" />
+            {nome}
+            <span className="tabular-nums opacity-70">{numeros[id]}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -270,7 +334,7 @@ function TabelaDeLiberados({
   );
 }
 
-async function Conteudo() {
+async function Conteudo({ aba }: { aba: Aba }) {
   // o admin do computador do dono ou, no site no ar, a equipe publike.org (migração 20270918120000; Admin › Quem vê
   // cada tela)
   const admin = await ehAdminLocal();
@@ -311,6 +375,14 @@ async function Conteudo() {
   const gratisDeFora = d.gratis.filter(deFora);
   const impulsosComprados = d.impulsos.reduce((s, i) => s + i.compra, 0);
   const valorImpulsos = d.impulsos.reduce((s, i) => s + Number(i.valor), 0);
+  const naPromocao = ativos.filter((l) => l.como === "promocao");
+  const numeros: Record<Aba, number> = {
+    liberados: ativos.length,
+    promocao: naPromocao.length,
+    assinaturas: d.assinaturas.filter((a) => a.situacao === "ativa").length,
+    gratis: d.gratis.length,
+    impulsos: d.impulsos.length,
+  };
   const mes = new Intl.DateTimeFormat("pt-BR", {
     month: "long",
     timeZone: "America/Sao_Paulo",
@@ -320,217 +392,254 @@ async function Conteudo() {
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Numero
+          href={linkDaAba("assinaturas")}
           rotulo="Assinaturas ativas"
           valor={assinaturasAtivas.length}
           detalhe={`${formatarMoeda(porMes)} por mês, sem as de teste`}
         />
         <Numero
+          href={linkDaAba("liberados")}
           rotulo="Recursos liberados agora"
           valor={ativos.filter(deFora).length}
           detalhe={`${contasLiberadas === 1 ? "em 1 conta" : `em ${contasLiberadas} contas`}, sem as de teste`}
         />
         <Numero
+          href={linkDaAba("gratis")}
           rotulo={`Usam o grátis de ${mes}`}
           valor={gratisDeFora.length}
-          detalhe={`${gratisDeFora.filter(noLimite).length} já chegaram ao limite`}
+          detalhe={
+            gratisDeFora.filter(noLimite).length === 1
+              ? "1 já chegou ao limite"
+              : `${gratisDeFora.filter(noLimite).length} já chegaram ao limite`
+          }
           alerta={gratisDeFora.some(noLimite)}
         />
         <Numero
+          href={linkDaAba("impulsos")}
           rotulo="Impulsos comprados (60 dias)"
           valor={impulsosComprados}
           detalhe={`${formatarMoeda(valorImpulsos)}; ${d.impulsos.reduce((s, i) => s + i.total, 0)} impulsos ao todo`}
         />
       </div>
 
-      <Secao
-        titulo="Promoção de lançamento"
-        descricao="Libere recursos pagos para uma conta, sem custo, até uma data. A empresa vê “Promoção de lançamento até…” em cada recurso, recebe o aviso no sino e, 3 dias antes do fim, outro aviso para assinar."
-      >
-        <LiberarPromocao />
-      </Secao>
+      <SubAbas ativa={aba} numeros={numeros} />
 
-      <Secao
-        titulo="Liberados agora"
-        descricao="Quem tem cada recurso pago ligado hoje e como ganhou: pela assinatura, nos 15 dias grátis, na promoção de lançamento ou liberado pelo Publike sem prazo."
-      >
-        {ativos.length ? (
-          <TabelaDeLiberados linhas={ativos} admin={admin} />
-        ) : (
-          <p className="text-body-sm text-ink-muted">
-            Nenhuma conta tem recurso pago ligado agora.
-          </p>
-        )}
-        {acabaram.length > 0 && (
-          <details className="text-body-sm">
-            <summary className="cursor-pointer font-semibold">
-              Já acabaram ({acabaram.length})
-            </summary>
-            <div className="mt-3">
-              <TabelaDeLiberados linhas={acabaram} admin={admin} />
-            </div>
-          </details>
-        )}
-      </Secao>
+      {aba === "liberados" && (
+        <Secao
+          titulo="Liberados agora"
+          descricao="Quem tem cada recurso pago ligado hoje e como ganhou: pela assinatura, nos 15 dias grátis, na promoção de lançamento ou liberado pelo Publike sem prazo."
+        >
+          {ativos.length ? (
+            <TabelaDeLiberados linhas={ativos} admin={admin} />
+          ) : (
+            <p className="text-body-sm text-ink-muted">
+              Nenhuma conta tem recurso pago ligado agora.
+            </p>
+          )}
+          {acabaram.length > 0 && (
+            <details className="text-body-sm">
+              <summary className="cursor-pointer font-semibold">
+                Já acabaram ({acabaram.length})
+              </summary>
+              <div className="mt-3">
+                <TabelaDeLiberados linhas={acabaram} admin={admin} />
+              </div>
+            </details>
+          )}
+        </Secao>
+      )}
 
-      <Secao
-        titulo="Assinaturas"
-        descricao="As do sandbox e as das contas de teste vêm marcadas e não entram na conta de cima."
-      >
-        {d.assinaturas.length ? (
-          <Tabela
-            cabecalho={["Empresa", "Plano", "Valor", "Situação", "Desde"]}
+      {aba === "promocao" && (
+        <>
+          <Secao
+            titulo="Promoção de lançamento"
+            descricao="Libere recursos pagos para uma conta, sem custo, até uma data. A empresa vê “Promoção de lançamento até…” em cada recurso, recebe o aviso no sino e, 3 dias antes do fim, outro aviso para assinar."
           >
-            {d.assinaturas.map((a) => (
-              <tr
-                key={`${a.conta_id}-${a.recurso}-${a.criada_em}`}
-                className="align-top"
-              >
-                <td className="px-2 py-2">
-                  <Conta
-                    admin={admin}
-                    id={a.conta_id}
-                    nome={a.nome}
-                    teste={a.conta_de_teste}
-                  />
-                </td>
-                <td className="px-2 py-2">{nomeDoRecurso(a.recurso)}</td>
-                <td className="px-2 py-2 whitespace-nowrap">
-                  {formatarMoeda(Number(a.valor))}{" "}
-                  {NOME_CICLO[a.ciclo]?.toLowerCase()},{" "}
-                  {a.forma === "pix" ? "Pix" : "cartão"}
-                </td>
-                <td className="px-2 py-2">
-                  <span className="flex flex-wrap gap-1">
-                    <Selo
-                      variante={a.situacao === "ativa" ? "match" : "contorno"}
-                    >
-                      {a.situacao}
-                    </Selo>
-                    {a.sandbox && <Selo variante="contorno">Sandbox</Selo>}
-                  </span>
-                </td>
-                <td className="px-2 py-2 whitespace-nowrap">
-                  {formatarDataCurta(a.criada_em)}
-                  {a.cancelada_em && (
-                    <span className="block text-caption text-ink-muted">
-                      cancelada {formatarDataCurta(a.cancelada_em)}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </Tabela>
-        ) : (
-          <p className="text-body-sm text-ink-muted">Ninguém assinou ainda.</p>
-        )}
-      </Secao>
+            <LiberarPromocao />
+          </Secao>
 
-      <Secao
-        acoes={
-          // Convites só abre no computador do dono
-          admin ? (
-            <Link
-              href="/admin/convites?aba=divulgar&publico=limite"
-              className={classesBotao("secundario", "sm")}
+          <Secao
+            titulo="Na promoção agora"
+            descricao="As contas com a promoção valendo. “Acabar agora” tira só a promoção (a assinatura e os 15 dias ficam)."
+          >
+            {naPromocao.length ? (
+              <TabelaDeLiberados linhas={naPromocao} admin={admin} />
+            ) : (
+              <p className="text-body-sm text-ink-muted">
+                Ninguém na promoção ainda.
+              </p>
+            )}
+          </Secao>
+        </>
+      )}
+
+      {aba === "assinaturas" && (
+        <Secao
+          titulo="Assinaturas"
+          descricao="As do sandbox e as das contas de teste vêm marcadas e não entram na conta de cima."
+        >
+          {d.assinaturas.length ? (
+            <Tabela
+              cabecalho={["Empresa", "Plano", "Valor", "Situação", "Desde"]}
             >
-              Mandar mensagem a quem chegou ao limite
-            </Link>
-          ) : undefined
-        }
-        titulo={`Grátis de ${mes}`}
-        descricao={`Quem usa a parte grátis deste mês: a IA lê ${d.limite_triagem} candidatos e a empresa pede ${d.limite_gravadas} entrevistas gravadas. Quem chegou ao limite é quem mais precisa do plano.`}
-      >
-        {d.gratis.length ? (
-          <Tabela
-            cabecalho={["Empresa", "Lidos pela IA", "Gravadas pedidas", ""]}
-            min={560}
-          >
-            {d.gratis.map((g) => (
-              <tr key={g.conta_id} className="align-top">
-                <td className="px-2 py-2">
-                  <Conta
-                    admin={admin}
-                    id={g.conta_id}
-                    nome={g.nome}
-                    tipo={g.tipo}
-                    teste={g.conta_de_teste}
-                  />
-                </td>
-                <td className="px-2 py-2 text-right whitespace-nowrap">
-                  {g.lidos === null
-                    ? "Paga"
-                    : `${g.lidos} de ${d.limite_triagem}`}
-                </td>
-                <td className="px-2 py-2 text-right whitespace-nowrap">
-                  {g.pedidas === null
-                    ? "Paga"
-                    : `${g.pedidas} de ${d.limite_gravadas}`}
-                  {g.pedidas ? (
-                    <span className="block text-caption text-ink-muted">
-                      {g.enviadas} enviadas
+              {d.assinaturas.map((a) => (
+                <tr
+                  key={`${a.conta_id}-${a.recurso}-${a.criada_em}`}
+                  className="align-top"
+                >
+                  <td className="px-2 py-2">
+                    <Conta
+                      admin={admin}
+                      id={a.conta_id}
+                      nome={a.nome}
+                      teste={a.conta_de_teste}
+                    />
+                  </td>
+                  <td className="px-2 py-2">{nomeDoRecurso(a.recurso)}</td>
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    {formatarMoeda(Number(a.valor))}{" "}
+                    {NOME_CICLO[a.ciclo]?.toLowerCase()},{" "}
+                    {a.forma === "pix" ? "Pix" : "cartão"}
+                  </td>
+                  <td className="px-2 py-2">
+                    <span className="flex flex-wrap gap-1">
+                      <Selo
+                        variante={a.situacao === "ativa" ? "match" : "contorno"}
+                      >
+                        {a.situacao}
+                      </Selo>
+                      {a.sandbox && <Selo variante="contorno">Sandbox</Selo>}
                     </span>
-                  ) : null}
-                </td>
-                <td className="px-2 py-2">
-                  {noLimite(g) && <Selo variante="aviso">No limite</Selo>}
-                </td>
-              </tr>
-            ))}
-          </Tabela>
-        ) : (
-          <p className="text-body-sm text-ink-muted">
-            Ninguém usou o grátis deste mês ainda.
-          </p>
-        )}
-      </Secao>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    {formatarDataCurta(a.criada_em)}
+                    {a.cancelada_em && (
+                      <span className="block text-caption text-ink-muted">
+                        cancelada {formatarDataCurta(a.cancelada_em)}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </Tabela>
+          ) : (
+            <p className="text-body-sm text-ink-muted">
+              Ninguém assinou ainda.
+            </p>
+          )}
+        </Secao>
+      )}
 
-      <Secao
-        titulo="Impulsos dos últimos 60 dias"
-        descricao="Por conta: os comprados, os do crédito, as cortesias e os dados pela equipe (com os automáticos)."
-      >
-        {d.impulsos.length ? (
-          <Tabela
-            cabecalho={["Empresa", "Total", "Como", "Valor pago", "Último"]}
-          >
-            {d.impulsos.map((i) => (
-              <tr key={i.conta_id} className="align-top">
-                <td className="px-2 py-2">
-                  <Conta
-                    admin={admin}
-                    id={i.conta_id}
-                    nome={i.nome}
-                    tipo={i.tipo}
-                  />
-                </td>
-                <td className="px-2 py-2 text-right">{i.total}</td>
-                <td className="px-2 py-2">
-                  {[
-                    i.compra &&
-                      `${i.compra} comprado${i.compra > 1 ? "s" : ""}`,
-                    i.credito && `${i.credito} do crédito`,
-                    i.cortesia &&
-                      `${i.cortesia} cortesia${i.cortesia > 1 ? "s" : ""}`,
-                    i.admin &&
-                      `${i.admin} pela equipe${i.automaticos ? ` (${i.automaticos} automático${i.automaticos > 1 ? "s" : ""})` : ""}`,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")}
-                </td>
-                <td className="px-2 py-2 text-right whitespace-nowrap">
-                  {formatarMoeda(Number(i.valor))}
-                </td>
-                <td className="px-2 py-2 whitespace-nowrap">
-                  {formatarDataCurta(i.ultimo)}
-                </td>
-              </tr>
-            ))}
-          </Tabela>
-        ) : (
-          <p className="text-body-sm text-ink-muted">
-            Nenhum impulso nos últimos 60 dias.
-          </p>
-        )}
-      </Secao>
+      {aba === "gratis" && (
+        <Secao
+          acoes={
+            // Convites só abre no computador do dono
+            admin ? (
+              <Link
+                href="/admin/convites?aba=divulgar&publico=limite"
+                className={classesBotao("secundario", "sm")}
+              >
+                Mandar mensagem a quem chegou ao limite
+              </Link>
+            ) : undefined
+          }
+          titulo={`Grátis de ${mes}`}
+          descricao={`Quem usa a parte grátis deste mês: a IA lê ${d.limite_triagem} candidatos e a empresa pede ${d.limite_gravadas} entrevistas gravadas. Quem chegou ao limite é quem mais precisa do plano.`}
+        >
+          {d.gratis.length ? (
+            <Tabela
+              cabecalho={["Empresa", "Lidos pela IA", "Gravadas pedidas", ""]}
+              min={560}
+            >
+              {d.gratis.map((g) => (
+                <tr key={g.conta_id} className="align-top">
+                  <td className="px-2 py-2">
+                    <Conta
+                      admin={admin}
+                      id={g.conta_id}
+                      nome={g.nome}
+                      tipo={g.tipo}
+                      teste={g.conta_de_teste}
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-right whitespace-nowrap">
+                    {g.lidos === null
+                      ? "Paga"
+                      : `${g.lidos} de ${d.limite_triagem}`}
+                  </td>
+                  <td className="px-2 py-2 text-right whitespace-nowrap">
+                    {g.pedidas === null
+                      ? "Paga"
+                      : `${g.pedidas} de ${d.limite_gravadas}`}
+                    {g.pedidas ? (
+                      <span className="block text-caption text-ink-muted">
+                        {g.enviadas} enviadas
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-2 py-2">
+                    {noLimite(g) && <Selo variante="aviso">No limite</Selo>}
+                  </td>
+                </tr>
+              ))}
+            </Tabela>
+          ) : (
+            <p className="text-body-sm text-ink-muted">
+              Ninguém usou o grátis deste mês ainda.
+            </p>
+          )}
+        </Secao>
+      )}
+
+      {aba === "impulsos" && (
+        <Secao
+          titulo="Impulsos dos últimos 60 dias"
+          descricao="Por conta: os comprados, os do crédito, as cortesias e os dados pela equipe (com os automáticos)."
+        >
+          {d.impulsos.length ? (
+            <Tabela
+              cabecalho={["Empresa", "Total", "Como", "Valor pago", "Último"]}
+            >
+              {d.impulsos.map((i) => (
+                <tr key={i.conta_id} className="align-top">
+                  <td className="px-2 py-2">
+                    <Conta
+                      admin={admin}
+                      id={i.conta_id}
+                      nome={i.nome}
+                      tipo={i.tipo}
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-right">{i.total}</td>
+                  <td className="px-2 py-2">
+                    {[
+                      i.compra &&
+                        `${i.compra} comprado${i.compra > 1 ? "s" : ""}`,
+                      i.credito && `${i.credito} do crédito`,
+                      i.cortesia &&
+                        `${i.cortesia} cortesia${i.cortesia > 1 ? "s" : ""}`,
+                      i.admin &&
+                        `${i.admin} pela equipe${i.automaticos ? ` (${i.automaticos} automático${i.automaticos > 1 ? "s" : ""})` : ""}`,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </td>
+                  <td className="px-2 py-2 text-right whitespace-nowrap">
+                    {formatarMoeda(Number(i.valor))}
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    {formatarDataCurta(i.ultimo)}
+                  </td>
+                </tr>
+              ))}
+            </Tabela>
+          ) : (
+            <p className="text-body-sm text-ink-muted">
+              Nenhum impulso nos últimos 60 dias.
+            </p>
+          )}
+        </Secao>
+      )}
     </div>
   );
 }

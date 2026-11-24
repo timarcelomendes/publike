@@ -126,7 +126,14 @@ export function LiberarPromocao() {
               <li key={a.id}>
                 <button
                   type="button"
-                  onClick={() => setConta(a)}
+                  onClick={() => {
+                    setConta(a);
+                    // o que ela já tem sai da escolha; marca o primeiro que falta
+                    const falta = RECURSOS.find(
+                      (r) => !(a.ja_tem ?? []).includes(r.id),
+                    );
+                    setRecursos(falta ? [falta.id] : []);
+                  }}
                   className="flex w-full flex-col items-start px-3 py-2 text-left text-body-sm hover:bg-surface-300"
                 >
                   <span className="font-semibold">{a.nome}</span>
@@ -135,6 +142,14 @@ export function LiberarPromocao() {
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
+                  {(a.ja_tem ?? []).length > 0 && (
+                    <span className="text-caption text-ink-muted">
+                      Já tem:{" "}
+                      {RECURSOS.filter((r) => a.ja_tem?.includes(r.id))
+                        .map((r) => r.nome)
+                        .join(", ")}
+                    </span>
+                  )}
                 </button>
               </li>
             ))}
@@ -145,17 +160,25 @@ export function LiberarPromocao() {
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-label">Recursos</legend>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {RECURSOS.map((r) => (
-            <label key={r.id} className="flex items-center gap-2 text-body-sm">
-              <input
-                type="checkbox"
-                checked={recursos.includes(r.id)}
-                onChange={() => marcar(r.id)}
-                className="size-4"
-              />
-              {r.nome}
-            </label>
-          ))}
+          {RECURSOS.map((r) => {
+            const jaTem = Boolean(conta?.ja_tem?.includes(r.id));
+            return (
+              <label
+                key={r.id}
+                className={`flex items-center gap-2 text-body-sm ${jaTem ? "text-ink-muted" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={!jaTem && recursos.includes(r.id)}
+                  disabled={jaTem}
+                  onChange={() => marcar(r.id)}
+                  className="size-4"
+                />
+                {r.nome}
+                {jaTem && <span className="text-caption">(já tem)</span>}
+              </label>
+            );
+          })}
         </div>
       </fieldset>
 
@@ -180,11 +203,21 @@ export function LiberarPromocao() {
       <div className="flex flex-col items-start gap-2">
         <Botao
           variante="primario"
-          disabled={pendente || !conta || !recursos.length || !ate}
+          disabled={
+            pendente ||
+            !conta ||
+            !recursos.some((r) => !conta.ja_tem?.includes(r)) ||
+            !ate
+          }
           onClick={() =>
             conta &&
             rodar(
-              () => liberarPromocao(conta.id, recursos, ate),
+              () =>
+                liberarPromocao(
+                  conta.id,
+                  recursos.filter((r) => !conta.ja_tem?.includes(r)),
+                  ate,
+                ),
               (r) => {
                 if (r.ok) {
                   setConta(null);

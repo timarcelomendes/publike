@@ -3608,7 +3608,7 @@ export type Database = {
       };
       equipe_buscar_contas: {
         Args: { p_busca: string };
-        Returns: { id: string; nome: string; tipo: string; email: string | null; cnpj: string | null }[];
+        Returns: { id: string; nome: string; tipo: string; email: string | null; cnpj: string | null; ja_tem: string[] }[];
       };
       equipe_liberar_promocao: { Args: { p_conta: string; p_recursos: string[]; p_ate: string }; Returns: Json };
       equipe_tirar_promocao: { Args: { p_conta: string; p_recurso: string }; Returns: boolean };

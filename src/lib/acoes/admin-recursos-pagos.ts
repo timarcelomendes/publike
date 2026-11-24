@@ -29,6 +29,8 @@ export type ContaAchada = {
   tipo: string;
   email: string | null;
   cnpj: string | null;
+  /** os recursos que a conta já usa agora (migração 20270918130000; sem ela, vazio) */
+  ja_tem?: string[] | null;
 };
 
 export async function buscarContasDaPromocao(
