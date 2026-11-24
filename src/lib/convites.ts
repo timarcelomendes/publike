@@ -763,8 +763,9 @@ export function mensagemConvite(
           `O Publike não concorre com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".`,
         ],
         [
-          "Quando vocês aceitam um candidato, ele recebe o WhatsApp e o e-mail da agência, nunca os do cliente. O cliente pode aparecer como empresa confidencial.",
-          "O candidato aceito recebe o WhatsApp e o e-mail da agência, nunca os do cliente, que pode aparecer como empresa confidencial.",
+          // 24/11/2026: a agência perguntou "vocês divulgam com nosso número? pras pessoas chegarem no nosso WhatsApp"
+          "Os candidatos chegam no WhatsApp de vocês: quem curte a vaga e é aceito recebe o WhatsApp da agência e chama direto (nunca o do cliente, que pode aparecer como empresa confidencial). Com o Contato direto, já chama sem esperar o aceite.",
+          "O candidato chega no WhatsApp de vocês: quando vocês aceitam, ele recebe o número da agência e chama direto, nunca o do cliente (que pode aparecer como empresa confidencial). Com o Contato direto, nem precisa esperar o aceite.",
         ],
         ["É grátis: sem plano e sem taxa por candidato.", "Não custa nada: sem plano e sem taxa por candidato."],
       ]),
@@ -831,7 +832,7 @@ export function mensagemConviteAgrupada(
     ]),
     itens,
     agencia
-      ? `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• É grátis: sem plano e sem taxa por candidato.`
+      ? `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• Os candidatos chegam no WhatsApp de vocês: quem curte e é aceito chama direto.\n• É grátis: sem plano e sem taxa por candidato.`
       : `• É grátis para a empresa e para o candidato: sem plano e sem taxa.\n• A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus.`,
     escolher(s, "fecha", DESPEDIDAS),
     ...lista

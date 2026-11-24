@@ -41,6 +41,8 @@ Se puderem repassar aos clientes, ajuda muito. Obrigado!`,
 
 Vocês podem publicar as vagas dos seus clientes no Publike, grátis e sem limite de candidatos, e já ver as pessoas prontas para assumir. O jeito mais rápido é pelo WhatsApp: mande a vaga em texto ou foto, e o Publike monta e publica.
 
+Os candidatos chegam no WhatsApp de vocês: quem curte a vaga e é aceito chama direto, e o número não fica exposto no anúncio.
+
 ${LINKS}
 
 Qualquer dúvida, é só me chamar.`,
