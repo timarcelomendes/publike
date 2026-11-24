@@ -1,5 +1,9 @@
 import { Gift } from "lucide-react";
-import { EXPLICA_CORTESIA, SELO_CORTESIA, SELO_CORTESIA_CURTO } from "@/lib/cortesia";
+import {
+  EXPLICA_CORTESIA,
+  SELO_CORTESIA,
+  SELO_CORTESIA_CURTO,
+} from "@/lib/cortesia";
 
 /**
  * A marca dos recursos pagos liberados por cortesia (Triagem com IA e Teste Prático). `curto`: a pílula pequena
@@ -19,8 +23,9 @@ export function SeloCortesia({
   // nos dias grátis, "faltam 3 dias": o leitor de tela ouve de quê
   const teste = Boolean(texto?.startsWith("falta"));
   // o que a marca quer dizer: os 15 dias, o grátis de cada mês ("5 grátis por mês", 18/11/2026) ou só pago
-  const explica =
-    !texto || texto.includes("15 dias")
+  const explica = texto?.toLowerCase().startsWith("promoção")
+    ? "Promoção de lançamento: o Publike liberou sem custo até essa data. Depois, é só assinar para continuar."
+    : !texto || texto.includes("15 dias")
       ? EXPLICA_CORTESIA
       : /grátis/i.test(texto)
         ? "Recurso pago, com uma parte grátis para usar sem assinar."

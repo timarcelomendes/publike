@@ -150,6 +150,8 @@ export const TELAS_DO_SITE: {
   },
   // a velocidade de verdade de quem abre o site (migração 20270709120000; só a equipe publike.org)
   { href: "/admin/velocidade", nome: "Velocidade", precisa: "equipe" },
+  // quem usa os recursos pagos e a promoção de lançamento (migração 20270918120000; só a equipe publike.org)
+  { href: "/admin/recursos-pagos", nome: "Recursos pagos", precisa: "equipe" },
 ];
 
 /** Todas as telas da lista, com o nome (as do menu e as que só existem no site, como Números). */

@@ -3606,6 +3606,12 @@ export type Database = {
         Args: { p_chave: string; p_conversa: string; p_token: string };
         Returns: Json;
       };
+      equipe_buscar_contas: {
+        Args: { p_busca: string };
+        Returns: { id: string; nome: string; tipo: string; email: string | null; cnpj: string | null }[];
+      };
+      equipe_liberar_promocao: { Args: { p_conta: string; p_recursos: string[]; p_ate: string }; Returns: Json };
+      equipe_tirar_promocao: { Args: { p_conta: string; p_recurso: string }; Returns: boolean };
       equipe_empresas_esperando: {
         Args: { p_conta?: string };
         Returns: Json;

@@ -17,14 +17,18 @@ import {
   NOME_PRODUTO,
   type Ciclo,
 } from "@/lib/pagamentos";
-import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { notFound } from "next/navigation";
+import { LiberarPromocao, TirarPromocao } from "@/components/admin/promocao";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = { title: "Recursos pagos" };
 
 // Quem usa os recursos pagos (23/11/2026; Marcelo: "Quero ver quem usa as features pagas, que habilitaram"; migração
 // 20270917120000): quem tem cada recurso liberado e como, as assinaturas, quem usa o grátis do mês e os impulsos.
 
-type Como = "assinatura" | "15_dias" | "publike";
+type Como = "assinatura" | "15_dias" | "publike" | "promocao";
 
 type Liberado = {
   recurso: string;
@@ -108,6 +112,7 @@ const NOME_COMO: Record<Como, string> = {
   assinatura: "Assinatura",
   "15_dias": "15 dias grátis",
   publike: "Liberado pelo Publike",
+  promocao: "Promoção de lançamento",
 };
 
 export default function RecursosPagos() {
@@ -123,20 +128,27 @@ function Conta({
   nome,
   tipo,
   teste,
+  admin,
 }: {
   id: string;
   nome: string;
   tipo?: string;
   teste?: boolean;
+  /** a ficha da conta só abre no computador do dono */
+  admin: boolean;
 }) {
   return (
     <span className="flex flex-col">
-      <Link
-        href={`/admin/usuarios/${id}`}
-        className="font-semibold underline-offset-2 hover:underline"
-      >
-        {nome}
-      </Link>
+      {admin ? (
+        <Link
+          href={`/admin/usuarios/${id}`}
+          className="font-semibold underline-offset-2 hover:underline"
+        >
+          {nome}
+        </Link>
+      ) : (
+        <span className="font-semibold">{nome}</span>
+      )}
       <span className="flex flex-wrap items-center gap-1 text-caption text-ink-muted">
         {tipo && rotuloConta(tipo)}
         {teste && <Selo variante="contorno">Conta de teste</Selo>}
@@ -200,15 +212,30 @@ function Tabela({
   );
 }
 
-function TabelaDeLiberados({ linhas }: { linhas: Liberado[] }) {
+function TabelaDeLiberados({
+  linhas,
+  admin,
+}: {
+  linhas: Liberado[];
+  admin: boolean;
+}) {
   return (
     <Tabela
-      cabecalho={["Empresa", "Recurso", "Como", "Desde", "Até", "Uso no mês"]}
+      cabecalho={[
+        "Empresa",
+        "Recurso",
+        "Como",
+        "Desde",
+        "Até",
+        "Uso no mês",
+        "",
+      ]}
     >
       {linhas.map((l) => (
         <tr key={`${l.conta_id}-${l.recurso}`} className="align-top">
           <td className="px-2 py-2">
             <Conta
+              admin={admin}
               id={l.conta_id}
               nome={l.nome}
               tipo={l.tipo}
@@ -232,6 +259,11 @@ function TabelaDeLiberados({ linhas }: { linhas: Liberado[] }) {
                 ? `${formatarNumero(l.uso_no_mes)} ${l.uso_no_mes === 1 ? "lido" : "lidos"}`
                 : `${formatarNumero(l.uso_no_mes)} ${l.uso_no_mes === 1 ? "pedida" : "pedidas"}`}
           </td>
+          <td className="px-2 py-2">
+            {l.como === "promocao" && l.ativo && (
+              <TirarPromocao contaId={l.conta_id} recurso={l.recurso} />
+            )}
+          </td>
         </tr>
       ))}
     </Tabela>
@@ -239,7 +271,11 @@ function TabelaDeLiberados({ linhas }: { linhas: Liberado[] }) {
 }
 
 async function Conteudo() {
-  const c = await exigirAdminLocal();
+  // o admin do computador do dono ou, no site no ar, a equipe publike.org (migração 20270918120000; Admin › Quem vê
+  // cada tela)
+  const admin = await ehAdminLocal();
+  if (!admin && !(await possoVerTela("/admin/recursos-pagos"))) notFound();
+  const c = admin ? criarClienteAdmin() : await criarClienteServidor();
   const { data, error } = await c.rpc("admin_recursos_pagos");
   if (error || !data) {
     if (error && error.code !== "PGRST202")
@@ -307,11 +343,18 @@ async function Conteudo() {
       </div>
 
       <Secao
+        titulo="Promoção de lançamento"
+        descricao="Libere recursos pagos para uma conta, sem custo, até uma data. A empresa vê “Promoção de lançamento até…” em cada recurso, recebe o aviso no sino e, 3 dias antes do fim, outro aviso para assinar."
+      >
+        <LiberarPromocao />
+      </Secao>
+
+      <Secao
         titulo="Liberados agora"
-        descricao="Quem tem cada recurso pago ligado hoje e como ganhou: pela assinatura, nos 15 dias grátis ou liberado pelo Publike."
+        descricao="Quem tem cada recurso pago ligado hoje e como ganhou: pela assinatura, nos 15 dias grátis, na promoção de lançamento ou liberado pelo Publike sem prazo."
       >
         {ativos.length ? (
-          <TabelaDeLiberados linhas={ativos} />
+          <TabelaDeLiberados linhas={ativos} admin={admin} />
         ) : (
           <p className="text-body-sm text-ink-muted">
             Nenhuma conta tem recurso pago ligado agora.
@@ -323,7 +366,7 @@ async function Conteudo() {
               Já acabaram ({acabaram.length})
             </summary>
             <div className="mt-3">
-              <TabelaDeLiberados linhas={acabaram} />
+              <TabelaDeLiberados linhas={acabaram} admin={admin} />
             </div>
           </details>
         )}
@@ -344,6 +387,7 @@ async function Conteudo() {
               >
                 <td className="px-2 py-2">
                   <Conta
+                    admin={admin}
                     id={a.conta_id}
                     nome={a.nome}
                     teste={a.conta_de_teste}
@@ -383,12 +427,15 @@ async function Conteudo() {
 
       <Secao
         acoes={
-          <Link
-            href="/admin/convites?aba=divulgar&publico=limite"
-            className={classesBotao("secundario", "sm")}
-          >
-            Mandar mensagem a quem chegou ao limite
-          </Link>
+          // Convites só abre no computador do dono
+          admin ? (
+            <Link
+              href="/admin/convites?aba=divulgar&publico=limite"
+              className={classesBotao("secundario", "sm")}
+            >
+              Mandar mensagem a quem chegou ao limite
+            </Link>
+          ) : undefined
         }
         titulo={`Grátis de ${mes}`}
         descricao={`Quem usa a parte grátis deste mês: a IA lê ${d.limite_triagem} candidatos e a empresa pede ${d.limite_gravadas} entrevistas gravadas. Quem chegou ao limite é quem mais precisa do plano.`}
@@ -402,6 +449,7 @@ async function Conteudo() {
               <tr key={g.conta_id} className="align-top">
                 <td className="px-2 py-2">
                   <Conta
+                    admin={admin}
                     id={g.conta_id}
                     nome={g.nome}
                     tipo={g.tipo}
@@ -447,7 +495,12 @@ async function Conteudo() {
             {d.impulsos.map((i) => (
               <tr key={i.conta_id} className="align-top">
                 <td className="px-2 py-2">
-                  <Conta id={i.conta_id} nome={i.nome} tipo={i.tipo} />
+                  <Conta
+                    admin={admin}
+                    id={i.conta_id}
+                    nome={i.nome}
+                    tipo={i.tipo}
+                  />
                 </td>
                 <td className="px-2 py-2 text-right">{i.total}</td>
                 <td className="px-2 py-2">

@@ -30,6 +30,8 @@ const ACOES: Record<string, string> = {
   apagar_chave: "apagou a chave do servidor",
   publicar_avaliacao: "publicou a avaliação de",
   remover_avaliacao: "removeu um texto da avaliação de",
+  liberar_promocao: "deu a promoção de lançamento para",
+  tirar_promocao: "acabou a promoção de lançamento de",
 };
 
 // Na ficha da própria conta ou do próprio anúncio, o alvo já está na tela.
@@ -47,10 +49,13 @@ const ACOES_SEM_ALVO: Record<string, string> = {
   corrigir_nome: "corrigiu o nome:",
   adicionar_moderador: "pôs na moderação",
   remover_moderador: "tirou da moderação",
+  liberar_promocao: "deu a promoção de lançamento",
+  tirar_promocao: "acabou a promoção de lançamento",
 };
 
 export function descreverAcao(acao: string, semAlvo = false) {
-  if (semAlvo) return ACOES_SEM_ALVO[acao] ?? ACOES[acao] ?? acao.replace(/_/g, " ");
+  if (semAlvo)
+    return ACOES_SEM_ALVO[acao] ?? ACOES[acao] ?? acao.replace(/_/g, " ");
   return ACOES[acao] ?? acao.replace(/_/g, " ");
 }
 

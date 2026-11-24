@@ -10,7 +10,12 @@ export type RecursoPago = "copiloto" | "testes" | "video" | "automacoes";
 export type FerramentaDeAvaliar = Exclude<RecursoPago, "automacoes">;
 
 /** Todos os recursos pagos, na ordem das telas. */
-export const RECURSOS_PAGOS: RecursoPago[] = ["copiloto", "testes", "video", "automacoes"];
+export const RECURSOS_PAGOS: RecursoPago[] = [
+  "copiloto",
+  "testes",
+  "video",
+  "automacoes",
+];
 
 /** A página de cada recurso no painel. */
 export const PAGINA_DO_RECURSO: Record<RecursoPago, string> = {
@@ -50,6 +55,8 @@ export type EstadoRecurso = {
   pode_experimentar: boolean;
   /** tem a assinatura valendo (migração 20261218120000) */
   assinante: boolean;
+  /** liberado na promoção de lançamento, até `ate` (migração 20270918120000) */
+  promocao?: boolean;
   /** pode assinar agora: pagamentos abertos para a conta e o plano à venda */
   pode_assinar: boolean;
   /** o grátis de cada mês (só na Triagem e na Entrevista em vídeo, e só sem o recurso liberado) */
@@ -93,14 +100,19 @@ export const A_RECURSO: Record<RecursoPago, string> = {
 };
 
 export function ehRecursoPago(x: unknown): x is RecursoPago {
-  return x === "copiloto" || x === "testes" || x === "video" || x === "automacoes";
+  return (
+    x === "copiloto" || x === "testes" || x === "video" || x === "automacoes"
+  );
 }
 
 /** O grátis do mês, como o banco manda (`recursos_pagos`, `copiloto_da_vaga`, `video_config`); torto: null. */
 export function lerGratis(x: unknown): GratisDoMes | null {
   if (!x || typeof x !== "object") return null;
   const o = x as Record<string, unknown>;
-  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.round(v)) : null);
+  const n = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v)
+      ? Math.max(0, Math.round(v))
+      : null;
   const limite = n(o.limite);
   if (limite === null) return null;
   const aoVivo = n(o.ao_vivo_limite);
@@ -108,7 +120,9 @@ export function lerGratis(x: unknown): GratisDoMes | null {
     limite,
     usados: n(o.usados) ?? 0,
     renovaEm: typeof o.renova_em === "string" ? o.renova_em : null,
-    ...(aoVivo !== null ? { aoVivo: { limite: aoVivo, usados: n(o.ao_vivo_usados) ?? 0 } } : {}),
+    ...(aoVivo !== null
+      ? { aoVivo: { limite: aoVivo, usados: n(o.ao_vivo_usados) ?? 0 } }
+      : {}),
   };
 }
 
@@ -124,6 +138,7 @@ function lerEstado(x: unknown): EstadoRecurso | null {
     quer_continuar: o.quer_continuar === true,
     pode_experimentar: o.pode_experimentar === true,
     assinante: o.assinante === true,
+    promocao: o.promocao === true,
     pode_assinar: o.pode_assinar === true,
     gratis: lerGratis(o.gratis),
   };
@@ -131,7 +146,9 @@ function lerEstado(x: unknown): EstadoRecurso | null {
 
 /** A conta usa o recurso agora: liberado (assinatura, 15 dias, Publike) ou no grátis do mês. */
 export function podeUsar(estado: EstadoRecurso | null | undefined): boolean {
-  return Boolean(estado && !estado.indisponivel && (estado.liberado || estado.gratis));
+  return Boolean(
+    estado && !estado.indisponivel && (estado.liberado || estado.gratis),
+  );
 }
 
 /** "1º de dezembro": o dia em que o grátis renova. */
@@ -143,17 +160,27 @@ export function diaQueRenova(iso: string): string {
  * O que é grátis em cada recurso, numa linha (a oferta, os Planos, a Assinatura). `gratis`: os números da conta;
  * sem eles, os de sempre (`GRATIS_PADRAO`).
  */
-export function textoDoGratis(recurso: RecursoPago, gratis?: GratisDoMes | null): string | null {
-  if (recurso === "testes") return "Grátis: o teste da Publike que combina com a vaga.";
-  if (recurso === "automacoes") return "Grátis: as 5 automações prontas, em toda vaga.";
+export function textoDoGratis(
+  recurso: RecursoPago,
+  gratis?: GratisDoMes | null,
+): string | null {
+  if (recurso === "testes")
+    return "Grátis: o teste da Publike que combina com a vaga.";
+  if (recurso === "automacoes")
+    return "Grátis: as 5 automações prontas, em toda vaga.";
   if (recurso === "copiloto") {
     const n = gratis ? gratis.limite : GRATIS_PADRAO.triagem;
-    return n > 0 ? `Grátis todo mês: a IA lê ${n === 1 ? "1 candidato" : `${n} candidatos`}.` : null;
+    return n > 0
+      ? `Grátis todo mês: a IA lê ${n === 1 ? "1 candidato" : `${n} candidatos`}.`
+      : null;
   }
   const gravadas = gratis ? gratis.limite : GRATIS_PADRAO.gravadas;
   const aoVivo = gratis ? (gratis.aoVivo?.limite ?? 0) : GRATIS_PADRAO.aoVivo;
   const partes = [
-    gravadas > 0 && (gravadas === 1 ? "1 entrevista gravada" : `${gravadas} entrevistas gravadas`),
+    gravadas > 0 &&
+      (gravadas === 1
+        ? "1 entrevista gravada"
+        : `${gravadas} entrevistas gravadas`),
     aoVivo > 0 && (aoVivo === 1 ? "1 ao vivo" : `${aoVivo} ao vivo`),
   ].filter(Boolean);
   return partes.length ? `Grátis todo mês: ${partes.join(" e ")}.` : null;
@@ -193,7 +220,11 @@ export function diasRestantes(ate: string, agora: number): number {
 }
 
 export function dataCurta(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "America/Sao_Paulo" });
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Sao_Paulo",
+  });
 }
 
 /**
@@ -204,19 +235,32 @@ function marcaDoGratis(
   recurso: RecursoPago,
   gratis: GratisDoMes | null | undefined,
 ): { curto: string; longo: string } | null {
-  if (recurso === "testes") return { curto: "1 grátis por vaga", longo: "Grátis: 1 teste por vaga" };
-  if (recurso === "automacoes") return { curto: "5 prontas grátis", longo: "Grátis: as 5 prontas" };
+  if (recurso === "testes")
+    return { curto: "1 grátis por vaga", longo: "Grátis: 1 teste por vaga" };
+  if (recurso === "automacoes")
+    return { curto: "5 prontas grátis", longo: "Grátis: as 5 prontas" };
   if (!gratis) return null;
   if (recurso === "copiloto") {
     return gratis.limite > 0
-      ? { curto: `${gratis.limite} grátis por mês`, longo: `Grátis: ${gratis.limite} candidatos por mês` }
+      ? {
+          curto: `${gratis.limite} grátis por mês`,
+          longo: `Grátis: ${gratis.limite} candidatos por mês`,
+        }
       : null;
   }
   if (gratis.limite > 0) {
-    return { curto: `${gratis.limite} grátis por mês`, longo: `Grátis: ${gratis.limite} gravadas por mês` };
+    return {
+      curto: `${gratis.limite} grátis por mês`,
+      longo: `Grátis: ${gratis.limite} gravadas por mês`,
+    };
   }
   const aoVivo = gratis.aoVivo?.limite ?? 0;
-  return aoVivo > 0 ? { curto: `${aoVivo} ao vivo grátis`, longo: `Grátis: ${aoVivo} ao vivo por mês` } : null;
+  return aoVivo > 0
+    ? {
+        curto: `${aoVivo} ao vivo grátis`,
+        longo: `Grátis: ${aoVivo} ao vivo por mês`,
+      }
+    : null;
 }
 
 /**
@@ -231,13 +275,27 @@ export function marcaDoRecurso(
   agora: number,
   recurso?: RecursoPago,
 ): { curto: string | null; longo: string | null } {
-  if (!estado) return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
+  if (!estado)
+    return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
   if (estado.liberado) {
     if (!estado.ate || estado.assinante) return { curto: null, longo: null };
+    // a promoção de lançamento: sempre com a data, para ficar claro que é por um tempo
+    if (estado.promocao) {
+      const dia = new Date(estado.ate).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: "America/Sao_Paulo",
+      });
+      return {
+        curto: `promoção até ${dia}`,
+        longo: `Promoção de lançamento até ${dia}`,
+      };
+    }
     const n = diasRestantes(estado.ate, agora);
     return { curto: n === 1 ? "falta 1 dia" : `faltam ${n} dias`, longo: null };
   }
-  if (estado.pode_experimentar) return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
+  if (estado.pode_experimentar)
+    return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
   const gratis = recurso ? marcaDoGratis(recurso, estado.gratis) : null;
   return gratis ?? { curto: "Recurso pago", longo: "Recurso pago" };
 }
