@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, X } from "lucide-react";
+import { Mail, MessageCircle, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useEffect, useRef, useState } from "react";
@@ -169,7 +169,18 @@ export function FolhaDeEntrar({ redes, googleClientId }: { redes: BotaoRede[]; g
             </button>
           </div>
 
-          <div role="group" aria-label="Entrar com uma rede social" className="flex flex-col gap-3">
+          <div role="group" aria-label="Jeitos de entrar" className="flex flex-col gap-3">
+            {/* o WhatsApp primeiro, como no /entrar (24/11/2026: no Mac, quem tocava em Curtir via só as redes) */}
+            {LOGIN_CELULAR && (
+              <Link
+                href={`/entrar?de=whatsapp&next=${encodeURIComponent(pedido.proximo)}`}
+                onClick={fechar}
+                className="inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-pill bg-cerrado px-3 text-body-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-cerrado/90"
+              >
+                <MessageCircle aria-hidden className="size-5 shrink-0" />
+                Entrar com o WhatsApp
+              </Link>
+            )}
             {redes.map(({ rede, nome, logo }) =>
               rede === "google" && googleOficial ? (
                 <div key={rede} className="flex flex-col gap-1">
@@ -211,7 +222,7 @@ export function FolhaDeEntrar({ redes, googleClientId }: { redes: BotaoRede[]; g
             className="inline-flex min-h-11 items-center justify-center gap-2 self-center text-label text-ink underline underline-offset-2 hover:text-terra-text"
           >
             <Mail aria-hidden className="size-4" />
-            {LOGIN_CELULAR ? "Entrar com e-mail ou celular" : "Entrar com e-mail"}
+            Entrar com e-mail
           </Link>
 
           <p className="text-center text-caption text-ink-muted">
