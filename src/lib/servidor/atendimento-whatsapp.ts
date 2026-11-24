@@ -737,6 +737,10 @@ type BuscaDeVagas = {
   relato?: string | null;
 };
 
+/** Até quando o Haiku escolhe junto, para comparar (migração 20270924120000). */
+const COMPARAR_ESCOLHA_ATE = "2026-12-08T03:00:00Z";
+const MODELO_COMPARADO = "claude-haiku-5-5";
+
 const ESQUEMA_DA_ESCOLHA = {
   nome: "escolha_de_vagas",
   schema: {
@@ -776,31 +780,58 @@ async function escolherVagasComIA<A extends { id: string; titulo: string; bairro
   if (!lista.length || !relato.trim()) return null;
   const modelo = await modeloDoAtendimento();
   if (!modelo) return null;
-  try {
-    const { texto } = await chamarIA({
-      uso: "whatsapp_escolher_vagas",
-      modelo,
-      sistema: `Você escolhe vagas para uma pessoa que procura trabalho e conversa com o Publike pelo WhatsApp (vagas em ${ONDE_FUNCIONA}). Leia tudo o que ela contou: o que faz, o que já fez, o que estuda, onde mora e o jeito de trabalho que pediu. Escolha da lista de vagas no ar até ${max} que mais combinam com ela, da melhor para a pior, pelo número. Valem: a função que ela pediu ou faz; o que a experiência dela permite fazer de verdade (o mesmo cargo em outro nível, a mesma área); o que ela estuda (o estágio da área e o cargo de entrada da área, como assistente). Não escolha vaga só porque divide uma palavra com o que ela disse, nem vaga que pede formação que ela não tem. Entre duas tão boas, a mais perto. Se nenhuma combinar de verdade, devolva "vagas" vazio. "exata": true quando a vaga é do que ela pediu ou faz; false quando é uma oportunidade parecida. "abertura": uma frase curta, simpática e honesta, em português do Brasil, sem emoji, que apresenta as vagas escolhidas; quando nenhuma é do que ela pediu, diga isso antes (por exemplo: "Agora não achei vaga de supervisor de call center, mas separei estas que combinam com a sua experiência e com o seu curso de RH:"). Não diga o nome dela, não prometa nada e não cite vaga fora da lista.`,
-      mensagem: `O que ela contou:\n${relato.slice(0, 1500)}\n\nO que ela procura, nas palavras da busca: ${funcoes.join(", ") || "não disse"}\n\nAs vagas no ar:\n${lista.map((a, i) => `${i + 1}. ${linha(a)}`).join("\n")}`,
-      maxTokens: 400,
-      esquema: ESQUEMA_DA_ESCOLHA,
-      tempoLimite: 15_000,
-    });
-    const r = lerJson<{ vagas: { n: number; exata: boolean }[]; abertura: string }>(texto);
+  const sistema = `Você escolhe vagas para uma pessoa que procura trabalho e conversa com o Publike pelo WhatsApp (vagas em ${ONDE_FUNCIONA}). Leia tudo o que ela contou: o que faz, o que já fez, o que estuda, onde mora e o jeito de trabalho que pediu. Escolha da lista de vagas no ar até ${max} que mais combinam com ela, da melhor para a pior, pelo número. Valem: a função que ela pediu ou faz; o que a experiência dela permite fazer de verdade (o mesmo cargo em outro nível, a mesma área); o que ela estuda (o estágio da área e o cargo de entrada da área, como assistente). Não escolha vaga só porque divide uma palavra com o que ela disse, nem vaga que pede formação que ela não tem. Entre duas tão boas, a mais perto. Se nenhuma combinar de verdade, devolva "vagas" vazio. "exata": true quando a vaga é do que ela pediu ou faz; false quando é uma oportunidade parecida. "abertura": uma frase curta, simpática e honesta, em português do Brasil, sem emoji, que apresenta as vagas escolhidas; quando nenhuma é do que ela pediu, diga isso antes (por exemplo: "Agora não achei vaga de supervisor de call center, mas separei estas que combinam com a sua experiência e com o seu curso de RH:"). Não diga o nome dela, não prometa nada e não cite vaga fora da lista.`;
+  const mensagem = `O que ela contou:\n${relato.slice(0, 1500)}\n\nO que ela procura, nas palavras da busca: ${funcoes.join(", ") || "não disse"}\n\nAs vagas no ar:\n${lista.map((a, i) => `${i + 1}. ${linha(a)}`).join("\n")}`;
+  const pedir = async (uso: "whatsapp_escolher_vagas" | "whatsapp_escolher_vagas_comparar", m: string, fixo: boolean) => {
+    const inicio = Date.now();
+    const r = await chamarIA({ uso, modelo: m, modeloFixo: fixo, sistema, mensagem, maxTokens: 400, esquema: ESQUEMA_DA_ESCOLHA, tempoLimite: 15_000 });
+    const j = lerJson<{ vagas: { n: number; exata: boolean }[]; abertura: string }>(r.texto);
     const vistas = new Set<number>();
     const escolhidas: { a: A; exata: boolean }[] = [];
-    for (const v of r.vagas ?? []) {
+    for (const v of j.vagas ?? []) {
       const i = Math.trunc(Number(v.n)) - 1;
       if (i < 0 || i >= lista.length || vistas.has(i) || escolhidas.length >= max) continue;
       vistas.add(i);
       escolhidas.push({ a: lista[i], exata: v.exata === true });
     }
-    const abertura = String(r.abertura ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
-    return { escolhidas, abertura };
-  } catch (erro) {
-    console.error("Publike: a IA não escolheu as vagas:", erro instanceof Error ? erro.message : erro);
-    return null;
+    const abertura = String(j.abertura ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+    return { escolhidas, abertura, modelo: r.modelo, ms: Date.now() - inicio };
+  };
+  // a comparação (migração 20270924120000): até COMPARAR_ESCOLHA_ATE, o Haiku escolhe junto, ao mesmo tempo, só para
+  // guardar lado a lado; a pessoa recebe a do modelo de Admin › IA
+  const comparar = Date.now() < Date.parse(COMPARAR_ESCOLHA_ATE);
+  const [principal, outra] = await Promise.all([
+    pedir("whatsapp_escolher_vagas", modelo, false).catch((erro) => {
+      console.error("Publike: a IA não escolheu as vagas:", erro instanceof Error ? erro.message : erro);
+      return null;
+    }),
+    comparar ? pedir("whatsapp_escolher_vagas_comparar", MODELO_COMPARADO, true).catch(() => null) : Promise.resolve(null),
+  ]);
+  if (comparar) {
+    const acesso = acessoFila();
+    const resumo = (x: typeof principal) => x?.escolhidas.map((e) => ({ titulo: e.a.titulo, exata: e.exata, lugar: [e.a.bairro, e.a.cidade].filter(Boolean).join(", ") })) ?? null;
+    if (acesso && (principal || outra) && principal?.modelo !== outra?.modelo)
+      await acesso.cliente
+        .rpc("servidor_guardar_escolha_de_vagas", {
+          p_chave: acesso.chave,
+          p_dados: {
+            relato: relato.slice(0, 2000),
+            opcoes: lista.length,
+            modelo: principal?.modelo ?? null,
+            ms: principal?.ms ?? null,
+            escolhidas: resumo(principal) ?? [],
+            abertura: principal?.abertura ?? null,
+            modelo_comparado: outra?.modelo ?? null,
+            ms_comparado: outra?.ms ?? null,
+            escolhidas_comparado: resumo(outra),
+            abertura_comparada: outra?.abertura ?? null,
+          } as unknown as Json,
+        })
+        .then(({ error }) => {
+          if (error && error.code !== "PGRST202") console.error("Publike: a comparação da escolha não ficou guardada:", error.message);
+        });
   }
+  return principal ? { escolhidas: principal.escolhidas, abertura: principal.abertura } : null;
 }
 
 /**

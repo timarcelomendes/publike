@@ -2802,6 +2802,8 @@ export type Database = {
       curriculo_do_convite: { Args: { p_token: string }; Returns: Json };
       conta_atual: { Args: Record<PropertyKey, never>; Returns: string };
       papel_na_conta: { Args: Record<PropertyKey, never>; Returns: string };
+      // migração 20270924120000 (a comparação da escolha das vagas)
+      servidor_guardar_escolha_de_vagas: { Args: { p_chave: string; p_dados: Json }; Returns: undefined };
       // migração 20270923120000 (o e-mail dos candidatos novos)
       meu_email_candidatos: { Args: Record<PropertyKey, never>; Returns: string | null };
       mudar_email_candidatos: { Args: { p_jeito: string }; Returns: undefined };

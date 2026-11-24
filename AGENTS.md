@@ -460,3 +460,4 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 
 - `procurarVagas` (atendimento-whatsapp.ts): com o que a pessoa contou (`relatoDaPessoa`, as últimas 8 mensagens dela) e uma função, junta até 50 vagas no ar (as de perto de qualquer função, as das funções, parecidas e da área, e as das funções nas cidades em volta) e chama `escolherVagasComIA`, que devolve até 4, da melhor para a pior, se cada uma é "exata" e a frase que apresenta. Sem resposta, ou nenhuma que combine, vale a busca pelas palavras de antes.
 - Uso "whatsapp_escolher_vagas" em Admin › IA (grupo chat): liga, desliga e escolhe o modelo.
+- A comparação (migração 20270924120000): até `COMPARAR_ESCOLHA_ATE` (7/12/2026), o Haiku escolhe junto, em paralelo (uso "whatsapp_escolher_vagas_comparar", modelo fixo), e `privado.escolhas_de_vagas` guarda as duas escolhas, as frases e os tempos (30 dias). A pessoa recebe só a do modelo de Admin › IA.

@@ -42,6 +42,12 @@ export const USOS_IA = [
     nome: "Busca do WhatsApp: escolher as vagas",
     ajuda: "Lê tudo o que a pessoa contou e escolhe, entre as vagas no ar perto dela, as que mais combinam. Desligado, vale a busca pelas palavras.",
   },
+  {
+    id: "whatsapp_escolher_vagas_comparar",
+    grupo: "chat",
+    nome: "Busca do WhatsApp: escolher as vagas (comparação)",
+    ajuda: "Até 7/12, o Haiku escolhe junto, só para comparar com o modelo de cima. A pessoa não recebe esta escolha.",
+  },
   // a revisão
   { id: "revisar_anuncio", grupo: "revisao", nome: "Revisar anúncios", ajuda: "Cada anúncio novo ou editado: golpe, cobrança, discriminação." },
   { id: "revisar_avaliacao", grupo: "revisao", nome: "Revisar avaliações", ajuda: "As avaliações das empresas e das pessoas." },
