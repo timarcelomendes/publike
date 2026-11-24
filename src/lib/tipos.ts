@@ -167,6 +167,8 @@ export type Usuario = {
   email: string | null;
   telefone: string | null;
   nome: string | null;
+  /** a equipe do Publike vendo o painel como o dono, só olhando (migração 20270919120000) */
+  olhando?: boolean;
 };
 
 /** Resposta padrão das ações (server actions). */

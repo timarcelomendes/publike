@@ -23,7 +23,7 @@ function desligar() {
  * jeito de ver, as abas e as páginas da lista. Curtir, salvar, conectar, seguir, escrever,
  * responder e chamar no WhatsApp, não.
  */
-function podeTocar(alvo: Element, tipo: string) {
+export function podeTocar(alvo: Element, tipo: string) {
   if (alvo.closest("[data-pode-olhar]")) return true;
   if (tipo === "submit") return alvo.getAttribute("role") === "search";
   const tocado = alvo.closest("a[href], button, [role='button'], input[type='submit'], input[type='button']");

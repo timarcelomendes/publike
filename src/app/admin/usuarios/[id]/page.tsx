@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
+import { ArrowLeft, ExternalLink, Eye, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
 import {
   BotaoAutomacoes,
@@ -186,6 +186,31 @@ async function Conteudo({
           O Publike entra só pelo e-mail, e esta conta foi criada sem e-mail. Use “Mandar o acesso pelo WhatsApp”, logo
           abaixo: a pessoa abre o link, coloca o e-mail dela e entra.
         </Aviso>
+      )}
+
+      {primeiro(sp.olhar) && (
+        <Aviso tipo="alerta" titulo="Não deu para ver como o dono">
+          {primeiro(sp.olhar)}
+        </Aviso>
+      )}
+
+      {/* ver como o dono (migração 20270919120000): o painel da conta, só olhando, por 1 hora */}
+      {u.perfil && (
+        <Secao
+          titulo="Ver como o dono"
+          descricao="Abre o painel desta conta do jeito que o dono vê: as vagas, o status, os candidatos e as fichas. Só olhar: nada do que você tocar é salvo. Vale por 1 hora e fica no registro da equipe. Precisa estar logado no site com a sua conta publike.org."
+          acoes={
+            <form method="post" action="/admin/olhar">
+              <input type="hidden" name="conta" value={u.id} />
+              <button type="submit" className={classesBotao("secundario", "sm")}>
+                <Eye aria-hidden />
+                Ver o painel como o dono
+              </button>
+            </form>
+          }
+        >
+          {null}
+        </Secao>
       )}
 
       {(loginSolto || loginPreso) && (

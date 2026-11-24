@@ -75,7 +75,13 @@ export const obterUsuario = cache(async (): Promise<Usuario | null> => {
   let conta =
     typeof claims.conta === "string" && UUID.test(claims.conta) && claims.conta !== claims.sub ? claims.conta : null;
   let papel: Usuario["papel"] = "dono";
-  if (conta) {
+  // a equipe do Publike vendo como o dono (migração 20270919120000): o papel é o do dono, e a conta vale enquanto o
+  // banco confirmar (o prazo de 1 hora e a equipe são conferidos lá)
+  const olhando = Boolean(conta) && claims.papel === "olhar";
+  if (conta && olhando) {
+    const { data: atual } = await supabase.rpc("conta_atual");
+    if (atual !== conta) conta = null;
+  } else if (conta) {
     const { data: doBanco } = await supabase.rpc("papel_na_conta");
     if (doBanco === "admin" || doBanco === "recrutador") papel = doBanco;
     else conta = null;
@@ -87,6 +93,7 @@ export const obterUsuario = cache(async (): Promise<Usuario | null> => {
     email: typeof claims.email === "string" && claims.email ? claims.email : null,
     telefone: typeof claims.phone === "string" && claims.phone ? claims.phone : null,
     nome: nomeDaConta(claims.user_metadata as Record<string, unknown> | undefined),
+    ...(olhando && conta ? { olhando: true } : {}),
   };
 });
 

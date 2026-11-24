@@ -31,6 +31,7 @@ const ACOES: Record<string, string> = {
   publicar_avaliacao: "publicou a avaliação de",
   remover_avaliacao: "removeu um texto da avaliação de",
   liberar_promocao: "deu a promoção de lançamento para",
+  ver_como: "viu o painel como",
   tirar_promocao: "acabou a promoção de lançamento de",
 };
 

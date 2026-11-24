@@ -2802,6 +2802,9 @@ export type Database = {
       curriculo_do_convite: { Args: { p_token: string }; Returns: Json };
       conta_atual: { Args: Record<PropertyKey, never>; Returns: string };
       papel_na_conta: { Args: Record<PropertyKey, never>; Returns: string };
+      // migração 20270919120000 (ver como o dono)
+      equipe_comecar_a_olhar: { Args: { p_conta: string }; Returns: undefined };
+      parar_de_olhar: { Args: Record<PropertyKey, never>; Returns: string | null };
       criar_convite_equipe: {
         Args: { p_papel: string; p_nome?: string | null };
         Returns: { id: string; token: string; expira_em: string }[];

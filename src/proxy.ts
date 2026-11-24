@@ -209,6 +209,22 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   // Não coloque código entre createServerClient e getClaims (recomendação do Supabase).
   const { data } = await supabase.auth.getClaims();
   const logado = Boolean(data?.claims?.sub);
+  // a equipe do Publike vendo como o dono (migração 20270919120000): só olhar. Os POST da API e dos formulários não
+  // passam (só o "Parar de olhar"); as ações do servidor passam, porque as telas também leem por elas, e o que elas
+  // tentam gravar o banco recusa (a transação fica somente leitura). As visitas não contam para a conta
+  const olhando = logado && data?.claims?.papel === "olhar";
+  if (
+    olhando &&
+    request.method !== "GET" &&
+    request.method !== "HEAD" &&
+    !request.headers.has("next-action") &&
+    request.nextUrl.pathname !== "/admin/olhar/parar"
+  ) {
+    return new NextResponse("Só olhar: vendo como o dono, nada é salvo.", {
+      status: 403,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
 
   marcarOrigem(request, resposta);
   marcarChegada(request, resposta, logado);
@@ -220,7 +236,9 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   const conta = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
   const marca = conta ? marcaDaConta(conta) : null;
   const contaJaContada = !marca || request.cookies.get(COOKIE_CONTA_DIA)?.value === marca;
-  if (ip && abriuPagina(request)) {
+  if (olhando) {
+    // vendo como o dono: nada conta (o banco está em somente leitura)
+  } else if (ip && abriuPagina(request)) {
     // depois da resposta: a página não espera a conta (contar_acesso também marca quem está on-line)
     marcarCookieOnline(resposta);
     if (marca) marcarContaDoDia(resposta, marca);
@@ -251,7 +269,7 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   // aparelho; aberto pelo app Android, sempre). O app abre o site com o referer android-app://org.publike.app;
   // outros apps também mandam android-app:// (Gmail, app do Google, WhatsApp) e não contam como o app (02/11/2026).
   const doApp = (request.headers.get("referer") ?? "").startsWith(`android-app://${PACOTE_ANDROID}`);
-  if (logado && abriuPagina(request) && (doApp || !request.cookies.has(COOKIE_APARELHO))) {
+  if (logado && !olhando && abriuPagina(request) && (doApp || !request.cookies.has(COOKIE_APARELHO))) {
     resposta.cookies.set(COOKIE_APARELHO, doApp ? "app" : "1", {
       maxAge: 6 * 3600,
       httpOnly: true,
