@@ -36,6 +36,12 @@ export const USOS_IA = [
   { id: "assistente", grupo: "chat", nome: "Chat do site", ajuda: "O “Tirar dúvidas” e a página /ajuda: responde, procura vagas e empresas." },
   { id: "whatsapp_atendimento", grupo: "chat", nome: "Atendimento no WhatsApp", ajuda: "Entende cada mensagem e decide a resposta." },
   { id: "whatsapp_busca", grupo: "chat", nome: "Busca do WhatsApp", ajuda: "Tira da conversa a função e o lugar que a pessoa procura." },
+  {
+    id: "whatsapp_escolher_vagas",
+    grupo: "chat",
+    nome: "Busca do WhatsApp: escolher as vagas",
+    ajuda: "Lê tudo o que a pessoa contou e escolhe, entre as vagas no ar perto dela, as que mais combinam. Desligado, vale a busca pelas palavras.",
+  },
   // a revisão
   { id: "revisar_anuncio", grupo: "revisao", nome: "Revisar anúncios", ajuda: "Cada anúncio novo ou editado: golpe, cobrança, discriminação." },
   { id: "revisar_avaliacao", grupo: "revisao", nome: "Revisar avaliações", ajuda: "As avaliações das empresas e das pessoas." },

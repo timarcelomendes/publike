@@ -455,3 +455,8 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 
 - A curtida não manda mais um e-mail por candidato por padrão: `enfileirar_email` olha `privado.email_candidatos` (sem linha = 'tres'). 'tres': junta os candidatos pendentes desde o último e-mail de candidatos (ou 7 dias) e, com 3 ou mais, manda um "candidatos_novos" (quantos e as vagas, para `/painel/candidatos?situacao=responder`; no máximo 1 por hora, em Admin › E-mails). 'cada': como antes. 'nenhum': sem e-mail de candidato.
 - Preferências › Avisos tem a escolha para quem publica (`PreferenciaEmailCandidatos`, `mudar_email_candidatos`; recrutador não muda). O lembrete de 24 h/72 h (lembrete_curtida) continua para quem tem 1 ou 2 parados.
+
+## A IA escolhe as vagas no WhatsApp (24/11/2026)
+
+- `procurarVagas` (atendimento-whatsapp.ts): com o que a pessoa contou (`relatoDaPessoa`, as últimas 8 mensagens dela) e uma função, junta até 50 vagas no ar (as de perto de qualquer função, as das funções, parecidas e da área, e as das funções nas cidades em volta) e chama `escolherVagasComIA`, que devolve até 4, da melhor para a pior, se cada uma é "exata" e a frase que apresenta. Sem resposta, ou nenhuma que combine, vale a busca pelas palavras de antes.
+- Uso "whatsapp_escolher_vagas" em Admin › IA (grupo chat): liga, desliga e escolhe o modelo.

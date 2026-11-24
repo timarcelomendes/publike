@@ -2,7 +2,7 @@ import "server-only";
 import { textoDaAjuda } from "@/lib/ajuda";
 import { BAIRROS } from "@/lib/bairros";
 import { REDES_DO_PUBLIKE, SITE_URL } from "@/lib/config";
-import { CATEGORIAS, CIDADES, LIMITES_CONTA, type Cidade } from "@/lib/constantes";
+import { CATEGORIAS, CIDADES, LIMITES_CONTA, REGIMES, type Cidade } from "@/lib/constantes";
 import { formatarLugar, valorDoAnuncio } from "@/lib/formato";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { chamarIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
@@ -727,7 +727,81 @@ export function pareceQuemProcura(titulo: string) {
   );
 }
 
-type BuscaDeVagas = { texto: string; funcoes?: string[]; parecidas?: string[]; categoria: string; jeito?: Jeito[] };
+type BuscaDeVagas = {
+  texto: string;
+  funcoes?: string[];
+  parecidas?: string[];
+  categoria: string;
+  jeito?: Jeito[];
+  /** o que a pessoa contou na conversa (as mensagens dela): com ele, a IA escolhe as vagas (escolherVagasComIA) */
+  relato?: string | null;
+};
+
+const ESQUEMA_DA_ESCOLHA = {
+  nome: "escolha_de_vagas",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["vagas", "abertura"],
+    properties: {
+      vagas: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["n", "exata"],
+          properties: { n: { type: "integer" }, exata: { type: "boolean" } },
+        },
+      },
+      abertura: { type: "string" },
+    },
+  },
+};
+
+/**
+ * A IA escolhe as vagas (24/11/2026; Marcelo, com a estudante de recursos humanos que foi supervisora de call center e
+ * só recebeu "supervisor comercial", com "Assistente de recursos humanos" no ar perto dela: "quero o máximo de
+ * inteligência e resolução"). A busca pelas palavras junta as vagas no ar perto dela e das funções que ela disse (até
+ * 50); a IA lê tudo o que ela contou e escolhe as que mais combinam, da melhor para a pior, com a frase que apresenta.
+ * Em Admin › IA, o uso "Busca do WhatsApp: escolher as vagas" liga, desliga e tem o seu modelo. Sem resposta, null (vale
+ * a busca pelas palavras).
+ */
+async function escolherVagasComIA<A extends { id: string; titulo: string; bairro: string | null; cidade: string | null; distancia_km?: number | null }>(
+  relato: string,
+  funcoes: string[],
+  lista: A[],
+  max: number,
+  linha: (a: A) => string,
+): Promise<{ escolhidas: { a: A; exata: boolean }[]; abertura: string } | null> {
+  if (!lista.length || !relato.trim()) return null;
+  const modelo = await modeloDoAtendimento();
+  if (!modelo) return null;
+  try {
+    const { texto } = await chamarIA({
+      uso: "whatsapp_escolher_vagas",
+      modelo,
+      sistema: `Você escolhe vagas para uma pessoa que procura trabalho e conversa com o Publike pelo WhatsApp (vagas em ${ONDE_FUNCIONA}). Leia tudo o que ela contou: o que faz, o que já fez, o que estuda, onde mora e o jeito de trabalho que pediu. Escolha da lista de vagas no ar até ${max} que mais combinam com ela, da melhor para a pior, pelo número. Valem: a função que ela pediu ou faz; o que a experiência dela permite fazer de verdade (o mesmo cargo em outro nível, a mesma área); o que ela estuda (o estágio da área e o cargo de entrada da área, como assistente). Não escolha vaga só porque divide uma palavra com o que ela disse, nem vaga que pede formação que ela não tem. Entre duas tão boas, a mais perto. Se nenhuma combinar de verdade, devolva "vagas" vazio. "exata": true quando a vaga é do que ela pediu ou faz; false quando é uma oportunidade parecida. "abertura": uma frase curta, simpática e honesta, em português do Brasil, sem emoji, que apresenta as vagas escolhidas; quando nenhuma é do que ela pediu, diga isso antes (por exemplo: "Agora não achei vaga de supervisor de call center, mas separei estas que combinam com a sua experiência e com o seu curso de RH:"). Não diga o nome dela, não prometa nada e não cite vaga fora da lista.`,
+      mensagem: `O que ela contou:\n${relato.slice(0, 1500)}\n\nO que ela procura, nas palavras da busca: ${funcoes.join(", ") || "não disse"}\n\nAs vagas no ar:\n${lista.map((a, i) => `${i + 1}. ${linha(a)}`).join("\n")}`,
+      maxTokens: 400,
+      esquema: ESQUEMA_DA_ESCOLHA,
+      tempoLimite: 15_000,
+    });
+    const r = lerJson<{ vagas: { n: number; exata: boolean }[]; abertura: string }>(texto);
+    const vistas = new Set<number>();
+    const escolhidas: { a: A; exata: boolean }[] = [];
+    for (const v of r.vagas ?? []) {
+      const i = Math.trunc(Number(v.n)) - 1;
+      if (i < 0 || i >= lista.length || vistas.has(i) || escolhidas.length >= max) continue;
+      vistas.add(i);
+      escolhidas.push({ a: lista[i], exata: v.exata === true });
+    }
+    const abertura = String(r.abertura ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+    return { escolhidas, abertura };
+  } catch (erro) {
+    console.error("Publike: a IA não escolheu as vagas:", erro instanceof Error ? erro.message : erro);
+    return null;
+  }
+}
 
 /**
  * As vagas no ar para o que a pessoa disse, em linhas com o link, e a frase que as apresenta. Sem função (a
@@ -997,6 +1071,53 @@ async function procurarVagas(
       }
     }
   }
+  // a IA escolhe entre as vagas no ar perto dela e das funções que ela disse (escolherVagasComIA); sem resposta, ou sem
+  // nenhuma que combine, vale a busca pelas palavras
+  let aberturaDaIA: string | null = null;
+  if (busca.relato?.trim() && funcoes.length) {
+    const termos = unicos([...funcoes, ...(busca.parecidas ?? []), ...funcoes.flatMap(termosDaArea)], 8);
+    const listas = await Promise.all([
+      tentar(null, perto),
+      ...termos.map((t) => tentar(t, perto)),
+      ...funcoes.map((t) => tentar(t, longe)),
+    ]);
+    const vistas = new Set<string>();
+    const lista: Anuncio[] = [];
+    for (const a of [...achadas.map((x) => x.a), ...listas.flat()]) {
+      const c = codigoDaVaga(a.id);
+      if (vistas.has(c) || jaMandadas.has(c) || lista.length >= 50) continue;
+      vistas.add(c);
+      lista.push(a);
+    }
+    const daCidade = (a: Anuncio) => !onde.local?.cidade || !a.cidade || simples(a.cidade) === simples(onde.local.cidade);
+    const escolha = await escolherVagasComIA(
+      busca.relato,
+      funcoes,
+      lista,
+      Math.min(Math.max(1, max), 4),
+      (a) =>
+        [
+          a.titulo,
+          (a as Anuncio & Vinda).regime ? (REGIMES[(a as Anuncio & Vinda).regime as keyof typeof REGIMES]?.nome ?? (a as Anuncio & Vinda).regime) : null,
+          valorDoAnuncio(a),
+          [a.bairro, a.cidade].filter(Boolean).join(", "),
+          centro && !centroDaCidade && a.distancia_km != null ? `a ${Math.max(1, Math.round(a.distancia_km))} km` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+    );
+    if (escolha?.escolhidas.length) {
+      achadas.length = 0;
+      for (const { a, exata } of escolha.escolhidas)
+        achadas.push({
+          a,
+          termo: exata ? (funcoes.find((f) => tituloDaFuncao(a.titulo, f)) ?? a.titulo) : a.titulo,
+          parecida: !exata,
+          longe: !daCidade(a) || (a.distancia_km ?? 0) > 40,
+        });
+      aberturaDaIA = escolha.abertura || null;
+    }
+  }
   if (!achadas.length && !repetidas && !parecidasQueForam.size) anotarSemVaga?.(funcoes);
   if (!achadas.length)
     return repetidas
@@ -1105,11 +1226,12 @@ async function procurarVagas(
     else if (!semNada.length && !longe1.length && !doJeito && !semOJeito && achados.every((t) => funcoes.includes(t))) abertura = null;
   }
   const p = new URLSearchParams({ tipo: "vaga" });
-  if (achados[0]) p.set("q", achados[0]);
+  if (aberturaDaIA ? funcoes[0] : achados[0]) p.set("q", aberturaDaIA ? funcoes[0] : achados[0]);
   return {
     texto,
     quantas: n,
-    abertura,
+    // a frase da IA, quando ela escolheu as vagas (já diz quando não é do que a pessoa pediu)
+    abertura: aberturaDaIA ?? abertura,
     /** só vagas de outras funções: o currículo vai junto */
     outras: Boolean(usadas[0].outras),
     mais: achadas.length > n || longe1.length ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
@@ -1131,6 +1253,8 @@ async function mensagemDaBusca(
   anotarSemVaga?: (funcoes: string[]) => void,
   /** toda função procurada, com vaga ou sem (Admin › Procuradas sem vaga, procura e oferta; migração 20270909120000) */
   anotarProcura?: (funcoes: string[]) => void,
+  /** o que a pessoa contou (relatoDaPessoa): com ele, a IA escolhe as vagas */
+  relato?: string,
 ) {
   const texto = busca?.texto?.trim().slice(0, 40) ?? "";
   const jeito = [...new Set([...(busca?.jeito ?? []).filter(ehJeito), ...jeitoDoTexto(`${texto} ${textos.join(" ")}`)])];
@@ -1139,7 +1263,7 @@ async function mensagemDaBusca(
     return { abertura: perguntaDaFuncao(jeito, !local), aberturaPadrao: "", texto: "", botao: null, quantas: 0 };
   if (funcoes.length) anotarProcura?.(funcoes);
   const vagas = await procurarVagas(
-    { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas", jeito },
+    { texto, funcoes, parecidas: busca?.parecidas ?? [], categoria: busca?.categoria ?? "todas", jeito, relato },
     { local },
     restam,
     jaMandadas,
@@ -2273,6 +2397,7 @@ export async function atenderConversa(
       const local = lugarDaBusca(busca.cidade ?? "", busca.bairro ?? "");
       const r = await mensagemDaBusca(busca, local, restam, [], vagasJaMandadas(e.historico), (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
         (fs) => void anotarProcura(banco, chave, e.chave, fs, local),
+        relatoDaPessoa(e.historico),
       );
       const abertura = r.abertura ?? r.aberturaPadrao;
       const c = await comCurriculoFalando(`${ola1}${abertura}${r.texto ? `\n\n${r.texto}` : ""}`, r.botao);
@@ -2464,6 +2589,7 @@ export async function atenderConversa(
     const jeitoDaPergunta = PERGUNTOU_A_FUNCAO.exec(minhaUltima)?.[1];
     const r = await mensagemDaBusca(plano.busca, local, restam, jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos, vagasJaMandadas(e.historico), (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
       (fs) => void anotarProcura(banco, chave, e.chave, fs, local),
+      relatoDaPessoa(e.historico),
     );
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
     const c = await comCurriculoFalando(
@@ -2534,6 +2660,16 @@ export async function conversasParaProcurarDeNovo(chaves: string[]) {
 }
 
 /** A busca que a conversa pede (a função, a cidade e o bairro que a pessoa disse), pela IA; null se a IA falhar. */
+/** O que a pessoa contou na conversa (as últimas 8 mensagens dela), para a IA escolher as vagas. */
+function relatoDaPessoa(historico: Mensagem[]) {
+  return historico
+    .filter((x) => x.de === "pessoa" && !x.texto.startsWith("[a pessoa mandou"))
+    .slice(-8)
+    .map((x) => x.texto.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
 async function buscaDaConversa(historico: Mensagem[], modelo: string): Promise<Busca | null> {
   try {
     const { texto } = await chamarIA({
@@ -2574,7 +2710,7 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
   if (busca?.fora && !busca.cidade) return { ok: false, motivo: `A pessoa mora fora de onde o Publike funciona (${busca.fora}).` };
   const local = lugarDaBusca(busca?.cidade ?? "", busca?.bairro ?? "");
   const jaForam = vagasJaMandadas(historico);
-  const r = await mensagemDaBusca(busca, local, restam, [], jaForam);
+  const r = await mensagemDaBusca(busca, local, restam, [], jaForam, undefined, undefined, relatoDaPessoa(historico));
   // todas as da função já foram (a resposta que repetiu): diz isso, com a pergunta de outra função
   if (!r.quantas && jaForam.size && repetiuVagas(historico))
     return { ok: true, texto: `${oi(primeiroNome(nome))} ${r.abertura}`, botao: r.botao };
