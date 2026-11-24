@@ -4522,6 +4522,7 @@ export type Database = {
         Returns: Json;
       };
       admin_pagamentos: { Args: Record<string, never>; Returns: Json };
+      admin_recursos_pagos: { Args: Record<string, never>; Returns: Json };
       admin_indicadores: { Args: { p_dias?: number; p_com_equipe?: boolean }; Returns: Json };
       admin_oferta_procura: { Args: { p_dias?: number; p_com_equipe?: boolean }; Returns: Json };
       admin_numeros_do_menu: { Args: Record<string, never>; Returns: Json };

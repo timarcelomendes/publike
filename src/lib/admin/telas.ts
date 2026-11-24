@@ -17,7 +17,11 @@ export type Secao = { href: string; nome: string };
  * As seções do admin, em grupos (claude/plano-avisos-de-liberacao-e-menu-admin.md, parte 2): o menu da coluna da
  * esquerda no computador e o "Seções" no celular. Os endereços são os de sempre.
  */
-export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Secao[] }[] = [
+export const GRUPOS_ADMIN: {
+  nome: string | null;
+  icone?: LucideIcon;
+  secoes: Secao[];
+}[] = [
   { nome: null, secoes: [{ href: "/admin", nome: "Painel" }] },
   {
     nome: "Contas",
@@ -82,7 +86,14 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/impulsos", nome: "Impulsos" },
     ],
   },
-  { nome: "Dinheiro", icone: Wallet, secoes: [{ href: "/admin/pagamentos", nome: "Pagamentos" }] },
+  {
+    nome: "Dinheiro",
+    icone: Wallet,
+    secoes: [
+      { href: "/admin/pagamentos", nome: "Pagamentos" },
+      { href: "/admin/recursos-pagos", nome: "Recursos pagos" },
+    ],
+  },
   {
     nome: "Sistema",
     icone: Settings,
@@ -96,14 +107,17 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
   },
 ];
 
-
 /**
  * As telas que já abrem no site no ar (o código delas não usa a chave secreta), na ordem das abas da equipe, e quem
  * precisa ser para abrir: moderador (as funções do banco conferem), equipe publike.org, ou um dos dois. A marca
  * "Somente publike.org" (Admin › Quem vê cada tela) decide, além disso, se o moderador vê. As outras telas seguem só no
  * computador do dono, até o código delas ficar pronto para o site.
  */
-export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" | "equipe" | "qualquer" }[] = [
+export const TELAS_DO_SITE: {
+  href: string;
+  nome: string;
+  precisa: "moderador" | "equipe" | "qualquer";
+}[] = [
   { href: "/admin/numeros", nome: "Números", precisa: "qualquer" },
   { href: "/admin/denuncias", nome: "Denúncias", precisa: "moderador" },
   { href: "/admin/anuncios", nome: "Anúncios", precisa: "moderador" },
@@ -123,9 +137,17 @@ export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" |
   // o WhatsApp oficial (migração 20270619120000; só a equipe publike.org)
   { href: "/admin/whatsapp", nome: "WhatsApp", precisa: "equipe" },
   // a vaga mandada pelo WhatsApp: os números e os ajustes (migração 20270806120000; só a equipe publike.org)
-  { href: "/admin/publicar-pelo-whatsapp", nome: "Publicar pelo WhatsApp", precisa: "equipe" },
+  {
+    href: "/admin/publicar-pelo-whatsapp",
+    nome: "Publicar pelo WhatsApp",
+    precisa: "equipe",
+  },
   // o e-mail às empresas (migração 20270722120000; só a equipe publike.org)
-  { href: "/admin/email-empresas", nome: "E-mail às empresas", precisa: "equipe" },
+  {
+    href: "/admin/email-empresas",
+    nome: "E-mail às empresas",
+    precisa: "equipe",
+  },
   // a velocidade de verdade de quem abre o site (migração 20270709120000; só a equipe publike.org)
   { href: "/admin/velocidade", nome: "Velocidade", precisa: "equipe" },
 ];

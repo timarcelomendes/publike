@@ -398,7 +398,8 @@
   "20270916140000_publicar_lote_no_whatsapp",
   "20270916150000_lugar_da_vaga_no_whatsapp",
   "20270916160000_whatsapp_mandar_de_novo",
-  "20270916170000_whatsapp_modo_de_teste_avisado"
+  "20270916170000_whatsapp_modo_de_teste_avisado",
+  "20270917120000_admin_recursos_pagos"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3286,6 +3287,7 @@
   "f|public.admin_reativar(p_usuario uuid)": "b810e52d39",
   "f|public.admin_receita_sem_convite(p_cnpj text)": "ef2e111625",
   "f|public.admin_recursos_da_conta(p_conta uuid)": "b161c201f7",
+  "f|public.admin_recursos_pagos()": "9c43395cd0",
   "f|public.admin_reenviar_email(p_id bigint)": "8fd3ec9149",
   "f|public.admin_reenviar_emails()": "82d436ea45",
   "f|public.admin_refazer_perguntas_da_funcao(p_cbo text)": "ad000b6491",
