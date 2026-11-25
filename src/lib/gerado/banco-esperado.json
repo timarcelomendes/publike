@@ -413,7 +413,8 @@
   "20270925120000_uso_dos_recursos_pagos",
   "20270926120000_lembrete_da_vaga_preparada",
   "20270927120000_candidatar_pelo_whatsapp",
-  "20270928120000_nota_do_processo"
+  "20270928120000_nota_do_processo",
+  "20270929120000_curriculo_pela_metade"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -4155,7 +4156,8 @@
   "f|public.servidor_whatsapp_conversa_entrada(p_chave text, p_numero text, p_texto text, p_nome text, p_origem jsonb, p_payload text, p_wamid text)": "9687d930b1",
   "f|public.servidor_whatsapp_conversa_saida(p_chave text, p_conversa text, p_texto text, p_wamid text, p_perfil text, p_equipe boolean, p_motivo text)": "99c2ceac83",
   "f|public.servidor_whatsapp_conversa_ultima(p_chave text, p_conversa text)": "690ad0490f",
-  "f|public.servidor_whatsapp_convite_instagram(p_chave text, p_marca text, p_marcas_ok text[])": "7078f69bf0",
+  "f|public.servidor_whatsapp_convite_instagram(p_chave text, p_marca text, p_marcas_ok text[], p_marcas_fluxo text[])": "9d87e96917",
+  "f|public.servidor_whatsapp_curriculo_pela_metade(p_chave text, p_marcas text[], p_marca_lembrete text)": "4984e72d85",
   "f|public.servidor_whatsapp_juntar(p_chave text, p_nova uuid, p_numero text, p_conta uuid)": "04ff655ac2",
   "f|public.servidor_whatsapp_juntar_info(p_chave text, p_usuario uuid)": "e8ddf7e095",
   "f|public.servidor_whatsapp_leitura(p_chave text, p_conversa text, p_numero text, p_fonte text, p_resultado text, p_empresa text, p_motivo text, p_ms integer, p_vagas jsonb, p_midias text[])": "d38cc799d2",

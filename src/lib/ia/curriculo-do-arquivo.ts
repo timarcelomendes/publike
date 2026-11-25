@@ -89,13 +89,25 @@ export const ESQUEMA_DO_CURRICULO = {
   },
 } as const;
 
+/**
+ * O do arquivo (PDF ou foto) diz também o que o arquivo é, quando não é currículo (25/11/2026: a Arlete mandou um PDF
+ * duas vezes e ouviu "não consigo abrir", sem ninguém saber o que era). Vai para o registro da leitura e para a
+ * resposta ("parece ser um certificado de curso").
+ */
+const ESQUEMA_DO_ARQUIVO = {
+  ...ESQUEMA_DO_CURRICULO,
+  required: [...ESQUEMA_DO_CURRICULO.required, "o_que_e"],
+  properties: { ...ESQUEMA_DO_CURRICULO.properties, o_que_e: texto },
+};
+
 function instrucoes(hoje: string) {
   const escolaridades = ESCOLARIDADES.map((e) => `"${e.valor}" (${e.nome})`).join(", ");
   return `Você lê o currículo de uma pessoa que procura trabalho (um PDF ou fotos da folha) e preenche o currículo dela no Publike, um site gratuito de vagas de ${ONDE_FUNCIONA}. A pessoa confere tudo antes de salvar.
 
 Regras:
 - Use só o que está escrito. Não invente cargo, empresa, data, curso nem habilidade. O que o currículo não diz fica vazio ("" ou lista vazia).
-- "e_curriculo": false se não for um currículo (outro documento, foto de outra coisa, folha ilegível); aí deixe o resto vazio.
+- "e_curriculo": false se não for um currículo (outro documento, foto de outra coisa, folha ilegível); aí deixe o resto vazio. Currículo escaneado, fotografado, feito no Canva ou à mão também é currículo: leia o que der.
+- "o_que_e": quando não for currículo, o que o arquivo é, com o artigo, em até 6 palavras e sem nome nem número de ninguém: "um certificado de curso", "uma carteira de trabalho", "uma foto de documento", "um anúncio de vaga", "uma folha ilegível", "uma página em branco". Quando for currículo, "".
 - Nunca ponha telefone, e-mail, endereço, link, CPF, RG, data de nascimento, idade, estado civil, foto nem o nome de outras pessoas (referências) em campo nenhum.
 - "titulo": a profissão ou o trabalho que a pessoa procura, curto (até 60 letras), como "Auxiliar de cozinha" ou "Motorista". Use o objetivo do currículo; sem objetivo, o cargo mais recente.
 - "habilidades": até ${MAX_HABILIDADES}, curtas (até 40 letras cada), o que a pessoa sabe fazer: "Atendimento ao cliente", "Pacote Office", "Empilhadeira". Não repita os cursos.
@@ -231,6 +243,18 @@ export async function lerCurriculoDoArquivo(
   modelo: string,
   hoje: string,
 ): Promise<CurriculoLido | null> {
+  return (await lerCurriculoDoArquivoComMotivo(entrada, modelo, hoje)).lido;
+}
+
+/**
+ * O mesmo, com o que a IA achou que o arquivo é quando não é currículo (`oQueE`, até 60 letras, sem contato): o
+ * WhatsApp conta isso à pessoa e guarda no registro da leitura.
+ */
+export async function lerCurriculoDoArquivoComMotivo(
+  entrada: { pdf: { nome: string; dados: string } | null; fotos: string[] },
+  modelo: string,
+  hoje: string,
+): Promise<{ lido: CurriculoLido | null; oQueE: string }> {
   const { texto: resposta, parada } = await chamarIA({
     uso: "curriculo_arquivo",
     modelo,
@@ -243,14 +267,17 @@ export async function lerCurriculoDoArquivo(
     // a letra de uma folha fotografada é miúda
     detalhe: "high",
     maxTokens: 3000,
-    esquema: { nome: "curriculo_do_arquivo", schema: ESQUEMA_DO_CURRICULO },
+    esquema: { nome: "curriculo_do_arquivo", schema: ESQUEMA_DO_ARQUIVO },
     tempoLimite: 90_000,
   });
   if (parada === "recusa") throw new ErroIA("A IA não quis ler este arquivo.");
   if (parada === "limite") throw new ErroIA("A resposta da IA ficou incompleta.");
-  const r = lerJson<Partial<RespostaDoCurriculo>>(resposta);
-  if (!r.e_curriculo) return null;
-  return limparCurriculoLido(r, hoje);
+  const r = lerJson<Partial<RespostaDoCurriculo> & { o_que_e?: unknown }>(resposta);
+  const oQueE = curto(r.o_que_e, 60).replace(/[.!]+$/, "");
+  return {
+    lido: r.e_curriculo ? limparCurriculoLido(r, hoje) : null,
+    oQueE: oQueE && !temContatoNoTexto(oQueE) && !/\d{3}/.test(oQueE) ? oQueE : "",
+  };
 }
 
 /**

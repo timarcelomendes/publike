@@ -26,9 +26,27 @@ import {
   marcarLidaDigitando,
   type ConfigMeta,
 } from "./whatsapp";
-import { BOTAO_AGORA_NAO, BOTAO_MONTAR_CURRICULO, TEXTOS_DO_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
+import {
+  arquivoNaoLido,
+  BOTAO_AGORA_NAO,
+  BOTAO_MONTAR_CURRICULO,
+  lembreteDoCurriculo,
+  MARCA_DO_LEMBRETE,
+  MARCAS_DO_CURRICULO,
+  PASSOS_DO_MEIO,
+  passoDoCurriculo,
+  TEXTOS_DO_CURRICULO,
+  type ArquivoNaoLidoNaConversa,
+} from "@/lib/curriculo-pelo-whatsapp";
 import { curriculoPeloWhatsappLigado, seguirCurriculoPeloWhatsapp } from "./curriculo-pelo-whatsapp";
-import { baixarParaLer, lerCurriculoMandado, responderCurriculoDoArquivo, type Midia } from "./curriculo-por-arquivo";
+import {
+  baixarParaLer,
+  lerCurriculoMandado,
+  responderCurriculoDoArquivo,
+  type ArquivoNaoLido,
+  type LeituraDoArquivo,
+  type Midia,
+} from "./curriculo-por-arquivo";
 import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 import {
   configVagasWhatsapp,
@@ -46,8 +64,11 @@ import { caminhoDaVagaDoWhatsapp, MARCA_DO_LUGAR } from "@/lib/vagas-pelo-whatsa
 import { textoForaDaRegiao } from "@/lib/fora-da-regiao";
 import {
   comecarCandidatura,
+  MARCA_DA_PERGUNTA as MARCA_DA_PERGUNTA_DA_CANDIDATURA,
+  MARCA_DO_NOME as MARCA_DO_NOME_DA_CANDIDATURA,
   mensagemParaCandidatar,
   PAYLOAD_QUERO,
+  QUER_SE_CANDIDATAR,
   respostaNaCandidatura,
 } from "./candidatar-pelo-whatsapp";
 import { pedeOsCandidatosAqui } from "@/lib/whatsapp-oficial";
@@ -1430,6 +1451,17 @@ function boasVindas(nome: string | null, comeco: string, doAnuncio = false) {
     .join("\n\n");
 }
 
+/**
+ * "Tenho currículo" com o currículo pelo WhatsApp ligado (25/11/2026): o PDF ou a foto vem aqui mesmo, e o Publike lê
+ * na conversa (o site fica de alternativa, no botão).
+ */
+export const PARA_QUEM_TEM_CURRICULO_AQUI = [
+  "Ótimo! 😊 Pode mandar aqui mesmo: o PDF do currículo ou uma foto de cada página. Eu leio e preencho tudo para você conferir.",
+  "Com o currículo no Publike, as empresas da região te acham pela função, você recebe o aviso das vagas novas que combinam com você e se candidata com um toque.",
+  "Se preferir, também dá para mandar pelo site, no botão abaixo.",
+  EQUIPE_POR_ESCRITO,
+].join("\n\n");
+
 /** O "Tenho currículo": o ganho e o botão do site, onde a pessoa entra pelo WhatsApp e manda o PDF ou a foto. */
 export const PARA_QUEM_TEM_CURRICULO = [
   "Ótimo! Com o seu currículo no Publike:",
@@ -2073,7 +2105,10 @@ export async function atenderConversa(
   const nome = primeiroNome(e.nome);
   const respostas = e.historico.filter((x) => x.de !== "pessoa");
   const jaFalou = respostas.length > 0;
-  const minhaUltima = semBotoes(respostas.at(-1)?.texto ?? "");
+  // a última do Publike que conta para a conversa: o convite do Instagram e a dica das 24 horas saem de lado e não mudam
+  // o passo (25/11/2026: o convite do Instagram chegou no meio do currículo da Arlete, e o PDF que ela mandou em
+  // resposta ao passo 1 caiu fora do currículo)
+  const minhaUltima = semBotoes(respostas.filter((x) => !mensagemDeLado(x.texto)).at(-1)?.texto ?? "");
   const novas = semResposta(e.historico);
   const textos = novas.length ? novas.map((x) => x.texto) : [m.texto];
   const midias = textos.map(midiaDaMensagem);
@@ -2097,9 +2132,19 @@ export async function atenderConversa(
     ola,
     agora: opcoes.agora ?? new Date(),
   };
-  const curriculoDoArquivo = (a: { imagens: string[]; pdf: string | null }) =>
-    responderCurriculoDoArquivo({ ...comumDoCurriculo, ...a });
+  const curriculoDoArquivo = async (a: { imagens: string[]; pdf: string | null }) =>
+    (await responderCurriculoDoArquivo({ ...comumDoCurriculo, ...a })).ok;
   const curriculoMandado = () => lerCurriculoMandado({ ...comumDoCurriculo, cfg, wamid: m.wamid });
+  // o arquivo de quem procura trabalho que não virou currículo: o porquê, o que fazer e a oferta de montar conversando
+  // (sem o currículo pelo WhatsApp, o link do site). sem_midia e desligado: nada foi lido, segue como antes
+  const comPorque = (r: LeituraDoArquivo): r is ArquivoNaoLido => !r.ok && r.tipo !== "sem_midia" && r.tipo !== "desligado";
+  const arquivoQueNaoDeu = async (r: ArquivoNaoLidoNaConversa) => {
+    const montar = await curriculoPeloWhatsappLigado(banco, chave, m.numero);
+    return saida(
+      `${ola}${arquivoNaoLido(r, montar)}`,
+      montar ? { perfil: "trabalho", botoes: [BOTAO_MONTAR_CURRICULO, BOTAO_AGORA_NAO] } : { perfil: "trabalho", botao: LINKS.curriculo },
+    );
+  };
 
   // a equipe devolveu com os botões
   if (opcoes.retomada && opcoes.comBotoes) return saida(VOLTEI_COM_BOTOES, { menu: true });
@@ -2274,7 +2319,8 @@ export async function atenderConversa(
       conversa: e.chave,
       numero: m.numero,
       nome: e.nome ?? null,
-      historico: e.historico,
+      // sem as mensagens de lado (o convite do Instagram), que não são da conversa do currículo
+      historico: e.historico.filter((x) => x.de === "pessoa" || !mensagemDeLado(x.texto)),
       minhaUltima,
       payload: m.payload,
       textos,
@@ -2284,7 +2330,7 @@ export async function atenderConversa(
       saida,
       ola,
       agora: opcoes.agora ?? new Date(),
-      linkEnviarCurriculo: LINKS.enviarCurriculo,
+      lerArquivo: curriculoMandado,
       // o cartão e o PDF: a Meta busca pelo link; a legenda fica na conversa (o passo sai dela)
       enviarArquivo: async (a) => {
         const r = await enviarArquivo(cfg, m.numero, {
@@ -2327,8 +2373,13 @@ export async function atenderConversa(
       (await tentarVagaPeloWhatsapp({ cfg, banco, chave, conversa: e.chave, numero: m.numero, wamid: m.wamid, perfil: e.perfil, textos, saida, comeco: ola, curriculo: curriculoDoArquivo }))
     )
       return;
-    // o currículo em foto ou PDF de quem procura trabalho: lê mesmo no modo econômico (é o que mais traz gente)
-    if (midias.some((x) => x === "foto" || x === "arquivo") && (await curriculoMandado())) return;
+    // o currículo em foto ou PDF de quem procura trabalho: lê mesmo no modo econômico (é o que mais traz gente); o que
+    // não deu ouve o porquê
+    if (midias.some((x) => x === "foto" || x === "arquivo")) {
+      const lido = await curriculoMandado();
+      if (lido.ok) return;
+      if (comPorque(lido) && e.perfil === "trabalho") return arquivoQueNaoDeu(lido);
+    }
     if (teto.respondida_hoje) return;
     return saida(
       `${ola}${e.perfil === "trabalho" || m.payload === "a:trabalho" ? ECONOMICO_TRABALHO : ECONOMICO_SEM_PERFIL}`,
@@ -2341,7 +2392,10 @@ export async function atenderConversa(
   if (novas.length <= 1 && m.payload === "a:trabalho")
     return saida(PARA_QUEM_PROCURA, { perfil: "trabalho", botoes: [BOTAO_DA_EQUIPE] });
   if (novas.length <= 1 && m.payload === "a:curriculo")
-    return saida(PARA_QUEM_TEM_CURRICULO, { perfil: "trabalho", botao: LINKS.enviarCurriculo });
+    return saida(
+      (await curriculoPeloWhatsappLigado(banco, chave, m.numero)) ? PARA_QUEM_TEM_CURRICULO_AQUI : PARA_QUEM_TEM_CURRICULO,
+      { perfil: "trabalho", botao: LINKS.enviarCurriculo },
+    );
   if (novas.length <= 1 && m.payload === "a:contratar") {
     const porAqui = Boolean(await configVagasWhatsapp(banco, chave));
     return saida(`${paraQuemContrata(porAqui)}\n\n${EQUIPE_POR_ESCRITO}`, {
@@ -2567,8 +2621,16 @@ export async function atenderConversa(
   // só áudio (que não virou texto), foto, vídeo ou arquivo: por aqui, só texto
   if (midias.every(Boolean)) {
     const tipo = midias.at(-1);
-    // quem procura trabalho (ou ainda não disse) mandou foto ou PDF: o currículo, lido aqui mesmo
-    if ((tipo === "foto" || tipo === "arquivo") && e.perfil !== "contratar" && (await curriculoMandado())) return;
+    // quem procura trabalho (ou ainda não disse) mandou foto ou PDF: o currículo, lido aqui mesmo; quem procura trabalho
+    // e o arquivo não deu currículo ouve o porquê (e não mais "por aqui eu não consigo abrir"); o formato que não é foto
+    // nem PDF (Word, por exemplo) ouve que não abre e como mandar
+    if ((tipo === "foto" || tipo === "arquivo") && e.perfil !== "contratar") {
+      const lido = await curriculoMandado();
+      if (lido.ok) return;
+      if (e.perfil === "trabalho" && comPorque(lido)) return arquivoQueNaoDeu(lido);
+      if (e.perfil === "trabalho" && tipo === "arquivo" && lido.tipo === "sem_midia")
+        return arquivoQueNaoDeu({ tipo: "formato" });
+    }
     if (tipo === "foto" && e.perfil === "contratar")
       return saida(
         `${ola}Recebi a foto! Por aqui eu não consigo publicar, mas no site é rapidinho: toque em *Publicar vaga grátis* e envie a foto do anúncio lá. O Publike lê e preenche tudo para você conferir.`,
@@ -2908,6 +2970,14 @@ export const CONVITE_INSTAGRAM =
   "Enquanto isso, segue o Publike no Instagram 📲 Lá tem vagas novas, dicas de currículo e de entrevista e os golpes de vaga para fugir.";
 const BOTAO_INSTAGRAM: Botao = { titulo: "Seguir no Instagram", caminho: REDES_DO_PUBLIKE.instagram };
 
+/**
+ * As mensagens de lado, que saem sozinhas e não são um passo da conversa (o convite do Instagram e a dica das 24
+ * horas): o passo de agora sai da mensagem de antes delas (25/11/2026).
+ */
+export function mensagemDeLado(texto: string) {
+  return texto.startsWith(marca(CONVITE_INSTAGRAM)) || texto.startsWith(marca(LEMBRETE_SEMPRE));
+}
+
 /** Manda, da parte do atendimento, uma mensagem numa conversa e guarda (com o botão, se for). */
 async function mandarDoRobo(
   cfg: ConfigMeta,
@@ -2943,6 +3013,17 @@ async function mandarDoRobo(
 
 /** Os links curtos das vagas na mensagem da busca: /w/, ou a letra da campanha de quem veio do anúncio. */
 const MARCAS_DOS_LINKS_DAS_VAGAS = ["/w/", "/i/", "/f/", "/m/"];
+/**
+ * A última mensagem depois das vagas: a dos links ou, desde a candidatura pelo WhatsApp (migração 20270927120000), o
+ * "Quer se candidatar a alguma?" que vem logo depois (sem ele aqui, a pergunta do currículo parava de sair).
+ */
+const MARCAS_DEPOIS_DAS_VAGAS = [...MARCAS_DOS_LINKS_DAS_VAGAS, QUER_SE_CANDIDATAR.slice(0, 40)];
+/** Os passos com uma pergunta esperando resposta (o currículo, as perguntas da vaga): o convite do Instagram não sai. */
+const MARCAS_DOS_PASSOS = [
+  ...PASSOS_DO_MEIO.map((p) => MARCAS_DO_CURRICULO[p]),
+  MARCA_DA_PERGUNTA_DA_CANDIDATURA,
+  MARCA_DO_NOME_DA_CANDIDATURA,
+];
 
 /** O /api/filas: os lembretes que estão na hora (até 30 por vez). */
 export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; falhas: number }> {
@@ -2976,7 +3057,7 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
       const baixado = await baixarParaLer(cfg, pdf ? [pdf] : midias.filter((x) => x.tipo === "imagem"));
       const nome = primeiroNome(c.nome);
       let saiu = false;
-      const respondeu = await responderCurriculoDoArquivo({
+      const lido = await responderCurriculoDoArquivo({
         banco,
         chave,
         conversa: c.conversa,
@@ -2991,10 +3072,10 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
         ola: `${nome ? `Oi, ${nome}!` : "Oi!"} Mais cedo eu não consegui abrir o currículo que você mandou, mas agora já consigo. 😊\n\n`,
         agora: new Date(),
         ...baixado,
-      }).catch(() => false);
-      await feito(respondeu ? (saiu ? "mandado" : "não saiu") : "não deu para ler como currículo");
-      if (respondeu && saiu) enviados++;
-      else if (respondeu) falhas++;
+      }).catch((e): LeituraDoArquivo => ({ ok: false, tipo: "falha", motivo: e instanceof Error ? e.message : String(e) }));
+      await feito(lido.ok ? (saiu ? "mandado" : "não saiu") : `não deu: ${lido.motivo}`);
+      if (lido.ok && saiu) enviados++;
+      else if (lido.ok) falhas++;
     }
   // a vaga preparada mandada de novo pela equipe (Admin › Publicar pelo WhatsApp; migração 20270916160000; sem ela, nada)
   const { data: deNovo, error: erroDeNovo } = await banco.rpc("servidor_whatsapp_reenvios", { p_chave: chave });
@@ -3055,7 +3136,7 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
   // não tem currículo; com o recurso desligado (Admin › Qualificados), o banco não devolve ninguém
   const { data: semCurriculo, error: erroDoCurriculo } = await banco.rpc("servidor_whatsapp_pergunta_curriculo", {
     p_chave: chave,
-    p_marcas_vagas: MARCAS_DOS_LINKS_DAS_VAGAS,
+    p_marcas_vagas: MARCAS_DEPOIS_DAS_VAGAS,
     p_marca_pergunta: TEXTOS_DO_CURRICULO.pergunta.slice(0, 40),
   });
   if (!erroDoCurriculo)
@@ -3070,12 +3151,33 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
         console.error("Publike: a pergunta do currículo no WhatsApp não saiu:", r.erro);
       }
     }
+  // o currículo pela metade (migração 20270929120000; sem ela, nada): quem parou numa pergunta do currículo recebe, 2
+  // horas depois, uma vez por parada, a mesma pergunta (no lugar do convite do Instagram, que quebrava o passo)
+  const { data: pelaMetade, error: erroPelaMetade } = await banco.rpc("servidor_whatsapp_curriculo_pela_metade", {
+    p_chave: chave,
+    p_marcas: PASSOS_DO_MEIO.map((p) => MARCAS_DO_CURRICULO[p]),
+    p_marca_lembrete: MARCA_DO_LEMBRETE,
+  });
+  if (!erroPelaMetade)
+    for (const l of (pelaMetade ?? []) as unknown as { chave: string; numero: string; ultima: string }[]) {
+      const ultima = semBotoes(l.ultima ?? "");
+      const passo = passoDoCurriculo(ultima);
+      if (!passo || !PASSOS_DO_MEIO.includes(passo)) continue;
+      const r = await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, lembreteDoCurriculo(passo, ultima), null);
+      if (r.ok) enviados++;
+      else {
+        falhas++;
+        console.error("Publike: o lembrete do currículo pela metade não saiu:", r.erro);
+      }
+    }
   // o convite do Instagram (migrações 20270911120000 e 20270912120000; sem elas, nada): para quem já recebeu link de
-  // vaga na conversa, até 22 horas depois da última mensagem da pessoa; depois de uma pergunta do Publike, espera 2 horas
+  // vaga na conversa, até 22 horas depois da última mensagem da pessoa; depois de uma pergunta do Publike, espera 2
+  // horas; no meio de um passo (o currículo, as perguntas da vaga), não sai (migração 20270929120000)
   const { data: paraOInstagram, error: erroDoInstagram } = await banco.rpc("servidor_whatsapp_convite_instagram", {
     p_chave: chave,
     p_marca: marca(CONVITE_INSTAGRAM),
     p_marcas_ok: MARCAS_DOS_LINKS_DAS_VAGAS,
+    p_marcas_fluxo: MARCAS_DOS_PASSOS,
   });
   if (!erroDoInstagram)
     for (const l of (paraOInstagram ?? []) as unknown as { chave: string; numero: string }[]) {

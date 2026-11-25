@@ -65,6 +65,9 @@ let cvGuardadas: any[] | null = null;
 let cvPerguntasPedidas: any[] = [];
 let cvGuardados: any[] = [];
 let procuras: any[] = [];
+// o PDF que a pessoa mandou (25/11/2026: a Arlete): o tamanho que a Meta diz e os primeiros bytes do arquivo
+let pdfTamanho = 120_000;
+let pdfComeco = "%PDF-1.7\n";
 globalThis.fetch = (async (url: any, init: any) => {
   const u = String(url);
   const corpo = typeof init?.body === "string" ? JSON.parse(init.body) : null;
@@ -79,6 +82,10 @@ globalThis.fetch = (async (url: any, init: any) => {
     return falharArquivo
       ? json({ error: { message: "não achou", code: 100 } }, 404)
       : json({ url: "https://lookaside.fbsbx.com/arquivo-1", mime_type: "audio/ogg; codecs=opus", file_size: 9000 });
+  if (u.includes("graph.facebook.com") && u.includes("midia-pdf"))
+    return json({ url: "https://lookaside.fbsbx.com/pdf-1", mime_type: "application/pdf", file_size: pdfTamanho });
+  if (u.includes("lookaside.fbsbx.com/pdf-1"))
+    return new Response(new Blob([Buffer.concat([Buffer.from(pdfComeco), Buffer.alloc(4000)])], { type: "application/pdf" }));
   if (u.includes("lookaside.fbsbx.com")) return new Response(new Blob([new Uint8Array(9000)], { type: "audio/ogg" }));
   if (u.includes("/audio/transcriptions")) {
     transcricoes++;
@@ -211,6 +218,10 @@ async function main() {
   let candidaturas: any[] = [];
   let respondidas: any[] = [];
   let canceladas = 0;
+  // o arquivo da vez e as leituras (o currículo pelo arquivo; migração 20270806120000)
+  let midiasDaVez: any[] = [];
+  let leiturasHoje = 0;
+  let leituras: any[] = [];
   // o tipo de contratação na conversa (migração 20270926120000)
   let regimes: any[] = [];
   let regimeN = 1;
@@ -279,6 +290,11 @@ async function main() {
         return { data: { ligado: true, ok: true, vagas: vagasDoLugar }, error: null };
       }
       if (nome === "servidor_whatsapp_candidatar_ligado") return { data: candidatarLigadoMock, error: null };
+      if (nome === "servidor_whatsapp_midias_da_vez") return { data: { midias: midiasDaVez, leituras_hoje: leiturasHoje }, error: null };
+      if (nome === "servidor_whatsapp_leitura") {
+        leituras.push(args);
+        return { data: null, error: null };
+      }
       if (nome === "servidor_whatsapp_vaga_para_candidatar") {
         if (!paraCandidatar) return { data: null, error: { code: "PGRST202", message: "sem a função" } };
         if (paraCandidatar.ok) candidaturaDaVez = { anuncio_id: args.p_anuncio, vez: 0, respostas: {}, perguntas: paraCandidatar.perguntas, titulo: paraCandidatar.titulo, conta: paraCandidatar.conta };
@@ -1794,9 +1810,13 @@ async function main() {
     // o áudio que não virou texto
     r = await rodar("[a pessoa mandou um áudio]", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: "[a pessoa mandou um áudio]" }] });
     conferir(corpo(r.msgs[0]).startsWith(M.passo1) && corpo(r.msgs[0]).includes("não consegui ouvir"), "o áudio sem texto: pede de novo, no mesmo passo", corpo(r.msgs[0]));
-    // a foto do currículo: o envio pelo site
+    // a foto do currículo que não chegou para ler: segue o currículo, no mesmo passo (e não mais o envio pelo site)
     r = await rodar("[a pessoa mandou uma foto]", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: "[a pessoa mandou uma foto]" }] });
-    conferir(botao(r.msgs[0]) === "Enviar meu currículo", "a foto no meio: o botão Enviar meu currículo", corpo(r.msgs[0]));
+    conferir(
+      corpo(r.msgs[0]).startsWith(M.passo1) && corpo(r.msgs[0]).includes("não consegui abrir o seu arquivo") && corpo(r.msgs[0]).includes("*Que trabalho você procura") && !botao(r.msgs[0]),
+      "a foto no meio que não abriu: o porquê e a mesma pergunta, no passo 1",
+      corpo(r.msgs[0]),
+    );
 
     // passo 2 → passo 3 (sem a IA); o parar
     const p2 = { de: "robo", texto: cv.TEXTOS_DO_CURRICULO.passo2(cv.PERGUNTAS_DE_SEMPRE) };
@@ -1924,6 +1944,91 @@ async function main() {
     conferir(cv.tempoDoTrabalho({ inicio: "2024-01", fim: "2025-12", atual: false }, "2026-11") === "2 anos", "24 meses: 2 anos");
     conferir(cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11") === "há 1 ano e meio, até hoje", "desde 06/2025: 1 ano e meio, até hoje", cv.tempoDoTrabalho({ inicio: "2025-06", fim: "", atual: true }, "2026-11"));
     conferir(cv.tempoDoTrabalho({ inicio: "2026-05", fim: "2026-10", atual: false }, "2026-11") === "6 meses", "6 meses");
+
+    // --- O arquivo que não virou currículo e o convite do Instagram no meio (25/11/2026, a conversa da Arlete) -----
+    const arq = await import("../src/lib/servidor/curriculo-por-arquivo");
+    conferir(arq.pareceePdf(Buffer.from("%PDF-1.4 x")) && arq.pareceePdf(Buffer.from("\n\r  %PDF-1.7")) && !arq.pareceePdf(Buffer.from("PK\u0003\u0004word/")), "o PDF: o começo, mesmo com bytes soltos antes");
+    conferir(arq.emMb(25 * 1024 * 1024) === "25,0 MB" && arq.MAX_PDF === 20 * 1024 * 1024, "o tamanho em MB e o limite de 20 MB");
+    // a pergunta de cada passo, tirada da última mensagem
+    const q1passo = cv.perguntaDoPasso("passo1", cv.TEXTOS_DO_CURRICULO.passo1);
+    conferir(q1passo.startsWith("*Que trabalho você procura") && q1passo.includes("Por exemplo") && !q1passo.includes("📝"), "a pergunta do passo 1", q1passo);
+    conferir(cv.perguntaDoPasso("pergunta2", cv.TEXTOS_DO_CURRICULO.perguntaDoPasso2(2, "O que você fazia?", true)) === "O que você fazia?", "a pergunta 2, sem a dica dos botões");
+    conferir(cv.perguntaDoPasso("passo3", cv.TEXTOS_DO_CURRICULO.passo3).startsWith("• até que ano"), "a pergunta do passo 3");
+    conferir(cv.perguntaDoPasso("passo1", cv.TEXTOS_DO_CURRICULO.passo1DeNovo).startsWith("*Que trabalho você procura"), "o passo 1 de novo: a pergunta de sempre");
+    const lembrete = cv.lembreteDoCurriculo("passo1", cv.TEXTOS_DO_CURRICULO.passo1);
+    conferir(cv.passoDoCurriculo(lembrete) === "passo1" && lembrete.includes(cv.MARCA_DO_LEMBRETE) && lembrete.includes("*Que trabalho você procura"), "o lembrete do currículo pela metade: o mesmo passo e a mesma pergunta", lembrete);
+    console.log("\n--- currículo pela metade (lembrete) ---\n" + lembrete + "\n---");
+    const naoE = cv.arquivoNaoLido({ tipo: "nao_e_curriculo", oQueE: "uma carteira de trabalho" }, true);
+    conferir(naoE.startsWith("Abri o arquivo, mas ele parece ser uma carteira de trabalho, e não um currículo.") && naoE.includes(cv.OFERTA_DE_MONTAR), "não é currículo: o que parece e a oferta de montar", naoE);
+    conferir(cv.arquivoNaoLido({ tipo: "grande", tamanho: "25,0 MB" }, false).includes("(25,0 MB)") && cv.arquivoNaoLido({ tipo: "grande" }, false).includes("no site"), "grande: o tamanho; desligado: o site");
+    conferir(cv.passoDoCurriculo(cv.arquivoNoMeioDoCurriculo(null, "pergunta1", cv.TEXTOS_DO_CURRICULO.perguntaDoPasso2(1, "Quantos lanches por dia?", true))) === "pergunta1", "o arquivo no meio: a marca do passo fica");
+
+    const pdfDaArlete = [{ wamid: "wpdf", tipo: "pdf", midia: "midia-pdf", mime: "application/pdf", legenda: null }];
+    const naoECurriculo = { e_curriculo: false, o_que_e: "uma carteira de trabalho", titulo: "", habilidades: [], escolaridade: "", curso: "", outros_estudos: [], experiencias: [], cursos: [], cnh: "", disponibilidade: [] };
+    const curriculoLido = { e_curriculo: true, o_que_e: "", titulo: "Auxiliar de serviços gerais", habilidades: ["Limpeza"], escolaridade: "medio", curso: "", outros_estudos: [], experiencias: [{ cargo: "Auxiliar de limpeza", onde: "Condomínio", inicio: "2023-01", fim: "2025-06", atual: false, descricao: "Limpeza das áreas comuns." }], cursos: [], cnh: "", disponibilidade: [] };
+    const convite = { de: "robo", texto: `${a.CONVITE_INSTAGRAM}\n\n[Botão: Seguir no Instagram]` };
+    const aceitouCv = [...procurando, { de: "robo", texto: `${cv.TEXTOS_DO_CURRICULO.pergunta}\n\n[Botões: Montar meu currículo · Agora não]` }, { de: "pessoa", texto: "Sim" }, p1];
+    // a Arlete: o convite do Instagram depois do passo 1, e o PDF (que não é currículo) em resposta ao passo 1
+    midiasDaVez = pdfDaArlete;
+    leituras = [];
+    respostaIA = naoECurriculo;
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...aceitouCv, convite, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    const arlete = corpo(r.msgs[0]);
+    conferir(
+      arlete.startsWith(M.passo1) && arlete.includes("parece ser uma carteira de trabalho") && arlete.includes("*Que trabalho você procura") && !arlete.includes("não consigo abrir") && !arlete.includes("site"),
+      "a Arlete: o PDF que não é currículo, no meio do currículo (depois do convite do Instagram): o porquê e o passo 1 de novo",
+      arlete,
+    );
+    conferir(leituras.length === 1 && leituras[0].p_resultado === "outro" && leituras[0].p_motivo.includes("carteira de trabalho") && leituras[0].p_fonte === "pdf", "a leitura fica registrada com o que a IA achou", leituras);
+    console.log("\n--- o PDF que não é currículo, no meio do currículo ---\n" + arlete + "\n---");
+    // o PDF que é currículo, no meio: a prévia com o Conferir e salvar (a conversa do currículo acaba ali)
+    respostaIA = curriculoLido;
+    cvGuardados = [];
+    leituras = [];
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...aceitouCv, convite, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    conferir(corpo(r.msgs[0]).includes("Li o seu currículo!") && botao(r.msgs[0]) === "Conferir e salvar" && cvGuardados.length === 1 && leituras[0]?.p_resultado === "curriculo", "o PDF que é currículo, no meio: lido, com o Conferir e salvar", corpo(r.msgs[0]));
+    // a resposta escrita depois do convite do Instagram: segue o currículo (a pergunta 1 da IA)
+    midiasDaVez = [];
+    respostaIA = { pergunta: "No condomínio, você cuidava de quantos andares?", exemplo: "uns 10", opcoes: [] };
+    r = await rodar(relato, { perfil: "trabalho", historico: [...aceitouCv, convite, { de: "pessoa", texto: relato }] });
+    conferir(corpo(r.msgs[0]).startsWith(M.pergunta1), "o convite do Instagram não quebra o passo: a resposta escrita segue o currículo", corpo(r.msgs[0]));
+    conferir(a.mensagemDeLado(a.CONVITE_INSTAGRAM) && a.mensagemDeLado(a.LEMBRETE_SEMPRE) && !a.mensagemDeLado(cv.TEXTOS_DO_CURRICULO.passo1), "as mensagens de lado");
+    // fora do currículo, quem procura trabalho: o PDF que não é currículo ouve o porquê, com Montar meu currículo
+    midiasDaVez = pdfDaArlete;
+    respostaIA = naoECurriculo;
+    const comVagas = [...procurando, { de: "pessoa", texto: "tem vaga de auxiliar de serviços gerais?" }, { de: "robo", texto: "Achei duas vagas de auxiliar de serviços gerais...\n\nhttps://publike.org/w/11111111" }];
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    const fora = corpo(r.msgs[0]);
+    const botoesFora = r.msgs[0]?.interactive?.action?.buttons?.map((b: any) => b.reply.id) ?? [];
+    conferir(fora.startsWith("Abri o arquivo, mas ele parece ser uma carteira de trabalho") && fora.includes(cv.OFERTA_DE_MONTAR) && botoesFora.join("|") === "a:cv-montar|a:cv-nao", "fora do currículo: o porquê, com Montar meu currículo e Agora não", r.msgs[0]);
+    console.log("\n--- o PDF que não é currículo, fora do currículo ---\n" + fora + "\n---");
+    // o "sim" escrito depois da oferta começa o currículo
+    r = await rodar("sim", { perfil: "trabalho", historico: [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }, { de: "robo", texto: `${fora}\n\n[Botões: Montar meu currículo · Agora não]` }, { de: "pessoa", texto: "sim" }] });
+    conferir(corpo(r.msgs[0]).startsWith(M.passo1), "o “sim” depois da oferta começa o currículo", corpo(r.msgs[0]));
+    // o arquivo grande: o tamanho
+    pdfTamanho = 25 * 1024 * 1024;
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    conferir(corpo(r.msgs[0]).includes("grande demais") && corpo(r.msgs[0]).includes("(25,0 MB)") && leituras.at(-1)?.p_resultado === "grande", "o PDF grande: o tamanho, e a leitura registrada como grande", corpo(r.msgs[0]));
+    pdfTamanho = 120_000;
+    // o arquivo que não abre como PDF
+    pdfComeco = "PK\u0003\u0004";
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    conferir(corpo(r.msgs[0]).startsWith("Não consegui abrir o seu arquivo agora.") && leituras.at(-1)?.p_motivo?.includes("não abre como PDF"), "o arquivo que não abre como PDF: o porquê fica registrado", leituras.at(-1));
+    pdfComeco = "%PDF-1.7\n";
+    // o formato que não é foto nem PDF (o Word): não abre, e como mandar
+    midiasDaVez = [];
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    conferir(corpo(r.msgs[0]).startsWith("Esse tipo de arquivo eu não consigo abrir.") && corpo(r.msgs[0]).includes("PDF ou uma foto de cada página"), "o Word: não abre, mande em PDF ou foto", corpo(r.msgs[0]));
+    // as leituras do dia acabaram
+    midiasDaVez = pdfDaArlete;
+    leiturasHoje = 5;
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    conferir(corpo(r.msgs[0]).includes("por hoje eu já li") || corpo(r.msgs[0]).includes("Por hoje eu já li"), "o limite do dia: amanhã", corpo(r.msgs[0]));
+    leiturasHoje = 0;
+    midiasDaVez = [];
+    // "Tenho currículo" com o currículo pelo WhatsApp ligado: manda aqui mesmo (o site fica no botão)
+    r = await rodar("Tenho currículo", { historico: [...comeco, { de: "pessoa", texto: "Tenho currículo" }] }, { payload: "a:curriculo" });
+    conferir(corpo(r.msgs[0]).startsWith("Ótimo! 😊 Pode mandar aqui mesmo") && botao(r.msgs[0]) === "Enviar meu currículo", "Tenho currículo, ligado: manda aqui mesmo", corpo(r.msgs[0]));
     cvLigado = false;
   }
 

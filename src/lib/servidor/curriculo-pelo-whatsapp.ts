@@ -1,9 +1,11 @@
 import "server-only";
 import { ocupacoesNoTexto } from "@/lib/cbo";
 import {
+  arquivoNoMeioDoCurriculo,
   BOTAO_AGORA_NAO,
   BOTAO_MONTAR_CURRICULO,
   conversaDoCurriculo,
+  OFERTA_DE_MONTAR,
   OPCAO_DO_CURRICULO,
   type CurriculoMontado,
   passoDoCurriculo,
@@ -27,6 +29,7 @@ import { iaConfigurada } from "@/lib/ia/openai";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
+import type { LeituraDoArquivo } from "./curriculo-por-arquivo";
 import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 import { acessoFila } from "./filas";
 
@@ -110,7 +113,8 @@ export async function seguirCurriculoPeloWhatsapp(p: {
   /** o "Oi, Fulana! 👋 Aqui é o Marcelo, do Publike." da primeira mensagem */
   ola: string;
   agora: Date;
-  linkEnviarCurriculo: { titulo: string; caminho: string };
+  /** o currículo pronto que chegou no meio da conversa (foto ou PDF): lê e, se der, manda a prévia */
+  lerArquivo?: () => Promise<LeituraDoArquivo>;
 }): Promise<boolean> {
   const passo = passoDoCurriculo(p.minhaUltima);
   const depois = passo === "previa" || passo === "arquivos";
@@ -118,7 +122,7 @@ export async function seguirCurriculoPeloWhatsapp(p: {
   // o "sim" escrito em resposta à pergunta depois das vagas vale como o botão
   const aceitou =
     !p.payload &&
-    p.minhaUltima.includes(TEXTOS_DO_CURRICULO.pergunta.slice(0, 40)) &&
+    (p.minhaUltima.includes(TEXTOS_DO_CURRICULO.pergunta.slice(0, 40)) || p.minhaUltima.includes(OFERTA_DE_MONTAR)) &&
     p.textos.every((t) => /^(sim|quero|pode|pode ser|bora|vamos|claro|ok|okay|beleza|quero sim|sim quero)[!. ]*$/i.test(t.trim()));
   const comecar =
     aceitou ||
@@ -164,15 +168,29 @@ export async function seguirCurriculoPeloWhatsapp(p: {
     await p.saida(TEXTOS_DO_CURRICULO.parou, { perfil });
     return true;
   }
+  // o currículo pronto no meio da conversa (25/11/2026: a Arlete respondeu o passo 1 com o PDF dela): lê; deu, sai a
+  // prévia com o "Conferir e salvar" e a conversa acaba ali; não deu, ela ouve o porquê e a mesma pergunta, com a marca
+  // do passo (a conversa segue de onde estava). Com o arquivo veio uma resposta escrita de verdade: segue com ela
+  if (!depois && p.midias.some((m) => m === "foto" || m === "arquivo")) {
+    const lido = p.lerArquivo ? await p.lerArquivo() : null;
+    if (lido?.ok) return true;
+    if (escrito.length < 40 || p.textos.every((t, i) => p.midias[i] || p.semConteudo(t))) {
+      // sem nada guardado para ler: o arquivo é de um formato que não abre (o Word); a foto, não chegou
+      const porque =
+        lido && !lido.ok && lido.tipo !== "sem_midia" && lido.tipo !== "desligado"
+          ? lido
+          : p.midias.includes("arquivo")
+            ? null
+            : { tipo: "nao_baixou" };
+      await p.saida(arquivoNoMeioDoCurriculo(porque, passo, p.minhaUltima), { perfil });
+      return true;
+    }
+  }
   // depois da prévia: "ok", "obrigado", a pergunta ("e agora?") e o que não é texto seguem o atendimento normal
   if (depois && (!escrito || p.textos.every(p.semConteudo) || escrito.endsWith("?"))) return false;
   if (!escrito) {
     if (p.midias.includes("audio")) {
       await p.saida(TEXTOS_DO_CURRICULO.semAudio(passo), { perfil });
-      return true;
-    }
-    if (p.midias.some((m) => m === "foto" || m === "arquivo")) {
-      await p.saida(TEXTOS_DO_CURRICULO.arquivo, { perfil, botao: p.linkEnviarCurriculo });
       return true;
     }
     return false;

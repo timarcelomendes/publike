@@ -72,8 +72,6 @@ export const TEXTOS_DO_CURRICULO = {
   semNada: `${MARCAS_DO_CURRICULO.passo1} não consegui montar o currículo com o que você me contou. 😕 Me conta de novo, com calma: *que trabalho você procura e o que você já fez?* Vale bico e trabalho sem carteira. Pode mandar áudio.`,
   semAudio: (passo: PassoDoCurriculo) =>
     `${MARCAS_DO_CURRICULO[passo === "previa" || passo === "falha" || passo === "arquivos" ? "passo3" : passo]} não consegui ouvir esse áudio. 😕 Pode mandar de novo ou escrever?`,
-  arquivo:
-    "Recebi! Se você já tem o currículo pronto, toque em *Enviar meu currículo* e mande por lá: o Publike lê e preenche tudo para você conferir.",
   parou: "Tudo bem! Quando quiser, é só escrever *currículo* que a gente monta junto. 😊",
   /** a pergunta separada, uns 10 minutos depois das vagas (uma vez por conversa), com Montar meu currículo e Agora não */
   pergunta:
@@ -83,6 +81,99 @@ export const TEXTOS_DO_CURRICULO = {
   semArquivo: "Não achei o seu currículo montado nos últimos 7 dias. 😕 Escreva *currículo* que a gente monta de novo.",
   arquivoFalhou: "Não consegui mandar o arquivo agora. 😕 Tente de novo daqui a pouco.",
 } as const;
+
+/** A oferta de montar conversando, depois do arquivo que não deu currículo (o "sim" escrito vale como o botão). */
+export const OFERTA_DE_MONTAR = "Se preferir, a gente monta o seu currículo agora, conversando";
+
+/** O porquê de um arquivo não ter virado currículo (src/lib/servidor/curriculo-por-arquivo.ts, `ArquivoNaoLido`). */
+export type ArquivoNaoLidoNaConversa = { tipo: string; oQueE?: string; tamanho?: string };
+
+/** O que houve com o arquivo, numa frase sem ponto ("o arquivo é grande demais para eu abrir aqui (23,1 MB)"). */
+function oQueHouve(r: ArquivoNaoLidoNaConversa) {
+  if (r.tipo === "grande") return `o arquivo é grande demais para eu abrir aqui${r.tamanho ? ` (${r.tamanho})` : ""}`;
+  if (r.tipo === "nao_e_curriculo")
+    return r.oQueE ? `abri o arquivo, mas ele parece ser ${r.oQueE}, e não um currículo` : "abri o arquivo, mas não achei um currículo nele";
+  if (r.tipo === "sem_campos") return "abri o seu currículo, mas não consegui ler o que está escrito";
+  if (r.tipo === "limite") return "por hoje eu já li todos os arquivos que dava para ler deste número";
+  if (r.tipo === "formato") return "esse tipo de arquivo eu não consigo abrir";
+  return "não consegui abrir o seu arquivo agora";
+}
+
+/** O que a pessoa pode fazer, depois do que houve. */
+function comoMandar(r: ArquivoNaoLidoNaConversa) {
+  if (r.tipo === "grande") return "Se for o seu currículo, mande uma foto de cada página, que eu leio na hora.";
+  if (r.tipo === "nao_e_curriculo") return "Se tiver o currículo, mande o PDF ou uma foto de cada página.";
+  if (r.tipo === "sem_campos") return "Pode mandar uma foto de cada página, de perto, com a folha inteira e boa luz?";
+  if (r.tipo === "limite") return "Amanhã eu leio de novo.";
+  if (r.tipo === "formato") return "Se for o seu currículo, mande em PDF ou uma foto de cada página, que eu leio na hora.";
+  return "Pode mandar de novo? Se for o currículo, também dá para mandar uma foto de cada página.";
+}
+
+const comMaiuscula = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+
+/**
+ * O arquivo de quem procura trabalho que não virou currículo (25/11/2026: a Arlete ouviu "por aqui eu não consigo
+ * abrir" e foi mandada ao site): o que houve, o que fazer e, com o currículo pelo WhatsApp ligado, a oferta de montar
+ * conversando (com os botões Montar meu currículo e Agora não).
+ */
+export function arquivoNaoLido(r: ArquivoNaoLidoNaConversa, comMontar: boolean) {
+  return [
+    `${comMaiuscula(oQueHouve(r))}. 😕 ${comoMandar(r)}`,
+    comMontar
+      ? `${OFERTA_DE_MONTAR}: leva uns 5 minutos e pode ser por áudio. 🎤`
+      : "Se preferir, dá para fazer o currículo no site, com calma.",
+  ].join("\n\n");
+}
+
+/** A pergunta de cada passo, quando a última mensagem do Publike não a traz inteira. */
+const PERGUNTA_DE_SEMPRE: Partial<Record<PassoDoCurriculo, string>> = {
+  passo1:
+    "*Que trabalho você procura e onde você já trabalhou?* Vale emprego com carteira, bico, diária e trabalho por conta própria.",
+  passo3:
+    "• até que ano você estudou;\n• se fez algum curso (de qualquer coisa);\n• se tem carteira de motorista, e qual;\n• e quando você pode trabalhar (manhã, tarde, noite, fim de semana).",
+  falha: "Me manda qualquer mensagem que eu tento montar de novo, com tudo o que você já me contou.",
+};
+/** A pergunta do passo de agora, tirada da última mensagem do Publike (sem a marca nem a dica dos botões). */
+export function perguntaDoPasso(passo: PassoDoCurriculo, minhaUltima: string) {
+  const paragrafos = minhaUltima
+    .split(/\n{2,}/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const i = paragrafos.findIndex((t) => t.includes(MARCAS_DO_CURRICULO[passo]));
+  const depois = i >= 0 ? paragrafos.slice(i + 1).filter((t) => !/^_(Toque numa opção|Responda do seu jeito)/.test(t)) : [];
+  if (depois.length) return depois.join("\n\n");
+  return PERGUNTA_DE_SEMPRE[passo] ?? "É só responder a pergunta de cima, do seu jeito.";
+}
+
+/**
+ * O arquivo que chegou no meio do currículo e não virou currículo: o porquê e a mesma pergunta, com a marca do passo
+ * (a conversa continua de onde estava). `r` null: o formato que não é foto nem PDF.
+ */
+export function arquivoNoMeioDoCurriculo(r: ArquivoNaoLidoNaConversa | null, passo: PassoDoCurriculo, minhaUltima: string) {
+  const motivo = r ?? { tipo: "formato" };
+  const mandar = motivo.tipo === "limite" ? "" : " Se quiser, mande o currículo em PDF ou uma foto de cada página.";
+  return [
+    `${MARCAS_DO_CURRICULO[passo]} ${oQueHouve(motivo)}. 😕${mandar} Ou seguimos por aqui mesmo, escrevendo ou por áudio 🎤:`,
+    perguntaDoPasso(passo, minhaUltima),
+  ].join("\n\n");
+}
+
+/** Os passos do meio do currículo (uma pergunta esperando resposta): o convite do Instagram não sai neles. */
+export const PASSOS_DO_MEIO: PassoDoCurriculo[] = ["passo1", "passo2", "pergunta1", "pergunta2", "pergunta3", "passo3"];
+
+/** A marca do lembrete do currículo pela metade (uma vez por parada; migração 20270929120000). */
+export const MARCA_DO_LEMBRETE = "seu currículo ficou pela metade";
+
+/**
+ * O lembrete de quem parou no meio do currículo, 2 horas depois (no lugar do convite do Instagram): a marca do passo
+ * (a conversa segue de onde estava) e a mesma pergunta.
+ */
+export function lembreteDoCurriculo(passo: PassoDoCurriculo, ultima: string) {
+  return [
+    `${MARCAS_DO_CURRICULO[passo]} ${MARCA_DO_LEMBRETE}. 😊 Quer terminar? Falta pouco, e com ele pronto as empresas da região passam a te achar. É só responder por aqui, escrevendo ou em áudio 🎤:`,
+    perguntaDoPasso(passo, ultima),
+  ].join("\n\n");
+}
 
 /** As perguntas de sempre do passo 2 (sem a IA, ou quando a resposta dela não serve). */
 export const PERGUNTAS_DE_SEMPRE = [

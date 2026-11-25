@@ -1221,7 +1221,8 @@ function midiaRecebida(m: MensagemRecebida) {
 export async function baixarFotoOuPdf(cfg: ConfigMeta, id: string, max = 8 * 1024 * 1024) {
   const info = await graph<{ url?: string; mime_type?: string; file_size?: number }>(cfg, encodeURIComponent(id));
   if (!info.ok || !info.dados.url) return { ok: false as const, erro: info.ok ? "sem endereço" : info.texto };
-  if (info.dados.file_size && info.dados.file_size > max) return { ok: false as const, erro: "grande", grande: true };
+  if (info.dados.file_size && info.dados.file_size > max)
+    return { ok: false as const, erro: "grande", grande: true, tamanho: info.dados.file_size };
   try {
     const r = await fetch(info.dados.url, {
       headers: { Authorization: `Bearer ${cfg.token}` },
@@ -1230,7 +1231,7 @@ export async function baixarFotoOuPdf(cfg: ConfigMeta, id: string, max = 8 * 102
     });
     if (!r.ok) return { ok: false as const, erro: `HTTP ${r.status}` };
     const bytes = Buffer.from(await r.arrayBuffer());
-    if (bytes.length > max) return { ok: false as const, erro: "grande", grande: true };
+    if (bytes.length > max) return { ok: false as const, erro: "grande", grande: true, tamanho: bytes.length };
     const mime = (info.dados.mime_type || r.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
     return { ok: true as const, bytes, mime };
   } catch (e) {

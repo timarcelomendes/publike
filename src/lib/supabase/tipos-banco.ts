@@ -3636,7 +3636,13 @@ export type Database = {
         Returns: undefined;
       };
       servidor_whatsapp_convite_instagram: {
-        Args: { p_chave: string; p_marca: string; p_marcas_ok: string[] };
+        /** p_marcas_fluxo: os passos em que o convite não sai (migração 20270929120000) */
+        Args: { p_chave: string; p_marca: string; p_marcas_ok: string[]; p_marcas_fluxo?: string[] };
+        Returns: Json;
+      };
+      /** o lembrete do currículo pela metade (migração 20270929120000) */
+      servidor_whatsapp_curriculo_pela_metade: {
+        Args: { p_chave: string; p_marcas: string[]; p_marca_lembrete: string };
         Returns: Json;
       };
       admin_whatsapp_instagram: {
