@@ -27,6 +27,19 @@ import {
   type ConfigMeta,
 } from "./whatsapp";
 import {
+  AVISO_DA_IA_ARQUIVO,
+  avisoVisto,
+  BOTOES_DO_ACEITE,
+  PAYLOAD_NAO_LER,
+  PAYLOAD_PODE_LER,
+  PERGUNTA_DO_ACEITE,
+  perguntouOAceite,
+  querTirarOAceite,
+  respostaAoAceite,
+  SEM_IA,
+  SEM_LER,
+} from "@/lib/aceite-da-ia";
+import {
   arquivoNaoLido,
   arquivoNaoLidoDeNovo,
   BOTAO_AGORA_NAO,
@@ -37,6 +50,7 @@ import {
   PASSOS_DO_MEIO,
   passoDoCurriculo,
   PORQUES_DA_CORRECAO,
+  querParar,
   TEXTOS_DO_CURRICULO,
   type ArquivoNaoLidoNaConversa,
 } from "@/lib/curriculo-pelo-whatsapp";
@@ -1462,6 +1476,8 @@ export const PARA_QUEM_TEM_CURRICULO_AQUI = [
   "Com o currículo no Publike, as empresas da região te acham pela função, você recebe o aviso das vagas novas que combinam com você e se candidata com um toque.",
   "Se preferir, também dá para mandar pelo site, no botão abaixo.",
   EQUIPE_POR_ESCRITO,
+  // o aceite da IA (migração 20271001120000): mandar o arquivo depois daqui é o aceite
+  AVISO_DA_IA_ARQUIVO,
 ].join("\n\n");
 
 /** O "Tenho currículo": o ganho e o botão do site, onde a pessoa entra pelo WhatsApp e manda o PDF ou a foto. */
@@ -2134,12 +2150,34 @@ export async function atenderConversa(
     ola,
     agora: opcoes.agora ?? new Date(),
   };
-  const curriculoDoArquivo = async (a: { imagens: string[]; pdf: string | null }) =>
-    (await responderCurriculoDoArquivo({ ...comumDoCurriculo, ...a })).ok;
-  const curriculoMandado = () => lerCurriculoMandado({ ...comumDoCurriculo, cfg, wamid: m.wamid });
+  // o aceite da IA (migração 20271001120000): o guardado, ou o aviso visto na conversa (mandar o arquivo ou responder
+  // depois dele é o aceite, e fica guardado); sem nenhum dos dois, o "Posso ler?" sai, uma vez, e o arquivo espera o
+  // toque. Sem a migração, lê como antes
+  const aceitar = async (origem: string, aviso: string) => {
+    await banco.rpc("servidor_ia_aceitar", { p_chave: chave, p_conversa: e.chave, p_origem: origem, p_aviso: aviso });
+  };
+  const comAceite = async () => {
+    const { data, error } = await banco.rpc("servidor_ia_aceita", { p_chave: chave, p_conversa: e.chave });
+    if (error || data === true) return true;
+    const visto = avisoVisto(e.historico);
+    if (!visto) return false;
+    await aceitar(visto.origem, visto.aviso);
+    return true;
+  };
+  const aceiteParaLer = async () => {
+    if (await comAceite()) return true;
+    await saida(`${ola}${PERGUNTA_DO_ACEITE}`, { perfil: e.perfil ?? "trabalho", botoes: BOTOES_DO_ACEITE });
+    return false;
+  };
+  // o currículo que a leitura da vaga achou (de quem ainda não disse o que quer): também com o aceite
+  const curriculoDoArquivo = async (a: { imagens: string[]; pdf: string | null }) => {
+    if (!(await aceiteParaLer())) return true;
+    return (await responderCurriculoDoArquivo({ ...comumDoCurriculo, ...a })).ok;
+  };
+  const curriculoMandado = () => lerCurriculoMandado({ ...comumDoCurriculo, cfg, wamid: m.wamid, aceite: aceiteParaLer });
   // o arquivo de quem procura trabalho que não virou currículo: o porquê, o que fazer e a oferta de montar conversando
   // (sem o currículo pelo WhatsApp, o link do site). sem_midia e desligado: nada foi lido, segue como antes
-  const comPorque = (r: LeituraDoArquivo): r is ArquivoNaoLido => !r.ok && r.tipo !== "sem_midia" && r.tipo !== "desligado";
+  const comPorque = (r: ArquivoNaoLido) => r.tipo !== "sem_midia" && r.tipo !== "desligado";
   const arquivoQueNaoDeu = async (r: ArquivoNaoLidoNaConversa) => {
     const montar = await curriculoPeloWhatsappLigado(banco, chave, m.numero);
     return saida(
@@ -2150,6 +2188,30 @@ export async function atenderConversa(
 
   // a equipe devolveu com os botões
   if (opcoes.retomada && opcoes.comBotoes) return saida(VOLTEI_COM_BOTOES, { menu: true });
+
+  // o aceite da IA (migração 20271001120000): a resposta ao "Posso ler?" (o toque, ou o "sim"/"não" escrito) e o "sem IA"
+  {
+    const escrita =
+      !m.payload && perguntouOAceite(minhaUltima) && textos.length === 1 && !midias[0] ? respostaAoAceite(textos[0]) : null;
+    const resposta = m.payload === PAYLOAD_PODE_LER ? "sim" : m.payload === PAYLOAD_NAO_LER ? "nao" : escrita;
+    if (resposta === "nao") {
+      await banco.rpc("servidor_whatsapp_midias_dispensar", { p_chave: chave, p_conversa: e.chave });
+      return saida(SEM_LER, { perfil: "trabalho", botao: LINKS.curriculo });
+    }
+    if (resposta === "sim") {
+      await aceitar("pode_ler", PERGUNTA_DO_ACEITE);
+      const lido = await lerCurriculoMandado({ ...comumDoCurriculo, cfg, wamid: m.wamid, esperando: true });
+      if (lido.ok) return;
+      if (!lido.ok && comPorque(lido)) return arquivoQueNaoDeu(lido);
+      if (lido.tipo === "sem_midia")
+        return saida("Não achei mais o seu arquivo. 😕 Pode mandar de novo? Agora eu já leio na hora.", { perfil: "trabalho" });
+      return saida(PARA_QUEM_TEM_CURRICULO, { perfil: "trabalho", botao: LINKS.enviarCurriculo });
+    }
+    if (!m.payload && textos.length === 1 && !midias[0] && querTirarOAceite(textos[0])) {
+      await banco.rpc("servidor_ia_tirar_aceite", { p_chave: chave, p_conversa: e.chave });
+      return saida(SEM_IA, { perfil: e.perfil ?? null, botao: LINKS.curriculo });
+    }
+  }
 
   // "Quero receber meus candidatos pelo WhatsApp" (o link de Admin › Esperando; migração 20270915120000): pedir na
   // conversa é o aceite; liga o aviso das contas do número e responde com quem está esperando
@@ -2312,6 +2374,15 @@ export async function atenderConversa(
       );
   }
 
+  // responder a um passo do currículo depois do aviso (o passo 1 traz) é o aceite da IA (migração 20271001120000)
+  {
+    const passoAgora = passoDoCurriculo(minhaUltima);
+    if (passoAgora && PASSOS_DO_MEIO.includes(passoAgora) && textos.some((_, i) => !midias[i]) && !textos.some(querParar)) {
+      const visto = avisoVisto(e.historico);
+      if (visto?.origem === "montar") await aceitar("montar", visto.aviso);
+    }
+  }
+
   // o currículo pelo WhatsApp (migração 20270902120000): o botão "Montar meu currículo", quem escreve "currículo" e os
   // passos da conversa; desligado (Admin › Qualificados), segue tudo como antes
   if (
@@ -2380,7 +2451,7 @@ export async function atenderConversa(
     if (midias.some((x) => x === "foto" || x === "arquivo")) {
       const lido = await curriculoMandado();
       if (lido.ok) return;
-      if (comPorque(lido) && e.perfil === "trabalho") return arquivoQueNaoDeu(lido);
+      if (!lido.ok && comPorque(lido) && e.perfil === "trabalho") return arquivoQueNaoDeu(lido);
     }
     if (teto.respondida_hoje) return;
     return saida(
@@ -2629,7 +2700,7 @@ export async function atenderConversa(
     if ((tipo === "foto" || tipo === "arquivo") && e.perfil !== "contratar") {
       const lido = await curriculoMandado();
       if (lido.ok) return;
-      if (e.perfil === "trabalho" && comPorque(lido)) return arquivoQueNaoDeu(lido);
+      if (e.perfil === "trabalho" && !lido.ok && comPorque(lido)) return arquivoQueNaoDeu(lido);
       if (e.perfil === "trabalho" && tipo === "arquivo" && lido.tipo === "sem_midia")
         return arquivoQueNaoDeu({ tipo: "formato" });
     }
@@ -3059,6 +3130,12 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
       const pdf = midias.find((x) => x.tipo === "pdf");
       if (!midias.length) {
         await feito("sem arquivo guardado");
+        continue;
+      }
+      // sem o aceite da IA (migração 20271001120000), não relê
+      const { data: aceita, error: erroAceite } = await banco.rpc("servidor_ia_aceita", { p_chave: chave, p_conversa: c.conversa });
+      if (!erroAceite && aceita !== true) {
+        await feito("sem o aceite da IA");
         continue;
       }
       // marca antes: se a leitura demorar e o robô rodar de novo, não manda duas vezes

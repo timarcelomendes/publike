@@ -1,5 +1,6 @@
 "use client";
 
+import { avisoDaIaNoSite } from "@/lib/aceite-da-ia";
 import { trabalhaAqui } from "@/lib/experiencia";
 import {
   Camera,
@@ -514,6 +515,8 @@ function LerCurriculoPronto({
             </div>
           )}
         </div>
+        {/* o aceite da IA (migração 20271001120000): enviar é o aceite */}
+        {!ocupado && <p className="text-body-sm text-ink-muted">{avisoDaIaNoSite(false)}</p>}
         {estadoDaLeitura}
         {seletores}
       </section>
@@ -623,6 +626,8 @@ function LerCurriculoPronto({
           Telefone, e-mail e endereço não entram nos campos.
         </p>
       )}
+      {/* o aceite da IA (migração 20271001120000): enviar ou gravar é o aceite */}
+      {!ocupado && <p className="text-body-sm text-ink-muted">{avisoDaIaNoSite(Boolean(falar))}</p>}
     </section>
   );
 }

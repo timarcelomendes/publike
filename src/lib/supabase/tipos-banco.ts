@@ -3640,6 +3640,13 @@ export type Database = {
         Args: { p_chave: string; p_marca: string; p_marcas_ok: string[]; p_marcas_fluxo?: string[] };
         Returns: Json;
       };
+      /** o aceite da IA (migração 20271001120000) */
+      servidor_ia_aceita: { Args: { p_chave: string; p_conversa: string }; Returns: boolean };
+      servidor_ia_aceitar: { Args: { p_chave: string; p_conversa: string; p_origem: string; p_aviso: string }; Returns: boolean };
+      servidor_ia_tirar_aceite: { Args: { p_chave: string; p_conversa: string }; Returns: number };
+      servidor_whatsapp_midias_esperando: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
+      servidor_whatsapp_midias_dispensar: { Args: { p_chave: string; p_conversa: string }; Returns: number };
+      aceitar_ia_do_curriculo: { Args: { p_aviso: string }; Returns: boolean };
       /** o lembrete do currículo pela metade (migração 20270929120000) */
       servidor_whatsapp_curriculo_pela_metade: {
         Args: { p_chave: string; p_marcas: string[]; p_marca_lembrete: string };

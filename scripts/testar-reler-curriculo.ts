@@ -32,6 +32,8 @@ function conferir(ok: boolean, nome: string, detalhe?: unknown) {
 }
 
 let perfil: string | null = "trabalho";
+// o aceite da IA (migração 20271001120000): sem ele, não relê
+let aceita = true;
 let respostaIA: any = {};
 let enviados: any[] = [];
 let relidos: any[] = [];
@@ -73,6 +75,7 @@ globalThis.fetch = (async (url: any, init: any) => {
     return json(null);
   }
   if (u.includes("/rpc/servidor_curriculo_whatsapp_ligado")) return json(true);
+  if (u.includes("/rpc/servidor_ia_aceita")) return json(aceita);
   if (u.includes("/rpc/servidor_whatsapp_conversa_saida")) {
     guardadas.push(corpo);
     return json(null);
@@ -124,6 +127,14 @@ async function main() {
   await a.enviarLembretesWhatsapp();
   conferir(enviados.filter((e) => e.type).length === 0, "sem perfil: nada sai", enviados);
   conferir(relidos.at(-1)?.p_resultado?.startsWith("não deu: a IA disse que não é currículo"), "sem perfil: só o registro", relidos);
+
+  // sem o aceite da IA: não relê, nada sai
+  perfil = "trabalho";
+  aceita = false;
+  enviados = [];
+  relidos = [];
+  await a.enviarLembretesWhatsapp();
+  conferir(enviados.filter((e) => e.type).length === 0 && relidos.at(-1)?.p_resultado === "sem o aceite da IA", "sem o aceite da IA: não relê", relidos);
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `\n${total} conferências, todas certas.`);
   if (falhas) process.exit(1);

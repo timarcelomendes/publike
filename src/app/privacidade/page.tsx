@@ -52,6 +52,7 @@ export default function Privacidade() {
             "Seu WhatsApp e seu e-mail de contato aparecem para a outra pessoa de um match ou de uma conexão aceita e, se você liberar, para a empresa com plano que pedir conexão com você (veja Conexões, abaixo).",
             "Se você marcar “Receber pelo WhatsApp” (em Preferências, ao curtir uma vaga ou no quadro de candidatos), o Publike manda pelo WhatsApp oficial, no número do seu perfil, os avisos do andamento (o match, a entrevista, o retorno e perguntas como “A empresa te respondeu?”) e, para quem contrata, as candidaturas novas. O Publike não lê as suas conversas com empresas ou candidatos. Quando você toca num botão da mensagem, a resposta entra no Publike como se você respondesse no site. O número e o texto do aviso passam pela Meta, dona do WhatsApp, para a mensagem chegar. Para parar, desmarque em Preferências ou responda PARAR no WhatsApp.",
             "Se você escrever para o WhatsApp oficial do Publike, a IA do Publike lê a sua mensagem e as últimas da conversa para responder, e a equipe do Publike também pode ler e responder por ali. O Publike guarda o texto das mensagens, o nome do seu perfil no WhatsApp e, se você veio de um anúncio do Publike no Instagram ou no Facebook, qual foi o anúncio. Se você mandar um áudio, ele vira texto (é o texto que fica na conversa) e o áudio não fica guardado. Se mandar a sua localização, ela serve só para achar as vagas perto e também não fica guardada. As mensagens ficam guardadas 180 dias e passam pela Meta, dona do WhatsApp, e pela empresa da IA, só para a resposta sair.",
+            "Se você mandar para o WhatsApp oficial do Publike o PDF ou a foto do seu currículo, ou contar o seu trabalho para montar o currículo por ali, a IA do Publike lê só para preencher os campos, com o seu aceite (veja Dados fora do Brasil). O arquivo não fica guardado. O currículo montado fica 7 dias, o tempo do link “Conferir e salvar”, e só vai para o seu perfil se você salvar.",
             "Se você mandar para o WhatsApp oficial do Publike a foto, o PDF ou o texto de uma vaga, a IA do Publike lê para preparar a vaga e manda o link para você conferir e publicar. A foto e o PDF não ficam guardados: o que foi lido (o cargo, o salário, o horário, o lugar e o resto da vaga) fica 30 dias, o tempo do link, e depois só o nome do cargo, para o Publike contar quantas vagas chegaram por ali; em 180 dias, sai tudo, como as mensagens. Nada vai ao ar sem você tocar em Publicar.",
             "Recomendações que escrevem para você só aparecem no seu perfil depois que você aprova, e você pode esconder qualquer uma depois.",
             "O CNPJ de agência, comércio ou empresa aparece no perfil e nos anúncios, para quem usa o site conferir na Receita.",
@@ -219,10 +220,19 @@ export default function Privacidade() {
       <Secao id="fora-do-brasil" titulo="Dados fora do Brasil">
         <p>
           Alguns dos serviços acima guardam ou processam dados em servidores fora do Brasil, como nos Estados Unidos
-          (por exemplo, a Vercel, a OpenAI, a Anthropic
+          (por exemplo, a Vercel, a Meta, dona do WhatsApp, a OpenAI, a Anthropic
           {LOGIN_CELULAR ? ", a Cloudflare e o Twilio" : " e a Cloudflare"}).
           Mandamos para cada um só o necessário para a
           parte dele no trabalho, e eles seguem regras de segurança e privacidade próprias.
+        </p>
+        <p>
+          Para responder as suas mensagens e fazer o que você pede no site e no WhatsApp, essa transferência é necessária
+          para o serviço que você pediu (LGPD, art. 33, IX). Para a IA ler o seu currículo (o PDF, as fotos, a gravação
+          ou o que você conta para montar o currículo), pedimos o seu aceite antes, com o aviso de que a IA fica fora do
+          Brasil (LGPD, art. 33, VIII): no site, ao enviar o arquivo ou gravar, com o aviso junto do botão; no WhatsApp,
+          ao responder ao currículo ou mandar o arquivo depois do aviso, ou tocando em “Pode ler”. Guardamos quando e
+          onde você aceitou. Para tirar o aceite, escreva <strong>sem IA</strong> no WhatsApp do Publike ou peça pelo
+          canal abaixo; depois disso, a IA não lê mais o seu currículo, e você pode preenchê-lo no site sem ela.
         </p>
       </Secao>
 

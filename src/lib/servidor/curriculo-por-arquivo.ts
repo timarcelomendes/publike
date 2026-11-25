@@ -53,7 +53,8 @@ export type ArquivoNaoLido = {
   /** "7,2 MB" */
   tamanho?: string;
 };
-export type LeituraDoArquivo = { ok: true } | ArquivoNaoLido;
+/** ok: respondeu (a prévia; ou, com `aceitePedido`, o "Posso ler?" do aceite da IA, e o arquivo espera). */
+export type LeituraDoArquivo = { ok: true; aceitePedido?: true } | ArquivoNaoLido;
 export type ProblemaDoArquivo = { tipo: "grande" | "nao_baixou" | "nao_e_pdf"; motivo: string; tamanho?: string };
 
 /** "7,2 MB" */
@@ -183,11 +184,18 @@ export async function baixarParaLer(cfg: ConfigMeta, midias: Midia[]) {
 /**
  * Quem procura trabalho mandou foto ou PDF: baixa o que chegou nesta vez e lê como currículo. ok: respondeu (a prévia e
  * o "Conferir e salvar"); senão, o porquê. sem_midia e desligado: nada foi lido, e quem chamou responde como antes.
+ * `aceite`: o aceite da IA (migração 20271001120000), conferido quando há o que ler; false, o "Posso ler?" saiu e o
+ * arquivo espera. `esperando`: o arquivo que esperava o "Pode ler" (o mais novo das últimas 24 horas, lido ou não).
  */
-export async function lerCurriculoMandado(p: Comum & { cfg: ConfigMeta; wamid: string }): Promise<LeituraDoArquivo> {
+export async function lerCurriculoMandado(
+  p: Comum & { cfg: ConfigMeta; wamid: string; aceite?: () => Promise<boolean>; esperando?: boolean },
+): Promise<LeituraDoArquivo> {
   if (!(await curriculoPeloWhatsappLigado(p.banco, p.chave, p.numero)))
     return { ok: false, tipo: "desligado", motivo: "o currículo pelo WhatsApp está desligado" };
-  const { data, error } = await p.banco.rpc("servidor_whatsapp_midias_da_vez", { p_chave: p.chave, p_conversa: p.conversa });
+  const { data, error } = await p.banco.rpc(
+    p.esperando ? "servidor_whatsapp_midias_esperando" : "servidor_whatsapp_midias_da_vez",
+    { p_chave: p.chave, p_conversa: p.conversa },
+  );
   if (error) return { ok: false, tipo: "sem_midia", motivo: `as mídias não vieram: ${error.message}` };
   const vez = (data ?? {}) as unknown as { midias?: Midia[]; leituras_hoje?: number };
   const midias = vez.midias ?? [];
@@ -211,6 +219,8 @@ export async function lerCurriculoMandado(p: Comum & { cfg: ConfigMeta; wamid: s
     await registrar("limite", motivo, null);
     return { ok: false, tipo: "limite", motivo };
   }
+  // sem o aceite da IA: o "Posso ler?" saiu (quem chamou não responde mais nada) e o arquivo espera
+  if (p.aceite && !(await p.aceite())) return { ok: true, aceitePedido: true };
 
   await marcarLidaDigitando(p.cfg, p.wamid).catch(() => undefined);
   const baixado = await baixarParaLer(p.cfg, pdf ? [pdf] : fotos);

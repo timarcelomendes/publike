@@ -494,3 +494,15 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 - "Tenho currículo" com o currículo pelo WhatsApp ligado: "Pode mandar aqui mesmo" (`PARA_QUEM_TEM_CURRICULO_AQUI`; o site fica no botão).
 - `privado.whatsapp_candidaturas` ganhou a segurança por linha, como as outras tabelas do WhatsApp.
 - O porquê para quem ouviu antes "por aqui eu não consigo abrir" (migração 20270930120000; Marcelo, da Arlete: "devolve isso pra ela"). O robô das filas relê o arquivo (`servidor_curriculos_sem_abrir`, que agora devolve o perfil). Se não virar currículo e a conversa for de quem procura trabalho, sai `arquivoNaoLidoDeNovo` ("Corrigindo o que eu disse mais cedo: …"), com Montar meu currículo e Agora não, só para os porquês que dizem algo novo (`PORQUES_DA_CORRECAO`). Teste: `npx tsx scripts/testar-reler-curriculo.ts`.
+
+## O aceite da IA (25/11/2026; migração 20271001120000; Marcelo: "tem como adicionar um aceite no whatsapp, sem travar?")
+
+- A IA do Publike fica fora do Brasil. Para ler o currículo (o arquivo, ou o que a pessoa conta para montar), o aceite é o do art. 33, VIII. A mensagem diz "fora do Brasil", sem o país, que fica na política de privacidade. A conversa comum segue no art. 33, IX.
+- **O aceite vai junto do que a pessoa já faz** (src/lib/aceite-da-ia.ts):
+  - responder ao passo 1 do currículo, que traz `AVISO_DA_IA_MONTAR`;
+  - mandar o arquivo depois do "Tenho currículo", que traz `AVISO_DA_IA_ARQUIVO`;
+  - o arquivo que chega sem aviso pede um toque (`PERGUNTA_DO_ACEITE`, Pode ler / Não, obrigado), uma vez por número. O arquivo espera: o "Pode ler", tocado ou escrito, lê o mais novo das últimas 24 horas (`servidor_whatsapp_midias_esperando`). O "Não" dispensa o arquivo e manda ao site.
+- **A prova:** `privado.aceites_da_ia` guarda a conversa ou a conta, a origem, o texto do aviso e quando. "sem IA" tira o aceite (`servidor_ia_tirar_aceite`), e os avisos de antes dele deixam de valer (`avisoVisto`).
+- A releitura dos arquivos sem abrir só relê com o aceite.
+- No site, o aviso fica junto do "Enviar PDF", da foto e do "Contar falando" (`avisoDaIaNoSite`). O aceite é guardado na leitura (`aceitar_ia_do_curriculo`), menos no currículo de outra pessoa.
+- A política de privacidade diz a base de cada parte, lista a Meta nos dados fora do Brasil, fala do currículo pelo WhatsApp e explica como tirar o aceite.

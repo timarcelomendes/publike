@@ -222,6 +222,11 @@ async function main() {
   let midiasDaVez: any[] = [];
   let leiturasHoje = 0;
   let leituras: any[] = [];
+  // o aceite da IA (migração 20271001120000)
+  let aceitaMock = false;
+  let aceitesDaIA: any[] = [];
+  let tirados = 0;
+  let dispensados = 0;
   // o tipo de contratação na conversa (migração 20270926120000)
   let regimes: any[] = [];
   let regimeN = 1;
@@ -290,7 +295,21 @@ async function main() {
         return { data: { ligado: true, ok: true, vagas: vagasDoLugar }, error: null };
       }
       if (nome === "servidor_whatsapp_candidatar_ligado") return { data: candidatarLigadoMock, error: null };
-      if (nome === "servidor_whatsapp_midias_da_vez") return { data: { midias: midiasDaVez, leituras_hoje: leiturasHoje }, error: null };
+      if (nome === "servidor_whatsapp_midias_da_vez" || nome === "servidor_whatsapp_midias_esperando")
+        return { data: { midias: midiasDaVez, leituras_hoje: leiturasHoje }, error: null };
+      if (nome === "servidor_ia_aceita") return { data: aceitaMock, error: null };
+      if (nome === "servidor_ia_aceitar") {
+        aceitesDaIA.push(args);
+        return { data: true, error: null };
+      }
+      if (nome === "servidor_ia_tirar_aceite") {
+        tirados++;
+        return { data: 1, error: null };
+      }
+      if (nome === "servidor_whatsapp_midias_dispensar") {
+        dispensados++;
+        return { data: 1, error: null };
+      }
       if (nome === "servidor_whatsapp_leitura") {
         leituras.push(args);
         return { data: null, error: null };
@@ -1947,6 +1966,7 @@ async function main() {
 
     // --- O arquivo que não virou currículo e o convite do Instagram no meio (25/11/2026, a conversa da Arlete) -----
     const arq = await import("../src/lib/servidor/curriculo-por-arquivo");
+    const ac = await import("../src/lib/aceite-da-ia");
     const lc = await import("../src/lib/ia/curriculo-do-arquivo");
     conferir(lc.resumoDoQueE("uma Carteira de Trabalho Digital com dados pessoais e contra") === "uma Carteira de Trabalho Digital", "o que a IA achou: só o nome, sem a descrição", lc.resumoDoQueE("uma Carteira de Trabalho Digital com dados pessoais e contra"));
     conferir(lc.resumoDoQueE("um certificado de curso de informática básica e avançada do senac") === "um certificado de curso de informática básica", "o que a IA achou: até 7 palavras, sem terminar em “e”", lc.resumoDoQueE("um certificado de curso de informática básica e avançada do senac"));
@@ -1984,6 +2004,7 @@ async function main() {
       arlete,
     );
     conferir(leituras.length === 1 && leituras[0].p_resultado === "outro" && leituras[0].p_motivo.includes("carteira de trabalho") && leituras[0].p_fonte === "pdf", "a leitura fica registrada com o que a IA achou", leituras);
+    conferir(aceitesDaIA.at(-1)?.p_origem === "montar" && aceitesDaIA.at(-1)?.p_aviso === ac.AVISO_DA_IA_MONTAR, "o arquivo depois do aviso do passo 1: o aceite fica guardado (montar)", aceitesDaIA);
     console.log("\n--- o PDF que não é currículo, no meio do currículo ---\n" + arlete + "\n---");
     // o PDF que é currículo, no meio: a prévia com o Conferir e salvar (a conversa do currículo acaba ali)
     respostaIA = curriculoLido;
@@ -1997,7 +2018,9 @@ async function main() {
     r = await rodar(relato, { perfil: "trabalho", historico: [...aceitouCv, convite, { de: "pessoa", texto: relato }] });
     conferir(corpo(r.msgs[0]).startsWith(M.pergunta1), "o convite do Instagram não quebra o passo: a resposta escrita segue o currículo", corpo(r.msgs[0]));
     conferir(a.mensagemDeLado(a.CONVITE_INSTAGRAM) && a.mensagemDeLado(a.LEMBRETE_SEMPRE) && !a.mensagemDeLado(cv.TEXTOS_DO_CURRICULO.passo1), "as mensagens de lado");
-    // fora do currículo, quem procura trabalho: o PDF que não é currículo ouve o porquê, com Montar meu currículo
+    // fora do currículo, quem procura trabalho (com o aceite já dado): o PDF que não é currículo ouve o porquê, com
+    // Montar meu currículo
+    aceitaMock = true;
     midiasDaVez = pdfDaArlete;
     respostaIA = naoECurriculo;
     const comVagas = [...procurando, { de: "pessoa", texto: "tem vaga de auxiliar de serviços gerais?" }, { de: "robo", texto: "Achei duas vagas de auxiliar de serviços gerais...\n\nhttps://publike.org/w/11111111" }];
@@ -2030,6 +2053,58 @@ async function main() {
     conferir(corpo(r.msgs[0]).includes("por hoje eu já li") || corpo(r.msgs[0]).includes("Por hoje eu já li"), "o limite do dia: amanhã", corpo(r.msgs[0]));
     leiturasHoje = 0;
     midiasDaVez = [];
+
+    // --- O aceite da IA (migração 20271001120000) -----------------------------------------------------------------
+    conferir(ac.respostaAoAceite("Pode ler") === "sim" && ac.respostaAoAceite("🎤 pode sim") === "sim" && ac.respostaAoAceite("não, obrigada") === "nao" && ac.respostaAoAceite("o que é isso?") === null, "a resposta escrita ao Posso ler?");
+    conferir(ac.querTirarOAceite("sem IA") && ac.querTirarOAceite("Não quero IA!") && ac.querTirarOAceite("tirar o meu aceite") && !ac.querTirarOAceite("sem ia não consigo"), "o “sem IA”");
+    conferir(ac.avisoVisto([{ de: "robo", texto: cv.TEXTOS_DO_CURRICULO.passo1 }])?.origem === "montar", "o aviso do passo 1");
+    conferir(ac.avisoVisto([{ de: "robo", texto: cv.TEXTOS_DO_CURRICULO.passo1 }, { de: "pessoa", texto: "sem IA" }, { de: "robo", texto: ac.SEM_IA }]) === null, "depois do “sem IA”, o aviso de antes não vale");
+    conferir(cv.TEXTOS_DO_CURRICULO.passo1.includes("fora do Brasil") && !cv.TEXTOS_DO_CURRICULO.passo1.includes("Estados Unidos"), "o passo 1 avisa que a IA fica fora do Brasil");
+    // o arquivo sem aviso e sem aceite: o "Posso ler?", com os botões, sem ler
+    aceitaMock = false;
+    midiasDaVez = pdfDaArlete;
+    respostaIA = curriculoLido;
+    leituras = [];
+    aceitesDaIA = [];
+    pedidosIA = [];
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    const idsAceite = r.msgs[0]?.interactive?.action?.buttons?.map((b: any) => b.reply.id) ?? [];
+    conferir(corpo(r.msgs[0]) === ac.PERGUNTA_DO_ACEITE && idsAceite.join("|") === "a:ia-sim|a:ia-nao" && leituras.length === 0 && pedidosIA.length === 0 && pedidosClaude.length === 0, "sem aceite e sem aviso: o Posso ler?, sem ler", r.msgs[0]);
+    console.log("\n--- o aceite da IA ---\n" + corpo(r.msgs[0]) + "\n[Pode ler] [Não, obrigado]\n---");
+    const perguntou = [...comVagas, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }, { de: "robo", texto: `${ac.PERGUNTA_DO_ACEITE}\n\n[Botões: Pode ler · Não, obrigado]` }];
+    // o "Pode ler": o aceite guardado e o arquivo que esperava, lido
+    cvGuardados = [];
+    r = await rodar("Pode ler", { perfil: "trabalho", historico: [...perguntou, { de: "pessoa", texto: "Pode ler" }] }, { payload: "a:ia-sim" });
+    conferir(aceitesDaIA.at(-1)?.p_origem === "pode_ler" && corpo(r.msgs[0]).includes("Li o seu currículo!") && cvGuardados.length === 1, "Pode ler: o aceite guardado e o arquivo lido", corpo(r.msgs[0]));
+    // o "pode" escrito vale como o botão
+    aceitesDaIA = [];
+    r = await rodar("pode", { perfil: "trabalho", historico: [...perguntou, { de: "pessoa", texto: "pode" }] });
+    conferir(aceitesDaIA.at(-1)?.p_origem === "pode_ler" && corpo(r.msgs[0]).includes("Li o seu currículo!"), "o “pode” escrito vale como o Pode ler", corpo(r.msgs[0]));
+    // o "Não, obrigado": não lê, o arquivo é dispensado, e o site sem a IA
+    dispensados = 0;
+    leituras = [];
+    r = await rodar("Não, obrigado", { perfil: "trabalho", historico: [...perguntou, { de: "pessoa", texto: "Não, obrigado" }] }, { payload: "a:ia-nao" });
+    conferir(corpo(r.msgs[0]) === ac.SEM_LER && dispensados === 1 && leituras.length === 0 && botao(r.msgs[0]) === "Fazer meu currículo", "Não, obrigado: não lê, e o site", r.msgs[0]);
+    // o arquivo depois do "Tenho currículo" (que avisa): o aceite é o envio, sem pergunta
+    aceitesDaIA = [];
+    const tenho = [...comeco, { de: "pessoa", texto: "Tenho currículo" }, { de: "robo", texto: `${a.PARA_QUEM_TEM_CURRICULO_AQUI}\n\n[Botão: Enviar meu currículo]` }];
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...tenho, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    conferir(aceitesDaIA.at(-1)?.p_origem === "arquivo" && corpo(r.msgs[0]).includes("Li o seu currículo!"), "depois do Tenho currículo: o envio é o aceite, e lê", corpo(r.msgs[0]));
+    // responder ao passo 1 (que avisa) é o aceite de montar
+    aceitesDaIA = [];
+    respostaIA = { pergunta: "Na lanchonete, você ficava no caixa?", exemplo: "às vezes", opcoes: [] };
+    r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });
+    conferir(aceitesDaIA.at(-1)?.p_origem === "montar" && corpo(r.msgs[0]).startsWith(M.pergunta1), "responder ao passo 1: o aceite de montar", aceitesDaIA);
+    // "sem IA": tira o aceite
+    tirados = 0;
+    r = await rodar("sem IA", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "sem IA" }] });
+    conferir(tirados === 1 && corpo(r.msgs[0]) === ac.SEM_IA, "sem IA: o aceite sai", corpo(r.msgs[0]));
+    // depois do "sem IA", o arquivo pede o aceite de novo (o aviso de antes não vale)
+    aceitesDaIA = [];
+    r = await rodar("[a pessoa mandou um arquivo]", { perfil: "trabalho", historico: [...tenho, { de: "pessoa", texto: "sem IA" }, { de: "robo", texto: ac.SEM_IA }, { de: "pessoa", texto: "[a pessoa mandou um arquivo]" }] });
+    conferir(corpo(r.msgs[0]) === ac.PERGUNTA_DO_ACEITE && aceitesDaIA.length === 0, "depois do sem IA: pede o aceite de novo", corpo(r.msgs[0]));
+    midiasDaVez = [];
+    aceitaMock = false;
     // "Tenho currículo" com o currículo pelo WhatsApp ligado: manda aqui mesmo (o site fica no botão)
     r = await rodar("Tenho currículo", { historico: [...comeco, { de: "pessoa", texto: "Tenho currículo" }] }, { payload: "a:curriculo" });
     conferir(corpo(r.msgs[0]).startsWith("Ótimo! 😊 Pode mandar aqui mesmo") && botao(r.msgs[0]) === "Enviar meu currículo", "Tenho currículo, ligado: manda aqui mesmo", corpo(r.msgs[0]));

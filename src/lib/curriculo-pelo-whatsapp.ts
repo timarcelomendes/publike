@@ -1,3 +1,4 @@
+import { AVISO_DA_IA_MONTAR } from "@/lib/aceite-da-ia";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 
 // O currículo pelo WhatsApp (22/11/2026; claude/plano-curriculo-otimizado.md, fase 1; migração 20270902120000): os
@@ -40,6 +41,8 @@ export const TEXTOS_DO_CURRICULO = {
     `${MARCAS_DO_CURRICULO.passo1} vamos montar o seu currículo aqui mesmo. É grátis, leva uns 5 minutos e você pode responder escrevendo ou mandando áudio. 🎤`,
     "*Que trabalho você procura e onde você já trabalhou?* Conta tudo: emprego com carteira, bico, diária, freelance, trabalho por conta própria ou ajudando a família. Tudo isso conta.",
     "Por exemplo: _quero trabalhar de auxiliar de cozinha. Trabalhei 2 anos numa lanchonete em Campinas e faço salgado para vender_.",
+    // o aceite da IA (migração 20271001120000): responder é o aceite
+    AVISO_DA_IA_MONTAR,
   ].join("\n\n"),
   /** quando a pessoa só respondeu "ok" ou "sim" no passo 1 */
   passo1DeNovo: `${MARCAS_DO_CURRICULO.passo1} pode contar! 😊 *Que trabalho você procura e onde você já trabalhou?* Pode ser escrito ou em áudio.`,

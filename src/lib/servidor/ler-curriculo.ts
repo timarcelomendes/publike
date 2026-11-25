@@ -1,4 +1,5 @@
 import "server-only";
+import { avisoDaIaNoSite } from "@/lib/aceite-da-ia";
 import { MAX_PDF_MB } from "@/lib/constantes";
 import { mensagemDeErro } from "@/lib/erros";
 import {
@@ -18,6 +19,15 @@ import { modeloPara } from "@/lib/ia/funcionalidades";
 // pessoa conta, a fala vira texto e a IA preenche os campos.
 
 export type LeituraDoArquivo = { ok: true; curriculo: CurriculoLido } | { ok: false; erro: string };
+
+/**
+ * O aceite da IA da própria pessoa (migração 20271001120000): enviar o arquivo ou a gravação, com o aviso junto do
+ * botão, é o aceite, guardado como prova. Sem a migração (ou com falha), a leitura segue.
+ */
+async function guardarAceiteDaIA(supabase: Awaited<ReturnType<typeof criarClienteServidor>>, comFala: boolean) {
+  const { error } = await supabase.rpc("aceitar_ia_do_curriculo", { p_aviso: avisoDaIaNoSite(comFala) });
+  if (error && error.code !== "PGRST202") console.error("Publike: o aceite da IA não foi guardado:", error.message);
+}
 
 /** Fotos do currículo: no máximo 3, já diminuídas no navegador (a ação aceita até 1 MB ao todo). */
 const MAX_FOTOS = 3;
@@ -75,6 +85,8 @@ export async function lerArquivoDoCurriculo(
     const cota = await modeloComCota(supabase);
     if (!cota.ok) return cota;
     const modelo = cota.modelo;
+    // o currículo da própria pessoa: o envio é o aceite (o de outra pessoa, que quem publicou manda, não)
+    if (!deOutraPessoa) await guardarAceiteDaIA(supabase, false);
 
     try {
       const lido = await lerCurriculoDoArquivo({ pdf, fotos: imagens }, modelo, new Date().toISOString().slice(0, 7));
@@ -166,6 +178,7 @@ export async function lerFalaDoCurriculo(
 
   const cota = await modeloComCota(supabase);
   if (!cota.ok) return cota;
+  await guardarAceiteDaIA(supabase, true);
 
   let fala: string;
   try {
