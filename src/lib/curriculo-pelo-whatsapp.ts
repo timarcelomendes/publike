@@ -125,6 +125,18 @@ export function arquivoNaoLido(r: ArquivoNaoLidoNaConversa, comMontar: boolean) 
   ].join("\n\n");
 }
 
+/**
+ * O porquê de verdade para quem ouviu antes "por aqui eu não consigo abrir" (25/11/2026; Marcelo, da Arlete: "devolve
+ * isso pra ela"): a correção, com o que houve e a oferta de montar conversando.
+ */
+export function arquivoNaoLidoDeNovo(r: ArquivoNaoLidoNaConversa, comMontar: boolean, nome: string | null) {
+  const texto = arquivoNaoLido(r, comMontar);
+  return `${nome ? `Oi, ${nome}!` : "Oi!"} Corrigindo o que eu disse mais cedo: ${texto.charAt(0).toLowerCase()}${texto.slice(1)}`;
+}
+
+/** Os porquês que a correção conta (os outros repetiriam o "não consegui abrir" de antes). */
+export const PORQUES_DA_CORRECAO = ["nao_e_curriculo", "grande", "sem_campos"];
+
 /** A pergunta de cada passo, quando a última mensagem do Publike não a traz inteira. */
 const PERGUNTA_DE_SEMPRE: Partial<Record<PassoDoCurriculo, string>> = {
   passo1:

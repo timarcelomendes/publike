@@ -28,6 +28,7 @@ import {
 } from "./whatsapp";
 import {
   arquivoNaoLido,
+  arquivoNaoLidoDeNovo,
   BOTAO_AGORA_NAO,
   BOTAO_MONTAR_CURRICULO,
   lembreteDoCurriculo,
@@ -35,6 +36,7 @@ import {
   MARCAS_DO_CURRICULO,
   PASSOS_DO_MEIO,
   passoDoCurriculo,
+  PORQUES_DA_CORRECAO,
   TEXTOS_DO_CURRICULO,
   type ArquivoNaoLidoNaConversa,
 } from "@/lib/curriculo-pelo-whatsapp";
@@ -3043,7 +3045,14 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
   // arquivo que a pessoa mandou é lido agora e vai o currículo pronto, uma vez por conversa, dentro da janela
   const { data: semAbrir, error: erroSemAbrir } = await banco.rpc("servidor_curriculos_sem_abrir", { p_chave: chave, p_limite: 1 });
   if (!erroSemAbrir)
-    for (const c of (semAbrir ?? []) as unknown as { conversa: string; numero: string; nome: string | null; midias: Midia[] | null }[]) {
+    for (const c of (semAbrir ?? []) as unknown as {
+      conversa: string;
+      numero: string;
+      nome: string | null;
+      /** desde a migração 20270930120000 */
+      perfil?: string | null;
+      midias: Midia[] | null;
+    }[]) {
       const feito = (resultado: string) =>
         banco.rpc("servidor_curriculo_relido", { p_chave: chave, p_conversa: c.conversa, p_resultado: resultado });
       const midias = c.midias ?? [];
@@ -3073,6 +3082,25 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
         agora: new Date(),
         ...baixado,
       }).catch((e): LeituraDoArquivo => ({ ok: false, tipo: "falha", motivo: e instanceof Error ? e.message : String(e) }));
+      // não virou currículo, de quem procura trabalho: o porquê de verdade, no lugar do "não consigo abrir" de antes,
+      // com Montar meu currículo e Agora não (25/11/2026; Marcelo, da Arlete: "devolve isso pra ela")
+      if (!lido.ok && c.perfil === "trabalho" && PORQUES_DA_CORRECAO.includes(lido.tipo)) {
+        const montar = await curriculoPeloWhatsappLigado(banco, chave, c.numero);
+        const r = await mandarDoRobo(
+          cfg,
+          banco,
+          chave,
+          c.conversa,
+          c.numero,
+          arquivoNaoLidoDeNovo(lido, montar, nome),
+          montar ? null : LINKS.curriculo,
+          montar ? [BOTAO_MONTAR_CURRICULO, BOTAO_AGORA_NAO] : undefined,
+        );
+        await feito(r.ok ? `porquê mandado: ${lido.motivo}` : `porquê não saiu: ${r.erro}`);
+        if (r.ok) enviados++;
+        else falhas++;
+        continue;
+      }
       await feito(lido.ok ? (saiu ? "mandado" : "não saiu") : `não deu: ${lido.motivo}`);
       if (lido.ok && saiu) enviados++;
       else if (lido.ok) falhas++;

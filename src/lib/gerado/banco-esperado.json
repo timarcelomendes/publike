@@ -414,7 +414,8 @@
   "20270926120000_lembrete_da_vaga_preparada",
   "20270927120000_candidatar_pelo_whatsapp",
   "20270928120000_nota_do_processo",
-  "20270929120000_curriculo_pela_metade"
+  "20270929120000_curriculo_pela_metade",
+  "20270930120000_reler_com_o_perfil"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3978,7 +3979,7 @@
   "f|public.servidor_curriculo_whatsapp_ligado(p_chave text, p_numero text)": "8a7b404cf8",
   "f|public.servidor_curriculos_para_leitura(p_chave text, p_limite integer)": "d066b05017",
   "f|public.servidor_curriculos_para_ler(p_chave text, p_limite integer)": "9b8ceafae0",
-  "f|public.servidor_curriculos_sem_abrir(p_chave text, p_limite integer)": "3c995b4b3b",
+  "f|public.servidor_curriculos_sem_abrir(p_chave text, p_limite integer)": "a28cef8fa8",
   "f|public.servidor_dados_para_atividades(p_chave text)": "d208050c71",
   "f|public.servidor_definir_funcao(p_chave text, p_anuncio uuid, p_cbo text, p_origem text, p_contexto boolean)": "c404003a2e",
   "f|public.servidor_devolvida(p_chave text, p_cobranca uuid)": "9a23a8763c",
