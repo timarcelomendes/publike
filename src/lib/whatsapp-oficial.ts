@@ -13,6 +13,20 @@ export function linkDoOi(numero: string = WHATSAPP_OFICIAL.numero) {
 }
 
 /**
+ * Pedir o link de entrar pela conversa (25/11/2026; migração 20271002120000): quem escreve "entrar" recebe na hora o
+ * link de entrar com um toque, sem código, a qualquer hora (a mensagem da pessoa abre as 24 horas da Meta). Vale no
+ * link vencido do aviso e no entrar do site, quando o código não pode sair.
+ */
+export const TEXTO_DO_ENTRAR = "entrar";
+
+export function linkDoEntrar(numero: string = WHATSAPP_OFICIAL.numero) {
+  return `https://wa.me/${numero}?text=${encodeURIComponent(TEXTO_DO_ENTRAR)}`;
+}
+
+/** No entrar do site, fora das 24 horas (o código não sai): o "entrar" na conversa, no lugar do "oi" e do código. */
+export const MANDE_ENTRAR = `Para entrar sem código, mande "entrar" para o Publike no WhatsApp ${WHATSAPP_OFICIAL.exibicao}: o link de entrar chega na hora.`;
+
+/**
  * O aceite dos avisos pela conversa (23/11/2026, migração 20270915120000): o wa.me com o pedido já escrito. A empresa
  * toca e envia; o atendimento liga o aviso pelo WhatsApp das contas do número e responde com quem está esperando.
  */

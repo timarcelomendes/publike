@@ -2823,6 +2823,14 @@ export type Database = {
       servidor_usar_entrada_whatsapp: { Args: { p_chave: string; p_token: string; p_numero_do_login: string }; Returns: Json };
       servidor_guardar_codigo_pego: { Args: { p_chave: string; p_numero: string; p_codigo: string }; Returns: boolean };
       servidor_pegar_codigo: { Args: { p_chave: string; p_numero: string }; Returns: string | null };
+      // migração 20271002120000 (entrar pelo botão do aviso)
+      servidor_entrada_para_aviso: {
+        Args: { p_chave: string; p_conta: string; p_numero: string; p_destino: string; p_horas?: number };
+        Returns: string | null;
+      };
+      servidor_destino_da_entrada: { Args: { p_chave: string; p_token: string }; Returns: Json };
+      servidor_ultimo_destino_de_entrada: { Args: { p_chave: string; p_numero: string }; Returns: string | null };
+      admin_login_pelo_whatsapp: { Args: { p_ids: string[] }; Returns: { id: string }[] };
       // migração 20270919120000 (ver como o dono)
       equipe_comecar_a_olhar: { Args: { p_conta: string }; Returns: undefined };
       parar_de_olhar: { Args: Record<PropertyKey, never>; Returns: string | null };

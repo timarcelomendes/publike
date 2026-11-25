@@ -458,7 +458,7 @@ function Conta({
   agora,
   admin,
 }: {
-  c: { id: string; nome: string; tipo: string; acesso: string | null; criado_em?: string | null } | null;
+  c: { id: string; nome: string; tipo: string; acesso: string | null; criado_em?: string | null; loginWhatsapp?: boolean } | null;
   agora: number;
   /** a ficha da conta só existe no admin; na moderação, o perfil público */
   admin: boolean;
@@ -483,7 +483,12 @@ function Conta({
         className="text-caption text-ink-muted"
         title={c.acesso ? new Date(c.acesso).toLocaleString("pt-BR") : undefined}
       >
-        {c.acesso ? `último acesso ${tempoRelativo(c.acesso, agora)}` : "nunca acessou"}
+        {/* sem acesso no site, a conta que entra só pelo WhatsApp (publicou ou se candidatou por lá) */}
+        {c.acesso
+          ? `último acesso ${tempoRelativo(c.acesso, agora)}`
+          : c.loginWhatsapp
+            ? "login feito pelo WhatsApp"
+            : "nunca acessou"}
       </span>
     </span>
   );

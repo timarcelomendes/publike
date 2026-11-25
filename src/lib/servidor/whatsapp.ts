@@ -7,6 +7,7 @@ import type { ClienteBanco } from "@/lib/supabase/admin";
 import { fraseDaEntrevista } from "@/lib/whatsapp";
 import { atenderConversa } from "./atendimento-whatsapp";
 import { urlDosEmails } from "./ambiente";
+import { linkDoAvisoComEntrar } from "./entrar-pelo-whatsapp";
 import { acessoFila } from "./filas";
 
 // O WhatsApp oficial (a API de nuvem da Meta; claude/plano-whatsapp-oficial.md, migração 20270619120000). O banco põe
@@ -1113,10 +1114,11 @@ export async function enviarWhatsappPendentes(limite = 30): Promise<ResultadoWha
       continue;
     }
     const temLink = def.botoes.some((b) => b.tipo === "link");
-    const envio = await enviarModelo(cfg, item.numero, def, m.params, {
-      link: temLink ? linkDoBotao(item) : undefined,
-      respostas: m.respostas,
-    });
+    const fim = temLink ? linkDoBotao(item) : undefined;
+    // a conta cujo login é este número: o botão já entra, com um toque (migração 20271002120000; a Super Box publicou
+    // pelo WhatsApp e o "Ver a candidatura" caía no entrar do site)
+    const link = fim ? ((await linkDoAvisoComEntrar({ cliente, chave }, item, fim)) ?? fim) : undefined;
+    const envio = await enviarModelo(cfg, item.numero, def, m.params, { link, respostas: m.respostas });
     if (envio.ok) {
       resultado.enviadas++;
       await marcar(item.id, "enviada", { modelo: m.modelo, wamid: envio.wamid });

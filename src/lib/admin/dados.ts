@@ -1171,8 +1171,19 @@ export type CurtidaAdmin = {
   respondida_por: string | null;
   /** pendente; aceita (o aceite saiu, falta o currículo); match; dispensada; desfeito */
   situacao: "pendente" | "aceita" | "match" | "dispensada" | "desfeito";
-  /** `criado_em`: quando a conta entrou no Publike; `acesso`: o último acesso */
-  curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null; criado_em?: string | null } | null;
+  /**
+   * `criado_em`: quando a conta entrou no Publike; `acesso`: o último acesso; `loginWhatsapp`: sem acesso no site, a
+   * conta entra só pelo WhatsApp (migração 20271002120000)
+   */
+  curtiu: {
+    id: string;
+    nome: string;
+    tipo: string;
+    bairro: string | null;
+    acesso: string | null;
+    criado_em?: string | null;
+    loginWhatsapp?: boolean;
+  } | null;
   /** com o que a linha do tempo precisa para o fim da vaga e o total de curtidas dela (todas, de sempre) */
   anuncio: {
     id: string;
@@ -1191,6 +1202,7 @@ export type CurtidaAdmin = {
     tipo: string;
     acesso: string | null;
     criado_em?: string | null;
+    loginWhatsapp?: boolean;
     resposta: Resposta | null;
   } | null;
   /**
@@ -1347,7 +1359,16 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
     : { data: [], error: null };
   if (e3 && e3.code !== "PGRST202") falha("o último acesso das contas", e3);
   const acessoDe = new Map((acessos ?? []).map((x) => [x.id, x.ultimo_acesso]));
-  const porPerfil = new Map((perfis ?? []).map((p) => [p.id, { ...p, acesso: acessoDe.get(p.id) ?? null }]));
+  const peloWhatsapp = await loginPeloWhatsapp(
+    c,
+    idsPerfis.filter((id) => !acessoDe.get(id)),
+  );
+  const porPerfil = new Map(
+    (perfis ?? []).map((p) => [
+      p.id,
+      { ...p, acesso: acessoDe.get(p.id) ?? null, loginWhatsapp: peloWhatsapp.has(p.id) },
+    ]),
+  );
   // os toques nos botões de contato (sem a migração 20270219120000, nenhum)
   const { data: toques, error: e4 } = idsAnuncios.length
     ? await c.rpc("admin_contatos_das_curtidas", { p_anuncios: idsAnuncios })
@@ -1392,6 +1413,7 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
             nome: autor.nome,
             tipo: autor.tipo,
             acesso: autor.acesso,
+            loginWhatsapp: autor.loginWhatsapp,
             resposta: respostas.get(autor.id) ?? null,
           }
         : null,
@@ -1431,10 +1453,14 @@ export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null)
   }
   const linhas = (Array.isArray(data) ? data : []) as unknown as LinhaDaModeracao[];
   const idsAnuncios = [...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.id] : [])))];
-  const [respostas, chats, whatsapps] = await Promise.all([
+  const semAcesso = [
+    ...new Set(linhas.flatMap((l) => [l.curtiu, l.publicou]).flatMap((x) => (x && !x.acesso ? [x.id] : []))),
+  ];
+  const [respostas, chats, whatsapps, peloWhatsapp] = await Promise.all([
     respostaDosAutores(c, [...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.autor_id] : [])))]),
     chatDasCurtidas(c, idsAnuncios),
     whatsappDasCurtidas(c, idsAnuncios),
+    loginPeloWhatsapp(c, semAcesso),
   ]);
   return linhas.map((l) => ({
     quando: l.criado_em,
@@ -1442,7 +1468,7 @@ export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null)
     respondida_por: l.respondida_por ?? null,
     situacao:
       l.status === "pendente" ? (l.aceita_em ? "aceita" : "pendente") : (l.status as CurtidaAdmin["situacao"]),
-    curtiu: l.curtiu,
+    curtiu: l.curtiu ? { ...l.curtiu, loginWhatsapp: peloWhatsapp.has(l.curtiu.id) } : null,
     anuncio: l.anuncio
       ? {
           id: l.anuncio.id,
@@ -1455,11 +1481,28 @@ export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null)
           curtidas: Number(l.anuncio.curtidas),
         }
       : null,
-    publicou: l.publicou ? { ...l.publicou, resposta: respostas.get(l.publicou.id) ?? null } : null,
+    publicou: l.publicou
+      ? { ...l.publicou, loginWhatsapp: peloWhatsapp.has(l.publicou.id), resposta: respostas.get(l.publicou.id) ?? null }
+      : null,
     contatos: { empresa: l.contato_empresa, pessoa: l.contato_pessoa },
     chat: l.curtiu && l.anuncio ? (chats.get(`${l.anuncio.id}:${l.curtiu.id}`) ?? null) : null,
     whatsapp: l.curtiu && l.anuncio ? (whatsapps.get(`${l.anuncio.id}:${l.curtiu.id}`) ?? []) : [],
   }));
+}
+
+/**
+ * As contas que entram só pelo WhatsApp (o login é o número, sem e-mail; migração 20271002120000), entre as sem acesso
+ * no site: o Admin mostra "login feito pelo WhatsApp" no lugar de "nunca acessou" (25/11/2026; a Super Box publicou
+ * pelo WhatsApp sem nunca abrir o site). Sem a migração, nenhuma.
+ */
+async function loginPeloWhatsapp(c: ClienteBanco, ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const { data, error } = await c.rpc("admin_login_pelo_whatsapp", { p_ids: ids.slice(0, 1000) });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as contas que entram pelo WhatsApp:", error.message);
+    return new Set();
+  }
+  return new Set((data ?? []).map((x) => x.id));
 }
 
 /** Quantas curtidas cada anúncio tem (todas, de sempre), lidas em páginas de 1.000. */

@@ -63,7 +63,7 @@ import {
   type LeituraDoArquivo,
   type Midia,
 } from "./curriculo-por-arquivo";
-import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
+import { caminhoDeEntrar, ultimoDestinoDeEntrar } from "./entrar-pelo-whatsapp";
 import {
   configVagasWhatsapp,
   confirmarVagaPublicada,
@@ -2363,9 +2363,13 @@ export async function atenderConversa(
     }
   }
 
-  // "entrar" na conversa (migração 20270920120000): o link de entrar com um toque, sem código (24 horas, uma vez)
+  // "entrar" na conversa (migração 20270920120000): o link de entrar com um toque, sem código (24 horas, uma vez). É
+  // também o pedido de outro link da página do link vencido (o do aviso): o novo leva ao mesmo lugar (migração
+  // 20271002120000), e a mensagem da pessoa abre a conversa, fora das 24 horas da Meta
   if (!m.payload && textos.length === 1 && /^(entrar|acessar|login|logar|link para entrar|quero entrar)[!. ]*$/i.test(textos[0].trim())) {
-    const destino = e.perfil === "contratar" ? "/painel" : "/perfil/curriculo";
+    const destino =
+      (await ultimoDestinoDeEntrar(m.numero).catch(() => null)) ??
+      (e.perfil === "contratar" ? "/painel" : "/perfil/curriculo");
     const entrar = await caminhoDeEntrar(m.numero, destino);
     if (entrar)
       return saida(

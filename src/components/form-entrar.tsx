@@ -10,7 +10,7 @@ import { COOKIE_PEDIU_LINK } from "@/lib/link-entrada";
 import { REDES, type BotaoRede, type RedeSocial } from "@/lib/login-social";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { telefoneDoLogin } from "@/lib/telefone-login";
-import { linkDoOi, MANDE_UM_OI } from "@/lib/whatsapp-oficial";
+import { linkDoEntrar, MANDE_ENTRAR } from "@/lib/whatsapp-oficial";
 import { BotaoGoogle } from "./botao-google";
 import { Aviso } from "./ui/basicos";
 import { Botao, classesBotaoRede } from "./ui/botao";
@@ -67,8 +67,9 @@ function traduzir(erro: ErroAuth) {
   if (codigo === "otp_expired" || msg.includes("expired") || msg.includes("invalid") && msg.includes("token")) {
     return "Código errado ou vencido. Confira ou peça um novo.";
   }
-  // o código vai pelo WhatsApp (o gancho /api/auth/codigo-whatsapp): fora das 24 horas da Meta, o pedido de um "oi" antes
-  if (ehForaDaJanela(erro)) return MANDE_UM_OI;
+  // o código vai pelo WhatsApp (o gancho /api/auth/codigo-whatsapp): fora das 24 horas da Meta, o "entrar" na conversa
+  // manda o link de entrar com um toque, sem código (migração 20271002120000; antes, o "oi" e o código de novo)
+  if (ehForaDaJanela(erro)) return MANDE_ENTRAR;
   if (codigo === "phone_provider_disabled" || msg.includes("phone provider")) {
     return "O login por celular ainda não está ativado. Entre com seu e-mail.";
   }
@@ -680,11 +681,11 @@ export function FormEntrar({
           {erro && (
             <Aviso tipo="erro">
               {erro}
-              {erro === MANDE_UM_OI && (
+              {erro === MANDE_ENTRAR && (
                 <>
                   {" "}
-                  <a href={linkDoOi()} target="_blank" rel="noopener noreferrer" className="underline">
-                    Mandar um oi no WhatsApp
+                  <a href={linkDoEntrar()} target="_blank" rel="noopener noreferrer" className="underline">
+                    Mandar &ldquo;entrar&rdquo; no WhatsApp
                   </a>
                 </>
               )}
