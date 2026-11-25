@@ -1427,6 +1427,28 @@ export const PEDIR_A_FUNCAO_DEPOIS = "Se me disser o que você faz, eu separo s�
 export const PEDIR_FUNCAO_E_BAIRRO_DEPOIS =
   "Se me disser o que você faz e o bairro onde mora, eu separo as vagas da sua função mais perto de você. 😊";
 
+/**
+ * "Estou procurando emprego", sem dizer o quê (25/11/2026; Marcelo, com a resposta da IA "Por aqui eu cuido de quem
+ * contrata, mas você pode ver as vagas em publike.org" para quem veio de um anúncio de empresas: "Está errado!"): a
+ * frase escrita à mão vale o botão "Procuro emprego". Os cumprimentos antes ("Oi, bom dia") não contam; com a função
+ * ("procuro emprego de motorista") segue para a IA, que busca as vagas.
+ */
+export function soProcuraEmprego(t: string) {
+  const x = simples(t)
+    .replace(/[^a-z ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^((oi+|ola|opa|eai|e ai|bom dia|boa tarde|boa noite|tudo bem|tudo bom|td bem|blz|beleza|gente|pessoal|publike)( |$))+/, "")
+    .trim();
+  return /^(eu )?((estou|to|tou|ando|tava|estava) )?((procurando|buscando|atras de|em busca de|a procura de|procuro|busco|quero|preciso de|preciso|gostaria de|queria) )(um |uma |algum |alguma )?(emprego|trabalho|servico|vaga|vagas|oportunidade|serviço)( de emprego| de trabalho)?( urgente)?( por favor| pfv| pf)?$/.test(
+    x,
+  ) || /^(eu )?((estou|to|tou) )?(desempregad[oa]|sem emprego|sem trabalho)( e (procurando|preciso de) (emprego|trabalho))?$/.test(x) ||
+    /^(eu )?preciso (muito )?trabalhar$/.test(x);
+}
+
+/** Quem escreve que procura emprego sem dizer o quê: a pergunta pronta ("Pode deixar!": "Que bom!" soa mal para quem está desempregada). */
+export const PARA_QUEM_ESCREVE_QUE_PROCURA = PARA_QUEM_PROCURA.replace(/^Que bom! 😊/, "Pode deixar! 😊");
+
 /** O "ok" de quem procura trabalho: a pergunta, clara, com um exemplo. */
 export const PEDIR_FUNCAO_E_BAIRRO =
   "Combinado! 😊 *Me conta o que você faz e o bairro onde mora*, que eu te mando as vagas. Por exemplo: _sou cozinheira e moro no Jardim América_.";
@@ -1797,7 +1819,9 @@ function contexto(e: Entrada, jaFalou: boolean, agora: Date, vagasPorAqui = fals
       : e.perfil === "contratar"
         ? "- Ela quer contratar."
         : "- Ainda não se sabe se ela procura trabalho ou quer contratar.",
-    anuncio ? `- Ela chegou por um anúncio do Publike no Instagram ou no Facebook: "${anuncio}".` : null,
+    anuncio
+      ? `- Ela chegou por um anúncio do Publike no Instagram ou no Facebook: "${anuncio}". O anúncio não muda quem ela é nem o que este número faz: aqui se atende quem procura trabalho e quem contrata. Se ela procura trabalho, ajude como sempre (o que ela faz e onde mora, e as vagas); nunca diga que aqui é só para quem contrata nem mande procurar as vagas no site.`
+      : null,
     jaFalou
       ? "- Você já falou com ela nesta conversa."
       : veioDoAnuncio(e.origem)
@@ -2404,6 +2428,15 @@ export async function atenderConversa(
     if (minhaUltima.startsWith("Por nada")) return;
     return saida(POR_NADA);
   }
+
+  // "Estou procurando emprego", sem a função, venha de onde vier (até de anúncio para empresas): a pergunta pronta,
+  // sem passar pela IA (soProcuraEmprego). Com a função, ou se já perguntamos, segue para a IA
+  if (
+    textos.some((t) => soProcuraEmprego(t)) &&
+    textos.every((t) => soProcuraEmprego(t) || soCumprimento(t) || soEmoji(t)) &&
+    !/o que você faz e o bairro/i.test(minhaUltima)
+  )
+    return saida(`${ola}${PARA_QUEM_ESCREVE_QUE_PROCURA}`, { perfil: "trabalho" });
 
   // só "Oi", "Posso ter mais informações sobre isso?" ou uma figurinha
   const soOi = textos.every(

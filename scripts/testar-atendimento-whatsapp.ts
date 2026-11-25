@@ -1034,6 +1034,32 @@ async function main() {
     "anúncio de vagas: a pergunta direto, sem o menu",
     corpo(r.msgs[0]),
   );
+  // 22a6. "Estou procurando emprego" vindo do anúncio para empresas (25/11/2026: a IA disse "Por aqui eu cuido de quem
+  // contrata"): a pergunta pronta, sem a IA, sem mandar para o site
+  conferir(
+    a.soProcuraEmprego("Estou procurando emprego") &&
+      a.soProcuraEmprego("Oi, bom dia! Procuro trabalho") &&
+      a.soProcuraEmprego("preciso de um emprego urgente") &&
+      a.soProcuraEmprego("Estou desempregada") &&
+      a.soProcuraEmprego("Preciso trabalhar") &&
+      a.soProcuraEmprego("quero uma vaga") &&
+      !a.soProcuraEmprego("Procuro emprego de motorista") &&
+      !a.soProcuraEmprego("Estou procurando funcionário") &&
+      !a.soProcuraEmprego("Quero contratar"),
+    "quem escreve que procura emprego, sem a função",
+  );
+  respostaIA = ia("Por aqui eu cuido de quem contrata.", {});
+  r = await rodar("Estou procurando emprego", {
+    origem: { tipo: "ad", titulo: "publike.br", texto: "Contratando? Agora a vaga vai pro ar pelo WhatsApp." },
+    historico: [{ de: "pessoa", texto: "Estou procurando emprego" }],
+  });
+  conferir(
+    corpo(r.msgs[0]).startsWith("Pode deixar! 😊") &&
+      corpo(r.msgs[0]).includes("*Me conta o que você faz e o bairro onde mora.*") &&
+      !corpo(r.msgs[0]).includes("quem contrata"),
+    "anúncio de empresas, mas procura emprego: a pergunta pronta",
+    corpo(r.msgs[0]),
+  );
   conferir(
     a.LEMBRETE_PERGUNTA.includes("o que você faz e o bairro") && a.LEMBRETE_PERGUNTA.slice(0, 24) !== a.LEMBRETE_SEMPRE.slice(0, 24),
     "os lembretes: a pergunta e o sempre, com começos diferentes",

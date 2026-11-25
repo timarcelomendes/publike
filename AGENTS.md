@@ -466,3 +466,7 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 
 - Admin › Recursos pagos › Uso: `admin_uso_recursos_pagos(p_dias)` junta o que já fica registrado (copiloto_registro, avaliacoes_pedidas, entrevistas_video, automacoes_feitas e regras_feitas, consultas_salario): os usos por dia (sem as contas de teste), por conta e recurso, e os últimos 200. Período 7, 30 ou 90 dias. Visões das vagas e Contato no convite não deixam registro.
 - A home de quem entrou não mostra mais "N contas novas nos últimos 30 dias" (só o visitante, na vitrine).
+
+## "Estou procurando emprego" escrito à mão (25/11/2026)
+
+- `soProcuraEmprego` (atendimento-whatsapp.ts): "estou procurando emprego", "procuro trabalho", "preciso de um emprego", "estou desempregada", "preciso trabalhar", com ou sem "Oi"/"Bom dia" antes, e sem a função, recebem a pergunta pronta (`PARA_QUEM_ESCREVE_QUE_PROCURA`: "Pode deixar! 😊 …o que você faz e o bairro onde mora"), sem a IA, venha a pessoa de onde vier. A IA tinha respondido "Por aqui eu cuido de quem contrata" a quem veio do anúncio para empresas; o contexto do anúncio agora diz que o número atende os dois lados e que o anúncio não muda isso.
