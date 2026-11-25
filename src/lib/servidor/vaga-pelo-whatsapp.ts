@@ -10,9 +10,12 @@ import type { ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { RascunhoConvite } from "@/lib/convites";
-import { lugarDaResposta } from "@/lib/lugar-da-resposta";
+import { foraDoRascunho, textoForaDaRegiao } from "@/lib/fora-da-regiao";
+import { eDeFora, eSoOEstado, lugarDaResposta } from "@/lib/lugar-da-resposta";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 import {
   caminhoDaVagaDoWhatsapp,
+  contextoDoLugar,
   lugarDoLote,
   perguntaDoLugar,
   respostaDasVagas,
@@ -22,7 +25,16 @@ import {
 } from "@/lib/vagas-pelo-whatsapp";
 import { urlDosEmails } from "./ambiente";
 import { acessoFila } from "./filas";
-import { botoesDaVagaPreparada, botoesDoLotePreparado, botoesDoLugar, podePublicarAqui } from "./publicar-no-whatsapp";
+import {
+  botoesDaVagaPreparada,
+  botoesDoLotePreparado,
+  botoesDoLugar,
+  botoesDoRegime,
+  PERGUNTA_DO_REGIME,
+  podePublicarAqui,
+  registroDaVagaLida,
+  soFaltaORegime,
+} from "./publicar-no-whatsapp";
 import {
   baixarFotoOuPdf,
   codigoPeloModeloPode,
@@ -271,7 +283,13 @@ export async function tentarVagaPeloWhatsapp(p: {
   }
 
   // as vagas do mesmo anúncio no mesmo lugar: a que não diz fica com o lugar das outras (migração 20270916150000)
-  const vagas = lugarDoLote(lida.vagas.slice(0, config.por_mensagem));
+  const doAnuncio = lugarDoLote(lida.vagas.slice(0, config.por_mensagem));
+  // o anúncio de fora de onde o Publike funciona (25/11/2026, src/lib/fora-da-regiao.ts): as vagas de fora não são
+  // preparadas para publicar. Todas de fora: ficam guardadas (se a pessoa disser que o trabalho é daqui, seguem) e vai
+  // a explicação; algumas: só as daqui seguem, com o aviso das outras
+  const deFora = doAnuncio.filter((v) => foraDoRascunho(v));
+  const lugarDeFora = deFora.length ? foraDoRascunho(deFora[0])! : null;
+  const vagas = deFora.length < doAnuncio.length ? doAnuncio.filter((v) => !foraDoRascunho(v)) : doAnuncio;
   const { data: gravada, error: erroGravar } = await registrar("vaga", { empresa: lida.empresa.nome, ms, vagas });
   const links = ((gravada as unknown as { vagas?: { token: string }[] } | null)?.vagas ?? []).map((v) => v.token);
   if (erroGravar || !links.length) {
@@ -282,14 +300,27 @@ export async function tentarVagaPeloWhatsapp(p: {
     );
     return true;
   }
+  if (lugarDeFora && deFora.length === doAnuncio.length) {
+    const comeco =
+      vagas.length > 1 ? "Li as vagas, mas elas são em" : `Li a vaga de *${(vagas[0].titulo ?? "").trim() || "emprego"}*, mas ela é em`;
+    await saida(textoForaDaRegiao(lugarDeFora, comeco), { perfil: "contratar" });
+    return true;
+  }
+  // as de fora que ficaram de fora, antes do resumo das daqui
+  const olaComFora = lugarDeFora
+    ? `${ola}${deFora.length === 1 ? "Deixei de fora 1 vaga" : `Deixei de fora ${deFora.length} vagas`} de *${lugarDeFora}*: por enquanto, o Publike funciona só em ${ONDE_FUNCIONA}.\n\n`
+    : ola;
   // publicar aqui mesmo, com os botões, para quem não disse que procura emprego, quando todas as vagas do anúncio foram
   // preparadas e têm o cargo: uma vaga (migração 20270914120000) ou várias (20270916140000). Faltando o bairro ou a
   // cidade, a pergunta do lugar (20270916150000); sem o cargo, ou com mais vagas que o limite do Admin: o link do site
   const todas =
-    config.publicar_aqui && p.perfil !== "trabalho" && vagas.length === lida.vagas.length && links.length === vagas.length &&
+    config.publicar_aqui &&
+    p.perfil !== "trabalho" &&
+    vagas.length + (lugarDeFora ? deFora.length : 0) === lida.vagas.length &&
+    links.length === vagas.length &&
     vagas.every((v) => (v.titulo ?? "").trim().length >= 5);
   if (todas && vagas.every(podePublicarAqui)) {
-    const r = respostaDasVagas(config.textos, vagas, vagas.length, ola, p.jaDisse, { publicarAqui: true });
+    const r = respostaDasVagas(config.textos, vagas, vagas.length, olaComFora, p.jaDisse, { publicarAqui: true });
     await p.saida(r.texto, {
       perfil: "contratar",
       botoes: vagas.length === 1 ? botoesDaVagaPreparada(links[0]) : botoesDoLotePreparado(links[0], vagas.length),
@@ -298,11 +329,17 @@ export async function tentarVagaPeloWhatsapp(p: {
   }
   // a pergunta do lugar só sai com a resposta garantida (a função do banco no ar e o recurso ligado)
   if (todas && vagas.some(semLugar) && (await vagasParaOLugar(p.banco, p.chave, p.conversa))) {
-    const r = respostaDasVagas(config.textos, vagas, vagas.length, ola, p.jaDisse, { perguntarLugar: true });
+    const r = respostaDasVagas(config.textos, vagas, vagas.length, olaComFora, p.jaDisse, { perguntarLugar: true });
     await p.saida(r.texto, { perfil: "contratar", botoes: botoesDoLugar(links[0], vagas.length) });
     return true;
   }
-  const resposta = respostaDasVagas(config.textos, vagas, lida.vagas.length, ola, p.jaDisse);
+  const resposta = respostaDasVagas(
+    config.textos,
+    vagas,
+    lida.vagas.length - (lugarDeFora ? deFora.length : 0),
+    olaComFora,
+    p.jaDisse,
+  );
   // com a entrada pelo código no WhatsApp ligada, a pessoa já sabe que não precisa de e-mail para publicar
   const comCodigo = LOGIN_CELULAR ? `${resposta.texto}\n\nPara publicar, você recebe um código aqui mesmo no WhatsApp: não precisa de e-mail nem senha.` : resposta.texto;
   await p.saida(comCodigo.length <= 1024 ? comCodigo : resposta.texto, {
@@ -325,12 +362,19 @@ async function vagasParaOLugar(
   chave: string,
   conversa: string,
   lugar: { bairro: string; cidade: string | null } | null = null,
+  /**
+   * o lugar de fora (marca as vagas) ou a troca (a vaga que era de fora ganha o lugar novo inteiro; migração
+   * 20270926120000)
+   */
+  extra: { fora?: string; trocar?: boolean } = {},
 ): Promise<VagaDoLugar[] | null> {
   const { data, error } = await banco.rpc("servidor_whatsapp_lugar_das_vagas", {
     p_chave: chave,
     p_conversa: conversa,
     p_bairro: lugar?.bairro || null,
     p_cidade: lugar?.cidade || null,
+    ...(extra.fora ? { p_fora: extra.fora } : {}),
+    ...(extra.trocar ? { p_trocar: true } : {}),
   });
   if (error) {
     if (error.code !== "PGRST202") console.error("Publike: o lugar da vaga do WhatsApp não foi gravado:", error.message);
@@ -352,11 +396,28 @@ export async function lugarRespondido(
   texto: string,
 ): Promise<{ texto: string; botoes?: { id: string; titulo: string }[]; botao?: { titulo: string; caminho: string } } | null> {
   const antes = await vagasParaOLugar(banco, chave, conversa);
-  if (!antes || !antes.some((v) => semLugar(v.rascunho))) return null;
+  if (!antes || !antes.some((v) => semLugar(v.rascunho) || v.rascunho.fora)) return null;
+  // a vaga de fora (25/11/2026): a resposta é o lugar inteiro de novo, e o lugar daqui troca o que ela tinha
+  const eraDeFora = antes.some((v) => v.rascunho.fora);
   const cidades = [...new Set(antes.map((v) => (v.rascunho.cidade ?? "").trim()).filter(Boolean))];
-  const lugar = lugarDaResposta(texto, cidades.length === 1 ? cidades[0] : null);
+  const lugar = lugarDaResposta(
+    texto,
+    !eraDeFora && cidades.length === 1 ? cidades[0] : null,
+    eraDeFora ? "lugar" : contextoDoLugar(antes.map((v) => v.rascunho)),
+  );
   if (!lugar) return null;
-  const depois = await vagasParaOLugar(banco, chave, conversa, lugar);
+  // "Goiás", "GO": falta a cidade
+  if (eSoOEstado(lugar))
+    return {
+      texto: "Em qual cidade fica o trabalho? Me diga o bairro e a cidade para publicar aqui mesmo. Por exemplo: _Setor Bueno, Goiânia_.",
+      botoes: eraDeFora ? undefined : botoesDoLugar(antes[0].token, antes.length),
+    };
+  // o lugar de fora de onde o Publike funciona: as vagas ficam marcadas (não saem pelo "Sim, publicar") e vai a explicação
+  if (eDeFora(lugar)) {
+    await vagasParaOLugar(banco, chave, conversa, null, { fora: lugar.fora });
+    return { texto: textoForaDaRegiao(lugar.fora) };
+  }
+  const depois = await vagasParaOLugar(banco, chave, conversa, lugar, { trocar: eraDeFora });
   if (!depois) return null;
   const rascunhos = depois.map((v) => v.rascunho);
   const primeiro = depois[0].token;
@@ -402,6 +463,9 @@ export async function vagaPreparadaDeNovo(
   const rascunhos = lista.map((v) => v.rascunho);
   const primeiro = lista[0].token;
   const n = lista.length;
+  // a vaga de fora de onde o Publike funciona: a explicação, sem o "Sim, publicar"
+  const fora = rascunhos.map((v) => foraDoRascunho(v)).find(Boolean);
+  if (fora) return { texto: textoForaDaRegiao(fora, "Oi! Aqui é o Marcelo, do Publike. Pelo que entendi, a vaga que você mandou é em") };
   const textos = (await configVagasWhatsapp(banco, chave))?.textos ?? {};
   const comCargo = rascunhos.every((v) => (v.titulo ?? "").trim().length >= 5);
   if (comCargo && rascunhos.every(podePublicarAqui)) {
@@ -414,6 +478,70 @@ export async function vagaPreparadaDeNovo(
   }
   const r = respostaDasVagas(textos, rascunhos, n, COMECO_DE_NOVO.replace(", e agora dá para publicar aqui mesmo, sem entrar no site", ""));
   return { texto: r.texto, botao: { titulo: r.botao, caminho: caminhoDaVagaDoWhatsapp(primeiro, r.lote) } };
+}
+
+// --- O lembrete da vaga que não foi ao ar (migração 20270926120000) ------------------------------------------------
+
+/** A vaga do lembrete (servidor_vagas_sem_publicar): a primeira ainda sem publicar do anúncio. */
+export type VagaSemPublicar = {
+  conversa: string;
+  numero: string;
+  nome: string | null;
+  token: string;
+  rascunho: RascunhoConvite;
+  /** as vagas do anúncio ainda sem publicar */
+  no_lote: number;
+  /** a pessoa abriu a vaga no site ("Conferir no site") */
+  abriu: boolean;
+};
+
+export type MensagemDoLembrete = {
+  texto: string;
+  botoes?: { id: string; titulo: string }[];
+  botao?: { titulo: string; caminho: string };
+};
+
+/**
+ * O lembrete da vaga preparada que não foi ao ar (25/11/2026; Marcelo, com a ANPE: "precisa ter um acompanhamento
+ * posterior, se o usuário conseguiu"), pelo que falta para publicar aqui: o lugar, o tipo de contratação, o que só se
+ * acerta no site, ou nada (o "Conseguiu publicar?" com o "Sim, publicar"). `oi`: "Oi, Jana!". `null`: sem lembrete
+ * (a vaga de fora que a conversa já explicou).
+ */
+export async function lembreteDaVagaPreparada(v: VagaSemPublicar, oi: string): Promise<MensagemDoLembrete | null> {
+  const r = v.rascunho;
+  const varias = v.no_lote > 1;
+  const cargo = (r.titulo ?? "").trim() || "emprego";
+  const aVaga = varias ? `As ${v.no_lote} vagas que eu preparei` : `A vaga de *${cargo}* que eu preparei`;
+  const naoFoi = varias ? "ainda não foram ao ar" : "ainda não foi ao ar";
+  // de fora: a que a conversa já explicou fica sem lembrete; a de antes da marca (a da ANPE, que saiu como Goiânia)
+  // ganha a correção
+  if (r.fora) return null;
+  const fora = foraDoRascunho(r);
+  if (fora)
+    return {
+      texto: `${oi} Corrigindo a minha mensagem de antes: ${varias ? "as vagas que você mandou são" : `a vaga de *${cargo}* é`} em *${fora}*, e eu tinha colocado o lugar errado. Por enquanto, o Publike funciona só em ${ONDE_FUNCIONA}, então não consigo publicar ${varias ? "essas vagas" : "essa vaga"}. Se tiver vagas por aqui, é só mandar a foto ou o texto que eu preparo. 😊`,
+    };
+  if (semLugar(r)) return { texto: `${oi} ${aVaga} ${naoFoi}.\n\n${perguntaDoLugar([r])}`, botoes: botoesDoLugar(v.token, v.no_lote) };
+  const conferida = await registroDaVagaLida(r);
+  if (!conferida.ok && soFaltaORegime(conferida) && !r.regime)
+    return { texto: `${oi} ${aVaga} ${naoFoi}.\n\n${PERGUNTA_DO_REGIME}`, botoes: botoesDoRegime(v.token) };
+  if (!conferida.ok) {
+    const titulo = varias ? "Conferir as vagas" : "Conferir e publicar";
+    return {
+      texto: `${oi} ${aVaga} ${naoFoi}: falta acertar uma coisa que só dá para mudar no site${conferida.erros.length ? ` (${conferida.erros.join(" ")})` : ""}. Toque em *${titulo}*: ${varias ? "elas já vão preenchidas" : "ela já vai preenchida"}.`,
+      botao: { titulo, caminho: caminhoDaVagaDoWhatsapp(v.token, varias) },
+    };
+  }
+  const sim = varias ? `Sim, publicar as ${v.no_lote}`.slice(0, 20) : "Sim, publicar";
+  return {
+    texto: [
+      v.abriu
+        ? `${oi} Vi que você abriu ${varias ? `as ${v.no_lote} vagas que eu preparei` : `a vaga de *${cargo}*`} no site, mas ${varias ? "elas ainda não foram" : "ela ainda não foi"} ao ar. Conseguiu publicar? 🤔`
+        : `${oi} ${aVaga} ${naoFoi}. Conseguiu publicar? 🤔`,
+      `Se travou em algum passo, eu publico daqui mesmo: é só tocar em *${sim}*. Se preferir, me conta o que aconteceu que eu te ajudo. 😊`,
+    ].join("\n\n"),
+    botoes: varias ? botoesDoLotePreparado(v.token, v.no_lote) : botoesDaVagaPreparada(v.token),
+  };
 }
 
 // --- Depois de publicar ------------------------------------------------------------------------------------------

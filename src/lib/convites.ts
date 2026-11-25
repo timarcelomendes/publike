@@ -103,6 +103,11 @@ export type RascunhoConvite = {
   contratante?: string;
   /** o que a empresa precisa conferir (o que não estava no anúncio, o que ficou de fora) */
   conferir?: string[];
+  /**
+   * O lugar de fora de onde o Publike funciona (25/11/2026, src/lib/fora-da-regiao.ts): "Barueri (SP)". A vaga não é
+   * publicada pelo WhatsApp, e o site avisa.
+   */
+  fora?: string;
 };
 
 /** O que vem de uma linha do arquivo (ou do formulário), já limpo. */
@@ -261,6 +266,10 @@ function extrasDoRascunho(o: Record<string, unknown>): Partial<RascunhoConvite> 
   if (typeof o.contratante === "string") {
     const c = o.contratante.replace(/\s+/g, " ").trim().slice(0, 80);
     if (c.length >= 2) r.contratante = c;
+  }
+  if (typeof o.fora === "string") {
+    const f = o.fora.replace(/\s+/g, " ").trim().slice(0, 80);
+    if (f.length >= 2) r.fora = f;
   }
   if (Array.isArray(o.conferir)) {
     const lista = o.conferir

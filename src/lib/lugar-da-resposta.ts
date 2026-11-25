@@ -3,12 +3,32 @@
 // "Setor Bueno, Goiânia", "Passeio das Águas em Goiânia", "Goiânia - GO", "Centro": a cidade só vale da lista das
 // praças (CIDADES); sem ela no texto, a do bairro (quando o bairro é de uma cidade só) ou a que a vaga já tinha.
 // `null`: não parece um lugar (uma pergunta, um "ok", um link, uma frase comprida): o atendimento segue normal.
+//
+// O lugar de fora (25/11/2026; a ANPE respondeu "barueri sp" e depois "SÃO PAULO", que virou a Vila São Paulo, em
+// Goiânia): a sigla de outro estado, o nome de outro estado ou de uma cidade de fora (fora-da-regiao.ts) voltam como
+// `{ fora }`, e quem respondeu a pergunta da cidade com uma cidade que não é das praças também. "Goiás" ou "GO"
+// sozinho: `{ soGoias }` (falta a cidade).
 
 import { BAIRROS } from "./bairros";
 import { CIDADES, type Cidade } from "./constantes";
+import { nomeDeFora, rotuloDoLugar, siglaDeFora, soGoias } from "./fora-da-regiao";
 import { chaveBairro } from "./regioes";
 
 export type LugarRespondido = { bairro: string; cidade: Cidade | null };
+/** O lugar é de fora de onde o Publike funciona: o rótulo ("Barueri (SP)", "Minas Gerais"). */
+export type LugarDeFora = { fora: string };
+/** Só "Goiás" ou "GO": falta a cidade. */
+export type SoOEstado = { soGoias: true };
+export type RespostaDoLugar = LugarRespondido | LugarDeFora | SoOEstado;
+/**
+ * O que a pergunta pediu (`perguntaDoLugar`): só a cidade (o bairro já veio), só o bairro (de uma cidade daqui) ou os
+ * dois. Na pergunta da cidade, o nome que não é de uma cidade das praças é de fora; na do bairro, o nome sozinho de
+ * uma cidade de fora é o bairro daqui ("São Paulo", em Goiânia, é a Vila São Paulo).
+ */
+export type ContextoDoLugar = "cidade" | "bairro" | "lugar";
+
+export const eDeFora = (r: RespostaDoLugar | null): r is LugarDeFora => Boolean(r && "fora" in r);
+export const eSoOEstado = (r: RespostaDoLugar | null): r is SoOEstado => Boolean(r && "soGoias" in r);
 
 const ACENTOS: Record<string, string> = {
   a: "[aáàâã]",
@@ -36,8 +56,10 @@ const CIDADES_POR_TAMANHO = [...CIDADES].sort((a, b) => b.length - a.length).map
 const APELIDOS: { c: Cidade; p: string }[] = [
   { c: "Aparecida de Goiânia", p: padraoDaCidade("Aparecida") },
   { c: "Bela Vista de Goiás", p: padraoDaCidade("Bela Vista") },
+  // "Petrolina - PE" já saiu antes, pela sigla
+  { c: "Petrolina de Goiás", p: padraoDaCidade("Petrolina") },
 ];
-const UF = String.raw`(?:\s*[-/,]?\s*(?:go|goi[aá]s))?`;
+const UF = String.raw`(?:\s*[-/,(]?\s*(?:go|goi[aá]s)\)?)?`;
 const SEPARA = String.raw`[\s,;:/–-]`;
 
 /** As palavras do começo de um bairro que, sozinhas, não são o bairro ("Vila Trindade" não é Vila, em Trindade). */
@@ -65,14 +87,25 @@ function cidadesDoBairro(bairro: string): Cidade[] {
   return CIDADES.filter((c) => BAIRROS[c]?.some((b) => chaveBairro(b) === chave));
 }
 
-export function lugarDaResposta(texto: string, cidadeDaVaga?: string | null): LugarRespondido | null {
+export function lugarDaResposta(
+  texto: string,
+  cidadeDaVaga?: string | null,
+  contexto: ContextoDoLugar = "lugar",
+): RespostaDoLugar | null {
   const t = texto
     .replace(/\s+/g, " ")
     .trim()
     // o "bom dia" antes do lugar
     .replace(/^(bom dia|boa tarde|boa noite|oi|ol[aá])[\s,!.]*/i, "")
     .replace(/[.!]+$/, "")
+    // os apelidos das cidades daqui: "Ap. de Goiânia", "Apda Goiânia", "Gyn"
+    .replace(/\bap(?:da|ar)?\.?\s*(?:de\s+)?(goi[aáàâã]n[ií][aáàâã])\b/gi, "Aparecida de $1")
+    .replace(/\bgyn\b/gi, "Goiânia")
     .trim();
+  // só o estado: "GO" (falta a cidade) ou outro ("SP"), antes do tamanho mínimo
+  if (soGoias(t)) return { soGoias: true };
+  const sigla = siglaDeFora(t);
+  if (sigla) return { fora: sigla };
   if (t.length < 3 || t.length > 90 || t.includes("?")) return null;
   if (/https?:|www\.|@/i.test(t) || /\d{6,}/.test(t.replace(/[\s().-]/g, ""))) return null;
   if (t.startsWith("[")) return null;
@@ -107,9 +140,17 @@ export function lugarDaResposta(texto: string, cidadeDaVaga?: string | null): Lu
     cidade = null;
     resto = t;
   }
+  // sem uma cidade daqui: o nome de outro estado ou de uma cidade de fora ("São Paulo", "Centro, Uberlândia"); na
+  // pergunta do bairro, só depois de vírgula ou traço
+  if (!cidade) {
+    const fora = nomeDeFora(t, { sozinho: contexto !== "bairro" });
+    if (fora) return { fora };
+  }
   const bairro = limparBairro(resto);
   if (bairro) {
     if (bairro.length > 60 || !/\p{L}{2}/u.test(bairro) || NAO_E_LUGAR.test(bairro)) return null;
+    // na pergunta da cidade, o nome que não é de uma cidade das praças (nem um "Setor…", que diz o bairro) é de fora
+    if (contexto === "cidade" && !cidade && !CARA_DE_LUGAR.test(bairro)) return { fora: rotuloDoLugar(bairro) };
     // sem a cidade, só vale o que tem cara de lugar: um bairro da lista, um "Setor…", "Shopping…", "Rua…", ou um
     // nome curto (até 6 palavras)
     const daLista = cidadesDoBairro(bairro);

@@ -6,6 +6,8 @@ import { BAIRROS } from "./bairros";
 import { CIDADES, nomeEscolaridade, nomeExperiencia, nomeJornada, nomeModelo, REGIMES, type Cidade } from "./constantes";
 import type { RascunhoConvite } from "./convites";
 import { formatarValor } from "./formato";
+import { nomeDeFora, siglaDeFora } from "./fora-da-regiao";
+import { eDeFora, lugarDaResposta } from "./lugar-da-resposta";
 import { cidadeDoPublike } from "./pracas";
 import { temContato, temContatoNoTexto } from "./validacao";
 import { textoDoHorario } from "./vaga-extra";
@@ -86,9 +88,33 @@ export function cidadeLida(cidade: string | null | undefined): Cidade | null {
  * anúncio só diz o bairro, a cidade dele (Goiânia primeiro, se o nome existe em mais de uma). O bairro que não está na
  * lista fica como veio, sem abreviação.
  */
-export function lugarDaVaga(cidade: string | null | undefined, bairro: string | null | undefined) {
-  const c = cidadeLida(cidade);
+export function lugarDaVaga(
+  cidade: string | null | undefined,
+  bairro: string | null | undefined,
+  /** a vaga remota não tem lugar de fora: a cidade fica para a pessoa dizer */
+  modelo?: string | null,
+): { cidade: string; bairro: string; fora?: string } {
+  const lida = (cidade ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    // "Goiânia e região", "Grande Goiânia", "Região Metropolitana de Goiânia"
+    .replace(/^(?:regi[aã]o\s+metropolitana\s+de|grande)\s+/i, "")
+    .replace(/\s+e\s+regi[aã]o$/i, "");
+  let c = cidadeLida(lida);
   const b = (bairro ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+  const bairroLimpo = !b || temContato(b) ? "" : expandir(b);
+  // o lugar de fora (25/11/2026; a vaga de Barueri, SP, que saiu como Goiânia): a cidade lida que não é das praças
+  // ("Barueri - SP", "São Paulo", "Itapevi") ou a sigla de outro estado no bairro ("Alphaville, Barueri - SP") vêm em
+  // `fora`, sem a cidade daqui; os apelidos daqui ("Aparecida", "Goiânia (GO)") ficam com a cidade
+  if (modelo !== "remoto") {
+    if (!c && lida) {
+      const r = lugarDaResposta(lida, null, "cidade");
+      if (eDeFora(r)) return { cidade: "", bairro: bairroLimpo, fora: r.fora };
+      if (r && "cidade" in r && r.cidade && !r.bairro) c = r.cidade;
+    }
+    const noBairro = !c && b ? (siglaDeFora(b) ?? nomeDeFora(b, { sozinho: false })) : null;
+    if (noBairro) return { cidade: "", bairro: bairroLimpo, fora: noBairro };
+  }
   if (!b || temContato(b)) return { cidade: c ?? "", bairro: "" };
   const longo = expandir(b);
   const achados = indiceDosBairros().get(semAcento(longo)) ?? indiceDosBairros().get(semAcento(b)) ?? [];

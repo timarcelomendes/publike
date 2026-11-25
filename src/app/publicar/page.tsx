@@ -26,6 +26,7 @@ import { contatoDasVagasPeloWhatsapp } from "@/lib/servidor/numero-do-publike";
 import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { valoresDoConvite } from "@/lib/valores-convite";
 import type { RascunhoConvite } from "@/lib/convites";
+import { foraDoRascunho } from "@/lib/fora-da-regiao";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
 import { pedidoDaAgencia } from "@/lib/servidor/pedidos-do-cliente";
@@ -289,14 +290,23 @@ type VagaPronta = {
   total?: number;
 };
 
-const paraOFormulario = (c: VagaPronta) => ({
-  token: c.token,
-  nome: c.nome,
-  pronta: Boolean(c.rascunho),
-  de: c.de,
-  total: c.total ?? 1,
-  conferir: c.rascunho?.conferir ?? [],
-});
+const paraOFormulario = (c: VagaPronta) => {
+  // a vaga de fora de onde o Publike funciona (25/11/2026, src/lib/fora-da-regiao.ts): o aviso vem primeiro
+  const fora = c.rascunho ? foraDoRascunho(c.rascunho) : null;
+  return {
+    token: c.token,
+    nome: c.nome,
+    pronta: Boolean(c.rascunho),
+    de: c.de,
+    total: c.total ?? 1,
+    conferir: [
+      ...(fora
+        ? [`A vaga é em ${fora}, e por enquanto o Publike publica só vagas de ${ONDE_FUNCIONA}. Se o trabalho for numa cidade daqui, escolha a cidade e o bairro.`]
+        : []),
+      ...(c.rascunho?.conferir ?? []),
+    ],
+  };
+};
 
 /**
  * Quem procura trabalho às vezes toca em "Publicar" achando que é para o currículo:

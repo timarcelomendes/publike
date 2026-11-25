@@ -2814,6 +2814,9 @@ export type Database = {
       // migração 20270921120000 (os currículos que ficaram sem abrir)
       servidor_curriculos_sem_abrir: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
       servidor_curriculo_relido: { Args: { p_chave: string; p_conversa: string; p_resultado: string }; Returns: undefined };
+      // migração 20270926120000 (o lembrete da vaga preparada que não foi ao ar)
+      servidor_vagas_sem_publicar: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
+      servidor_vaga_lembrada: { Args: { p_chave: string; p_conversa: string }; Returns: undefined };
       // migração 20270920120000 (entrar com um toque pelo WhatsApp)
       servidor_criar_entrada_whatsapp: { Args: { p_chave: string; p_numero: string; p_destino: string }; Returns: string };
       servidor_ver_entrada_whatsapp: { Args: { p_chave: string; p_token: string }; Returns: Json };
@@ -3650,7 +3653,20 @@ export type Database = {
       servidor_whatsapp_reenvios: { Args: { p_chave: string }; Returns: Json };
       servidor_whatsapp_reenvio_feito: { Args: { p_chave: string; p_lote: string; p_resultado: string }; Returns: undefined };
       servidor_whatsapp_lugar_das_vagas: {
-        Args: { p_chave: string; p_conversa: string; p_bairro?: string | null; p_cidade?: string | null };
+        Args: {
+          p_chave: string;
+          p_conversa: string;
+          p_bairro?: string | null;
+          p_cidade?: string | null;
+          // migração 20270926120000 (o lugar de fora)
+          p_fora?: string | null;
+          p_trocar?: boolean;
+        };
+        Returns: Json;
+      };
+      // migração 20270926120000 (o tipo de contratação na conversa)
+      servidor_whatsapp_regime_das_vagas: {
+        Args: { p_chave: string; p_conversa: string; p_token: string | null; p_regime: string };
         Returns: Json;
       };
       servidor_whatsapp_tokens_do_lote: {

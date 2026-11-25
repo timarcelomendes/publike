@@ -135,12 +135,28 @@ export function lugarDoLote(vagas: RascunhoConvite[]): RascunhoConvite[] {
   const unicos = (lista: string[]) => [...new Map(lista.map((x) => [chave(x), x.trim()])).values()];
   const bairros = unicos(vagas.map((v) => v.bairro ?? "").filter((x) => x.trim()));
   const cidades = unicos(vagas.map((v) => v.cidade ?? "").filter((x) => x.trim()));
+  // o anúncio de fora (src/lib/fora-da-regiao.ts): as vagas sem lugar ficam de fora também, se nenhuma é daqui
+  const foras = unicos(vagas.map((v) => v.fora ?? "").filter((x) => x.trim()));
+  if (foras.length === 1 && !cidades.length)
+    return vagas.map((v) => (v.fora || (v.bairro ?? "").trim() ? v : { ...v, fora: foras[0] }));
   if (bairros.length > 1 || cidades.length > 1) return vagas;
   return vagas.map((v) => ({
     ...v,
     bairro: (v.bairro ?? "").trim() || bairros[0] || v.bairro,
     cidade: (v.cidade ?? "").trim() || cidades[0] || v.cidade,
   }));
+}
+
+/**
+ * O que a pergunta do lugar pediu (`perguntaDoLugar`), para ler a resposta (src/lib/lugar-da-resposta.ts): só a
+ * cidade, só o bairro, ou os dois.
+ */
+export function contextoDoLugar(vagas: RascunhoConvite[]): "cidade" | "bairro" | "lugar" {
+  const bairros = [...new Set(vagas.map((v) => (v.bairro ?? "").trim()).filter(Boolean))];
+  const cidades = [...new Set(vagas.map((v) => (v.cidade ?? "").trim()).filter(Boolean))];
+  if (vagas.every((v) => (v.bairro ?? "").trim()) && bairros.length === 1) return "cidade";
+  if (vagas.every((v) => (v.cidade ?? "").trim()) && cidades.length === 1) return "bairro";
+  return "lugar";
 }
 
 /** A pergunta do lugar, pelo que falta: só a cidade, só o bairro, ou os dois. */

@@ -36,11 +36,14 @@ import {
   deveTentarVaga,
   lugarRespondido,
   respostaDaOferta,
+  lembreteDaVagaPreparada,
   tentarVagaPeloWhatsapp,
   vagaPreparadaDeNovo,
   type VagaDoLugar,
+  type VagaSemPublicar,
 } from "./vaga-pelo-whatsapp";
 import { caminhoDaVagaDoWhatsapp, MARCA_DO_LUGAR } from "@/lib/vagas-pelo-whatsapp";
+import { textoForaDaRegiao } from "@/lib/fora-da-regiao";
 import { pedeOsCandidatosAqui } from "@/lib/whatsapp-oficial";
 import { avisarMetaDaVaga } from "./meta-conversoes";
 import {
@@ -49,8 +52,16 @@ import {
   PAYLOAD_CONFERIR_LOTE,
   PAYLOAD_LOTE,
   PAYLOAD_PUBLICAR,
+  PAYLOAD_REGIME,
+  MARCA_DO_REGIME,
   PERGUNTA_DO_NOME,
+  PERGUNTA_DO_OUTRO_REGIME,
+  PERGUNTA_DO_REGIME,
+  botoesDoRegime,
+  ehRegime,
+  guardarRegime,
   publicarPeloWhatsapp,
+  regimeDaResposta,
   tokensDoLote,
 } from "./publicar-no-whatsapp";
 
@@ -2081,8 +2092,8 @@ export async function atenderConversa(
   // publicar a vaga aqui mesmo (23/11/2026, migração 20270914120000): o "Sim, publicar", o "Conferir no site" e a
   // resposta à pergunta do nome da empresa
   {
-    const doLote = PAYLOAD_LOTE.exec(m.payload ?? "")?.[1] ?? null;
-    const publicar = PAYLOAD_PUBLICAR.exec(m.payload ?? "")?.[1] ?? doLote;
+    let doLote = PAYLOAD_LOTE.exec(m.payload ?? "")?.[1] ?? null;
+    let publicar = PAYLOAD_PUBLICAR.exec(m.payload ?? "")?.[1] ?? doLote;
     const conferir = PAYLOAD_CONFERIR.exec(m.payload ?? "")?.[1] ?? null;
     const conferirLote = PAYLOAD_CONFERIR_LOTE.exec(m.payload ?? "")?.[1] ?? null;
     const escrito = textos.join(" ").trim();
@@ -2102,6 +2113,24 @@ export async function atenderConversa(
     if (!m.payload && MARCA_DO_LUGAR.test(minhaUltima) && escrito && !midias.some(Boolean)) {
       const r = await lugarRespondido(banco, chave, e.chave, escrito);
       if (r) return saida(r.texto, { perfil: "contratar", botoes: r.botoes, botao: r.botao ?? null });
+    }
+    // o tipo de contratação (migração 20270926120000): os botões da pergunta, ou a resposta escrita. Guardado nas vagas
+    // do anúncio, a vaga é publicada em seguida (o "Sim, publicar" que tinha parado nele); "Outro tipo" e o "não"
+    // perguntam qual
+    const botaoDoRegime = PAYLOAD_REGIME.exec(m.payload ?? "");
+    const respondeuORegime = !m.payload && minhaUltima.includes(MARCA_DO_REGIME) && Boolean(escrito) && !midias.some(Boolean);
+    const regimeEscrito = respondeuORegime ? regimeDaResposta(escrito) : null;
+    if (botaoDoRegime?.[1] === "outro") return saida(PERGUNTA_DO_OUTRO_REGIME, { perfil: "contratar" });
+    if ((botaoDoRegime && ehRegime(botaoDoRegime[1])) || regimeEscrito) {
+      const regime = botaoDoRegime && ehRegime(botaoDoRegime[1]) ? botaoDoRegime[1] : regimeEscrito!;
+      const guardado = await guardarRegime(banco, chave, e.chave, botaoDoRegime?.[2] ?? null, regime);
+      if (!guardado)
+        return saida("Não achei a vaga para publicar. Pode mandar a foto ou o texto dela de novo?", { perfil: "contratar" });
+      publicar = guardado.token;
+      doLote = guardado.n > 1 ? guardado.token : null;
+    } else if (respondeuORegime && escrito.length <= 60 && !escrito.includes("?") && minhaUltima.includes("com carteira assinada (CLT)?")) {
+      // o "não" à carteira, ou o que não deu para entender: qual é, com a lista
+      return saida(PERGUNTA_DO_OUTRO_REGIME.replace(/^Certo! /, ""), { perfil: "contratar" });
     }
     if (conferir) return peloSite(conferir, "Aqui você confere tudo, muda o que precisar e publica. É grátis e leva um minuto.");
     if (conferirLote)
@@ -2168,6 +2197,10 @@ export async function atenderConversa(
           r.anuncioId ? { perfil: "contratar", botao: { titulo: "Ver a vaga", caminho: `/anuncio/${r.anuncioId}` } } : { perfil: "contratar" },
         );
       if (r.tipo === "pedir_nome") return saida(PERGUNTA_DO_NOME, { perfil: "contratar" });
+      // só falta o tipo de contratação: a pergunta, com os botões
+      if (r.tipo === "regime") return saida(PERGUNTA_DO_REGIME, { perfil: "contratar", botoes: botoesDoRegime(r.token) });
+      // a vaga de fora de onde o Publike funciona: a explicação (a resposta seguinte é lida como o lugar)
+      if (r.tipo === "fora") return saida(textoForaDaRegiao(r.lugar), { perfil: "contratar" });
       if (r.tipo === "nome_ruim")
         return saida(
           "Não consegui usar esse nome. Pode mandar de novo: qual é o nome da empresa? Só o nome, sem telefone nem link (por exemplo: _Padaria Pão Quente_).",
@@ -2948,6 +2981,27 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
       else {
         falhas++;
         console.error("Publike: a vaga mandada de novo não saiu:", r.erro);
+      }
+    }
+  // a vaga preparada que não foi ao ar (migração 20270926120000; sem ela, nada): 45 minutos depois, uma vez por conversa,
+  // com o que falta para publicar aqui (o "Conseguiu publicar?" com o "Sim, publicar", a pergunta do tipo de contratação
+  // ou do lugar, o link do site) ou, na vaga de fora que tinha saído como daqui, a correção
+  const { data: semPublicar, error: erroSemPublicar } = await banco.rpc("servidor_vagas_sem_publicar", { p_chave: chave, p_limite: 5 });
+  if (!erroSemPublicar)
+    for (const v of (semPublicar ?? []) as unknown as VagaSemPublicar[]) {
+      // marca antes: se o envio demorar e o robô rodar de novo, não manda duas vezes
+      await banco.rpc("servidor_vaga_lembrada", { p_chave: chave, p_conversa: v.conversa });
+      const nome = primeiroNome(v.nome);
+      const m = await lembreteDaVagaPreparada(v, nome ? `Oi, ${nome}!` : "Oi!").catch((e) => {
+        console.error("Publike: o lembrete da vaga preparada não foi montado:", e instanceof Error ? e.message : e);
+        return null;
+      });
+      if (!m) continue;
+      const r = await mandarDoRobo(cfg, banco, chave, v.conversa, v.numero, m.texto, m.botao ?? null, m.botoes);
+      if (r.ok) enviados++;
+      else {
+        falhas++;
+        console.error("Publike: o lembrete da vaga preparada não saiu:", r.erro);
       }
     }
   // quem chegou para publicar vaga e parou (migração 20270816120000; sem ela, nada)

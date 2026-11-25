@@ -203,6 +203,9 @@ async function main() {
   let vagasDoLugar: { token: string; rascunho: any }[] = [];
   let lugarLigado: any = true;
   let pedidosDoLugar: any[] = [];
+  // o tipo de contratação na conversa (migração 20270926120000)
+  let regimes: any[] = [];
+  let regimeN = 1;
   const base = (x: any) => ({
     chave: "557799255259",
     nova: false,
@@ -244,7 +247,15 @@ async function main() {
         if (!vagasDoLugar.length) return { data: { ligado: true, ok: false }, error: null };
         const b = (args.p_bairro ?? "").trim();
         const c = (args.p_cidade ?? "").trim();
-        if (b || c)
+        // o lugar de fora e a troca (migração 20270926120000)
+        if (args.p_fora) vagasDoLugar = vagasDoLugar.map((v) => ({ ...v, rascunho: { ...v.rascunho, fora: args.p_fora } }));
+        else if (args.p_trocar && (b || c))
+          vagasDoLugar = vagasDoLugar.map((v) => {
+            const { fora: _fora, ...resto } = v.rascunho;
+            void _fora;
+            return { ...v, rascunho: { ...resto, bairro: b, cidade: c } };
+          });
+        else if (b || c)
           vagasDoLugar = vagasDoLugar.map((v) => {
             const semBairro = !(v.rascunho.bairro ?? "").trim();
             const semCidade = !(v.rascunho.cidade ?? "").trim();
@@ -258,6 +269,11 @@ async function main() {
             };
           });
         return { data: { ligado: true, ok: true, vagas: vagasDoLugar }, error: null };
+      }
+      if (nome === "servidor_whatsapp_regime_das_vagas") {
+        regimes.push(args);
+        if (paraPublicar?.rascunho) paraPublicar = { ...paraPublicar, rascunho: { ...paraPublicar.rascunho, regime: args.p_regime } };
+        return { data: { ok: true, token: args.p_token || paraPublicar?.token || "f".repeat(64), n: regimeN }, error: null };
       }
       if (nome === "servidor_whatsapp_tokens_do_lote") {
         pedidosDoLote.push(args);
@@ -2045,6 +2061,133 @@ async function main() {
       conferir(!corpo(r.msgs[0]).startsWith("Anotado"), "sem a função do lugar: segue normal", corpo(r.msgs[0]));
       lugarLigado = true;
       vagasDoLugar = [];
+
+      // o lugar de fora (25/11/2026, a ANPE: "barueri sp" e "SÃO PAULO" viravam Goiânia)
+      const fora = await import("../src/lib/fora-da-regiao");
+      vagasDoLugar = [{ token: "7".repeat(64), rascunho: { ...rascunho, bairro: "", cidade: "" } }];
+      pedidosDoLugar = [];
+      r = await rodar("barueri sp", {
+        perfil: "contratar",
+        historico: [{ de: "robo", texto: vw.perguntaDoLugar([vagasDoLugar[0].rascunho]) }, { de: "pessoa", texto: "barueri sp" }],
+      });
+      conferir(
+        corpo(r.msgs[0]).includes("*Barueri (SP)*") && corpo(r.msgs[0]).includes("não consigo publicar") && vw.MARCA_DO_LUGAR.test(corpo(r.msgs[0])) &&
+          pedidosDoLugar.some((x) => x.p_fora === "Barueri (SP)") && vagasDoLugar[0].rascunho.fora === "Barueri (SP)" && !vagasDoLugar[0].rascunho.cidade,
+        "o lugar de fora: explica e marca a vaga",
+        corpo(r.msgs[0]),
+      );
+      // depois, o lugar daqui troca o de fora e vem o "Sim, publicar"
+      r = await rodar("Setor Bueno, Goiânia", {
+        perfil: "contratar",
+        historico: [{ de: "robo", texto: fora.textoForaDaRegiao("Barueri (SP)") }, { de: "pessoa", texto: "Setor Bueno, Goiânia" }],
+      });
+      conferir(
+        corpo(r.msgs[0]).includes("Posso publicar assim?") && titulos(r.msgs[0])[0] === "Sim, publicar" && pedidosDoLugar.some((x) => x.p_trocar) &&
+          vagasDoLugar[0].rascunho.bairro === "Setor Bueno" && vagasDoLugar[0].rascunho.cidade === "Goiânia" && !vagasDoLugar[0].rascunho.fora,
+        "a vaga de fora com o lugar daqui: troca e publica",
+        corpo(r.msgs[0]),
+      );
+      // o bairro já veio e falta a cidade: "SÃO PAULO" é de fora (não a Vila São Paulo, em Goiânia)
+      vagasDoLugar = [{ token: "7".repeat(64), rascunho: { ...rascunho, bairro: "barueri sp", cidade: "" } }];
+      pedidosDoLugar = [];
+      r = await rodar("SÃO PAULO", {
+        perfil: "contratar",
+        historico: [{ de: "robo", texto: vw.perguntaDoLugar([vagasDoLugar[0].rascunho]) }, { de: "pessoa", texto: "SÃO PAULO" }],
+      });
+      conferir(
+        corpo(r.msgs[0]).includes("*São Paulo (SP)*") && !pedidosDoLugar.some((x) => x.p_cidade === "Goiânia") && vagasDoLugar[0].rascunho.cidade !== "Goiânia",
+        "a cidade de fora na pergunta da cidade: não vira Goiânia",
+        corpo(r.msgs[0]),
+      );
+      // "Goiás": pergunta a cidade de novo
+      vagasDoLugar = [{ token: "7".repeat(64), rascunho: { ...rascunho, bairro: "Setor Bueno", cidade: "" } }];
+      r = await rodar("Goiás", {
+        perfil: "contratar",
+        historico: [{ de: "robo", texto: vw.perguntaDoLugar([vagasDoLugar[0].rascunho]) }, { de: "pessoa", texto: "Goiás" }],
+      });
+      conferir(corpo(r.msgs[0]).startsWith("Em qual cidade") && vw.MARCA_DO_LUGAR.test(corpo(r.msgs[0])), "só o estado: pergunta a cidade", corpo(r.msgs[0]));
+      vagasDoLugar = [];
+    }
+
+    // o "Sim, publicar" da vaga de fora que saiu como daqui (a da ANPE): não publica, explica
+    {
+      const anpe = { ...rascunho, titulo: "Atendente de restaurante", bairro: "barueri sp", cidade: "Goiânia" };
+      paraPublicar = { ligado: true, achou: true, token, rascunho: anpe, empresa: "ANPE", publicada: false, conta: null, tem_perfil: false };
+      publicados = [];
+      r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+      conferir(publicados.length === 0 && corpo(r.msgs[0]).includes("*Barueri (SP)*"), "a vaga de fora nunca é publicada", corpo(r.msgs[0]));
+    }
+
+    // o tipo de contratação na conversa (migração 20270926120000): o anúncio não dizia, e o "Sim, publicar" parava
+    {
+      const semTipo = { ...rascunho, regime: "" };
+      const fluxo = (texto: string, extra: any[] = []) => [...antes, { de: "pessoa", texto: "Sim, publicar" }, ...extra, { de: "pessoa", texto }];
+      paraPublicar = { ligado: true, achou: true, token, rascunho: semTipo, empresa: "Padaria Pão Quente", publicada: false, conta: null, tem_perfil: false };
+      publicados = [];
+      r = await rodar("Sim, publicar", { perfil: "contratar", historico: [...antes, { de: "pessoa", texto: "Sim, publicar" }] }, { payload: `a:publicar:${token}` });
+      const tituloDosBotoes = r.msgs[0]?.interactive?.action?.buttons?.map((b: any) => b?.reply?.title) ?? [];
+      conferir(
+        publicados.length === 0 && corpo(r.msgs[0]) === pn.PERGUNTA_DO_REGIME && tituloDosBotoes.join(" · ") === "Com carteira (CLT) · Diária · Outro tipo" &&
+          r.msgs[0]?.interactive?.action?.buttons?.[0]?.reply?.id === `a:regime:clt:${token}` && tituloDosBotoes.every((t: string) => t.length <= 20),
+        "sem o tipo de contratação: a pergunta, com os botões",
+        r.msgs[0],
+      );
+      const pergunta = { de: "robo", texto: `${pn.PERGUNTA_DO_REGIME}
+
+[Botões: Com carteira (CLT) · Diária · Outro tipo]` };
+      // o botão guarda o tipo e publica
+      regimes = [];
+      r = await rodar("Com carteira (CLT)", { perfil: "contratar", historico: fluxo("Com carteira (CLT)", [pergunta]) }, { payload: `a:regime:clt:${token}` });
+      conferir(
+        regimes.length === 1 && regimes[0].p_regime === "clt" && regimes[0].p_token === token && publicados.length === 1 && publicados[0].p_registro?.regime === "clt",
+        "o botão do tipo: guarda e publica",
+        { regimes, publicados },
+      );
+      // "Outro tipo": pergunta qual
+      paraPublicar = { ...paraPublicar, rascunho: semTipo };
+      publicados = [];
+      regimes = [];
+      r = await rodar("Outro tipo", { perfil: "contratar", historico: fluxo("Outro tipo", [pergunta]) }, { payload: `a:regime:outro:${token}` });
+      conferir(corpo(r.msgs[0]) === pn.PERGUNTA_DO_OUTRO_REGIME && regimes.length === 0 && publicados.length === 0, "Outro tipo: pergunta qual", corpo(r.msgs[0]));
+      // escrito depois da pergunta: "é estágio" guarda e publica (sem o token: o último anúncio da conversa)
+      const outro = { de: "robo", texto: pn.PERGUNTA_DO_OUTRO_REGIME };
+      r = await rodar("é estágio", { perfil: "contratar", historico: fluxo("é estágio", [pergunta, { de: "pessoa", texto: "Outro tipo" }, outro]) });
+      conferir(
+        regimes.length === 1 && regimes[0].p_regime === "estagio" && regimes[0].p_token === null && publicados.length === 1,
+        "o tipo escrito: guarda e publica",
+        { regimes, publicados, msg: corpo(r.msgs[0]) },
+      );
+      // "não" para a carteira: pergunta qual, com a lista
+      paraPublicar = { ...paraPublicar, rascunho: semTipo };
+      publicados = [];
+      regimes = [];
+      r = await rodar("não", { perfil: "contratar", historico: fluxo("não", [pergunta]) });
+      conferir(corpo(r.msgs[0]).startsWith("Para publicar, só falta o tipo de contratação: qual é?") && regimes.length === 0, "não: pergunta qual", corpo(r.msgs[0]));
+      // "sim" para a carteira: CLT
+      r = await rodar("sim", { perfil: "contratar", historico: fluxo("sim", [pergunta]) });
+      conferir(regimes[0]?.p_regime === "clt" && publicados.length === 1, "sim para a carteira: CLT e publica", { regimes, publicados });
+      // sem conta e sem o nome: depois do tipo, a pergunta do nome (o tipo fica guardado)
+      paraPublicar = { ...paraPublicar, rascunho: semTipo, empresa: null };
+      publicados = [];
+      regimes = [];
+      r = await rodar("Com carteira (CLT)", { perfil: "contratar", historico: fluxo("Com carteira (CLT)", [pergunta]) }, { payload: `a:regime:clt:${token}` });
+      conferir(
+        regimes.length === 1 && publicados.length === 0 && corpo(r.msgs[0]) === pn.PERGUNTA_DO_NOME && paraPublicar.rascunho.regime === "clt",
+        "o tipo e depois o nome",
+        corpo(r.msgs[0]),
+      );
+      // o lote: o tipo vale para as vagas do anúncio, e o botão publica todas
+      paraPublicar = { ...paraPublicar, rascunho: semTipo, empresa: "Loja Boa" };
+      publicados = [];
+      regimes = [];
+      regimeN = 2;
+      restantesDoLote = 1;
+      tokensDoLoteMock = ["e".repeat(64)];
+      r = await rodar("Com carteira (CLT)", { perfil: "contratar", historico: fluxo("Com carteira (CLT)", [pergunta]) }, { payload: `a:regime:clt:${token}` });
+      conferir(publicados.length === 2, "o tipo no lote: publica as duas", publicados.length);
+      regimeN = 1;
+      restantesDoLote = 0;
+      tokensDoLoteMock = [];
     }
     paraPublicar = { ligado: false };
   }

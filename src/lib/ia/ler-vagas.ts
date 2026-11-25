@@ -225,7 +225,7 @@ function vagaDoRascunho(b: Bruta, empresa: { tipo: string }, alertas: string[], 
     unidade = "";
     salario = null;
   }
-  const lugar = lugarDaVaga(texto(b.cidade, 60), texto(b.bairro, 60));
+  const lugar = lugarDaVaga(texto(b.cidade, 60), texto(b.bairro, 60), texto(b.modelo, 20));
   const horario = {
     escala: texto(b.escala, 10) || null,
     dias: itens(b.dias),
@@ -245,6 +245,8 @@ function vagaDoRascunho(b: Bruta, empresa: { tipo: string }, alertas: string[], 
     beneficios: itens(b.beneficios),
     cidade: lugar.cidade,
     bairro: lugar.bairro,
+    // a cidade de fora de onde o Publike funciona (o WhatsApp não prepara para publicar; o site avisa)
+    ...(lugar.fora ? { fora: lugar.fora } : {}),
     quantidade: typeof b.quantidade === "number" ? b.quantidade : 1,
     beneficios_extras: itens(b.outros_beneficios).filter((x) => !temContato(x)),
     ganhos_extras: Array.isArray(b.ganhos) ? b.ganhos : [],

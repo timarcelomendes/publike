@@ -1,8 +1,11 @@
 import "server-only";
+import { LISTA_REGIMES } from "@/lib/constantes";
 import type { RascunhoConvite } from "@/lib/convites";
 import { anuncioRepetido, mensagemDeErro } from "@/lib/erros";
+import { foraDoRascunho } from "@/lib/fora-da-regiao";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/tipos-banco";
+import type { Regime } from "@/lib/tipos";
 import { lerAnuncio, registroDoAnuncio } from "@/lib/validacao";
 import { ajustarErros, completarAnuncio } from "./completar-anuncio";
 
@@ -33,6 +36,76 @@ export const botoesDoLugar = (token: string, n: number) => [
 ];
 export const PAYLOAD_CONFERIR_LOTE = /^a:conferir_lote:([0-9a-f]{64})$/;
 export const PAYLOAD_CONFERIR = /^a:conferir:([0-9a-f]{64})$/;
+
+// --- O tipo de contratação (25/11/2026, migração 20270926120000) -------------------------------------------------
+// O anúncio que não diz o tipo de contratação travava o "Sim, publicar" (o site exige) e ia para o site, onde a pessoa
+// parava no entrar. Agora o WhatsApp pergunta, com os botões, e publica em seguida.
+
+/** A marca das perguntas do tipo: a resposta escrita seguinte é lida como o tipo (`regimeDaResposta`). */
+export const MARCA_DO_REGIME = "só falta o tipo de contratação";
+/** A pergunta é de sim ou não ("sim" é CLT); o "não" e o "Outro tipo" levam à lista. */
+export const PERGUNTA_DO_REGIME = `Para publicar, ${MARCA_DO_REGIME}. É com carteira assinada (CLT)? Se for outro, toque em *Outro tipo* ou escreva qual é: estágio, temporário, freelance, jovem aprendiz, PJ…`;
+export const PERGUNTA_DO_OUTRO_REGIME = `Certo! Para publicar, ${MARCA_DO_REGIME}: qual é? Escreva um destes: estágio, jovem aprendiz, trainee, temporário, intermitente, diária, freelance, comissão, autônomo ou PJ.`;
+export const botoesDoRegime = (token: string) => [
+  { id: `a:regime:clt:${token}`, titulo: "Com carteira (CLT)" },
+  { id: `a:regime:diaria:${token}`, titulo: "Diária" },
+  { id: `a:regime:outro:${token}`, titulo: "Outro tipo" },
+];
+export const PAYLOAD_REGIME = /^a:regime:([a-z]+):([0-9a-f]{64})$/;
+
+/** Os jeitos de escrever cada tipo (a ordem importa: "jovem aprendiz com carteira" é aprendiz). */
+const TIPOS_ESCRITOS: [RegExp, Regime][] = [
+  [/\b(?:jovem|menor)\s+aprendiz|\baprendiz\b/i, "aprendiz"],
+  [/\best[aá]gi(?:o|[aá]ri[oa])s?\b/i, "estagio"],
+  [/\btrainee\b/i, "trainee"],
+  [/\btempor[aá]ri[oa]s?\b|\btemporada\b/i, "temporario"],
+  [/\bintermitente\b/i, "intermitente"],
+  [/\bdi[aá]rias?\b|\bdiarista\b|\bpor dia\b/i, "diaria"],
+  [/\bfree\s*-?\s*lancer?s?\b|\bfreelas?\b|\bfrila\b|\bbico\b/i, "freelance"],
+  [/\bcomiss(?:[aã]o|ionad[oa])\b|\bprodutividade\b|\bpor produ[cç][aã]o\b|\bpor venda\b/i, "produtividade"],
+  [/\baut[oô]nom[oa]\b|\brpa\b/i, "autonomo"],
+  [/\bpj\b|\bmei\b|\bcnpj\b|\bpessoa jur[ií]dica\b/i, "pj"],
+  [/\bclt\b|\bcarteira\b|\bregistrad[oa]\b|\befetiv[oa]\b/i, "clt"],
+];
+
+/**
+ * O tipo de contratação escrito na conversa ("CLT", "é estágio", "sim" para a pergunta da carteira). `null`: não deu
+ * para saber (uma pergunta, um "não", outra coisa).
+ */
+export function regimeDaResposta(texto: string): Regime | null {
+  const t = texto.replace(/\s+/g, " ").trim();
+  if (!t || t.length > 80 || t.includes("?")) return null;
+  for (const [re, regime] of TIPOS_ESCRITOS) if (re.test(t)) return regime;
+  if (/^(?:sim|isso|isso mesmo|exato|correto|positivo|[eé] sim|sim,? [eé])[\s!.]*$/i.test(t)) return "clt";
+  return null;
+}
+
+export const ehRegime = (x: string): x is Regime => (LISTA_REGIMES as readonly string[]).includes(x);
+
+/**
+ * Guarda o tipo nas vagas do anúncio que ainda não têm (`token`: a do botão; sem ele, o último anúncio da conversa).
+ * Volta a primeira vaga ainda sem publicar e quantas faltam; `null`: sem a função no banco ou sem vaga esperando.
+ */
+export async function guardarRegime(
+  banco: ClienteBanco,
+  chave: string,
+  conversa: string,
+  token: string | null,
+  regime: Regime,
+): Promise<{ token: string; n: number } | null> {
+  const { data, error } = await banco.rpc("servidor_whatsapp_regime_das_vagas", {
+    p_chave: chave,
+    p_conversa: conversa,
+    p_token: token,
+    p_regime: regime,
+  });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: o tipo de contratação da vaga do WhatsApp não foi gravado:", error.message);
+    return null;
+  }
+  const r = (data ?? {}) as { ok?: boolean; token?: string; n?: number };
+  return r.ok && r.token ? { token: r.token, n: Number(r.n) || 1 } : null;
+}
 
 /** A pergunta do nome, quando o número ainda não tem conta (a resposta seguinte é o nome). */
 export const PERGUNTA_DO_NOME =
@@ -108,13 +181,24 @@ export function formularioDaVagaLida(r: RascunhoConvite): FormData {
 /** O registro da vaga com as regras do site, ou o que falta (os erros dos campos, em frases). */
 export async function registroDaVagaLida(
   r: RascunhoConvite,
-): Promise<{ ok: true; registro: ReturnType<typeof registroDoAnuncio> } | { ok: false; erros: string[] }> {
+): Promise<
+  { ok: true; registro: ReturnType<typeof registroDoAnuncio> } | { ok: false; erros: string[]; campos: string[] }
+> {
   const f = formularioDaVagaLida(r);
   const trocas = await completarAnuncio(f);
   const leitura = lerAnuncio(f);
-  if (!leitura.ok) return { ok: false, erros: [...new Set(Object.values(ajustarErros(leitura.erros, trocas)))] };
+  if (!leitura.ok) {
+    const erros = ajustarErros(leitura.erros, trocas);
+    return { ok: false, erros: [...new Set(Object.values(erros))], campos: Object.keys(erros) };
+  }
   return { ok: true, registro: registroDoAnuncio(leitura.dados) };
 }
+
+/** Só falta o tipo de contratação (o resto passa nas regras do site): a pergunta vai na conversa. */
+export const soFaltaORegime = (r: { ok: false; campos: string[] }) => r.campos.length === 1 && r.campos[0] === "regime";
+
+/** Os erros do banco que são regra (repetir não muda): os outros (tempo, conexão) ganham mais uma tentativa. */
+const ERROS_DE_REGRA = new Set(["P0001", "P0002", "22023", "42501", "23505", "23514", "23503", "PGRST202"]);
 
 export type ResultadoPublicar =
   | { tipo: "publicada"; token: string; anuncioId: string; contaNova: boolean; restantes: number; titulo: string }
@@ -123,6 +207,10 @@ export type ResultadoPublicar =
   | { tipo: "nome_ruim" }
   /** as regras do site não passaram: o link para completar lá */
   | { tipo: "site"; token: string; erros: string[] }
+  /** só falta o tipo de contratação: a pergunta, com os botões (migração 20270926120000) */
+  | { tipo: "regime"; token: string }
+  /** a vaga é de fora de onde o Publike funciona: não publica */
+  | { tipo: "fora"; token: string; lugar: string }
   | { tipo: "nao_achou" }
   | { tipo: "desligado" }
   | { tipo: "erro"; token: string | null; mensagem: string };
@@ -166,21 +254,39 @@ export async function publicarPeloWhatsapp(p: {
   if (!v.achou || !v.token || !v.rascunho) return { tipo: "nao_achou" };
   if (v.publicada) return { tipo: "ja", anuncioId: v.anuncio_id ?? null };
 
+  // a vaga de fora de onde o Publike funciona nunca é publicada (25/11/2026: a de Barueri, SP, ia como Goiânia)
+  const fora = foraDoRascunho(v.rascunho);
+  if (fora) return { tipo: "fora", token: v.token, lugar: fora };
+
+  // as regras do site antes do nome: o que falta e se responde aqui (o tipo de contratação) vem antes da pergunta do
+  // nome, que não fica guardada (a resposta do nome publica na hora)
+  const conferida = await registroDaVagaLida(v.rascunho);
+  if (!conferida.ok)
+    return soFaltaORegime(conferida) && !v.rascunho.regime
+      ? { tipo: "regime", token: v.token }
+      : { tipo: "site", token: v.token, erros: conferida.erros };
+
   // o nome só importa sem o perfil: o que ela respondeu ou, sem resposta, o lido no anúncio
   const precisaNome = !v.tem_perfil;
   const nome = precisaNome ? (p.nome != null ? nomeDaEmpresa(p.nome) : nomeDaEmpresa(v.empresa)) : null;
   if (precisaNome && !nome) return p.nome != null ? { tipo: "nome_ruim" } : { tipo: "pedir_nome" };
 
-  const conferida = await registroDaVagaLida(v.rascunho);
-  if (!conferida.ok) return { tipo: "site", token: v.token, erros: conferida.erros };
-
-  const { data: pub, error: erroPub } = await p.banco.rpc("servidor_whatsapp_publicar_aqui", {
-    p_chave: p.chave,
-    p_conversa: p.conversa,
-    p_token: v.token,
-    p_nome: nome ?? "",
-    p_registro: conferida.registro as unknown as Json,
-  });
+  const publicar = () =>
+    p.banco.rpc("servidor_whatsapp_publicar_aqui", {
+      p_chave: p.chave,
+      p_conversa: p.conversa,
+      p_token: v.token!,
+      p_nome: nome ?? "",
+      p_registro: conferida.registro as unknown as Json,
+    });
+  let { data: pub, error: erroPub } = await publicar();
+  // o erro de passagem do banco (tempo, conexão; 24/11/2026, o "Não deu certo agora" do João, que ao repetir saiu):
+  // mais uma tentativa. Se a primeira tinha publicado, a segunda só devolve a vaga ("ja")
+  if (erroPub && !anuncioRepetido(erroPub) && !ERROS_DE_REGRA.has(erroPub.code ?? "")) {
+    console.warn("Publike: a vaga do WhatsApp não saiu na primeira tentativa:", erroPub.code, erroPub.message);
+    await new Promise((r) => setTimeout(r, 1500));
+    ({ data: pub, error: erroPub } = await publicar());
+  }
   if (erroPub) {
     const repetido = anuncioRepetido(erroPub);
     if (repetido) return { tipo: "ja", anuncioId: repetido };
