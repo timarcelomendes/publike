@@ -107,7 +107,7 @@ function instrucoes(hoje: string) {
 Regras:
 - Use só o que está escrito. Não invente cargo, empresa, data, curso nem habilidade. O que o currículo não diz fica vazio ("" ou lista vazia).
 - "e_curriculo": false se não for um currículo (outro documento, foto de outra coisa, folha ilegível); aí deixe o resto vazio. Currículo escaneado, fotografado, feito no Canva ou à mão também é currículo: leia o que der.
-- "o_que_e": quando não for currículo, o que o arquivo é, com o artigo, em até 6 palavras e sem nome nem número de ninguém: "um certificado de curso", "uma carteira de trabalho", "uma foto de documento", "um anúncio de vaga", "uma folha ilegível", "uma página em branco". Quando for currículo, "".
+- "o_que_e": quando não for currículo, só o nome do que o arquivo é, com o artigo, em até 5 palavras, sem descrever o conteúdo e sem nome nem número de ninguém: "uma carteira de trabalho digital", "um certificado de curso", "uma foto de documento", "um anúncio de vaga", "uma folha ilegível", "uma página em branco". Quando for currículo, "".
 - Nunca ponha telefone, e-mail, endereço, link, CPF, RG, data de nascimento, idade, estado civil, foto nem o nome de outras pessoas (referências) em campo nenhum.
 - "titulo": a profissão ou o trabalho que a pessoa procura, curto (até 60 letras), como "Auxiliar de cozinha" ou "Motorista". Use o objetivo do currículo; sem objetivo, o cargo mais recente.
 - "habilidades": até ${MAX_HABILIDADES}, curtas (até 40 letras cada), o que a pessoa sabe fazer: "Atendimento ao cliente", "Pacote Office", "Empilhadeira". Não repita os cursos.
@@ -119,6 +119,19 @@ Regras:
 - "cnh": a categoria da carteira de motorista, só se o currículo disser.
 - "disponibilidade": só se o currículo disser quando a pessoa pode trabalhar.
 - Hoje é ${hoje} (AAAA-MM).`;
+}
+
+/**
+ * Só o nome do que o arquivo é, para a frase "ele parece ser …" (25/11/2026: a IA escreveu "uma Carteira de Trabalho
+ * Digital com dados pessoais e contra…"): sem a descrição, até 7 palavras e sem terminar em "de" ou "com".
+ */
+export function resumoDoQueE(texto: string) {
+  let t = texto.replace(/\s+/g, " ").trim();
+  t = t.split(/\s(?:com|contendo|que|onde|mostrando|incluindo|listando|sobre)\s|[(:;,.!?]/)[0].trim();
+  const palavras = t.split(" ").filter(Boolean);
+  if (palavras.length > 7) t = palavras.slice(0, 7).join(" ");
+  for (let i = 0; i < 3; i++) t = t.replace(/\s(?:de|da|do|das|dos|e|em|com|para|a|o|no|na)$/i, "");
+  return t.length >= 3 ? t.slice(0, 60).trim() : "";
 }
 
 /** O mesmo currículo, mas do que a pessoa contou falando (a transcrição da fala). */
@@ -273,7 +286,7 @@ export async function lerCurriculoDoArquivoComMotivo(
   if (parada === "recusa") throw new ErroIA("A IA não quis ler este arquivo.");
   if (parada === "limite") throw new ErroIA("A resposta da IA ficou incompleta.");
   const r = lerJson<Partial<RespostaDoCurriculo> & { o_que_e?: unknown }>(resposta);
-  const oQueE = curto(r.o_que_e, 60).replace(/[.!]+$/, "");
+  const oQueE = resumoDoQueE(curto(r.o_que_e, 120));
   return {
     lido: r.e_curriculo ? limparCurriculoLido(r, hoje) : null,
     oQueE: oQueE && !temContatoNoTexto(oQueE) && !/\d{3}/.test(oQueE) ? oQueE : "",

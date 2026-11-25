@@ -1947,6 +1947,10 @@ async function main() {
 
     // --- O arquivo que não virou currículo e o convite do Instagram no meio (25/11/2026, a conversa da Arlete) -----
     const arq = await import("../src/lib/servidor/curriculo-por-arquivo");
+    const lc = await import("../src/lib/ia/curriculo-do-arquivo");
+    conferir(lc.resumoDoQueE("uma Carteira de Trabalho Digital com dados pessoais e contra") === "uma Carteira de Trabalho Digital", "o que a IA achou: só o nome, sem a descrição", lc.resumoDoQueE("uma Carteira de Trabalho Digital com dados pessoais e contra"));
+    conferir(lc.resumoDoQueE("um certificado de curso de informática básica e avançada do senac") === "um certificado de curso de informática básica", "o que a IA achou: até 7 palavras, sem terminar em “e”", lc.resumoDoQueE("um certificado de curso de informática básica e avançada do senac"));
+    conferir(lc.resumoDoQueE("uma foto de documento.") === "uma foto de documento" && lc.resumoDoQueE("") === "", "o que a IA achou: o ponto e o vazio");
     conferir(arq.pareceePdf(Buffer.from("%PDF-1.4 x")) && arq.pareceePdf(Buffer.from("\n\r  %PDF-1.7")) && !arq.pareceePdf(Buffer.from("PK\u0003\u0004word/")), "o PDF: o começo, mesmo com bytes soltos antes");
     conferir(arq.emMb(25 * 1024 * 1024) === "25,0 MB" && arq.MAX_PDF === 20 * 1024 * 1024, "o tamanho em MB e o limite de 20 MB");
     // a pergunta de cada passo, tirada da última mensagem
