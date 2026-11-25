@@ -14,16 +14,18 @@ const avaliarProtegido = protegerAcao(avaliarServico);
 
 const ROTULOS = ["", "Ruim", "Fraco", "Bom", "Muito bom", "Excelente"];
 
-/** Estrelas de 1 a 5 (rádios) e comentário opcional. */
+/** Estrelas de 1 a 5 (rádios) e comentário opcional. `processo`: a avaliação do processo seletivo de uma vaga. */
 export function FormAvaliacao({
   anuncioId,
   perfilProfissional,
   inicial,
+  processo = false,
 }: {
   anuncioId: string;
   /** link do perfil, para ver a avaliação publicada */
   perfilProfissional: string;
   inicial: { nota: number; comentario: string | null } | null;
+  processo?: boolean;
 }) {
   const [estado, acao, enviando] = useActionState(avaliarProtegido, { ok: false } as EstadoForm);
   const [nota, setNota] = useState(inicial?.nota ?? 0);
@@ -44,7 +46,7 @@ export function FormAvaliacao({
         <p>{estado.mensagem}</p>
         <p className="mt-2">
           <Link href={perfilProfissional} className="underline">
-            Ver o perfil do profissional
+            {processo ? "Ver o perfil de quem contrata" : "Ver o perfil do profissional"}
           </Link>
         </p>
       </Aviso>
@@ -58,6 +60,7 @@ export function FormAvaliacao({
       className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
     >
       <input type="hidden" name="anuncio_id" value={anuncioId} />
+      {processo && <input type="hidden" name="processo" value="1" />}
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-label">Sua nota</legend>
         <div className="flex flex-wrap items-center gap-1" onMouseLeave={() => setPassando(0)}>
@@ -95,7 +98,7 @@ export function FormAvaliacao({
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="comentario" className="text-label">
-          Como foi? <span className="font-normal text-ink-muted">(opcional)</span>
+          {processo ? "Como foi o processo?" : "Como foi?"} <span className="font-normal text-ink-muted">(opcional)</span>
         </label>
         <textarea
           id="comentario"
@@ -105,7 +108,11 @@ export function FormAvaliacao({
           rows={4}
           maxLength={600}
           aria-invalid={erros.comentario ? true : undefined}
-          placeholder="Ex.: Chegou no horário, explicou o que ia fazer e deixou tudo limpo."
+          placeholder={
+            processo
+              ? "Ex.: Responderam rápido, a entrevista foi no horário e deram retorno mesmo sem me chamar."
+              : "Ex.: Chegou no horário, explicou o que ia fazer e deixou tudo limpo."
+          }
           className={`${classesEntrada} resize-y`}
         />
         {erros.comentario ? (
@@ -125,7 +132,7 @@ export function FormAvaliacao({
           {enviando ? "Enviando…" : inicial ? "Salvar avaliação" : "Enviar avaliação"}
         </Botao>
         <p className="text-body-sm text-ink-muted">
-          Aparece no perfil com o seu primeiro nome. Ao enviar, você concorda com as{" "}
+          {processo ? "Aparece sem o seu nome nem a sua foto." : "Aparece no perfil com o seu primeiro nome."} Ao enviar, você concorda com as{" "}
           <Link href="/regras" className="underline">
             regras do Publike
           </Link>

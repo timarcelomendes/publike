@@ -3416,6 +3416,31 @@ export type Database = {
         Args: { p_profissional: string };
         Returns: { media: number | null; total: number }[];
       };
+      /** a nota do processo seletivo de quem contrata (migração 20270928120000) */
+      nota_do_processo: {
+        Args: { p_empresa: string };
+        Returns: { media: number | null; total: number }[];
+      };
+      /** as avaliações do processo seletivo, anônimas (migração 20270928120000) */
+      avaliacoes_do_processo: {
+        Args: { p_empresa: string; p_limite?: number };
+        Returns: {
+          id: number;
+          nota: number;
+          comentario: string | null;
+          titulo_servico: string;
+          anuncio_id: string | null;
+          criado_em: string;
+          autor_nome: string;
+          autor_foto: string | null;
+          resposta: string | null;
+          respondida_em: string | null;
+        }[];
+      };
+      posso_avaliar_processo: {
+        Args: { p_anuncio: string };
+        Returns: boolean;
+      };
       fila_avaliacoes: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -3664,6 +3689,16 @@ export type Database = {
         };
         Returns: Json;
       };
+      // migração 20270927120000 (candidatar-se pelo WhatsApp)
+      servidor_whatsapp_candidatar_ligado: { Args: { p_chave: string }; Returns: boolean };
+      servidor_whatsapp_vaga_para_candidatar: { Args: { p_chave: string; p_conversa: string; p_anuncio: string }; Returns: Json };
+      servidor_whatsapp_candidatura_responder: {
+        Args: { p_chave: string; p_conversa: string; p_pergunta: string; p_valor: string };
+        Returns: Json;
+      };
+      servidor_whatsapp_candidatura_da_vez: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
+      servidor_whatsapp_candidatura_cancelar: { Args: { p_chave: string; p_conversa: string }; Returns: boolean };
+      servidor_whatsapp_candidatar: { Args: { p_chave: string; p_conversa: string; p_nome?: string | null }; Returns: Json };
       // migração 20270926120000 (o tipo de contratação na conversa)
       servidor_whatsapp_regime_das_vagas: {
         Args: { p_chave: string; p_conversa: string; p_token: string | null; p_regime: string };

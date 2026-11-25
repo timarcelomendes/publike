@@ -1,4 +1,4 @@
-import { ExternalLink, FileText, Flag, Heart, PartyPopper } from "lucide-react";
+import { ExternalLink, FileText, Flag, Heart, PartyPopper, Star } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -473,6 +473,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                 {c.mensagem && (
                   <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">Sua mensagem: “{c.mensagem}”</p>
                 )}
+                {/* a nota do processo seletivo: com a resposta da empresa, ou depois de 7 dias esperando (migração 20270928120000) */}
+                {c.tipo === "vaga" &&
+                  (c.status !== "pendente" || agora - Date.parse(c.curtido_em) >= 7 * 24 * 3600_000) && (
+                    <Link
+                      href={`/anuncio/${c.anuncio_id}/avaliar`}
+                      className="inline-flex min-h-11 items-center gap-2 self-start text-label text-terra-text underline-offset-2 hover:underline"
+                    >
+                      <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
+                      Avaliar o processo seletivo
+                    </Link>
+                  )}
                 {etapaVisivel && (
                   <p className="text-body-sm text-ink-muted">
                     {nomeCurtoDaConta(c.autor_nome, c.autor_tipo)}{" "}

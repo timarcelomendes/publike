@@ -8,7 +8,7 @@ import { ResponderAvaliacao } from "@/components/painel/responder-avaliacao";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { listarAvaliacoesRecebidas, obterNotaDoProfissional } from "@/lib/dados";
+import { listarAvaliacoesRecebidas, obterNotaDoProcesso, obterNotaDoProfissional } from "@/lib/dados";
 import { tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -39,26 +39,43 @@ const SITUACAO_RESPOSTA: Record<string, string> = {
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/avaliacoes");
-  const [avaliacoes, nota, agora] = await Promise.all([
+  const [avaliacoes, nota, doProcesso, agora] = await Promise.all([
     listarAvaliacoesRecebidas(),
     obterNotaDoProfissional(usuario.id),
+    // o processo seletivo das suas vagas, avaliado por quem se candidatou (anônimo; migração 20270928120000)
+    obterNotaDoProcesso(usuario.id),
     agoraDaRequisicao(),
   ]);
 
   if (avaliacoes.length === 0) {
     return (
       <Vazio icone={Star} titulo="Nenhuma avaliação ainda">
-        Quando alguém que contratou você avaliar, ela aparece aqui e você recebe um aviso.
+        Quando alguém que contratou você (ou que se candidatou às suas vagas) avaliar, a avaliação aparece aqui e você
+        recebe um aviso.
       </Vazio>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <p>
-        <NotaDoProfissional media={nota.media} total={nota.total} />
-        {nota.total < 3 && <span className="text-body-sm text-ink-muted"> · a nota média aparece a partir de 3</span>}
-      </p>
+      {nota.total > 0 && (
+        <p>
+          <NotaDoProfissional media={nota.media} total={nota.total} />
+          {nota.total < 3 && <span className="text-body-sm text-ink-muted"> · a nota média aparece a partir de 3</span>}
+        </p>
+      )}
+      {doProcesso.total > 0 && (
+        <p>
+          <span className="text-body-sm text-ink-muted">Processo seletivo: </span>
+          <NotaDoProfissional media={doProcesso.media} total={doProcesso.total} />
+          {doProcesso.total < 3 && (
+            <span className="text-body-sm text-ink-muted"> · a nota média aparece a partir de 3</span>
+          )}
+          <span className="block text-body-sm text-ink-muted">
+            Quem se candidatou avalia sem o nome. Responda com calma: a resposta aparece na vaga e no seu perfil.
+          </span>
+        </p>
+      )}
       <ul className="flex flex-col gap-4">
         {avaliacoes.map((a) => (
           <li

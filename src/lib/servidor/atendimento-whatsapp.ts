@@ -44,6 +44,12 @@ import {
 } from "./vaga-pelo-whatsapp";
 import { caminhoDaVagaDoWhatsapp, MARCA_DO_LUGAR } from "@/lib/vagas-pelo-whatsapp";
 import { textoForaDaRegiao } from "@/lib/fora-da-regiao";
+import {
+  comecarCandidatura,
+  mensagemParaCandidatar,
+  PAYLOAD_QUERO,
+  respostaNaCandidatura,
+} from "./candidatar-pelo-whatsapp";
 import { pedeOsCandidatosAqui } from "@/lib/whatsapp-oficial";
 import { avisarMetaDaVaga } from "./meta-conversoes";
 import {
@@ -389,6 +395,12 @@ const NAO_E_NOME = new Set(
 );
 
 /** O primeiro nome do perfil do WhatsApp, quando parece nome de gente ("~Raphael" vira "Raphael"; "Loja X", nada). */
+/** A candidatura pelo WhatsApp vale agora? (sem a migração ou com falha, não; migração 20270927120000) */
+async function candidatarLigado(banco: ClienteBanco, chave: string) {
+  const { data, error } = await banco.rpc("servidor_whatsapp_candidatar_ligado", { p_chave: chave });
+  return !error && data === true;
+}
+
 export function primeiroNome(nome: string | null) {
   if (!nome) return null;
   const p = nome.replace(/^[^A-Za-zÀ-ÿ]+/, "").split(/\s+/)[0] ?? "";
@@ -1278,6 +1290,8 @@ async function procurarVagas(
     /** só vagas de outras funções: o currículo vai junto */
     outras: Boolean(usadas[0].outras),
     mais: achadas.length > n || longe1.length ? { titulo: "Ver mais vagas", caminho: `/?${p}` } : null,
+    /** as vagas da mensagem, na ordem (os botões do "Quer se candidatar?", migração 20270927120000) */
+    vagas: usadas.map((x) => ({ id: x.a.id, titulo: x.a.titulo })),
   };
 }
 
@@ -1376,6 +1390,7 @@ async function mensagemDaBusca(
     texto: `${vagas.texto}\n\n${depoisDasVagas(restam - vagas.quantas)}${curriculo}`,
     botao: (vagas.outras ? LINKS.curriculo : (vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null))) as Botao | null,
     quantas: vagas.quantas,
+    vagas: vagas.vagas,
   };
 }
 
@@ -2034,6 +2049,12 @@ export async function atenderConversa(
 
   // as mensagens das vagas com o convite do currículo: com o currículo pelo WhatsApp ligado, "monto aqui, falando", com o
   // botão de montar no lugar do botão do site
+  // depois das vagas da busca: "Quer se candidatar a alguma?", com um botão por vaga (migração 20270927120000)
+  const saidaDasVagas = async (texto: string, extra: Parameters<typeof saida>[1], vagas?: { id: string; titulo: string }[]) => {
+    await saida(texto, extra);
+    const quer = vagas?.length ? mensagemParaCandidatar(vagas) : null;
+    if (quer && (await candidatarLigado(banco, chave))) await saida(quer.texto, { perfil: extra?.perfil ?? "trabalho", botoes: quer.botoes });
+  };
   const comCurriculoFalando = async (texto: string, botao: Botao | null) =>
     botao === LINKS.curriculo && PARAGRAFO_DO_CURRICULO.test(texto) && (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
       ? { texto: texto.replace(PARAGRAFO_DO_CURRICULO, CONVITE_CURRICULO_FALANDO), extra: { botoes: [BOTAO_MONTAR_CURRICULO] } }
@@ -2091,6 +2112,17 @@ export async function atenderConversa(
   }
   // publicar a vaga aqui mesmo (23/11/2026, migração 20270914120000): o "Sim, publicar", o "Conferir no site" e a
   // resposta à pergunta do nome da empresa
+  // a candidatura pelo WhatsApp (migração 20270927120000): o toque na vaga do "Quer se candidatar?", os botões e as
+  // respostas das perguntas da vaga (escritas ou faladas) e o nome. Sem a migração ou desligada, segue como antes
+  {
+    const ctx = { banco, chave, conversa: e.chave, numero: m.numero, nomeDoWhatsapp: e.nome };
+    const quero = PAYLOAD_QUERO.exec(m.payload ?? "")?.[1];
+    const r = quero
+      ? await comecarCandidatura(ctx, quero)
+      : await respostaNaCandidatura(ctx, { payload: m.payload ?? null, texto: textos.join(" "), minhaUltima });
+    if (r) return saida(r.texto, { perfil: "trabalho", botoes: r.botoes, botao: r.botao ?? null });
+  }
+
   {
     let doLote = PAYLOAD_LOTE.exec(m.payload ?? "")?.[1] ?? null;
     let publicar = PAYLOAD_PUBLICAR.exec(m.payload ?? "")?.[1] ?? doLote;
@@ -2443,7 +2475,7 @@ export async function atenderConversa(
     );
     if (!r.quantas) return saida(PEDIR_FUNCAO_E_BAIRRO, { perfil: e.perfil ?? "trabalho" });
     const c = await comCurriculoFalando(`${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`, r.botao);
-    return saida(c.texto, { perfil: e.perfil ?? "trabalho", ...c.extra });
+    return saidaDasVagas(c.texto, { perfil: e.perfil ?? "trabalho", ...c.extra }, r.vagas);
   }
 
   // "ok", "beleza", "👍" ou figurinha depois de conversar: não pedem resposta. Depois de pedir a função (antes de mandar
@@ -2499,7 +2531,7 @@ export async function atenderConversa(
       );
       const abertura = r.abertura ?? r.aberturaPadrao;
       const c = await comCurriculoFalando(`${ola1}${abertura}${r.texto ? `\n\n${r.texto}` : ""}`, r.botao);
-      return saida(c.texto, { perfil: "trabalho", ...c.extra });
+      return saidaDasVagas(c.texto, { perfil: "trabalho", ...c.extra }, r.vagas);
     }
     return saida(
       deNovo
@@ -2694,7 +2726,7 @@ export async function atenderConversa(
       r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`,
       r.botao,
     );
-    return saida(c.texto, { perfil: perfil ?? "trabalho", ...c.extra });
+    return saidaDasVagas(c.texto, { perfil: perfil ?? "trabalho", ...c.extra }, r.vagas);
   }
 
   // o botão que abre o site, quando a conversa leva até ele; senão, os botões do começo, uma vez, enquanto não se sabe

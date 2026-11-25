@@ -307,6 +307,15 @@ export function PainelCurtir({
             Avaliar o serviço
           </Link>
         )}
+        {!servico && (
+          <Link
+            href={`/anuncio/${anuncioId}/avaliar`}
+            className="inline-flex min-h-11 items-center gap-2 self-start text-label text-terra-text underline-offset-2 hover:underline"
+          >
+            <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
+            Avaliar o processo seletivo
+          </Link>
+        )}
         {perguntas.length > 0 && (
           <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} claro />
         )}
@@ -345,6 +354,15 @@ export function PainelCurtir({
             Avaliar o serviço
           </Link>
         )}
+        {!servico && (
+          <Link
+            href={`/anuncio/${anuncioId}/avaliar`}
+            className="inline-flex min-h-11 items-center gap-2 self-start text-label text-terra-text underline-offset-2 hover:underline"
+          >
+            <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
+            Avaliar o processo seletivo
+          </Link>
+        )}
         <Link href={servico ? "/?tipo=servico" : "/"} className="text-label text-terra-text underline">
           {servico ? "Ver outros profissionais" : "Ver outras oportunidades"}
         </Link>
@@ -362,6 +380,15 @@ export function PainelCurtir({
             ? "O profissional não pode atender agora. Tem outros perto de você."
             : "Quem publicou escolheu outra pessoa. Continue curtindo: tem muita oportunidade perto de você."}
         </p>
+        {!servico && (
+          <Link
+            href={`/anuncio/${anuncioId}/avaliar`}
+            className="inline-flex min-h-11 items-center gap-2 self-start text-label text-terra-text underline-offset-2 hover:underline"
+          >
+            <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
+            Avaliar o processo seletivo
+          </Link>
+        )}
         <Link href={servico ? "/?tipo=servico" : "/"} className="text-label text-terra-text underline">
           {servico ? "Ver outros profissionais" : "Ver outras oportunidades"}
         </Link>

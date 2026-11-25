@@ -19,9 +19,11 @@ import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/u
 import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TEXTO_SEGUIR, TIPOS_CONTA } from "@/lib/constantes";
 import {
+  listarAvaliacoesDoProcesso,
   listarAvaliacoesPublicas,
   obterMeuCurriculo,
   obterMeuPerfil,
+  obterNotaDoProcesso,
   obterNotaDoProfissional,
   obterPerfilPublico,
   obterUsuario,
@@ -61,12 +63,15 @@ export default function PerfilPublico({ params }: PageProps<"/perfil/[id]">) {
 
 async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"] }) {
   const { id } = await params;
-  const [dados, usuario, avaliacoes, nota, seguidos] = await Promise.all([
+  const [dados, usuario, avaliacoes, nota, seguidos, doProcesso, notaDoProcesso] = await Promise.all([
     obterPerfilPublico(id),
     obterUsuario(),
     listarAvaliacoesPublicas(id),
     obterNotaDoProfissional(id),
     meusSeguidos(),
+    // o processo seletivo de quem contrata (anônimo; migração 20270928120000)
+    listarAvaliacoesDoProcesso(id),
+    obterNotaDoProcesso(id),
   ]);
   if (!dados) notFound();
   const { perfil, anuncios } = dados;
@@ -120,6 +125,14 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             <p className="mt-1">
               <a href="#avaliacoes" className="hover:underline">
                 <NotaDoProfissional media={nota.media} total={nota.total} />
+              </a>
+            </p>
+          )}
+          {notaDoProcesso.total > 0 && (
+            <p className="mt-1">
+              <a href="#processo" className="hover:underline">
+                <span className="text-body-sm text-ink-muted">Processo seletivo: </span>
+                <NotaDoProfissional media={notaDoProcesso.media} total={notaDoProcesso.total} />
               </a>
             </p>
           )}
@@ -249,6 +262,24 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
               Ainda sem avaliações. Quem contrata pelo Publike pode avaliar depois do match.
             </p>
           )}
+        </section>
+      )}
+
+      {doProcesso.length > 0 && (
+        <section id="processo" className="mt-10 scroll-mt-24">
+          <h2 className="text-h2">Como foi o processo seletivo</h2>
+          <p className="mt-1 text-body-sm text-ink-muted">
+            Avaliado por quem se candidatou às vagas, sem o nome.
+            {notaDoProcesso.total < 3 && " A nota média aparece a partir de 3 avaliações."}
+          </p>
+          <div className="mt-4 max-w-3xl rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+            <ListaAvaliacoes
+              avaliacoes={doProcesso}
+              agora={agora}
+              nomeProfissional={perfil.nome}
+              nomeInteiro={perfil.tipo !== "pessoa"}
+            />
+          </div>
         </section>
       )}
 

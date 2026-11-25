@@ -12,7 +12,7 @@ const NOMES: Record<string, string> = {
   "/ajuda": "Ajuda",
   "/ajuda/caminho/[id]": "Ajuda › Passo a passo",
   "/anuncio/[id]": "Vaga ou serviço",
-  "/anuncio/[id]/avaliar": "Avaliar serviço",
+  "/anuncio/[id]/avaliar": "Avaliar",
   "/anuncio/[id]/denunciar": "Denunciar anúncio",
   "/avisos/sair": "Parar de receber e-mails",
   "/candidatura/[token]": "Convite para uma vaga",

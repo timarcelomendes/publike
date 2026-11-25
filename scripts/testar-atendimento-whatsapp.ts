@@ -203,6 +203,14 @@ async function main() {
   let vagasDoLugar: { token: string; rascunho: any }[] = [];
   let lugarLigado: any = true;
   let pedidosDoLugar: any[] = [];
+  // candidatar-se pelo WhatsApp (migração 20270927120000)
+  let candidatarLigadoMock = false;
+  let paraCandidatar: any = null;
+  let candidaturaDaVez: any = null;
+  let resultadoCandidatar: any = { ok: true, status: "pendente", titulo: "Cozinheira", anuncio_id: "x", tem_curriculo: true };
+  let candidaturas: any[] = [];
+  let respondidas: any[] = [];
+  let canceladas = 0;
   // o tipo de contratação na conversa (migração 20270926120000)
   let regimes: any[] = [];
   let regimeN = 1;
@@ -269,6 +277,32 @@ async function main() {
             };
           });
         return { data: { ligado: true, ok: true, vagas: vagasDoLugar }, error: null };
+      }
+      if (nome === "servidor_whatsapp_candidatar_ligado") return { data: candidatarLigadoMock, error: null };
+      if (nome === "servidor_whatsapp_vaga_para_candidatar") {
+        if (!paraCandidatar) return { data: null, error: { code: "PGRST202", message: "sem a função" } };
+        if (paraCandidatar.ok) candidaturaDaVez = { anuncio_id: args.p_anuncio, vez: 0, respostas: {}, perguntas: paraCandidatar.perguntas, titulo: paraCandidatar.titulo, conta: paraCandidatar.conta };
+        return { data: paraCandidatar, error: null };
+      }
+      if (nome === "servidor_whatsapp_candidatura_da_vez") return { data: candidaturaDaVez, error: null };
+      if (nome === "servidor_whatsapp_candidatura_responder") {
+        respondidas.push(args);
+        if (!candidaturaDaVez) return { data: { ok: false }, error: null };
+        candidaturaDaVez = {
+          ...candidaturaDaVez,
+          vez: candidaturaDaVez.vez + 1,
+          respostas: args.p_valor ? { ...candidaturaDaVez.respostas, [args.p_pergunta]: args.p_valor } : candidaturaDaVez.respostas,
+        };
+        return { data: { ok: true, ...candidaturaDaVez }, error: null };
+      }
+      if (nome === "servidor_whatsapp_candidatura_cancelar") {
+        canceladas++;
+        candidaturaDaVez = null;
+        return { data: true, error: null };
+      }
+      if (nome === "servidor_whatsapp_candidatar") {
+        candidaturas.push({ ...args, respostas: candidaturaDaVez?.respostas });
+        return { data: resultadoCandidatar, error: null };
       }
       if (nome === "servidor_whatsapp_regime_das_vagas") {
         regimes.push(args);
@@ -2190,6 +2224,144 @@ async function main() {
       tokensDoLoteMock = [];
     }
     paraPublicar = { ligado: false };
+  }
+
+  // --- Candidatar-se pelo WhatsApp (migração 20270927120000) ---------------------------------------------------
+  {
+    const cw = await import("../src/lib/servidor/candidatar-pelo-whatsapp");
+    const procurando2 = [{ de: "robo", texto: "Olá! O que você faz e o bairro onde mora?" }];
+    // depois das vagas: "Quer se candidatar?", com um botão por vaga
+    candidatarLigadoMock = true;
+    vagasJaEnviadas = 0;
+    respostaIA = ia("Olha as vagas de cozinheira perto do Setor Bueno:", {
+      perfil: "trabalho",
+      acao: "buscar_vagas",
+      busca: { texto: "cozinheira", categoria: "todas", cidade: "", bairro: "Setor Bueno" },
+    });
+    let r = await rodar("sou cozinheira, moro no setor bueno", {
+      perfil: "trabalho",
+      historico: [...procurando2, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+    });
+    const quer = r.msgs[1];
+    const ids = quer?.interactive?.action?.buttons?.map((b: any) => b?.reply?.id) ?? [];
+    conferir(
+      corpo(r.msgs[0]).includes("*Cozinheira*") && corpo(quer).startsWith(cw.QUER_SE_CANDIDATAR) && ids.length >= 1 &&
+        ids.every((i: string) => cw.PAYLOAD_QUERO.test(i)) && String(ids[0]).startsWith("c:quero:11111111"),
+      "depois das vagas: Quer se candidatar?, com os botões",
+      { quer, ids },
+    );
+    candidatarLigadoMock = false;
+    r = await rodar("sou cozinheira, moro no setor bueno", {
+      perfil: "trabalho",
+      historico: [...procurando2, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+    });
+    conferir(r.msgs.length === 1, "desligada: só as vagas", r.msgs.length);
+
+    const id = "11111111-1111-4111-8111-111111111111";
+    const pergunta = { id: "p1", nome: "Tem experiência com cozinha industrial?", tipo: "sim_nao", opcoes: [], obrigatoria: true };
+    const turno = { id: "p2", nome: "Qual turno prefere?", tipo: "opcoes", opcoes: ["Manhã", "Tarde", "Noite", "Madrugada"], obrigatoria: false };
+    // o toque na vaga com perguntas: a primeira, com Sim e Não
+    paraCandidatar = { ligado: true, ok: true, titulo: "Cozinheira", perguntas: [pergunta, turno], conta: { existe: false } };
+    candidaturas = [];
+    respondidas = [];
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    const titulos1 = r.msgs[0]?.interactive?.action?.buttons?.map((b: any) => b?.reply?.title) ?? [];
+    conferir(
+      corpo(r.msgs[0]).includes("a empresa quer saber 2 coisas") && corpo(r.msgs[0]).includes(cw.MARCA_DA_PERGUNTA) &&
+        corpo(r.msgs[0]).includes("(1 de 2)") && titulos1.join(" · ") === "Sim · Não",
+      "o toque na vaga: a primeira pergunta, com Sim e Não",
+      r.msgs[0],
+    );
+    const p1 = { de: "robo", texto: `${corpo(r.msgs[0])}\n\n[Botões: Sim · Não]` };
+    // Sim: a segunda (4 opções: escritas, com os números e o pular)
+    r = await rodar("Sim", { perfil: "trabalho", historico: [p1, { de: "pessoa", texto: "Sim" }] }, { payload: "c:resp:sim" });
+    conferir(
+      respondidas[0]?.p_pergunta === "p1" && respondidas[0]?.p_valor === "sim" && corpo(r.msgs[0]).includes("(2 de 2)") &&
+        corpo(r.msgs[0]).includes("*4.* Madrugada") && corpo(r.msgs[0]).includes("*pular*"),
+      "o Sim: guarda e vem a segunda, com as opções escritas",
+      corpo(r.msgs[0]),
+    );
+    const p2 = { de: "robo", texto: corpo(r.msgs[0]) };
+    // "nada a ver": não entendeu, a mesma pergunta de novo
+    r = await rodar("talvez", { perfil: "trabalho", historico: [p2, { de: "pessoa", texto: "talvez" }] });
+    conferir(corpo(r.msgs[0]).startsWith("Não entendi a resposta") && corpo(r.msgs[0]).includes("(2 de 2)") && respondidas.length === 1, "a resposta que não serve: a pergunta de novo", corpo(r.msgs[0]));
+    // "2": Tarde; sem conta e com o nome do WhatsApp que não serve ("~Raphael"): a pergunta do nome
+    r = await rodar("2", { perfil: "trabalho", historico: [p2, { de: "pessoa", texto: "2" }] });
+    conferir(
+      respondidas[1]?.p_pergunta === "p2" && respondidas[1]?.p_valor === "Tarde" && corpo(r.msgs[0]).includes(cw.MARCA_DO_NOME) && !candidaturas.length,
+      "a opção pelo número; depois, o nome",
+      corpo(r.msgs[0]),
+    );
+    // o nome escrito: a candidatura sai, com as respostas
+    r = await rodar("maria da silva", { perfil: "trabalho", historico: [{ de: "robo", texto: corpo(r.msgs[0]) }, { de: "pessoa", texto: "maria da silva" }] });
+    conferir(
+      candidaturas.length === 1 && candidaturas[0].p_nome === "Maria da Silva" &&
+        JSON.stringify(candidaturas[0].respostas) === JSON.stringify({ p1: "sim", p2: "Tarde" }) &&
+        corpo(r.msgs[0]).startsWith("Pronto! ✅ Mandei a sua candidatura para *Cozinheira*") && corpo(r.msgs[0]).includes("PARAR"),
+      "o nome: a candidatura sai, com as respostas",
+      { candidaturas, msg: corpo(r.msgs[0]) },
+    );
+    // sem perguntas, com conta: sai na hora; contato direto: Ver o contato
+    paraCandidatar = { ligado: true, ok: true, titulo: "Cozinheira", perguntas: [], conta: { existe: true, tipo: "pessoa", tem_curriculo: false } };
+    resultadoCandidatar = { ok: true, status: "match", titulo: "Cozinheira", anuncio_id: id, tem_curriculo: false };
+    candidaturas = [];
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    conferir(
+      candidaturas.length === 1 && candidaturas[0].p_nome === null && botao(r.msgs[0]) === "Ver o contato" &&
+        corpo(r.msgs[0]).includes("contato direto") && corpo(r.msgs[0]).includes("*currículo*"),
+      "com conta e sem perguntas: sai na hora (contato direto)",
+      r.msgs[0],
+    );
+    // já se candidatou; a vaga do site da empresa
+    paraCandidatar = { ligado: true, ok: false, erro: "ja", titulo: "Cozinheira" };
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    conferir(corpo(r.msgs[0]).startsWith("Você já se candidatou a *Cozinheira*"), "já se candidatou", corpo(r.msgs[0]));
+    paraCandidatar = { ligado: true, ok: false, erro: "site", titulo: "Cozinheira" };
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    conferir(botao(r.msgs[0]) === "Ver a vaga" && corpo(r.msgs[0]).includes("site da empresa"), "a vaga do site da empresa", r.msgs[0]);
+    // a recusa do banco (o limite do dia): a mensagem dele
+    paraCandidatar = { ligado: true, ok: true, titulo: "Cozinheira", perguntas: [], conta: { existe: true, tipo: "pessoa" } };
+    resultadoCandidatar = { ok: false, erro: "limite", mensagem: "Você curtiu bastante coisa hoje. Tente de novo amanhã." };
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    conferir(corpo(r.msgs[0]) === "Você curtiu bastante coisa hoje. Tente de novo amanhã.", "o limite do dia", corpo(r.msgs[0]));
+    // conta de quem contrata
+    resultadoCandidatar = { ok: false, erro: "tipo", tipo: "empresa" };
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    conferir(corpo(r.msgs[0]).includes("conta de quem contrata"), "a conta de quem contrata", corpo(r.msgs[0]));
+    // cancelar no meio das perguntas
+    paraCandidatar = { ligado: true, ok: true, titulo: "Cozinheira", perguntas: [pergunta], conta: { existe: false } };
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    canceladas = 0;
+    r = await rodar("cancelar", { perfil: "trabalho", historico: [{ de: "robo", texto: corpo(r.msgs[0]) }, { de: "pessoa", texto: "cancelar" }] });
+    conferir(canceladas === 1 && corpo(r.msgs[0]).startsWith("Tudo bem, cancelei"), "cancelar a candidatura", corpo(r.msgs[0]));
+    // o áudio transcrito responde a pergunta de texto
+    const conte = { id: "p3", nome: "Conte sua experiência", tipo: "texto", opcoes: [], obrigatoria: true };
+    paraCandidatar = { ligado: true, ok: true, titulo: "Cozinheira", perguntas: [conte], conta: { existe: true, tipo: "pessoa" } };
+    resultadoCandidatar = { ok: true, status: "pendente", titulo: "Cozinheira", anuncio_id: id, tem_curriculo: true };
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    respondidas = [];
+    candidaturas = [];
+    r = await rodar("🎤 trabalhei 3 anos num restaurante", {
+      perfil: "trabalho",
+      historico: [{ de: "robo", texto: corpo(r.msgs[0]) }, { de: "pessoa", texto: "🎤 trabalhei 3 anos num restaurante" }],
+    });
+    conferir(
+      respondidas[0]?.p_valor === "trabalhei 3 anos num restaurante" && candidaturas.length === 1 && !corpo(r.msgs[0]).includes("currículo"),
+      "o áudio responde a pergunta escrita",
+      { respondidas, msg: corpo(r.msgs[0]) },
+    );
+    // sem a migração: o toque segue o atendimento de sempre (nada quebra)
+    paraCandidatar = null;
+    candidaturaDaVez = null;
+    r = await rodar("Cozinheira", { perfil: "trabalho", historico: [] }, { payload: `c:quero:${id}` });
+    conferir(!corpo(r.msgs[0]).includes(cw.MARCA_DA_PERGUNTA), "sem a migração: segue normal", corpo(r.msgs[0]));
+    // os nomes
+    conferir(cw.nomeServe("Maria Souza") && !cw.nomeServe("~Raphael") && !cw.nomeServe("Loja do Zé") && !cw.nomeServe("🌸Ju🌸"), "o nome do WhatsApp que serve");
+    const bs = cw.botoesDasVagas([
+      { id: "a", titulo: "Auxiliar de cozinha industrial noturno" },
+      { id: "b", titulo: "Auxiliar de cozinha industrial noturno" },
+    ]);
+    conferir(bs.every((b) => b.titulo.length <= 20) && bs[0].titulo !== bs[1].titulo, "os botões das vagas cabem e não repetem", bs);
   }
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);

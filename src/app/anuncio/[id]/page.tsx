@@ -70,6 +70,7 @@ import { comFuncaoDasVagas, comFuncoesDoCurriculo } from "@/lib/servidor/funcoes
 import { SITE_URL } from "@/lib/config";
 import {
   categoria,
+  MIN_AVALIACOES,
   descreverAtendimento,
   nomeBeneficio,
   nomeEscolaridade,
@@ -86,6 +87,7 @@ import {
   contarVisita,
   contatoDoMatch,
   minhaEntrevista,
+  listarAvaliacoesDoProcesso,
   listarAvaliacoesPublicas,
   listarMeusBloqueios,
   listarMeusDesfeitos,
@@ -93,6 +95,7 @@ import {
   obterAnuncio,
   obterMeuCurriculo,
   obterMeuPerfil,
+  obterNotaDoProcesso,
   obterNotaDoProfissional,
   obterUsuario,
   respostaDeQuemPublica,
@@ -372,8 +375,9 @@ async function DetalheAnuncio({
   const whatsappAoPublicar =
     proprio && vaga && status === "ativo" && primeiro(sp.publicado) === "1" ? await meuWhatsapp() : null;
   const fotos = anuncio.fotos.map((f) => urlDaFotoTrabalho(f)).filter((u): u is string => Boolean(u));
+  // na vaga, a nota do processo seletivo de quem contrata (anônima; migração 20270928120000)
   const [nota, avaliacoes] = vaga
-    ? [null, []]
+    ? await Promise.all([obterNotaDoProcesso(anuncio.autor_id), listarAvaliacoesDoProcesso(anuncio.autor_id)])
     : await Promise.all([obterNotaDoProfissional(anuncio.autor_id), listarAvaliacoesPublicas(anuncio.autor_id)]);
   const primeiroNome = anuncio.autor_nome.split(" ")[0];
   // pessoa pelo primeiro nome; comércio, empresa e agência pelo nome inteiro
@@ -667,9 +671,10 @@ async function DetalheAnuncio({
               <AtalhosDaVaga anuncioId={anuncio.id} titulo={anuncio.titulo} logado={usuario !== null} />
             </Suspense>
           )}
-          {nota && nota.total > 0 && (
+          {nota.total > 0 && (
             <p className="mt-1">
               <a href="#avaliacoes" className="hover:underline">
+                {vaga && <span className="text-body-sm text-ink-muted">Processo seletivo: </span>}
                 <NotaDoProfissional media={nota.media} total={nota.total} />
               </a>
             </p>
@@ -840,6 +845,32 @@ async function DetalheAnuncio({
                 ))}
               </ul>
             </>
+          )}
+
+          {vaga && avaliacoes.length > 0 && (
+            <section id="avaliacoes" className="scroll-mt-24">
+              <h2 className="mt-8 text-h2">Como foi o processo seletivo</h2>
+              <p className="mt-1 text-body-sm text-ink-muted">
+                Avaliado por quem se candidatou às vagas de {nomeParaSeguir}, sem o nome.
+                {nota.total < MIN_AVALIACOES && " A nota média aparece a partir de 3 avaliações."}
+              </p>
+              <div className="mt-4">
+                <ListaAvaliacoes
+                  avaliacoes={avaliacoes.slice(0, 3)}
+                  agora={agora}
+                  nomeProfissional={nomeParaSeguir}
+                  nomeInteiro
+                />
+              </div>
+              {avaliacoes.length > 3 && (
+                <Link
+                  href={`/perfil/${anuncio.autor_id}#processo`}
+                  className="mt-4 inline-flex min-h-11 items-center text-label text-terra-text underline-offset-2 hover:underline"
+                >
+                  Ver as {avaliacoes.length} avaliações
+                </Link>
+              )}
+            </section>
           )}
 
           {!vaga && (

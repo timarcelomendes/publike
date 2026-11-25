@@ -16,6 +16,8 @@ import {
   type QuemPublica,
   type Turno,
 } from "@/lib/filtros";
+import { entenderBusca } from "@/lib/acoes/busca-por-frase";
+import { pareceFrase } from "@/lib/busca-por-frase";
 import { guardarOrdemDaLinha } from "@/lib/linha-do-tempo";
 import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
@@ -303,9 +305,42 @@ export function BarraBusca({
   const [avisoGps, setAvisoGps] = useState<string | null>(null);
   const [texto, setTexto] = useState(filtros.q);
 
+  // a busca escrita como a pessoa fala (src/lib/busca-por-frase.ts): a IA tira a função, o turno e o lugar; sem ela,
+  // segue pelas palavras
+  const [entendida, setEntendida] = useState<{ partes: string[]; frase: string } | null>(null);
+  const [lendoFrase, iniciarFrase] = useTransition();
   function buscar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    ir({ q: texto.trim() });
+    const t = texto.trim();
+    if (filtros.tipo !== "servico" && pareceFrase(t)) {
+      iniciarFrase(async () => {
+        const r = await entenderBusca(t).catch(() => null);
+        if (!r) {
+          setEntendida(null);
+          return ir({ q: t.slice(0, 80) });
+        }
+        setEntendida({ partes: r.partes, frase: t });
+        setTexto(r.q);
+        const mudancas: Partial<Filtros> = {
+          q: r.q,
+          tipo: "vaga",
+          categoria: (r.categoria as Categoria | null) ?? null,
+          turno: (r.turno as Turno | null) ?? null,
+          regime: (r.regime as Regime | null) ?? null,
+          ja: r.ja,
+        };
+        if (r.lugar) return ir({ ...mudancas, lat: r.lugar.lat, lng: r.lugar.lng, origem: "mapa", raio: 5, ordem: "perto" });
+        if (r.pertoDeMim)
+          return pedirPosicao(
+            ({ lat, lng }) => ir({ ...mudancas, lat, lng, origem: "gps", ordem: "perto" }),
+            () => ir(mudancas),
+          );
+        ir(mudancas);
+      });
+      return;
+    }
+    setEntendida(null);
+    ir({ q: t });
   }
 
   const perto = filtros.origem === "gps";
@@ -425,7 +460,7 @@ export function BarraBusca({
             onChange={(e) => setTexto(e.target.value)}
             placeholder={
               filtros.tipo === "vaga"
-                ? "Garçom, vendedor, auxiliar…"
+                ? "Ex.: garçom à noite perto do Setor Bueno"
                 : filtros.tipo === "servico"
                   ? "Diarista, pedreiro, eletricista…"
                   : "Diarista, garçom, pedreiro…"
@@ -448,12 +483,37 @@ export function BarraBusca({
           )}
           <button
             type="submit"
-            disabled={pendente}
+            disabled={pendente || lendoFrase}
             className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-ink px-5 text-label text-surface-100 transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             Buscar
           </button>
         </form>
+
+        {/* o que a busca por frase entendeu, com a volta para a busca pelas palavras */}
+        {(lendoFrase || entendida) && !soLugar && (
+          <p role="status" className="order-3 text-body-sm text-ink-muted sm:order-5 sm:basis-full">
+            {lendoFrase ? (
+              "Entendendo a sua busca…"
+            ) : entendida ? (
+              <>
+                Entendi: <span className="font-semibold text-ink">{entendida.partes.join(" · ")}</span>.{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const frase = entendida.frase.slice(0, 80);
+                    setEntendida(null);
+                    setTexto(frase);
+                    ir({ q: frase, turno: null, regime: null, ja: false, categoria: null });
+                  }}
+                  className="font-semibold text-terra-text underline underline-offset-2"
+                >
+                  Buscar só as palavras
+                </button>
+              </>
+            ) : null}
+          </p>
+        )}
 
         {/* celular: os botões de lugar numa faixa (no computador, ficam ao lado da busca) */}
         <div

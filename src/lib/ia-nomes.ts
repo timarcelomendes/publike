@@ -37,6 +37,12 @@ export const USOS_IA = [
   { id: "whatsapp_atendimento", grupo: "chat", nome: "Atendimento no WhatsApp", ajuda: "Entende cada mensagem e decide a resposta." },
   { id: "whatsapp_busca", grupo: "chat", nome: "Busca do WhatsApp", ajuda: "Tira da conversa a função e o lugar que a pessoa procura." },
   {
+    id: "busca_frase",
+    grupo: "chat",
+    nome: "Busca por frase",
+    ajuda: "A busca de vagas do site escrita como a pessoa fala (\"garçom à noite perto do Setor Bueno\"): tira a função, o turno e o lugar. Desligado, vale a busca pelas palavras.",
+  },
+  {
     id: "whatsapp_escolher_vagas",
     grupo: "chat",
     nome: "Busca do WhatsApp: escolher as vagas",

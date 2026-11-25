@@ -877,6 +877,33 @@ export const obterNotaDoProfissional = cache(
   },
 );
 
+/** As avaliações do processo seletivo de quem contrata (anônimas; migração 20270928120000). */
+export const listarAvaliacoesDoProcesso = cache(async (empresaId: string): Promise<AvaliacaoPublica[]> => {
+  if (MODO_DEMO || !UUID.test(empresaId)) return [];
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("avaliacoes_do_processo", { p_empresa: empresaId });
+  if (error) falha("avaliações do processo", error);
+  return data ?? [];
+});
+
+/** Média e total das avaliações do processo seletivo de quem contrata. */
+export const obterNotaDoProcesso = cache(async (empresaId: string): Promise<{ media: number | null; total: number }> => {
+  if (MODO_DEMO || !UUID.test(empresaId)) return { media: null, total: 0 };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("nota_do_processo", { p_empresa: empresaId }).maybeSingle();
+  if (error) falha("nota do processo", error);
+  return { media: data?.media ?? null, total: data?.total ?? 0 };
+});
+
+/** Quem se candidatou pode avaliar o processo desta vaga (teve resposta ou espera há 7 dias). */
+export async function possoAvaliarProcesso(anuncioId: string): Promise<boolean> {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return false;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("posso_avaliar_processo", { p_anuncio: anuncioId });
+  if (error) falha("avaliar o processo", error);
+  return data === true;
+}
+
 /** A avaliação que eu dei a um serviço (ou null). */
 export async function obterMinhaAvaliacao(anuncioId: string): Promise<MinhaAvaliacao | null> {
   if (MODO_DEMO || !UUID.test(anuncioId)) return null;

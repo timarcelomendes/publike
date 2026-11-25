@@ -64,11 +64,14 @@ export function ListaAvaliacoes({
   agora,
   nomeProfissional,
   mostrarServico = true,
+  nomeInteiro = false,
 }: {
   avaliacoes: AvaliacaoPublica[];
   agora: number;
   nomeProfissional: string;
   mostrarServico?: boolean;
+  /** empresa, comércio e agência: "Resposta de" com o nome inteiro */
+  nomeInteiro?: boolean;
 }) {
   return (
     <ul className="flex flex-col divide-y divide-line">
@@ -97,7 +100,7 @@ export function ListaAvaliacoes({
               <div className="mt-3 flex gap-2 rounded-md bg-surface-300 p-3 text-body-sm">
                 <MessageSquareReply aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
                 <div>
-                  <p className="text-label">Resposta de {nomeProfissional.split(" ")[0]}</p>
+                  <p className="text-label">Resposta de {nomeInteiro ? nomeProfissional : nomeProfissional.split(" ")[0]}</p>
                   <p className="whitespace-pre-line">{a.resposta}</p>
                 </div>
               </div>

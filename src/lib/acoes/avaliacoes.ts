@@ -50,7 +50,9 @@ export async function avaliarServico(_anterior: EstadoForm, formData: FormData):
     mensagem:
       data === "pendente"
         ? "Obrigado! Sua avaliação aparece no perfil assim que passar pela revisão automática."
-        : "Obrigado! Sua avaliação já aparece no perfil do profissional.",
+        : formData.get("processo") === "1"
+          ? "Obrigado! Sua avaliação já aparece no perfil de quem contrata, sem o seu nome."
+          : "Obrigado! Sua avaliação já aparece no perfil do profissional.",
   };
 }
 
