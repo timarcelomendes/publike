@@ -1548,6 +1548,22 @@ const PARA_QUEM_PROCURA = [
 
 /** Depois das vagas mais perto, de qualquer função: a função, para mandar só as dela (sem ser pergunta de novo). */
 export const PEDIR_A_FUNCAO_DEPOIS = "Se me disser o que você faz, eu separo só as vagas da sua função. 😊";
+/**
+ * Mandou as vagas de todas as funções e a pessoa não disse o que faz (26/11/2026; Marcelo, com a conversa da Liz, que
+ * disse só "Vila Brasília": "nesses casos, pergunte novamente"): uns 10 minutos depois, no lugar da pergunta do
+ * currículo, a função de novo. Dita a função, vão as vagas dela e, 10 minutos depois, a pergunta do currículo.
+ */
+export const PERGUNTAR_A_FUNCAO_DE_NOVO =
+  "Me diz em que você trabalha, que eu te ajudo a encontrar melhores oportunidades. 😊\n\nPor exemplo: _sou vendedora_, _trabalho com limpeza_ ou _já fui auxiliar de cozinha_. Pode mandar áudio.";
+
+/** Desde a última mensagem da pessoa, o Publike mandou as vagas de todas as funções pedindo a função (ela não disse). */
+export function vagasSemAFuncao(historico: { de: string; texto: string }[]) {
+  const depois = historico.slice(historico.findLastIndex((m) => m.de === "pessoa") + 1);
+  return depois.some(
+    (m) => m.de === "robo" && (m.texto.includes(PEDIR_A_FUNCAO_DEPOIS) || m.texto.includes(PEDIR_FUNCAO_E_BAIRRO_DEPOIS)),
+  );
+}
+
 /** O mesmo, sem saber onde ela mora (as vagas mais novas): a função e o bairro. */
 export const PEDIR_FUNCAO_E_BAIRRO_DEPOIS =
   "Se me disser o que você faz e o bairro onde mora, eu separo as vagas da sua função mais perto de você. 😊";
@@ -3408,10 +3424,15 @@ export async function enviarLembretesWhatsapp(): Promise<{ enviados: number; fal
   });
   if (!erroDoCurriculo)
     for (const l of (semCurriculo ?? []) as unknown as { chave: string; numero: string }[]) {
-      const r = await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, TEXTOS_DO_CURRICULO.pergunta, null, [
-        BOTAO_MONTAR_CURRICULO,
-        BOTAO_AGORA_NAO,
-      ]);
+      // as vagas foram de todas as funções e ela não disse o que faz: a função de novo, antes do currículo
+      const { data: conversa } = await banco.rpc("servidor_whatsapp_conversa_ultima", { p_chave: chave, p_conversa: l.chave });
+      const historico = ((conversa as unknown as { historico?: Mensagem[] } | null)?.historico ?? []) as Mensagem[];
+      const r = vagasSemAFuncao(historico)
+        ? await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, PERGUNTAR_A_FUNCAO_DE_NOVO, null)
+        : await mandarDoRobo(cfg, banco, chave, l.chave, l.numero, TEXTOS_DO_CURRICULO.pergunta, null, [
+            BOTAO_MONTAR_CURRICULO,
+            BOTAO_AGORA_NAO,
+          ]);
       if (r.ok) enviados++;
       else {
         falhas++;
