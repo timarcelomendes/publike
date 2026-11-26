@@ -104,6 +104,15 @@ export const TIPOS_WHATSAPP: { tipo: string; nome: string; curto: string; para: 
     para: "Conversa",
     economico: false,
   },
+  // o convite com a vaga pronta para a empresa que está contratando (migração 20271011120000): o robô das filas manda,
+  // em lote, com o teto de Admin › Convites (desligado até a equipe ligar). Modelo de marketing
+  {
+    tipo: "convite_vaga_pronta",
+    nome: "Convite com a vaga pronta (empresa que está contratando)",
+    curto: "Convite da vaga pronta",
+    para: "Empresa sem conta",
+    economico: false,
+  },
 ];
 
 /**
