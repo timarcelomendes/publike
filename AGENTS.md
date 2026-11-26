@@ -514,3 +514,19 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 - O entrar do site, quando o código não sai (fora das 24 horas, sem o modelo de autenticação), pede o "entrar" na conversa (`MANDE_ENTRAR`) no lugar do "oi" e do código. O "Criei sua conta" (`CONTA_NOVA_PELO_WHATSAPP`) e o WhatsApp vinculado pela oferta dos avisos também falam do "entrar", sem código.
 - Admin › Curtidas: a conta sem acesso no site que entra só pelo número (telefone sem e-mail, `admin_login_pelo_whatsapp`, a equipe toda) mostra "login feito pelo WhatsApp" no lugar de "nunca acessou".
 - Teste: `npx tsx scripts/testar-entrar-pelo-aviso.ts`.
+
+## A vaga ainda está aberta? (25/11/2026; migração 20271003120000; Marcelo, com a vaga da Organiza Inventory: "ter uma maneira de questionar a empresa, se a vaga ainda está disponível"; "Os dois" e "Desce na lista")
+
+- **O estado** (`public.confirmacao_das_vagas`, src/lib/vaga-continua.ts), só da vaga no ar e não preenchida:
+  - confirmada: quem publicou confirmou ou renovou nos últimos 7 dias;
+  - aguardando: o Publike perguntou há menos de 3 dias;
+  - sem_resposta: perguntou há 3 dias ou mais, sem resposta;
+  - pode_perguntar: 14 dias ou mais desde a publicação ou a última confirmação;
+  - `pedi`: quem vê perguntou e espera.
+- **As duas portas da pergunta:**
+  - o robô das filas (`servidor_perguntar_se_continua`, `perguntarSeContinua` em filas.ts), das 8h às 20h: a vaga com 14 dias ou mais desde a confirmação e 10 curtidas ou mais, ou com o pedido de alguém. No máximo uma pergunta a cada 7 dias por vaga, e nada para a vaga que sai do ar em 2 dias (o `vaga_vence` cuida). O aviso `vaga_continua` vai ao sino, ao celular, ao e-mail e ao WhatsApp. No WhatsApp, o modelo `publike_vaga_continua` tem os botões Sim, continua / Já preenchi; o payload `v:<id da fila>:sim|preenchi` volta em `servidor_whatsapp_recebida` (`privado.responder_vaga_continua_por`). Enquanto a Meta não aprova o modelo, o aviso espera na fila.
+  - o "Ainda está aberta?" de quem procura (`perguntar_se_vaga_continua`, 20 por dia): no cartão, só com 10 curtidas ou mais; na página da vaga, em toda vaga com 14 dias ou mais; e o "Perguntar de novo" na página quando a empresa não respondeu.
+- **A resposta:** em `/painel/anuncio/<id>/continua` (o link do aviso), "Sim, continua aberta" (`confirmar_vaga_continua`) ou "Já preenchi" (o "Quem você contratou?" de sempre). Renovar a vaga também confirma, e marcar como preenchida responde (o gatilho `anuncios_vaga_continua`). Quem perguntou recebe `vaga_continua_sim` ou o `vaga_preenchida` de sempre (`privado.avisar_quem_perguntou`).
+- **Sem resposta em 3 dias:** a vaga fica no ar, mostra "A empresa não confirmou se continua aberta" e desce. Os pontos do "Mais relevantes" são divididos por 4 (`privado.pontos_do_anuncio`), e o "Relevantes" da linha tira 20 (`pontosDaConfirmacao`, src/lib/relevancia.ts).
+- O quadro "Vagas impulsionadas na região" põe os dois cartões lado a lado só quando cabem (`@container/quadro`, 42rem). Na Lista e na coluna ao lado do mapa, fica um por linha.
+- Teste: `npx tsx scripts/testar-vaga-continua.ts`.

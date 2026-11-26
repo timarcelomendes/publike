@@ -54,6 +54,7 @@ export function extrasDe(v: DetalhesDaVaga | undefined, comResumo = true) {
         comecaJa: Boolean(v.comeca_ja),
         ganhos: ganhosDoBanco(v.ganhos_extras),
         resumo: comResumo && v.descricao ? v.descricao.replace(/\s+/g, " ").trim().slice(0, 220) : null,
+        continua: v.continua ?? null,
       }
     : null;
 }

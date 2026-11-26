@@ -40,6 +40,7 @@ import type {
 import { estudosDoBanco } from "./estudos";
 import { UUID } from "./validacao";
 import { perguntasDoBanco, respostasDoBanco, type Pergunta, type Respostas } from "./vaga-extra";
+import { situacaoDoBanco, type SituacaoContinua } from "./vaga-continua";
 import { comFuncaoDasVagas } from "./servidor/funcoes-pelo-contexto";
 
 // Leituras do banco usadas pelas páginas (sempre no servidor).
@@ -665,6 +666,8 @@ export type DetalhesDaVaga = CamposDaVaga & {
   contato_direto?: boolean;
   /** precisa de alguém para começar logo (a etiqueta e o filtro "Começa já"; migração 20261212) */
   comeca_ja?: boolean;
+  /** a vaga ainda está aberta? (migração 20271003120000; sem ela, null) */
+  continua?: SituacaoContinua | null;
 };
 
 const COLUNAS_DOS_REQUISITOS =
@@ -675,12 +678,34 @@ export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[
   if (MODO_DEMO || !ids.length) return [];
   const supabase = await criarClienteServidor();
   const ler = (colunas: string) => supabase.from("anuncios").select(colunas).in("id", ids).returns<DetalhesDaVaga[]>();
-  let { data, error } = await ler(`${COLUNAS_DOS_REQUISITOS}, comeca_ja`);
-  // sem a migração 20261212 (a coluna comeca_ja): lê sem ela (nenhuma vaga com "Começa já")
-  if (faltaColuna(error, "comeca_ja")) ({ data, error } = await ler(COLUNAS_DOS_REQUISITOS));
-  if (error) falha("o que as vagas pedem", error);
+  const [lidas, continua] = await Promise.all([
+    (async () => {
+      let { data, error } = await ler(`${COLUNAS_DOS_REQUISITOS}, comeca_ja`);
+      // sem a migração 20261212 (a coluna comeca_ja): lê sem ela (nenhuma vaga com "Começa já")
+      if (faltaColuna(error, "comeca_ja")) ({ data, error } = await ler(COLUNAS_DOS_REQUISITOS));
+      if (error) falha("o que as vagas pedem", error);
+      return data ?? [];
+    })(),
+    confirmacaoDasVagas(ids),
+  ]);
   // a função (CBO) que a IA leu da vaga: o % pelo contexto (claude/plano-match-pelo-contexto.md)
-  return comFuncaoDasVagas(data ?? []);
+  const vagas = await comFuncaoDasVagas(lidas);
+  return vagas.map((v) => ({ ...v, continua: continua.get(v.id) ?? null }));
+}
+
+/**
+ * A vaga ainda está aberta? (migração 20271003120000): a situação de cada vaga no ar para quem vê (confirmada,
+ * aguardando, sem resposta ou pode perguntar). Sem a migração ou com falha, vazio (o cartão fica como antes).
+ */
+export async function confirmacaoDasVagas(ids: string[]): Promise<Map<string, SituacaoContinua>> {
+  if (MODO_DEMO || !ids.length) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("confirmacao_das_vagas", { p_ids: ids.slice(0, 200) });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler se as vagas continuam abertas:", error.message);
+    return new Map();
+  }
+  return new Map((data ?? []).map((r) => [r.anuncio_id, situacaoDoBanco(r)]));
 }
 
 /** Link temporário (1 hora) para abrir o PDF de um currículo. */

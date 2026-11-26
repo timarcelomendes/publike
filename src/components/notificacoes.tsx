@@ -5,6 +5,7 @@ import {
   BellRing,
   BicepsFlexed,
   CalendarClock,
+  CircleCheck,
   ClipboardCheck,
   ClipboardList,
   CreditCard,
@@ -150,6 +151,9 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   curriculo_semana: FileText,
   // quem atende a vaga e ainda não curtiu (migração 20270908120000)
   atendem_a_vaga: UserCheck,
+  // a vaga ainda está aberta? A pergunta para quem publicou e a resposta para quem perguntou (migração 20271003120000)
+  vaga_continua: MessageCircleQuestion,
+  vaga_continua_sim: CircleCheck,
 };
 
 type Notificacao = {

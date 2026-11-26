@@ -21,6 +21,7 @@ import {
   perguntarConquistas,
   perguntarSeRespondeu,
   avisarVencimentos,
+  perguntarSeContinua,
   avisarCurriculosDaSemana,
   avisarProcuradas,
   perguntarRotas,
@@ -94,6 +95,9 @@ export async function GET(request: Request) {
   const respondeu = await comTempo(() => perguntarSeRespondeu());
   // a vaga que vai sair do ar (2 dias antes), saiu (no dia) e continua fora (7 dias depois): o lembrete de renovar
   const vencimentos = await comTempo(() => avisarVencimentos());
+  // a vaga antiga com muitas curtidas, ou que alguém perguntou: "Sua vaga ainda está aberta?" para quem publicou
+  // (migração 20271003120000; das 8h às 20h, no máximo uma a cada 7 dias por vaga)
+  const continua = await comTempo(() => perguntarSeContinua());
   // procuraram e não acharam vaga: a empresa que já anunciou a função e as agências (uma vez por semana)
   const procuradas = await comTempo(() => avisarProcuradas());
   // quem atende a vaga e ainda não curtiu: a cada 3 pessoas novas no "Atende a vaga", um por dia por vaga (migração
@@ -209,6 +213,7 @@ export async function GET(request: Request) {
     lembretes.motivo,
     respondeu.motivo,
     vencimentos.motivo,
+    continua.motivo,
     procuradas.motivo,
     atendem.motivo,
     curriculoSemana.motivo,
@@ -267,6 +272,7 @@ export async function GET(request: Request) {
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       te_respondeu: respondeu.perguntas,
       vencimentos: vencimentos.avisos,
+      vaga_continua: continua.perguntas,
       procuradas: procuradas.avisos,
       atendem: atendem.avisos,
       curriculo_semana: curriculoSemana.avisos,

@@ -1,10 +1,11 @@
 "use client";
 
-import { RefreshCw, UserCheck } from "lucide-react";
+import { CircleCheck, RefreshCw, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { marcarVagaPreenchida, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { quemPodeTerSidoContratado, registrarQuemContratou } from "@/lib/acoes/processo";
+import { confirmarVagaContinua } from "@/lib/acoes/vaga-continua";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { Botao, BotaoLink } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
@@ -12,11 +13,22 @@ import { QuemVoceContratou } from "./acoes";
 
 /**
  * Renovar em um toque ou "Já preenchi" (migração 20270529120000). O "Já preenchi" pergunta quem foi contratado
- * (opcional): a vaga no ar fica com a marcação "Vaga preenchida"; a que já saiu do ar fica encerrada.
+ * (opcional): a vaga no ar fica com a marcação "Vaga preenchida"; a que já saiu do ar fica encerrada. `continua`: a
+ * pergunta "Ainda está aberta?" (migração 20271003120000), com "Sim, continua aberta" no lugar de renovar.
  */
-export function RenovarOuPreencher({ id, prazoDias, noAr }: { id: string; prazoDias: number; noAr: boolean }) {
+export function RenovarOuPreencher({
+  id,
+  prazoDias,
+  noAr,
+  continua = false,
+}: {
+  id: string;
+  prazoDias: number;
+  noAr: boolean;
+  continua?: boolean;
+}) {
   const { rodar, pendente, mensagem } = useAcao();
-  const [feito, setFeito] = useState<"renovada" | "preenchida" | null>(null);
+  const [feito, setFeito] = useState<"renovada" | "confirmada" | "preenchida" | null>(null);
   const [preencher, setPreencher] = useState(false);
   const [quem, setQuem] = useState<{ contratados: number; candidatos: { id: string; nome: string }[] } | null>(null);
   const [marcados, setMarcados] = useState<string[]>([]);
@@ -30,7 +42,9 @@ export function RenovarOuPreencher({ id, prazoDias, noAr }: { id: string; prazoD
         <p className="text-body">
           {feito === "renovada"
             ? `Pronto: a vaga voltou para quem procura e fica no ar por mais ${prazoDias} dias.`
-            : "Pronto, obrigado por contar. Quem curtiu e ainda esperava recebe o aviso."}
+            : feito === "confirmada"
+              ? "Pronto: a vaga aparece como confirmada aberta, e quem perguntou recebe o aviso."
+              : "Pronto, obrigado por contar. Quem curtiu e ainda esperava recebe o aviso."}
         </p>
         <div className="flex flex-wrap gap-2">
           <BotaoLink href={`/painel/anuncio/${id}`} tamanho="sm">
@@ -52,14 +66,25 @@ export function RenovarOuPreencher({ id, prazoDias, noAr }: { id: string; prazoD
         <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4">
           <p className="text-label">Ainda está contratando?</p>
           <div className="flex flex-wrap gap-2">
-            <Botao
-              variante="primario"
-              disabled={pendente}
-              onClick={() => rodar(() => renovarAnuncio(id), (r) => r.ok && setFeito("renovada"))}
-            >
-              <RefreshCw aria-hidden />
-              Renovar por {prazoDias} dias
-            </Botao>
+            {continua ? (
+              <Botao
+                variante="primario"
+                disabled={pendente}
+                onClick={() => rodar(() => confirmarVagaContinua(id), (r) => r.ok && setFeito("confirmada"))}
+              >
+                <CircleCheck aria-hidden />
+                Sim, continua aberta
+              </Botao>
+            ) : (
+              <Botao
+                variante="primario"
+                disabled={pendente}
+                onClick={() => rodar(() => renovarAnuncio(id), (r) => r.ok && setFeito("renovada"))}
+              >
+                <RefreshCw aria-hidden />
+                Renovar por {prazoDias} dias
+              </Botao>
+            )}
             <Botao
               variante="fantasma"
               disabled={pendente}

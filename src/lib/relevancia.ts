@@ -64,6 +64,8 @@ export type AnuncioParaRelevancia = {
   emAlta?: { total: number; ultima: string } | null;
   /** como quem publicou responde as curtidas (`resposta_de_quem_publica`; só com 5 curtidas ou mais) */
   resposta?: { taxa: number; horas: number | null } | null;
+  /** o Publike perguntou se a vaga continua aberta e ninguém respondeu em 3 dias (migração 20271003120000) */
+  semResposta?: boolean;
 };
 
 /** As categorias do que a pessoa curtiu, cada uma com a parte do total (0 a 1). */
@@ -119,6 +121,14 @@ export function pontosDeResposta(r: { taxa: number; horas: number | null } | nul
   return r.taxa < 0.3 ? -6 : 0;
 }
 
+/**
+ * A vaga que o Publike perguntou se continua aberta e quem publicou não respondeu em 3 dias (migração 20271003120000;
+ * Marcelo: "desce na lista"): −20, mais que quem quase não responde.
+ */
+export function pontosDaConfirmacao(semResposta: boolean | null | undefined) {
+  return semResposta ? -20 : 0;
+}
+
 /** A experiência é de outra área (o mesmo "Outra área" do site). */
 function deOutraArea(m: Aderencia) {
   return outraArea(m);
@@ -137,7 +147,9 @@ export function relevanciaParaVoce(
   let nota =
     pontosDePerto(a) +
     pontosDeInteresse(a, s) +
-    (a.tipo === "vaga" ? pontosEmAlta(a.emAlta, agora) + pontosDeResposta(a.resposta) : 0);
+    (a.tipo === "vaga"
+      ? pontosEmAlta(a.emAlta, agora) + pontosDeResposta(a.resposta) + pontosDaConfirmacao(a.semResposta)
+      : 0);
   const novo = pontosDeNovo(a.criado_em, agora);
   if (s.empresa) {
     nota += Math.round(novo * 1.5);

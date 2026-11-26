@@ -270,6 +270,21 @@ export const MODELOS: Modelo[] = [
     botoes: [{ tipo: "link", texto: "Ver a vaga", exemplo: "anuncio/123" }],
     categoria: "MARKETING",
   },
+  {
+    // a vaga ainda está aberta? (migração 20271003120000): a resposta em um toque, sem entrar no site (os botões
+    // "v:<id>:sim" e "v:<id>:preenchi" voltam para servidor_whatsapp_recebida)
+    nome: "publike_vaga_continua",
+    aviso: "vaga_continua",
+    para: "Quem contrata",
+    quando: "Vaga no ar há 14 dias ou mais com 10 curtidas ou mais, ou quando alguém pergunta (no máximo 1 a cada 7 dias)",
+    corpo:
+      "Oi, {{nome}}! A sua vaga de {{vaga}} no Publike ainda está aberta? Quem procura trabalho quer saber antes de se candidatar. Toque numa opção para responder.",
+    exemplo: { nome: "Padaria Pão de Ouro", vaga: "Atendente de padaria" },
+    botoes: [
+      { tipo: "resposta", texto: "Sim, continua", valor: "sim" },
+      { tipo: "resposta", texto: "Já preenchi", valor: "preenchi" },
+    ],
+  },
 ];
 
 const POR_NOME = new Map(MODELOS.map((m) => [m.nome, m]));
@@ -1001,6 +1016,14 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
       if (!pessoa) return { pular: "convite para quem não é candidato" };
       if (!vaga) return { pular: "a vaga não existe mais" };
       return { modelo: "publike_vaga_que_combina", params: { nome, vaga } };
+    case "vaga_continua":
+      // a vaga ainda está aberta? (migração 20271003120000): os botões respondem aqui mesmo
+      if (!vaga) return { pular: "a vaga não existe mais" };
+      return {
+        modelo: "publike_vaga_continua",
+        params: { nome, vaga },
+        respostas: ["sim", "preenchi"].map((r) => `v:${item.id}:${r}`),
+      };
     default:
       return { pular: `sem modelo para ${item.tipo}` };
   }

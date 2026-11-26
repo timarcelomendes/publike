@@ -49,6 +49,7 @@ import { recadosDaLinha, type Recado } from "@/lib/servidor/recados";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, Match, MeuPerfil } from "@/lib/tipos";
 import type { Resposta } from "@/lib/resposta";
+import { semResposta } from "@/lib/vaga-continua";
 import type { OrigemMapa, PontoMapa } from "@/components/mapa/mapa-anuncios";
 import { deslocamentoProvavel } from "@/lib/deslocamento";
 import {
@@ -763,6 +764,8 @@ function ordenarDaPessoa(
       descricao: requisitos?.get(a.id)?.descricao ?? null,
       emAlta: c?.total ? { total: c.total, ultima: c.ultima } : null,
       resposta: resposta?.get(a.autor_id) ?? null,
+      // perguntamos se continua aberta e ninguém respondeu em 3 dias: desce (migração 20271003120000)
+      semResposta: semResposta(requisitos?.get(a.id)?.continua),
     };
   });
   return ordenarPorRelevancia(comDescricao, sinais, matches, agora).map((a) => porId.get(a.id)!);

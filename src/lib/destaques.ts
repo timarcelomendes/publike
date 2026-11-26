@@ -4,7 +4,7 @@ import { vagasDoQuadro } from "./impulso";
 // 14/11/2026, Marcelo: "Os dois juntos", "ok"): o quadro no alto e o espaço patrocinado no meio da lista. A lista não
 // muda de ordem: a vaga patrocinada sobe para o espaço dela, e as outras seguem na mesma ordem entre si.
 
-/** O quadro da busca e da linha do tempo: uma linha de 2 (a coluna da lista ao lado do mapa tem 2 cartões). */
+/** O quadro da busca e da linha do tempo: 2 vagas (lado a lado quando cabem; ver QuadroDeImpulsionadas). */
 export const QUADRO_DA_LISTA = 2;
 /** Um espaço patrocinado a cada 8 vagas da lista (o 8º, o 16º e o 24º lugar). */
 export const PATROCINADA_A_CADA = 8;

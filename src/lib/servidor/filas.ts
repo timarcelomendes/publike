@@ -626,6 +626,27 @@ export async function avisarVencimentos(limite = 100): Promise<{ avisos: number;
 }
 
 /**
+ * A vaga ainda está aberta? (migração 20271003120000): a pergunta para quem publicou a vaga no ar há 14 dias ou mais
+ * desde a última confirmação e com 10 curtidas ou mais, ou que alguém perguntou pelo "Ainda está aberta?" (das 8h às
+ * 20h, no máximo uma a cada 7 dias por vaga; no sino, no celular, no WhatsApp e por e-mail). Sem a migração, nada (e
+ * sem `motivo`).
+ */
+export async function perguntarSeContinua(limite = 50): Promise<{ perguntas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { perguntas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_perguntar_se_continua", {
+    p_chave: acesso.chave,
+    p_limite: limite,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { perguntas: 0 };
+    console.error("Publike: falha ao perguntar se a vaga continua aberta:", error.message);
+    return { perguntas: 0, motivo: "Não foi possível perguntar se as vagas continuam abertas." };
+  }
+  return { perguntas: Number(data ?? 0) };
+}
+
+/**
  * "A empresa te respondeu?" (migração 20270526120000): 2 dias depois do contato numa vaga, a pergunta para a pessoa (no
  * sino, no celular e por e-mail); sem resposta ou "Ainda não", de novo em 3 dias, no máximo 2 vezes. Sem a migração,
  * nada (e sem `motivo`).

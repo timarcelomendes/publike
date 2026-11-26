@@ -2940,6 +2940,15 @@ export type Database = {
       servidor_perguntar_se_respondeu: { Args: { p_chave: string; p_limite?: number }; Returns: number };
       // o aviso do vencimento da vaga (migração 20270529120000)
       servidor_avisar_vencimentos: { Args: { p_chave: string; p_limite?: number }; Returns: number };
+      // A vaga ainda está aberta? (migração 20271003120000)
+      confirmacao_das_vagas: {
+        Args: { p_ids: string[] };
+        Returns: { anuncio_id: string; estado: string | null; confirmada_em: string | null; pedi: boolean }[];
+      };
+      perguntar_se_vaga_continua: { Args: { p_anuncio: string }; Returns: string };
+      confirmar_vaga_continua: { Args: { p_anuncio: string }; Returns: number };
+      situacao_da_vaga_continua: { Args: { p_anuncio: string }; Returns: Json };
+      servidor_perguntar_se_continua: { Args: { p_chave: string; p_limite?: number; p_agora?: boolean }; Returns: number };
       // Procuradas sem vaga (migração 20270822120000)
       servidor_procura_sem_vaga: {
         Args: { p_chave: string; p_funcoes: string[]; p_cidade: string | null; p_regiao: string | null; p_quem: string; p_origem?: string };

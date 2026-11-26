@@ -56,6 +56,7 @@ import { BotaoVagaPreenchida } from "@/components/painel/acoes";
 import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
 import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
+import { SituacaoDaContinua } from "@/components/anuncio/vaga-continua";
 import { QuadroNoSite } from "@/components/anuncio/candidatar-no-site";
 import { candidaturaNoSite, nomeDoSiteDeCandidatura } from "@/lib/candidatura";
 import { idasAoSiteDasVagas, minhaIdaAoSite } from "@/lib/servidor/idas-ao-site";
@@ -84,6 +85,7 @@ import {
 } from "@/lib/constantes";
 import {
   aceitoEsperandoMeuCurriculo,
+  confirmacaoDasVagas,
   contarVisita,
   contatoDoMatch,
   minhaEntrevista,
@@ -384,6 +386,11 @@ async function DetalheAnuncio({
   const nomeParaSeguir = anuncio.autor_tipo === "pessoa" ? primeiroNome : anuncio.autor_nome;
   const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
   const comecaJa = vaga && anuncio.status === "ativo" && !anuncio.preenchida_em && (await comecaJaDaVaga(anuncio.id));
+  // a vaga ainda está aberta? A confirmação de quem publicou ou o "Ainda está aberta?" (migração 20271003120000)
+  const continua =
+    vaga && !proprio && anuncio.status === "ativo" && !anuncio.preenchida_em
+      ? ((await confirmacaoDasVagas([anuncio.id])).get(anuncio.id) ?? null)
+      : null;
   // depois do match, só pelo chat do Publike (sem o contato de quem publicou; claude/plano-so-chat-ou-whatsapp.md)
   const soChat = vaga && !proprio && (await contatoPorDaVaga(anuncio.id)) === "chat";
   // quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais)
@@ -785,6 +792,16 @@ async function DetalheAnuncio({
               <span className="block text-body-sm font-normal text-ink-muted">
                 {anuncio.preenchida_em ? "vaga preenchida" : `fica no ar ${ateQuando(anuncio.expira_em)}`}
               </span>
+              {continua?.estado && (
+                <span className="mt-1 block text-body-sm font-normal">
+                  <SituacaoDaContinua
+                    anuncioId={anuncio.id}
+                    situacao={continua}
+                    agora={agora}
+                    logado={usuario !== null}
+                  />
+                </span>
+              )}
             </Fato>
           </dl>
 

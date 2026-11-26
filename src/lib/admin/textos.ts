@@ -115,6 +115,8 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   procura_na_regiao: "Procuraram e não acharam vaga (a cada 3 pessoas a mais)",
   curriculo_semana: "O currículo na semana (toda semana)",
   atendem_a_vaga: "Quem atende a vaga e não curtiu (a cada 3 pessoas novas)",
+  vaga_continua: "A vaga ainda está aberta? (para quem publicou)",
+  vaga_continua_sim: "A vaga continua aberta (para quem perguntou)",
 };
 
 export const STATUS_EMAIL: Record<string, string> = {

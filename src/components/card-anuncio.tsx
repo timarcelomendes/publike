@@ -18,8 +18,10 @@ import type { ResumoComentarios } from "@/lib/comentarios";
 import type { DadosCard } from "@/lib/tipos";
 import type { GanhoExtra } from "@/lib/vaga-extra";
 import { NotaDoProfissional } from "./avaliacoes";
+import type { SituacaoContinua } from "@/lib/vaga-continua";
 import { AcoesDaVagaNoCartao } from "./anuncio/acoes-no-feed";
 import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
+import { SituacaoDaContinua } from "./anuncio/vaga-continua";
 import { BotaoCurtir } from "./botao-curtir";
 import { AnelDeMatch, ehOutraArea, SeloMatch, type MatchResumo } from "./match-vaga";
 import { AnelMatchFechado, SeloMatchFechado } from "./selo-match-fechado";
@@ -51,6 +53,8 @@ export type ExtrasDaVaga = {
   ganhos?: GanhoExtra[];
   /** o começo da descrição (duas linhas no cartão) */
   resumo?: string | null;
+  /** a vaga ainda está aberta? (migração 20271003120000) */
+  continua?: SituacaoContinua | null;
 };
 
 /** Para quem publicou: o que chegou na própria vaga. */
@@ -176,6 +180,8 @@ export function CardAnuncio({
   const respostaDaVaga = resposta && !proprio ? comoResponde(resposta) : null;
   // só a partir de 3 (o banco já não manda menos), e não na própria vaga (lá vai o botão dos candidatos)
   const curtidasDeOutros = curtidas !== null && curtidas >= 3 && !proprio ? curtidas : null;
+  // a vaga ainda está aberta? Só de outra conta, no ar (a preenchida já diz)
+  const continua = !proprio && !preenchida && !noSite && extras?.continua?.estado ? extras.continua : null;
   // o próprio anúncio fora da busca (no perfil, por exemplo) não tem o que mostrar no rodapé
   const temRodape = !proprio || Boolean(minha);
 
@@ -419,7 +425,7 @@ export function CardAnuncio({
             {/* sem espaço ao lado dos botões, vão para uma linha só deles, em cima (antes, espremiam e cortavam) */}
             <span
               className={`flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 group-data-[visao=lista]/visao:hidden ${
-                respostaDaVaga || curtidasDeOutros !== null ? "min-w-[13rem]" : "min-w-0"
+                respostaDaVaga || curtidasDeOutros !== null || continua ? "min-w-[13rem]" : "min-w-0"
               }`}
             >
               {respostaDaVaga && (
@@ -435,6 +441,17 @@ export function CardAnuncio({
                     <b className="font-semibold tabular-nums">{curtidasDeOutros}</b> já curtiram
                   </span>
                 </span>
+              )}
+              {/* a vaga ainda está aberta? A confirmação de quem publicou ou o "Ainda está aberta?" (10 curtidas ou mais) */}
+              {continua && (
+                <SituacaoDaContinua
+                  anuncioId={anuncio.id}
+                  situacao={continua}
+                  agora={agora}
+                  logado={usuarioId !== null}
+                  cartao
+                  curtidas={curtidas}
+                />
               )}
             </span>
             {proprio && minha && (
