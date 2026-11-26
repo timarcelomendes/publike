@@ -52,6 +52,8 @@ export default function Convites({ searchParams }: PageProps<"/admin/convites">)
               pagina: texto("pagina"),
               publico: texto("publico"),
               mostrar: texto("mostrar"),
+              // da lista da Receita: abre a lista já no convite (o "Já convidada")
+              busca: texto("busca"),
             }}
           />
         );
@@ -135,6 +137,7 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
               agora={agora}
               site={urlDosEmails() ?? "https://publike.org"}
               emailDoDia={emailDoDia}
+              buscaInicial={sp.busca}
             />
           )}
         </Secao>

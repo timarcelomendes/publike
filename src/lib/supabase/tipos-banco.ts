@@ -1006,6 +1006,10 @@ export type Database = {
         Update: {
           status?: string;
           nota?: string | null;
+          // o contato corrigido à mão (Admin › Convites › Ajustar contato)
+          email?: string | null;
+          whatsapp?: string[];
+          telefones?: string[];
           enviada_em?: string | null;
           enviada_por?: string | null;
           usuario_id?: string | null;

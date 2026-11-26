@@ -40,7 +40,7 @@ import { oficioDoRamo } from "@/lib/ramos-prestadores";
 import { PRACA_PADRAO } from "@/lib/pracas";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
 import { modeloPara } from "@/lib/ia/funcionalidades";
-import { emailValido } from "@/lib/email-valido";
+import { emailCorrigido, emailValido } from "@/lib/email-valido";
 import { telefoneDoLogin } from "@/lib/telefone-login";
 
 // Convites às empresas: importar a lista, marcar a situação e anotar. Só no admin.
@@ -196,6 +196,41 @@ export async function salvarLinkDasVagas(id: string, link: string): Promise<Resu
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
   return { ok: true, mensagem: limpo ? "Link salvo." : "Link tirado." };
+}
+
+/**
+ * Ajusta o contato do convite (26/11/2026, Marcelo: o e-mail da Receita veio "gamil.com"): o e-mail, os WhatsApp e os
+ * telefones, separados por vírgula. Vazio tira.
+ */
+export async function ajustarContatoDoConvite(
+  id: string,
+  contato: { email: string; whatsapp: string; telefones: string },
+): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  const email = String(contato.email ?? "").trim().toLowerCase();
+  if (email && !emailValido(email)) return { ok: false, erro: "Confira o e-mail: algo como nome@empresa.com.br." };
+  const numeros = (texto: string) => {
+    const lista = String(texto ?? "")
+      .split(/[,;\n]+/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      // o que não tem número também é erro ("abc" não some calado)
+      .map((t) => t.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, ""));
+    return { certos: [...new Set(lista.filter((t) => TEL.test(t)))].slice(0, 5), errados: lista.filter((t) => !TEL.test(t)) };
+  };
+  const whatsapp = numeros(contato.whatsapp);
+  const telefones = numeros(contato.telefones);
+  if (whatsapp.errados.length || telefones.errados.length)
+    return { ok: false, erro: "Confira os números: com DDD, como (62) 99999-0000." };
+  const { error } = await c
+    .from("convites")
+    .update({ email: email || null, whatsapp: whatsapp.certos, telefones: telefones.certos })
+    .eq("id", id);
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return { ok: true, mensagem: "Contato ajustado." };
 }
 
 export async function anotarConvite(id: string, nota: string): Promise<Resultado> {
@@ -765,7 +800,8 @@ export async function convidarDaReceita(
     vagas,
     whatsapp: celular ? [digitos] : [],
     telefones: !celular && digitos ? [digitos] : [],
-    email: emailValido(e.email) ? String(e.email).trim().slice(0, 200) : null,
+    // o domínio digitado errado na Receita ("gamil.com") já entra certo
+    email: emailValido(e.email) ? (emailCorrigido(e.email) ?? String(e.email).trim().slice(0, 200)) : null,
     observacao,
     rascunho: rascunho as never,
     origem: "receita",

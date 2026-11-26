@@ -8,6 +8,7 @@ import { Aviso, Selo, Vazio } from "../ui/basicos";
 import { ConvidarDaReceita } from "./convidar-da-receita";
 import { Filtros, linkCom, Paginacao } from "./ui";
 import { bairroDaReceita } from "@/lib/cnpj";
+import { emailCorrigido } from "@/lib/email-valido";
 
 // As listas da base da Receita em Admin › Convites (claude/plano-base-de-empresas-da-receita.md, partes 1 e 5;
 // migração 20270604120000): as empresas que abriram, as agências de RH de Goiás e o MEI prestador de serviço.
@@ -157,6 +158,12 @@ export async function ListaDaReceitaAdmin({
                   {e.abertura && <> (aberta em {dataBr(e.abertura)})</>}
                 </p>
                 <p className="text-body-sm text-ink">
+                  {e.email && emailCorrigido(e.email) && (
+                    <span className="mr-2 inline-block text-caption text-ink-muted">
+                      (o e-mail parece digitado errado: {emailCorrigido(e.email)}
+                      {e.convite ? ". Corrija em Convites" : "; o convite já entra certo"})
+                    </span>
+                  )}
                   {[e.telefone, e.email].filter(Boolean).join("  ·  ") || (
                     <span className="text-ink-muted">Sem telefone nem e-mail na Receita</span>
                   )}
@@ -164,8 +171,11 @@ export async function ListaDaReceitaAdmin({
               </div>
               <div className="shrink-0">
                 {e.convite ? (
-                  <Link href="/admin/convites" className="text-body-sm text-ink underline underline-offset-2">
-                    Já convidada ({e.convite.status})
+                  <Link
+                    href={`/admin/convites?busca=${encodeURIComponent(e.nome)}`}
+                    className="text-body-sm text-ink underline underline-offset-2"
+                  >
+                    Já convidada ({e.convite.status}): ver e ajustar
                   </Link>
                 ) : e.no_publike ? null : (
                   <ConvidarDaReceita

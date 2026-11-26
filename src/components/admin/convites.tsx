@@ -6,6 +6,7 @@ import {
   ExternalLink,
   FileUp,
   ImageIcon,
+  Pencil,
   Mail,
   MessageCircle,
   Phone,
@@ -18,6 +19,7 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type ChangeEvent } from "react";
 import {
+  ajustarContatoDoConvite,
   anotarConvite,
   apagarConvite,
   enviarConviteEmail,
@@ -50,6 +52,7 @@ import { Aviso, Selo } from "../ui/basicos";
 import { Botao, classesBotao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
+import { emailCorrigido } from "@/lib/email-valido";
 
 const CHAVE_ASSINATURA = "publike_admin_assinatura";
 const POR_HORA = 10;
@@ -460,10 +463,13 @@ export function ListaConvites({
   agora,
   site,
   emailDoDia,
+  buscaInicial,
 }: {
   convites: Convite[];
   agora: number;
   site: string;
+  /** a busca que já abre preenchida (?busca=, da lista da Receita) */
+  buscaInicial?: string;
   /** os convites por e-mail de hoje e o limite (migração 20270913120000; sem ela, null) */
   emailDoDia?: { hoje: number; por_dia: number } | null;
 }) {
@@ -471,7 +477,7 @@ export function ListaConvites({
   // filtros a mais (juntam com a situação): lida da imagem, agência, só telefone
   const [marcas, setMarcas] = useState<Set<Marca>>(new Set());
   // busca pelo nome (sem acento) ou pelo telefone (só os números, com ou sem o 55)
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useState(buscaInicial ?? "");
   const [mudancas, setMudancas] = useState<Record<string, Partial<Convite>>>({});
   const [tocou, setTocou] = useState<Set<string>>(new Set());
   const [assinatura, setAssinatura] = useState("o Marcelo");
@@ -813,6 +819,9 @@ function CartaoConvite({
   const email = useAcao();
   const link = useAcao();
   const [previaEmail, setPreviaEmail] = useState(false);
+  // o contato digitado errado (o e-mail "gamil.com" da Receita): corrigir aqui
+  const [ajustando, setAjustando] = useState(false);
+  const sugestao = emailCorrigido(c.email);
   const [copiado, setCopiado] = useState(false);
   const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
   const podeCompartilhar = useCompartilhar();
@@ -960,7 +969,13 @@ function CartaoConvite({
             {formatarFone(n)}
           </a>
         ))}
+        <Botao tamanho="sm" variante="fantasma" aria-expanded={ajustando} onClick={() => setAjustando((v) => !v)}>
+          <Pencil aria-hidden />
+          Ajustar contato
+        </Botao>
       </div>
+      {sugestao && !ajustando && <SugestaoDeEmail c={c} sugestao={sugestao} />}
+      {ajustando && <AjustarContato c={c} aoFechar={() => setAjustando(false)} />}
       {previaEmail && c.email && (
         <PreviaEmail
           c={c}
@@ -1273,6 +1288,105 @@ function EmailDoDia({ hoje, porDia }: { hoje: number; porDia: number }) {
           {resposta.texto}
         </p>
       )}
+    </form>
+  );
+}
+
+/** "Parece erro de digitação": o e-mail com o domínio certo, com um toque. */
+function SugestaoDeEmail({ c, sugestao }: { c: Convite; sugestao: string }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-ipe/50 bg-ipe/10 p-3">
+      <p className="text-body-sm">
+        O e-mail <span className="break-all font-medium">{c.email}</span> parece ter erro de digitação. Seria{" "}
+        <span className="break-all font-medium">{sugestao}</span>?
+      </p>
+      <Botao
+        tamanho="sm"
+        variante="primario"
+        className="self-start"
+        disabled={pendente}
+        onClick={() =>
+          rodar(() =>
+            ajustarContatoDoConvite(c.id, {
+              email: sugestao,
+              whatsapp: c.whatsapp.join(", "),
+              telefones: c.telefones.join(", "),
+            }),
+          )
+        }
+      >
+        Corrigir para {sugestao}
+      </Botao>
+      {mensagem}
+    </div>
+  );
+}
+
+/** O e-mail, os WhatsApp e os telefones do convite, para corrigir à mão. */
+function AjustarContato({ c, aoFechar }: { c: Convite; aoFechar: () => void }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [email, setEmail] = useState(c.email ?? "");
+  const [whatsapp, setWhatsapp] = useState(c.whatsapp.map(formatarFone).join(", "));
+  const [telefones, setTelefones] = useState(c.telefones.map(formatarFone).join(", "));
+  const sugestao = emailCorrigido(email);
+  return (
+    <form
+      className="flex flex-col gap-3 rounded-md border border-line p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        rodar(() => ajustarContatoDoConvite(c.id, { email, whatsapp, telefones }), (r) => r.ok && aoFechar());
+      }}
+    >
+      <label className="flex flex-col gap-1">
+        <span className="text-label">E-mail</span>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="nome@empresa.com.br"
+          className={classesEntrada}
+        />
+        {sugestao && (
+          <button
+            type="button"
+            onClick={() => setEmail(sugestao)}
+            className="self-start text-body-sm underline underline-offset-2"
+          >
+            Seria {sugestao}? Usar este
+          </button>
+        )}
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-label">WhatsApp</span>
+        <input
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          placeholder="(62) 99999-0000"
+          inputMode="tel"
+          className={classesEntrada}
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-label">Telefones</span>
+        <input
+          value={telefones}
+          onChange={(e) => setTelefones(e.target.value)}
+          placeholder="(62) 3333-0000"
+          inputMode="tel"
+          className={classesEntrada}
+        />
+        <span className="text-caption text-ink-muted">Mais de um: separe por vírgula. Vazio tira.</span>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <Botao type="submit" tamanho="sm" variante="primario" disabled={pendente}>
+          Salvar contato
+        </Botao>
+        <Botao type="button" tamanho="sm" variante="fantasma" onClick={aoFechar}>
+          Cancelar
+        </Botao>
+      </div>
+      {mensagem}
     </form>
   );
 }
