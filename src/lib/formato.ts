@@ -2,7 +2,6 @@ import { SUPABASE_URL } from "./config";
 import { REGIMES, TIPOS_ANUNCIO, TIPOS_CONTA } from "./constantes";
 import type { Regime, TipoAnuncio, TipoConta, Unidade } from "./tipos";
 import { ganhosDoBanco, nomesDosGanhos, type GanhoExtra } from "./vaga-extra";
-import { cidadeDePraca } from "./pracas";
 import { tipoPeloNome } from "./nome-de-empresa";
 
 const FUSO = "America/Sao_Paulo";
@@ -163,8 +162,9 @@ export function nomeDoBairro(bairro: string) {
 export function formatarLugar(bairro: string | null, cidade: string) {
   // sem bairro, ou só a cidade (vaga de empresa confidencial): a cidade
   if (!bairro || bairro === cidade) return cidade;
-  const b = nomeDoBairro(bairro);
-  return cidadeDePraca(cidade) ? b : `${b}, ${cidade}`;
+  // sempre com a cidade (26/11/2026, Marcelo: "precisamos exibir a cidade", um Centro em Goiânia e outro em Anápolis
+  // apareciam iguais; antes, o bairro de cidade de praça ia sem a cidade)
+  return `${nomeDoBairro(bairro)}, ${cidade}`;
 }
 
 /** 5562999990001 → (62) 99999-0001 */
