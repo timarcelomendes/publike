@@ -82,6 +82,8 @@ const QUEM: Record<string, QuemRecebe[]> = {
   demora_religada: ["contrata"],
   regra_da_resposta: ["contrata"],
   vaga_suspensa: ["procura"],
+  // o vencimento com um toque (migração 20271010120000)
+  vaga_encerrada: ["procura"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],

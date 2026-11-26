@@ -26,6 +26,7 @@ export default function robots(): MetadataRoute.Robots {
           "/relatorio/",
           "/garantia/",
           "/quem-contratou/",
+          "/vaga-vence/",
           "/cliente/",
           "/candidatura/",
           "/equipe/",

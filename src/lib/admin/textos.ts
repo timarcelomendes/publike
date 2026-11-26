@@ -121,6 +121,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   demora_suspensa: "Vaga suspensa por falta de resposta (para quem publicou)",
   demora_religada: "Vaga de volta ao ar (para quem publicou)",
   vaga_suspensa: "A vaga saiu do ar sem resposta (para quem esperava)",
+  vaga_encerrada: "A vaga foi encerrada (para quem esperava)",
   regra_da_resposta: "A regra da resposta no prazo (uma vez)",
 };
 

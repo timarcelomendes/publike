@@ -2958,6 +2958,9 @@ export type Database = {
         Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
         Returns: { alertas: number; suspensas: number; resolvidas: number; religadas: number; avisados: number };
       };
+      // O vencimento com um toque (migração 20271010120000)
+      vencimento_pelo_link: { Args: { p_token: string }; Returns: Json };
+      responder_vencimento_pelo_link: { Args: { p_token: string; p_resposta: string }; Returns: Json };
       minhas_vagas_no_prazo: {
         Args: Record<string, never>;
         Returns: { anuncio_id: string; titulo: string; estado: "alerta" | "suspensa"; prazo_ate: string | null; esperando: number }[];

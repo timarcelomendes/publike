@@ -355,4 +355,15 @@ export const EXEMPLOS_OPCOES_EMAIL: Record<string, { rotulo: string; caminho: st
     { rotulo: "Ainda não contratei", caminho: "/quem-contratou/exemplo?r=ainda", tom: "secundario" },
     { rotulo: "Não contratei ninguém daqui", caminho: "/quem-contratou/exemplo?r=ninguem", tom: "secundario" },
   ],
+  // o vencimento com um toque (migração 20271010120000)
+  vaga_vence: [
+    { rotulo: "Prorrogar por 30 dias", caminho: "/vaga-vence/exemplo?r=prorrogar" },
+    { rotulo: "Já preenchi", caminho: "/vaga-vence/exemplo?r=preenchi", tom: "secundario" },
+    { rotulo: "Não preciso mais", caminho: "/vaga-vence/exemplo?r=encerrar", tom: "secundario" },
+  ],
+  vaga_venceu: [
+    { rotulo: "Prorrogar por 30 dias", caminho: "/vaga-vence/exemplo?r=prorrogar" },
+    { rotulo: "Já preenchi", caminho: "/vaga-vence/exemplo?r=preenchi", tom: "secundario" },
+    { rotulo: "Não preciso mais", caminho: "/vaga-vence/exemplo?r=encerrar", tom: "secundario" },
+  ],
 };

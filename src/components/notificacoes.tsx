@@ -161,6 +161,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   demora_suspensa: Hourglass,
   demora_religada: CircleCheck,
   vaga_suspensa: HeartCrack,
+  vaga_encerrada: HeartCrack,
 };
 
 type Notificacao = {

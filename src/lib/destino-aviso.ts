@@ -58,11 +58,13 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if ((n.tipo === "demora_alerta" || n.tipo === "demora_suspensa") && n.anuncio_id)
     return `/painel/anuncio/${n.anuncio_id}/quadro`;
   if (n.tipo === "demora_religada" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
-  if (n.tipo === "vaga_suspensa" && n.anuncio_id) return `/anuncio/${n.anuncio_id}/parecidas`;
+  if ((n.tipo === "vaga_suspensa" || n.tipo === "vaga_encerrada") && n.anuncio_id) return `/anuncio/${n.anuncio_id}/parecidas`;
   // a vaga ainda está aberta? (migração 20271003120000): quem publicou responde; quem perguntou abre a vaga
   if (n.tipo === "vaga_continua" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/continua`;
   if (n.tipo === "vaga_continua_sim" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   // o vencimento da vaga: renovar em um toque ou "Já preenchi"
+  // o vencimento com um toque (migração 20271010120000): o link sem entrar; os avisos de antes, a renovação
+  if ((n.tipo === "vaga_vence" || n.tipo === "vaga_venceu") && n.link?.startsWith("/vaga-vence/")) return n.link;
   if ((n.tipo === "vaga_vence" || n.tipo === "vaga_venceu") && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/renovar`;
   if (n.tipo === "ainda_espera" && n.anuncio_id)
     return n.ator_id ? `/painel/anuncio/${n.anuncio_id}/quadro?candidato=${n.ator_id}` : `/painel/anuncio/${n.anuncio_id}/quadro`;
