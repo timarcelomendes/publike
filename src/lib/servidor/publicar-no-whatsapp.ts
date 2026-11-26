@@ -201,7 +201,16 @@ export const soFaltaORegime = (r: { ok: false; campos: string[] }) => r.campos.l
 const ERROS_DE_REGRA = new Set(["P0001", "P0002", "22023", "42501", "23505", "23514", "23503", "PGRST202"]);
 
 export type ResultadoPublicar =
-  | { tipo: "publicada"; token: string; anuncioId: string; contaNova: boolean; restantes: number; titulo: string }
+  | {
+      tipo: "publicada";
+      token: string;
+      anuncioId: string;
+      contaNova: boolean;
+      restantes: number;
+      titulo: string;
+      /** a vaga do convite pelo WhatsApp oficial (migração 20271012120000): os avisos já ficam ligados */
+      convite: boolean;
+    }
   | { tipo: "ja"; anuncioId: string | null }
   | { tipo: "pedir_nome" }
   | { tipo: "nome_ruim" }
@@ -225,6 +234,7 @@ type VagaParaPublicar = {
   anuncio_id?: string | null;
   conta?: string | null;
   tem_perfil?: boolean;
+  convite?: boolean;
 };
 
 /**
@@ -312,6 +322,7 @@ export async function publicarPeloWhatsapp(p: {
     contaNova: Boolean(r.conta_nova),
     restantes: Number(r.restantes) || 0,
     titulo: conferida.registro.titulo,
+    convite: Boolean(v.convite),
   };
 }
 

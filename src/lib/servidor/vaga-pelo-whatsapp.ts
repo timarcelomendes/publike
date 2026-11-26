@@ -24,6 +24,7 @@ import {
   type ChaveTextoVagas,
 } from "@/lib/vagas-pelo-whatsapp";
 import { urlDosEmails } from "./ambiente";
+import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 import { acessoFila } from "./filas";
 import {
   botoesDaVagaPreparada,
@@ -40,6 +41,7 @@ import {
   configMeta,
   enviarComBotoes,
   enviarComLink,
+  enviarTexto,
   marcarLidaDigitando,
   type ConfigMeta,
 } from "./whatsapp";
@@ -563,7 +565,7 @@ export async function confirmarVagaPublicada(
    * publicada aqui mesmo (migração 20270914120000): o "está no ar" sai sempre (é a resposta do botão), e a conta nova
    * ganha a explicação de como entrar
    */
-  opcoes: { aqui?: boolean; contaNova?: boolean; lote?: string[] } = {},
+  opcoes: { aqui?: boolean; contaNova?: boolean; lote?: string[]; convite?: boolean } = {},
 ) {
   const acesso = acessoFila();
   const cfg = configMeta();
@@ -583,8 +585,17 @@ export async function confirmarVagaPublicada(
     situacao: string | null;
     restantes: number;
     ja_recebe: boolean;
+    conta_id?: string | null;
+    /** a conta sem e-mail de login confirmado (migração 20271012120000): o WhatsApp pede */
+    sem_email?: boolean;
+    convite?: boolean;
   };
   if (!v.na_janela || v.situacao === "equipe") return;
+  // o convite pelo WhatsApp oficial (migração 20271012120000): publicou com um toque, e o resto também é automático
+  if (opcoes.convite || v.convite) {
+    await confirmarVagaDoConvite(banco, chave, cfg, v, Boolean(opcoes.contaNova));
+    return;
+  }
   const t = (k: ChaveTextoVagas, marcas?: Record<string, string | number>) => textoDasVagas(config.textos, k, marcas);
   const guardar = (texto: string, wamid: string | null) =>
     banco.rpc("servidor_whatsapp_conversa_saida", {
@@ -630,6 +641,124 @@ export async function confirmarVagaPublicada(
   else console.error("Publike: a oferta dos avisos pelo WhatsApp não saiu:", o.erro);
 }
 
+// --- O e-mail da conta que nasceu pelo WhatsApp (migração 20271012120000) --------------------------------------
+// 26/11/2026, Marcelo: "acho importante pedir um e-mail da empresa assim que fizer o primeiro acesso" / "da maneira
+// ideal, sim": pedido depois de a vaga ir ao ar (sem travar a publicação), sem obrigar; o e-mail escrito recebe o link
+// de confirmar, e só confirmado entra no login (o aviso não vai para o e-mail digitado errado).
+
+/** A marca do pedido: a resposta escrita seguinte com um e-mail é o e-mail da conta. */
+export const MARCA_DO_EMAIL = "escrever seu e-mail aqui";
+/** `peloWhatsapp`: os avisos já chegam por aqui (o "também" e o "tudo bem"). */
+export const pedidoDoEmail = (peloWhatsapp = true) =>
+  peloWhatsapp
+    ? `Quer receber os candidatos também por e-mail? É só ${MARCA_DO_EMAIL} (por exemplo, contato@suaempresa.com.br). Se não quiser, tudo bem: os avisos continuam chegando por aqui.`
+    : `Quer receber os candidatos por e-mail? É só ${MARCA_DO_EMAIL} (por exemplo, contato@suaempresa.com.br).`;
+
+/**
+ * O "está no ar" da vaga do convite: a conta criada, o link de entrar com um toque, os avisos dos candidatos já ligados
+ * (o "Publicar a vaga" do convite dizia que os candidatos chegam por aqui; PARAR desliga) e o pedido do e-mail.
+ */
+async function confirmarVagaDoConvite(
+  banco: ClienteBanco,
+  chave: string,
+  cfg: ConfigMeta,
+  v: { id: string; numero: string; conversa: string; anuncio_id: string; titulo: string; ja_recebe: boolean; sem_email?: boolean },
+  contaNova: boolean,
+) {
+  const guardar = (texto: string, wamid: string | null) =>
+    banco.rpc("servidor_whatsapp_conversa_saida", {
+      p_chave: chave,
+      p_conversa: v.conversa,
+      p_texto: texto,
+      p_wamid: wamid,
+      p_perfil: "contratar",
+    });
+  let avisos = v.ja_recebe;
+  if (!avisos) {
+    const { data, error } = await banco.rpc("servidor_whatsapp_aceite_pela_vaga", {
+      p_chave: chave,
+      p_conversa: v.conversa,
+      p_vaga: v.id,
+    });
+    avisos = !error && Boolean((data as { ok?: boolean } | null)?.ok);
+    if (!avisos) console.error("Publike: os avisos da vaga do convite não ligaram:", error?.message ?? "sem o aceite");
+  }
+  // o login pelo número: a conta nova já nasce com ele; a que já existia liga com o aceite e o número no cadastro. O
+  // botão entra com um toque (o link de entrar, como o "entrar" na conversa)
+  if (avisos && LOGIN_CELULAR && !contaNova)
+    await banco.rpc("servidor_whatsapp_login_pela_vaga", { p_chave: chave, p_conversa: v.conversa, p_vaga: v.id });
+  const destino = `/painel/anuncio/${v.anuncio_id}/quadro`;
+  const entrar = LOGIN_CELULAR ? await caminhoDeEntrar(v.numero, destino).catch(() => null) : null;
+  const login = Boolean(entrar);
+  const site = urlDosEmails() ?? SITE_URL;
+  const url = entrar
+    ? `${site}${entrar}`
+    : comOrigem(`${site}/anuncio/${v.anuncio_id}`, "whatsapp", "convite-pelo-whatsapp");
+  const titulo = "Acompanhar no Publike";
+  const texto = [
+    `Pronto! A vaga de *${v.titulo}* está no ar no Publike ✅`,
+    contaNova
+      ? `Sua conta no Publike foi criada com este WhatsApp: não precisa de e-mail nem de senha. Toque em *${titulo}* para ver a vaga e os candidatos.${login ? " Depois, é só escrever *entrar* aqui que eu mando o link de novo." : ""}`
+      : `A vaga entrou na sua conta do Publike. Toque em *${titulo}* para ver a vaga e os candidatos.`,
+    avisos
+      ? "Já deixei ligados os avisos: quando alguém se candidatar, eu aviso por aqui. Para parar, é só responder PARAR."
+      : "Quando alguém se candidatar, os currículos chegam no seu painel do Publike.",
+  ].join("\n\n");
+  const r = await enviarComLink(cfg, v.numero, texto, { titulo, url });
+  if (!r.ok) {
+    console.error("Publike: o \"está no ar\" da vaga do convite não saiu:", r.erro);
+    return;
+  }
+  await guardar(`${texto}\n\n[Botão: ${titulo}]`, r.wamid);
+  if (!v.sem_email) return;
+  const pedido = pedidoDoEmail(avisos);
+  const e = await enviarTexto(cfg, v.numero, pedido);
+  if (e.ok) await guardar(pedido, e.wamid);
+  else console.error("Publike: o pedido do e-mail pelo WhatsApp não saiu:", e.erro);
+}
+
+/** Um e-mail dentro do que a pessoa escreveu ("meu email é ana@padaria.com"), em minúsculas; senão, null. */
+export function emailEscrito(texto: string): string | null {
+  const achados = texto.match(/[a-z0-9._%+-]{1,64}@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}/gi) ?? [];
+  return achados.length === 1 && texto.trim().length <= 160 ? achados[0].toLowerCase() : null;
+}
+
+/** Os botões da confirmação do e-mail com o domínio digitado errado ("gamil.com"). */
+export const botoesDoEmailCorrigido = (certo: string, escrito: string) => [
+  { id: `a:email:${certo}`.slice(0, 256), titulo: "Sim, é esse" },
+  { id: `a:email:${escrito}`.slice(0, 256), titulo: "Não, está certo" },
+];
+export const PAYLOAD_EMAIL = /^a:email:(.{3,200})$/;
+
+/** O e-mail escrito na conversa: o link de confirmar vai para ele (servidor_whatsapp_email_da_conta). */
+export async function registrarEmailDaConta(banco: ClienteBanco, chave: string, conversa: string, email: string) {
+  const { data, error } = await banco.rpc("servidor_whatsapp_email_da_conta", {
+    p_chave: chave,
+    p_conversa: conversa,
+    p_email: email,
+  });
+  if (error) {
+    console.error("Publike: o e-mail da conta pelo WhatsApp não foi guardado:", error.message);
+    return "Não consegui guardar o e-mail agora. Dá para pôr no Publike, em Meu perfil › E-mail de login.";
+  }
+  const r = (data ?? {}) as { situacao?: string; email?: string };
+  const em = `*${r.email ?? email}*`;
+  switch (r.situacao) {
+    case "mandado":
+      return `Mandei um link para ${em}. Abra o e-mail e toque em *Confirmar e-mail*: a partir daí, os avisos dos candidatos chegam também por lá. Se não chegar em alguns minutos, olhe o spam ou a pasta Promoções.`;
+    case "ja_tem":
+      return `Sua conta já tem o e-mail ${em}: os avisos dos candidatos já chegam por lá. Para trocar, é em Meu perfil › E-mail de login.`;
+    case "de_outra":
+      return `O e-mail ${em} já é de outra conta no Publike. Se é seu, entre com ele no site. Se preferir, é só ${MARCA_DO_EMAIL} com outro e-mail.`;
+    case "limite":
+      return "Já mandei alguns links hoje. Confira a caixa de entrada (e o spam) ou tente de novo amanhã.";
+    case "sem_conta":
+      return "Ainda não achei uma conta do Publike com este WhatsApp. Quando você publicar uma vaga por aqui, eu crio a conta e guardo o e-mail.";
+    default:
+      return `Esse e-mail não parece certo. Pode ${MARCA_DO_EMAIL} de novo? Por exemplo, contato@suaempresa.com.br.`;
+  }
+}
+
 /**
  * O toque na oferta: "Sim, quero receber" vira o aceite dos avisos (com o número da conversa); "Agora não" só responde.
  * `null`: não é um desses botões.
@@ -640,8 +769,16 @@ export async function respostaDaOferta(
   conversa: string,
   payload: string | null,
 ): Promise<string | null> {
+  // a conta sem e-mail (migração 20271012120000): o pedido do e-mail vai junto da resposta
+  const semEmail = async () => {
+    const { data, error } = await banco.rpc("servidor_whatsapp_conta_sem_email", { p_chave: chave, p_conversa: conversa });
+    return !error && data === true;
+  };
+  const comEmail = async (texto: string) => ((await semEmail()) ? `${texto}\n\n${pedidoDoEmail()}` : texto);
   if (payload === "a:nao_receber")
-    return "Tudo bem! Os candidatos ficam no painel do Publike, e o e-mail avisa quando chega alguém.";
+    return (await semEmail())
+      ? `Tudo bem! Os candidatos ficam no painel do Publike.\n\n${pedidoDoEmail(false)}`
+      : "Tudo bem! Os candidatos ficam no painel do Publike, e o e-mail avisa quando chega alguém.";
   const m = /^a:receber:([0-9a-f-]{36})$/.exec(payload ?? "");
   if (!m) return null;
   const { data, error } = await banco.rpc("servidor_whatsapp_aceite_pela_vaga", {
@@ -655,15 +792,17 @@ export async function respostaDaOferta(
     "Combinado! Quando alguém se candidatar às suas vagas, eu aviso por aqui. Para parar, é só responder PARAR.";
   // com o entrar pelo WhatsApp ligado: o mesmo número no cadastro da conta liga o login (migração 20270818120000;
   // as duas pontas dizem a mesma coisa). Sem a migração, ou sem ligar, só o combinado.
-  if (!LOGIN_CELULAR) return combinado;
+  if (!LOGIN_CELULAR) return comEmail(combinado);
   const { data: login, error: erroLogin } = await banco.rpc("servidor_whatsapp_login_pela_vaga", {
     p_chave: chave,
     p_conversa: conversa,
     p_vaga: m[1],
   });
-  return !erroLogin && (login as { ligou?: boolean } | null)?.ligou
-    ? `${combinado}\n\nE este WhatsApp ficou vinculado à sua conta: da próxima vez, é só escrever *entrar* aqui que eu mando o link, e você entra no Publike com um toque, sem e-mail. Para desvincular, é em Meu perfil.`
-    : combinado;
+  return comEmail(
+    !erroLogin && (login as { ligou?: boolean } | null)?.ligou
+      ? `${combinado}\n\nE este WhatsApp ficou vinculado à sua conta: da próxima vez, é só escrever *entrar* aqui que eu mando o link, e você entra no Publike com um toque, sem e-mail. Para desvincular, é em Meu perfil.`
+      : combinado,
+  );
 }
 
 // --- A vaga que quem procura trabalho mandou (migração 20271011120000) ----------------------------------------------

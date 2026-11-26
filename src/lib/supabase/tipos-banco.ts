@@ -2967,9 +2967,22 @@ export type Database = {
         Returns: { id: string; nome: string; vaga: string; numero: string; token: string }[];
       };
       servidor_convite_whatsapp_mandado: {
-        Args: { p_chave: string; p_convite: string; p_numero: string; p_wamid: string | null; p_falhou: string | null; p_texto: string | null };
+        Args: {
+          p_chave: string;
+          p_convite: string;
+          p_numero: string;
+          p_wamid: string | null;
+          p_falhou: string | null;
+          p_texto: string | null;
+          p_vaga?: string | null;
+        };
         Returns: undefined;
       };
+      // O convite publica com um toque e o e-mail da conta do WhatsApp (migração 20271012120000)
+      servidor_convite_vaga_whatsapp: { Args: { p_chave: string; p_convite: string; p_numero: string }; Returns: Json };
+      servidor_whatsapp_email_da_conta: { Args: { p_chave: string; p_conversa: string; p_email: string }; Returns: Json };
+      servidor_email_a_confirmar: { Args: { p_chave: string; p_token: string; p_usar?: boolean }; Returns: Json };
+      servidor_whatsapp_conta_sem_email: { Args: { p_chave: string; p_conversa: string }; Returns: boolean };
       admin_convites_whatsapp: { Args: { p_ligado?: boolean | null; p_por_dia?: number | null }; Returns: Json };
       // O vencimento com um toque (migração 20271010120000)
       vencimento_pelo_link: { Args: { p_token: string }; Returns: Json };

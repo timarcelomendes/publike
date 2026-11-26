@@ -247,6 +247,20 @@ export function resumoDaVaga(v: RascunhoConvite) {
   return linhas.join("\n");
 }
 
+/**
+ * O resumo numa linha só, para a variável de um modelo da Meta (sem quebra de linha, sem negrito; até 300 letras):
+ * "Atendente · Salário: R$ 1.800 por mês · CLT · Local: Setor Bueno, Goiânia".
+ */
+export function resumoNumaLinha(v: RascunhoConvite) {
+  const linha = resumoDaVaga(v)
+    .split("\n")
+    .map((l) => l.replace(/\*/g, "").trim())
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/\s+/g, " ");
+  return linha.length > 300 ? `${linha.slice(0, 297).trimEnd()}…` : linha;
+}
+
 const BENEFICIO_CURTO: Record<string, string> = {
   vale_transporte: "vale-transporte",
   vale_refeicao: "vale-refeição",

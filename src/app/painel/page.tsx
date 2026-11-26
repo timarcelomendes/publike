@@ -153,6 +153,16 @@ async function Conteudo() {
           enviamos.
         </Aviso>
       )}
+      {/* a conta de quem contrata que nasceu pelo WhatsApp, sem e-mail (migração 20271012120000): o e-mail, sem obrigar */}
+      {!suspensa && modo === "contratar" && !usuario.email && !usuario.olhando && usuario.papel === "dono" && (
+        <Aviso tipo="info" titulo="Adicione um e-mail para não perder candidatos">
+          Hoje os avisos chegam só pelo WhatsApp. Com um e-mail, eles chegam também por lá, e você entra no Publike de
+          qualquer computador.{" "}
+          <Link href="/perfil#email-login" className="font-semibold underline underline-offset-2">
+            Adicionar e-mail
+          </Link>
+        </Aviso>
+      )}
       {/* o convite do teste fechado da Play (só no Android, fora do app instalado) */}
       {!suspensa && <ConviteTesteAndroid />}
       {/* o convite das notificações no celular (só para quem ainda não ligou neste aparelho) */}

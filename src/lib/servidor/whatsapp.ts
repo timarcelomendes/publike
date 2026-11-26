@@ -320,14 +320,23 @@ export const MODELOS: Modelo[] = [
     // WhatsApp, que mando, mas é muito limitado"): o mesmo convite que converte do celular dele, pelo número do
     // Publike, para a empresa que está contratando (a vaga lida da foto do anúncio). Não sai pela fila: o robô das
     // filas manda (enviarConvitesPeloWhatsapp), com o envio ligado e o teto do dia em Admin › Convites. Marketing
-    nome: "publike_vaga_pronta",
+    // 26/11/2026 (migração 20271012120000; Marcelo: "o mais automático possível, já pedir pra conferir na própria
+    // mensagem"): a vaga escrita na mensagem e o "Publicar a vaga", que publica na hora (a conta pelo número). Substitui
+    // o publike_vaga_pronta, que só tinha o link
+    nome: "publike_convite_vaga_pronta",
     aviso: "convite_vaga_pronta",
     para: "Empresa sem conta",
     quando: "Convite com a vaga pronta (da foto de um anúncio), em lote, com o envio ligado em Admin › Convites",
     corpo:
-      "Oi, {{empresa}}! Vi que vocês estão contratando {{vaga}}. Deixei essa vaga pronta no Publike, o site grátis de vagas de Goiânia e região: é só conferir e publicar, sem custo, e os candidatos chegam direto no seu WhatsApp.",
-    exemplo: { empresa: "Padaria Pão de Ouro", vaga: "Atendente de padaria" },
-    botoes: [{ tipo: "link", texto: "Conferir e publicar", exemplo: "publicar?convite=3f9a" }],
+      "Oi, {{empresa}}! Vi que vocês estão contratando e deixei a vaga pronta no Publike, o site grátis de vagas de Goiânia e região. Confira: {{vaga}}. Se estiver certo, toque em *Publicar a vaga*: ela entra no ar na hora, sem custo, numa conta do Publike criada com este WhatsApp, e os candidatos chegam por aqui. Para mudar algo antes, toque em *Conferir no site*.",
+    exemplo: {
+      empresa: "Padaria Pão de Ouro",
+      vaga: "Atendente de padaria · Salário: R$ 1.800 por mês · CLT · Local: Setor Bueno, Goiânia",
+    },
+    botoes: [
+      { tipo: "resposta", texto: "Publicar a vaga", valor: "publicar" },
+      { tipo: "link", texto: "Conferir no site", exemplo: "publicar?convite=3f9a" },
+    ],
     categoria: "MARKETING",
   },
 ];

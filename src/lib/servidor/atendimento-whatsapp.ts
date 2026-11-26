@@ -68,6 +68,7 @@ import {
   type LeituraDoArquivo,
   type Midia,
 } from "./curriculo-por-arquivo";
+import { emailCorrigido } from "@/lib/email-valido";
 import { caminhoDeEntrar, ultimoDestinoDeEntrar } from "./entrar-pelo-whatsapp";
 import {
   configVagasWhatsapp,
@@ -80,6 +81,12 @@ import {
   eAnuncioDeVaga,
   indicarVagaPeloWhatsapp,
   vagaPreparadaDeNovo,
+  botoesDoEmailCorrigido,
+  emailEscrito,
+  MARCA_DO_EMAIL,
+  PAYLOAD_EMAIL,
+  pedidoDoEmail,
+  registrarEmailDaConta,
   type VagaDoLugar,
   type VagaSemPublicar,
 } from "./vaga-pelo-whatsapp";
@@ -2257,6 +2264,25 @@ export async function atenderConversa(
   const novas = semResposta(e.historico);
   const textos = novas.length ? novas.map((x) => x.texto) : [m.texto];
   const midias = textos.map(midiaDaMensagem);
+  // o e-mail da conta que nasceu pelo WhatsApp (migração 20271012120000): o botão da confirmação do domínio, ou o e-mail
+  // escrito depois do pedido (nas últimas 3 mensagens do Publike). O domínio digitado errado ("gamil.com") pergunta antes
+  {
+    const doBotao = PAYLOAD_EMAIL.exec(m.payload ?? "")?.[1] ?? null;
+    const pediu = respostas
+      .slice(-3)
+      .some((x) => x.texto.includes(MARCA_DO_EMAIL));
+    const escrito = !m.payload && pediu && !midias.some(Boolean) ? emailEscrito(textos.join(" ")) : null;
+    if (doBotao) return saida(await registrarEmailDaConta(banco, chave, e.chave, doBotao), { perfil: "contratar" });
+    if (escrito) {
+      const certo = emailCorrigido(escrito);
+      if (certo && certo !== escrito)
+        return saida(`Confere: o e-mail é *${certo}*? Você escreveu *${escrito}*.`, {
+          perfil: "contratar",
+          botoes: botoesDoEmailCorrigido(certo, escrito),
+        });
+      return saida(await registrarEmailDaConta(banco, chave, e.chave, escrito), { perfil: "contratar" });
+    }
+  }
   const semPerfil = !e.perfil;
   const comeco = cumprimentoDe(textos);
   // a apresentação, na primeira mensagem para a pessoa (as respostas prontas que não são as boas-vindas); quem veio do
@@ -2449,7 +2475,12 @@ export async function atenderConversa(
           }
         }
         // o "está no ar", com o botão da vaga (ou do painel, no lote), a conta nova e a oferta dos candidatos por aqui
-        await confirmarVagaPublicada(ultima, { aqui: true, contaNova: r.contaNova, lote: emLote ? titulos : undefined });
+        await confirmarVagaPublicada(ultima, {
+          aqui: true,
+          contaNova: r.contaNova,
+          lote: emLote ? titulos : undefined,
+          convite: r.convite,
+        });
         // as que não saíram por aqui: o site, já preenchido
         if (semSaberAsOutras)
           await saida(
@@ -2512,9 +2543,15 @@ export async function atenderConversa(
       (await ultimoDestinoDeEntrar(m.numero).catch(() => null)) ??
       (e.perfil === "contratar" ? "/painel" : "/perfil/curriculo");
     const entrar = await caminhoDeEntrar(m.numero, destino);
+    // a conta de quem contrata ainda sem e-mail (migração 20271012120000): o lembrete do pedido, junto
+    const semEmail =
+      e.perfil === "contratar" &&
+      (await banco
+        .rpc("servidor_whatsapp_conta_sem_email", { p_chave: chave, p_conversa: e.chave })
+        .then((x) => !x.error && x.data === true));
     if (entrar)
       return saida(
-        `${ola}Toque em *Entrar no Publike*: você entra com este WhatsApp, sem digitar código. O link vale uma vez, por 24 horas, e só para este número.`,
+        `${ola}Toque em *Entrar no Publike*: você entra com este WhatsApp, sem digitar código. O link vale uma vez, por 24 horas, e só para este número.${semEmail ? `\n\n${pedidoDoEmail(false)}` : ""}`,
         { botao: { titulo: "Entrar no Publike", caminho: entrar } },
       );
   }
