@@ -564,6 +564,8 @@ export async function Explorar({
               usuarioId={usuario ? (soOlhar ? "so-olhar" : usuario.id) : null}
               pertoDeCasa={local ? a.prioridade : null}
               tempoDe={tempoDe}
+              // sem de onde contar: o convite para ver a distância e o tempo (pede a localização)
+              pedirOrigem={!tempoDe}
               match={matches.get(a.id) ?? null}
               resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
               curtidas={a.tipo === "vaga" ? (curtidas.get(a.id)?.total ?? null) : null}

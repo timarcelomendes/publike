@@ -2,6 +2,7 @@ import { CalendarClock, ExternalLink, Heart, MapPin, MessageCircleReply, UserChe
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PedirTrajeto } from "./local/pedir-trajeto";
 import {
   formatarDistancia,
   formatarLugar,
@@ -103,6 +104,7 @@ export function CardAnuncio({
   usuarioId,
   pertoDeCasa = null,
   tempoDe = null,
+  pedirOrigem = false,
   match = null,
   resposta = null,
   curtidas = null,
@@ -124,6 +126,11 @@ export function CardAnuncio({
   pertoDeCasa?: number | null;
   /** Mostra o tempo de ônibus (ou a pé) a partir da casa da pessoa (CEP) ou de onde ela está (GPS). */
   tempoDe?: "casa" | "voce" | null;
+  /**
+   * Sem `tempoDe` (a lista não sabe de onde contar): no lugar do caminho, o convite para ver a distância e o tempo de
+   * ônibus, que pede a localização (26/11/2026).
+   */
+  pedirOrigem?: boolean;
   /** Vaga, para quem tem currículo: o % de match (sem currículo ou com pouco para comparar, null). */
   match?: MatchResumo | null;
   /** Vaga: quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais). */
@@ -408,6 +415,9 @@ export function CardAnuncio({
           </p>
           {tempoDe && km != null && (
             <TrajetoAteAVaga de={tempoDe} km={km} className="group-data-[visao=lista]/visao:col-start-1" />
+          )}
+          {!tempoDe && pedirOrigem && anuncio.tipo === "vaga" && !proprio && (
+            <PedirTrajeto className="group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-1" />
           )}
         </div>
 
