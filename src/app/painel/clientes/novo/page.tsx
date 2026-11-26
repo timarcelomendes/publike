@@ -7,6 +7,7 @@ import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil } from "@/lib/dados";
+import { CLIENTES_GRATIS, meusClientesGratis } from "@/lib/servidor/clientes";
 import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Adicionar cliente" };
@@ -40,6 +41,23 @@ async function Conteudo() {
         <p className="mt-2">
           <BotaoLink href="/perfil" tamanho="sm">
             Abrir o perfil
+          </BotaoLink>
+        </p>
+      </Aviso>
+    );
+  }
+  // os 10 do grátis já ocupados (migração 20271007120000)
+  const gratis = await meusClientesGratis();
+  if (gratis.livre === 0) {
+    return (
+      <Aviso tipo="info" titulo={`Você usa os ${CLIENTES_GRATIS} clientes do grátis`}>
+        <p>Arquive os que não usa mais para cadastrar outros, ou assine o plano da agência para ter clientes sem limite.</p>
+        <p className="mt-2 flex flex-wrap gap-2">
+          <BotaoLink href="/painel/planos" tamanho="sm">
+            Ver o plano da agência
+          </BotaoLink>
+          <BotaoLink href="/painel/clientes" tamanho="sm" variante="secundario">
+            Ver os clientes
           </BotaoLink>
         </p>
       </Aviso>

@@ -112,6 +112,17 @@ export function Voltar() {
     };
   }, [caminho, url]);
 
+  // marca a entrada do histórico com a tela: os passos que a própria tela empilha (o publicar em 5 passos, a conversa
+  // do assistente) copiam o history.state e levam a marca junto
+  useEffect(() => {
+    try {
+      if ((window.history.state as { telaVoltar?: string } | null)?.telaVoltar !== caminho)
+        window.history.replaceState({ ...window.history.state, telaVoltar: caminho }, "");
+    } catch {
+      // sem o histórico: o voltar abre a tela pelo link
+    }
+  }, [caminho, url]);
+
   const texto = useSyncExternalStore(assinar, anterior, () => "");
   const tela: Tela | null = caminho !== "/" && texto ? JSON.parse(texto) : null;
   // o lugar do botão (o globals.css guarda a altura dele): o script do <head> marcou antes de pintar; aqui fica certo
@@ -143,11 +154,26 @@ export function Voltar() {
       <a
         href={tela.url}
         onClick={(e) => {
-          // a mesma tela do histórico: volta com a rolagem e o que estava aberto
-          if (window.history.length > 1) {
-            e.preventDefault();
-            router.back();
-          }
+          // a mesma tela do histórico: volta com a rolagem e o que estava aberto, pulando de uma vez os passos que
+          // esta tela empilhou (26/11/2026, Marcelo: "hoje ele vai voltando em todas telas que foi navegado, deve
+          // voltar direto")
+          if (window.history.length <= 1) return;
+          e.preventDefault();
+          const aqui = caminho;
+          let voltas = 0;
+          const aoVoltar = () => {
+            voltas++;
+            const marca = (window.history.state as { telaVoltar?: string } | null)?.telaVoltar;
+            if (marca === aqui && voltas < 30) {
+              window.history.back();
+              return;
+            }
+            window.removeEventListener("popstate", aoVoltar);
+            // o histórico acabou nesta tela (entrou direto): abre a anterior pelo link
+            if (marca === aqui) router.push(tela.url);
+          };
+          window.addEventListener("popstate", aoVoltar);
+          router.back();
         }}
         className="inline-flex min-h-10 max-w-full items-center gap-1 text-label text-ink-muted hover:text-ink"
       >

@@ -38,6 +38,8 @@ const QUEM: Record<string, QuemRecebe[]> = {
   boas_vindas_agencia: ["contrata"],
   convite_empresa: ["contrata"],
   convite_agencia: ["contrata"],
+  // os clientes no lugar certo do mapa, uma vez (migração 20271007120000)
+  clientes_da_agencia: ["contrata"],
   whatsapp_pedido: ["contrata"],
   // o aviso do grátis de cada mês (migração 20270801120000)
   gratis_do_mes: ["contrata"],

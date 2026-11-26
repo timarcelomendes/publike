@@ -5340,6 +5340,8 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      // os clientes de graça da agência (migração 20271007120000)
+      meus_clientes_gratis: { Args: Record<string, never>; Returns: Json };
       admin_cortesia_plano_agencia: {
         Args: { p_conta: string; p_liberar: boolean };
         Returns: undefined;

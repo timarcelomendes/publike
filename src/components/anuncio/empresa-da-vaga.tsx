@@ -154,6 +154,10 @@ export function EmpresaDaVaga({
 
       {clientes && !equipe && !emNomeDe && (
         <p className="text-body-sm text-ink-muted">
+          {/* a vaga sem cliente fica no endereço da agência, longe do trabalho (26/11/2026) */}
+          {escolhido
+            ? "A vaga fica no endereço do cliente, no lugar certo do mapa. "
+            : "Com o cliente cadastrado, a vaga fica no endereço dele, no lugar certo do mapa (mesmo confidencial). "}
           Cadastre e edite as empresas em{" "}
           <Link href="/painel/clientes" className="underline underline-offset-2 hover:text-ink">
             Clientes

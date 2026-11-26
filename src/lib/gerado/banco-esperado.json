@@ -421,7 +421,8 @@
   "20271003120000_vaga_continua",
   "20271004120000_selos_de_reputacao",
   "20271005120000_whatsapp_aviso_de_vaga_nova",
-  "20271006120000_quem_contratou_e_freio"
+  "20271006120000_quem_contratou_e_freio",
+  "20271007120000_clientes_gratis_da_agencia"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3590,7 +3591,7 @@
   "f|public.chamar_para_mutirao(p_mutirao uuid, p_anuncio uuid, p_pessoas uuid[])": "72598acfc4",
   "f|public.chamaria_de_novo(p_anuncio uuid, p_perfil uuid, p_sim boolean)": "e9216000d8",
   "f|public.chave_bairro(texto text)": "f97867f472",
-  "f|public.clientes_agencia_antes_de_salvar()": "8f06ea7f46",
+  "f|public.clientes_agencia_antes_de_salvar()": "e12ffbca19",
   "f|public.cnpj_valido(p_cnpj text)": "a9fe8d994b",
   "f|public.comentar(p_anuncio uuid, p_texto text, p_resposta_a uuid)": "7e0b3d687c",
   "f|public.comentarios_da_vaga(p_anuncio uuid)": "d13224cd67",
@@ -3792,6 +3793,7 @@
   "f|public.meus_avisos_desligados()": "9af50a24c7",
   "f|public.meus_bloqueios()": "82600bd1fd",
   "f|public.meus_candidatos()": "dae0fdd95b",
+  "f|public.meus_clientes_gratis()": "efa434002c",
   "f|public.meus_convites_automaticos()": "627d7fc95f",
   "f|public.meus_documentos_admissao(p_anuncio uuid)": "f74dffb38b",
   "f|public.meus_horarios_livres()": "06d48bfc45",

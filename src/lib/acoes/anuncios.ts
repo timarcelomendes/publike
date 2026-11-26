@@ -132,7 +132,9 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
   if (d.cliente_novo) {
     // falhou: a vaga não sai sem o cliente que a pessoa escreveu (sairia no nome errado, sem aviso)
     const garantido = await garantirCliente(supabase, d.cliente_novo);
-    if (!garantido.id) {
+    // os 10 clientes do grátis já ocupados (migração 20271007120000): a vaga sai com o nome escrito, sem guardar
+    const semLugar = garantido.error?.hint === "limite_clientes_gratis";
+    if (!garantido.id && !semLugar) {
       if (garantido.error) vigia.banco(garantido.error);
       return {
         ok: false,
@@ -140,7 +142,7 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
         erros: { cliente_id: "Não deu para guardar esta empresa agora." },
       };
     }
-    clienteNovo = garantido.id;
+    clienteNovo = garantido.id ?? null;
   }
   // vaga: como é o dia a dia (o jeito de trabalhar, migração 20270309120000), só quando o formulário mandou
   const diaADia = diaADiaDoFormulario(formData, d.tipo);

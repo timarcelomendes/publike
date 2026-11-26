@@ -14,7 +14,13 @@ import { MODO_DEMO } from "@/lib/config";
 import { TIPOS_CONTA } from "@/lib/constantes";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuPerfil } from "@/lib/dados";
 import { formatarLugar, plural, primeiro } from "@/lib/formato";
-import { clientesDasVagas, listarMeusClientes, numerosDosClientes } from "@/lib/servidor/clientes";
+import {
+  CLIENTES_GRATIS,
+  clientesDasVagas,
+  listarMeusClientes,
+  meusClientesGratis,
+  numerosDosClientes,
+} from "@/lib/servidor/clientes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { PRACA_PADRAO } from "@/lib/pracas";
@@ -46,11 +52,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cli
   const perfil = await obterMeuPerfil();
   if (perfil?.tipo !== "agencia") return <SoParaAgencia tipo={perfil?.tipo ?? null} />;
 
-  const [clientes, anuncios, candidatos, clienteDe] = await Promise.all([
+  const [clientes, anuncios, candidatos, clienteDe, gratis] = await Promise.all([
     listarMeusClientes(),
     listarMeusAnuncios(),
     listarMeusCandidatos(),
     clientesDasVagas(usuario.id),
+    meusClientesGratis(),
   ]);
   const agora = await agoraDaRequisicao();
   if (!clientes) {
@@ -93,7 +100,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cli
       {primeiro(sp.excluido) === "1" && <Aviso tipo="sucesso" titulo="Cliente excluído." />}
       <CabecalhoDaPagina
         titulo="Clientes"
-        descricao="As empresas para quem você seleciona. Ao publicar, é só escolher o cliente: o nome e o endereço já vêm na vaga. CNPJ, contato e anotações ficam só com você."
+        descricao="As empresas para quem você seleciona. Ao publicar, é só escolher o cliente: a vaga fica no endereço dele, no lugar certo do mapa, com o nome ou como “Empresa confidencial”. CNPJ, contato e anotações ficam só com você."
         acoes={
           clientes.length > 0 ? (
             <BotaoLink href="/painel/clientes/novo" tamanho="sm">
@@ -104,15 +111,35 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cli
         }
       />
 
+      {/* no grátis, 10 na lista (migração 20271007120000); com o plano da agência, sem limite */}
+      {gratis.livre !== null &&
+        (gratis.livre === 0 ? (
+          <Aviso tipo="info" titulo={`Você usa os ${CLIENTES_GRATIS} clientes do grátis`}>
+            <p>
+              Arquive os que não usa mais para cadastrar outros, ou assine o plano da agência para ter clientes sem
+              limite.
+            </p>
+            <p className="mt-2">
+              <BotaoLink href="/painel/planos" tamanho="sm" variante="secundario">
+                Ver o plano da agência
+              </BotaoLink>
+            </p>
+          </Aviso>
+        ) : (
+          <p className="text-body-sm text-ink-muted">
+            {gratis.naLista} de {CLIENTES_GRATIS} clientes do grátis. Com o plano da agência, sem limite.
+          </p>
+        ))}
+
       {clientes.length === 0 ? (
         <Vazio
           icone={Building2}
           titulo="Nenhum cliente ainda"
           acao={<BotaoLink href="/painel/clientes/novo">Adicionar cliente</BotaoLink>}
         >
-          Cadastre as empresas para quem você seleciona. Depois, ao publicar, escolha o cliente: o nome e o endereço já
-          vêm prontos, e você vê as vagas e os candidatos de cada um. Ao publicar para uma empresa nova, ela também
-          entra aqui.
+          Cadastre as empresas para quem você seleciona, com o endereço. Ao publicar, escolha o cliente: a vaga fica no
+          lugar certo do mapa (não no endereço da agência), e você vê as vagas e os candidatos de cada um. Para não
+          mostrar o nome, marque “Empresa confidencial”: a vaga usa o endereço do cliente, sem o nome.
         </Vazio>
       ) : (
         <>

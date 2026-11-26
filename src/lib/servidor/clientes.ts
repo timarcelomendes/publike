@@ -129,3 +129,16 @@ export function numerosDosClientes(
   }
   return numeros;
 }
+
+/** Os clientes de graça (migração 20271007120000): 10 na lista no grátis; com o plano da agência, sem limite. */
+export const CLIENTES_GRATIS = 10;
+
+/** Quantos clientes cabem: `livre` nulo é sem limite (com o plano). Sem a migração, sem limite. */
+export async function meusClientesGratis(): Promise<{ naLista: number; livre: number | null }> {
+  if (MODO_DEMO) return { naLista: 0, livre: null };
+  const { data, error } = await (await criarClienteServidor()).rpc("meus_clientes_gratis");
+  if (error || !data || typeof data !== "object") return { naLista: 0, livre: null };
+  const d = data as { limite?: number; na_lista?: number; com_plano?: boolean };
+  const naLista = Number(d.na_lista) || 0;
+  return { naLista, livre: d.com_plano ? null : Math.max(0, (Number(d.limite) || CLIENTES_GRATIS) - naLista) };
+}

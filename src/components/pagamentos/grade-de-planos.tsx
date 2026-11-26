@@ -54,6 +54,7 @@ export const DOS_PLANOS = [
 ];
 
 export const SO_DA_AGENCIA = [
+  "Clientes sem limite (no grátis, 10)",
   "Finalistas com a marca da agência",
   "Relatório por cliente",
   "Garantia acompanhada com o cliente",
@@ -172,7 +173,7 @@ function CartaoGratis({
       <Lista
         itens={[
           ...GRATIS.slice(1),
-          ...(agencia ? ["Clientes, pedidos e finalistas por link"] : []),
+          ...(agencia ? ["Até 10 clientes, pedidos e finalistas por link"] : []),
           ...(whatsapp ? [whatsappNoGratis(whatsapp)] : []),
           apiNoGratis(api),
         ]}
