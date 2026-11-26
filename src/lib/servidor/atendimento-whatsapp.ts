@@ -77,6 +77,8 @@ import {
   respostaDaOferta,
   lembreteDaVagaPreparada,
   tentarVagaPeloWhatsapp,
+  eAnuncioDeVaga,
+  indicarVagaPeloWhatsapp,
   vagaPreparadaDeNovo,
   type VagaDoLugar,
   type VagaSemPublicar,
@@ -2304,6 +2306,15 @@ export async function atenderConversa(
   // (sem o currículo pelo WhatsApp, o link do site). sem_midia e desligado: nada foi lido, segue como antes
   const comPorque = (r: ArquivoNaoLido) => r.tipo !== "sem_midia" && r.tipo !== "desligado";
   const arquivoQueNaoDeu = async (r: ArquivoNaoLidoNaConversa) => {
+    // não é currículo, é o anúncio de uma vaga que a pessoa viu em outro lugar (migração 20271011120000; 26/11/2026,
+    // Marcelo: "só aproveitar o que já chega", sem pedir): vira o convite da empresa, e a pessoa ouve o obrigado
+    if (
+      "tipo" in r &&
+      r.tipo === "nao_e_curriculo" &&
+      eAnuncioDeVaga((r as { oQueE?: string }).oQueE) &&
+      (await indicarVagaPeloWhatsapp({ cfg, banco, chave, conversa: e.chave, numero: m.numero, wamid: m.wamid, nome, saida, ola }))
+    )
+      return;
     const montar = await curriculoPeloWhatsappLigado(banco, chave, m.numero);
     return saida(
       `${ola}${arquivoNaoLido(r, montar)}`,

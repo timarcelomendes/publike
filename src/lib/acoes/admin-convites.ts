@@ -266,6 +266,26 @@ export async function ajustarContatoDoConvite(
   return { ok: true, mensagem: "Contato ajustado." };
 }
 
+/**
+ * O envio do convite pelo WhatsApp oficial (migração 20271011120000): ligar, desligar e o teto por dia. Nasce
+ * desligado (26/11/2026, Marcelo: "o 2 inicialmente desligado").
+ */
+export async function configurarConvitesWhatsapp(mudanca: { ligado?: boolean; porDia?: number }): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const porDia = mudanca.porDia === undefined ? null : Math.round(Number(mudanca.porDia));
+  if (porDia !== null && (!Number.isFinite(porDia) || porDia < 1 || porDia > 2000))
+    return { ok: false, erro: "O teto por dia vai de 1 a 2.000." };
+  const { error } = await c.rpc("admin_convites_whatsapp", { p_ligado: mudanca.ligado ?? null, p_por_dia: porDia });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return {
+    ok: true,
+    mensagem:
+      mudanca.ligado === true ? "Envio ligado." : mudanca.ligado === false ? "Envio desligado." : "Teto por dia salvo.",
+  };
+}
+
 export async function anotarConvite(id: string, nota: string): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };

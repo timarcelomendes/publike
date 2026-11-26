@@ -2,7 +2,13 @@ import { Building2, FileUp, HeartHandshake, ImageIcon, List, Megaphone, Store, W
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ImportarConvites, ImportarPorImagens, ListaConvites } from "@/components/admin/convites";
+import {
+  EnvioPeloWhatsappOficial,
+  ImportarConvites,
+  ImportarPorImagens,
+  ListaConvites,
+  type SituacaoConvitesWhatsapp,
+} from "@/components/admin/convites";
 import { Divulgar } from "@/components/admin/divulgar";
 import { ContatosDeDivulgar } from "@/components/admin/divulgar-contatos";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
@@ -113,11 +119,13 @@ async function todosOsConvites(c: Awaited<ReturnType<typeof exigirAdminLocal>>) 
 
 async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | undefined> }) {
   const c = await exigirAdminLocal();
-  const [{ data, error }, agora, emailDoDia] = await Promise.all([
+  const [{ data, error }, agora, emailDoDia, peloWhatsapp] = await Promise.all([
     todosOsConvites(c),
     agoraDaRequisicao(),
     // os convites por e-mail de hoje e o limite (migração 20270913120000; sem ela, nada)
     c.rpc("admin_convites_email").then((r) => (r.error ? null : (r.data as unknown as { hoje: number; por_dia: number }))),
+    // o envio pelo WhatsApp oficial (migração 20271011120000; sem ela, nada)
+    c.rpc("admin_convites_whatsapp").then((r) => (r.error ? null : (r.data as unknown as SituacaoConvitesWhatsapp))),
   ]);
   return (
     <div className="flex flex-col gap-6">
@@ -132,13 +140,16 @@ async function Conteudo({ aba, sp }: { aba: Aba; sp: Record<string, string | und
               Confira se as migrações dos convites já rodaram no Supabase.
             </Aviso>
           ) : (
-            <ListaConvites
+            <>
+              {peloWhatsapp && <EnvioPeloWhatsappOficial s={peloWhatsapp} />}
+              <ListaConvites
               convites={(data ?? []) as unknown as Convite[]}
               agora={agora}
               site={urlDosEmails() ?? "https://publike.org"}
               emailDoDia={emailDoDia}
               buscaInicial={sp.busca}
             />
+            </>
           )}
         </Secao>
       )}

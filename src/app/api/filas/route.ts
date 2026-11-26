@@ -53,6 +53,7 @@ import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura";
 import { enviarWhatsappPendentes } from "@/lib/servidor/whatsapp";
 import { enviarAvisosDeVagaNova, enviarLembretesWhatsapp, type AvisosDeVagaNova } from "@/lib/servidor/atendimento-whatsapp";
+import { enviarConvitesPeloWhatsapp, type ConvitesPeloWhatsapp } from "@/lib/servidor/convites-whatsapp";
 import { cancelarPedidosNaoPagos } from "@/lib/servidor/pagamentos";
 import { convidarPelosPacotes } from "@/lib/servidor/convite-do-pacote";
 import { enviarEmailAsEmpresas } from "@/lib/servidor/email-empresas";
@@ -222,12 +223,23 @@ export async function GET(request: Request) {
           ...semAviso,
           motivo: `Aviso de vaga nova: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300),
         }));
+  // o convite com a vaga pronta pelo WhatsApp oficial (migração 20271011120000): só com o envio ligado em Admin ›
+  // Convites, até o teto do dia; com pouco tempo, fica para a próxima volta
+  const semConvite: ConvitesPeloWhatsapp = { enviados: 0, falhas: 0, esperando: 0 };
+  const convitesWhatsapp =
+    Date.now() - inicio > 48_000
+      ? semConvite
+      : await enviarConvitesPeloWhatsapp(10).catch((e) => ({
+          ...semConvite,
+          motivo: `Convites pelo WhatsApp: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300),
+        }));
 
   const problemas = [
     emails.motivo,
     celular.motivo,
     whatsapp.motivo,
     avisosDeVaga.motivo,
+    convitesWhatsapp.motivo,
     ia.motivo,
     avaliacoes.motivo,
     recados.motivo,
@@ -322,6 +334,7 @@ export async function GET(request: Request) {
       convites_do_pacote: convitesDoPacote.convidados,
       email_empresas: { enviados: emailEmpresas.enviados, motivo: emailEmpresas.motivo ?? null },
       lembretes_whatsapp: lembretesWhatsapp,
+      convites_whatsapp: { enviados: convitesWhatsapp.enviados, falhas: convitesWhatsapp.falhas, esperando: convitesWhatsapp.esperando },
       avisos_de_vaga: {
         enviados: avisosDeVaga.enviados,
         pelo_modelo: avisosDeVaga.pelo_modelo,

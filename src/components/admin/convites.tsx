@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type ChangeEvent } from "react";
 import {
   ajustarContatoDoConvite,
+  configurarConvitesWhatsapp,
   anotarConvite,
   apagarConvite,
   enviarConviteEmail,
@@ -703,6 +704,8 @@ export function ListaConvites({
 // os filtros a mais da lista (os mesmos selos do cartão)
 const MARCAS = {
   imagem: { nome: "Lida da imagem", tem: (c: Convite) => c.origem === "imagem" },
+  // a foto da vaga que quem procura trabalho mandou no WhatsApp (migração 20271011120000)
+  indicacao: { nome: "Mandada por candidato", tem: (c: Convite) => c.origem === "indicacao" },
   agencia: { nome: "Agência", tem: (c: Convite) => c.tipo === "agencia" },
   prestador: { nome: "Prestador", tem: (c: Convite) => c.tipo === "prestador" },
   so_telefone: { nome: "Só telefone", tem: (c: Convite) => !c.whatsapp.length && !c.email },
@@ -899,6 +902,8 @@ function CartaoConvite({
           {c.tipo === "prestador" && <Selo variante="aviso">Prestador</Selo>}
           {c.status === "autorizou" && <Selo variante="match">Autorizou</Selo>}
           {c.origem === "imagem" && <Selo variante="contorno">Lida da imagem</Selo>}
+          {c.origem === "indicacao" && <Selo variante="contorno">Mandada por candidato</Selo>}
+          {c.enviada_por === "whatsapp_oficial" && <Selo variante="contorno">WhatsApp do Publike</Selo>}
           {gupy && <Selo variante="contorno">Gupy</Selo>}
           {!c.whatsapp.length && !c.email && <Selo variante="contorno">Só telefone</Selo>}
         </div>
@@ -1388,5 +1393,75 @@ function AjustarContato({ c, aoFechar }: { c: Convite; aoFechar: () => void }) {
       </div>
       {mensagem}
     </form>
+  );
+}
+
+export type SituacaoConvitesWhatsapp = {
+  ligado: boolean;
+  por_dia: number;
+  hoje: number;
+  total: number;
+  contas: number;
+  prontos: number;
+  indicados: number;
+  indicados_semana: number;
+};
+
+/**
+ * O envio do convite pelo WhatsApp oficial do Publike (migração 20271011120000): o mesmo convite da vaga pronta, em lote,
+ * pelo robô das filas, até o teto do dia, das 9h às 18h de segunda a sábado. Marketing da Meta (uns R$ 0,35 cada).
+ */
+export function EnvioPeloWhatsappOficial({ s }: { s: SituacaoConvitesWhatsapp }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [teto, setTeto] = useState(String(s.por_dia));
+  const custo = (n: number) => (n * 0.35).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h3 className="text-label">Envio pelo WhatsApp do Publike: {s.ligado ? "ligado" : "desligado"}</h3>
+          <p className="text-body-sm text-ink-muted">
+            O convite com a vaga pronta sai sozinho pelo número do Publike, para quem tem WhatsApp e vaga lida (da foto,
+            do arquivo ou mandada por candidato), até {s.por_dia} por dia (uns {custo(s.por_dia)} por dia, no marketing
+            da Meta), das 9h às 18h, de segunda a sábado.
+          </p>
+        </div>
+        <Botao
+          variante={s.ligado ? "secundario" : "primario"}
+          disabled={pendente}
+          onClick={() => rodar(() => configurarConvitesWhatsapp({ ligado: !s.ligado }))}
+        >
+          {s.ligado ? "Desligar o envio" : "Ligar o envio"}
+        </Botao>
+      </div>
+      <p className="text-body-sm">
+        Prontos para sair: <strong>{s.prontos}</strong> · enviados hoje: <strong>{s.hoje}</strong> · no total:{" "}
+        <strong>{s.total}</strong>, {s.contas} {s.contas === 1 ? "virou conta" : "viraram conta"} · mandados por
+        candidatos: <strong>{s.indicados}</strong> ({s.indicados_semana} nesta semana)
+      </p>
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          rodar(() => configurarConvitesWhatsapp({ porDia: Number(teto) }));
+        }}
+      >
+        <label className="flex flex-col gap-1">
+          <span className="text-caption text-ink-muted">Teto por dia</span>
+          <input
+            type="number"
+            min={1}
+            max={2000}
+            value={teto}
+            onChange={(e) => setTeto(e.target.value)}
+            className={`${classesEntrada} w-28`}
+          />
+        </label>
+        <Botao type="submit" variante="secundario" tamanho="sm" disabled={pendente}>
+          Salvar o teto
+        </Botao>
+      </form>
+      {mensagem}
+    </section>
   );
 }

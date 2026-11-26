@@ -315,6 +315,21 @@ export const MODELOS: Modelo[] = [
     ],
     categoria: "MARKETING",
   },
+  {
+    // o convite com a vaga pronta (migração 20271011120000; Marcelo: "a maior conversão ocorre hoje via mensagens do
+    // WhatsApp, que mando, mas é muito limitado"): o mesmo convite que converte do celular dele, pelo número do
+    // Publike, para a empresa que está contratando (a vaga lida da foto do anúncio). Não sai pela fila: o robô das
+    // filas manda (enviarConvitesPeloWhatsapp), com o envio ligado e o teto do dia em Admin › Convites. Marketing
+    nome: "publike_vaga_pronta",
+    aviso: "convite_vaga_pronta",
+    para: "Empresa sem conta",
+    quando: "Convite com a vaga pronta (da foto de um anúncio), em lote, com o envio ligado em Admin › Convites",
+    corpo:
+      "Oi, {{empresa}}! Vi que vocês estão contratando {{vaga}}. Deixei essa vaga pronta no Publike, o site grátis de vagas de Goiânia e região: é só conferir e publicar, sem custo, e os candidatos chegam direto no seu WhatsApp.",
+    exemplo: { empresa: "Padaria Pão de Ouro", vaga: "Atendente de padaria" },
+    botoes: [{ tipo: "link", texto: "Conferir e publicar", exemplo: "publicar?convite=3f9a" }],
+    categoria: "MARKETING",
+  },
 ];
 
 const POR_NOME = new Map(MODELOS.map((m) => [m.nome, m]));
@@ -454,7 +469,9 @@ function limpar(t: unknown, max = 120) {
   return (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s) || "—";
 }
 
-export type Envio = { ok: true; wamid: string } | { ok: false; erro: string; passageiro: boolean; configuracao: boolean };
+export type Envio =
+  | { ok: true; wamid: string; /** o número como a Meta conhece (o da conversa), quando ela devolve */ waId?: string }
+  | { ok: false; erro: string; passageiro: boolean; configuracao: boolean };
 
 /** O código pelo modelo de autenticação (o código vai no corpo e no botão de copiar). */
 export async function enviarCodigoPeloModelo(cfg: ConfigMeta, numero: string, codigo: string): Promise<Envio> {
@@ -512,7 +529,7 @@ export async function enviarModelo(
       });
     }
   });
-  const r = await graph<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
+  const r = await graph<{ messages?: { id: string }[]; contacts?: { wa_id?: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
     metodo: "POST",
     corpo: {
       messaging_product: "whatsapp",
@@ -524,7 +541,10 @@ export async function enviarModelo(
   });
   if (r.ok) {
     const wamid = r.dados.messages?.[0]?.id;
-    return wamid ? { ok: true, wamid } : { ok: false, erro: "a Meta não devolveu o id da mensagem", passageiro: false, configuracao: false };
+    const waId = r.dados.contacts?.[0]?.wa_id;
+    return wamid
+      ? { ok: true, wamid, ...(waId ? { waId } : {}) }
+      : { ok: false, erro: "a Meta não devolveu o id da mensagem", passageiro: false, configuracao: false };
   }
   return { ok: false, erro: r.texto.slice(0, 300), passageiro: passageiro(r), configuracao: deConfiguracao(r) };
 }

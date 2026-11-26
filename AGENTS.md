@@ -613,3 +613,8 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 
 - Os avisos do vencimento (`servidor_avisar_vencimentos`: 2 dias antes, no dia, 7 dias depois) levam ao link sem entrar `/vaga-vence/<código>` (`privado.vencimento_links`), e o e-mail traz os três botões (`opcoes`, posto pelo `privado.notificacao_por_email`): Prorrogar por 30 dias, Já preenchi (com o "Quem você contratou?" quando alguém foi aceito) e Não preciso mais (encerra; quem esperava recebe `vaga_encerrada`). Abrir não responde: o `?r=` só deixa escolhido.
 - Sete dias depois de vencer, sem prorrogar nem preencher, quem ainda esperava recebe `vaga_encerrada`, uma vez.
+
+## Convites que escalam (26/11/2026; migração 20271011120000; Marcelo: "preciso fazer com que mais empresas e agências se cadastrem e publiquem vagas")
+
+- A foto de vaga que quem procura trabalho manda sozinha (a leitura do currículo diz "um anúncio de vaga") vira convite (`servidor_vaga_indicada`, origem `indicacao`; a mesma empresa junta vagas e contatos) e a pessoa ouve um obrigado. O robô NÃO pede foto a ninguém (Marcelo: "pedir foto de vaga para quem procura emprego pode soar mal").
+- O convite com a vaga pronta pelo WhatsApp oficial (modelo de marketing `publike_vaga_pronta`, `enviarConvitesPeloWhatsapp` no /api/filas): só os convites com WhatsApp e vaga lida (foto, arquivo, indicação; a Receita não), uma vez cada, das 9h às 18h de segunda a sábado, até o teto do dia. Nasce DESLIGADO; liga em Admin › Convites (`admin_convites_whatsapp`).

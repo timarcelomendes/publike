@@ -971,6 +971,8 @@ export type Database = {
           nota: string | null;
           enviada_em: string | null;
           enviada_por: string | null;
+          indicada_por: string | null;
+          indicacoes: number;
           usuario_id: string | null;
           criado_em: string;
           atualizado_em: string;
@@ -2958,6 +2960,17 @@ export type Database = {
         Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
         Returns: { alertas: number; suspensas: number; resolvidas: number; religadas: number; avisados: number };
       };
+      // Mais empresas publicando (migração 20271011120000): a vaga indicada e o convite pelo WhatsApp oficial
+      servidor_vaga_indicada: { Args: { p_chave: string; p_conversa: string; p_empresa: Json; p_vagas: Json }; Returns: Json };
+      servidor_convites_para_whatsapp: {
+        Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
+        Returns: { id: string; nome: string; vaga: string; numero: string; token: string }[];
+      };
+      servidor_convite_whatsapp_mandado: {
+        Args: { p_chave: string; p_convite: string; p_numero: string; p_wamid: string | null; p_falhou: string | null; p_texto: string | null };
+        Returns: undefined;
+      };
+      admin_convites_whatsapp: { Args: { p_ligado?: boolean | null; p_por_dia?: number | null }; Returns: Json };
       // O vencimento com um toque (migração 20271010120000)
       vencimento_pelo_link: { Args: { p_token: string }; Returns: Json };
       responder_vencimento_pelo_link: { Args: { p_token: string; p_resposta: string }; Returns: Json };

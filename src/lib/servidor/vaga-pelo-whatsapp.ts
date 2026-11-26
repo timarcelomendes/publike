@@ -665,3 +665,111 @@ export async function respostaDaOferta(
     ? `${combinado}\n\nE este WhatsApp ficou vinculado à sua conta: da próxima vez, é só escrever *entrar* aqui que eu mando o link, e você entra no Publike com um toque, sem e-mail. Para desvincular, é em Meu perfil.`
     : combinado;
 }
+
+// --- A vaga que quem procura trabalho mandou (migração 20271011120000) ----------------------------------------------
+
+/** "um anúncio de vaga", "um print de vaga de emprego": o que a leitura do currículo disse que o arquivo é. */
+export const eAnuncioDeVaga = (oQueE: string | null | undefined) =>
+  /\b(vaga|vagas|emprego|contrata|contratando|recrutamento|oportunidade de trabalho)\b/i.test(oQueE ?? "");
+
+export type VagaIndicada = "novo" | "juntou" | "ja_no_publike" | "sem_nome" | "limite";
+
+/** O agradecimento a quem mandou a vaga (sem pedir nada: 26/11/2026, Marcelo, "pedir foto de vaga pode soar mal"). */
+export function respostaDaVagaIndicada(situacao: VagaIndicada, vaga: string | null, empresa: string | null, nome: string | null) {
+  const oi = nome ? `Obrigado, ${nome}!` : "Obrigado!";
+  const qual = vaga ? `a vaga de *${vaga}*${empresa ? ` da *${empresa}*` : ""}` : "essa vaga";
+  if (situacao === "ja_no_publike")
+    return `${oi} 🙌 Vi ${qual}. Essa empresa já usa o Publike: vou lembrar a equipe dela de publicar essa vaga por aqui também.`;
+  if (situacao === "limite") return `${oi} 🙌 Já anotei as vagas que você mandou hoje. Amanhã eu olho as próximas.`;
+  if (situacao === "sem_nome")
+    return `${oi} 🙌 Vi que é um anúncio de vaga, mas não consegui ler o nome da empresa. Quando ela publicar no Publike, a vaga aparece aqui para você e para quem mora perto.`;
+  return `${oi} 🙌 Vi ${qual}. Vou convidar a empresa para publicar no Publike, de graça. Se ela publicar, a vaga aparece aqui para você e para quem mora perto.`;
+}
+
+/**
+ * A foto (ou o PDF) de um anúncio de vaga que quem procura trabalho mandou, e que a leitura do currículo disse que não é
+ * currículo: lê a vaga e a empresa e guarda como convite (servidor_vaga_indicada), para a equipe convidar a empresa.
+ * `true`: respondeu; `false`: não deu (a resposta de antes, "não é currículo", segue).
+ */
+export async function indicarVagaPeloWhatsapp(p: {
+  cfg: ConfigMeta;
+  banco: ClienteBanco;
+  chave: string;
+  conversa: string;
+  numero: string;
+  wamid: string;
+  nome: string | null;
+  saida: Saida;
+  ola?: string;
+}): Promise<boolean> {
+  if (!iaConfigurada()) return false;
+  const { data: daVez, error } = await p.banco.rpc("servidor_whatsapp_midias_da_vez", {
+    p_chave: p.chave,
+    p_conversa: p.conversa,
+  });
+  if (error) return false;
+  const midias = (((daVez ?? {}) as unknown as { midias?: Midia[] }).midias ?? []).slice(0, MAX_FOTOS + MAX_PDFS);
+  if (!midias.length) return false;
+  const imagens: string[] = [];
+  const pdfs: string[] = [];
+  for (const m of midias) {
+    const r = await baixarFotoOuPdf(p.cfg, m.midia);
+    if (!r.ok) continue;
+    if (m.tipo === "pdf" || r.mime === "application/pdf") {
+      if (r.bytes.length <= 6 * 1024 * 1024 && pdfs.length < MAX_PDFS)
+        pdfs.push(`data:application/pdf;base64,${r.bytes.toString("base64")}`);
+      continue;
+    }
+    if (imagens.length >= MAX_FOTOS) continue;
+    const foto = await fotoParaLer(r.bytes, r.mime || m.mime || "");
+    if (foto) imagens.push(foto);
+  }
+  if (!imagens.length && !pdfs.length) return false;
+  const legendas = midias.map((m) => m.legenda).filter((l): l is string => Boolean(l?.trim()));
+  let lida: LeituraDeVagas;
+  const inicio = Date.now();
+  try {
+    await marcarLidaDigitando(p.cfg, p.wamid).catch(() => undefined);
+    lida = await lerVagas({ imagens, pdfs, texto: legendas.join("\n") || null }, await modeloDaLeitura(), {
+      tempoLimite: TEMPO_DA_IA,
+    });
+  } catch (e) {
+    console.error("Publike: a vaga indicada não foi lida:", e instanceof Error ? e.message : e);
+    return false;
+  }
+  if (lida.tipo !== "vaga" || !lida.vagas.length) return false;
+  const vagas = lida.vagas.slice(0, 10);
+  const { data, error: erroIndicar } = await p.banco.rpc("servidor_vaga_indicada", {
+    p_chave: p.chave,
+    p_conversa: p.conversa,
+    p_empresa: lida.empresa as unknown as Json,
+    p_vagas: vagas as unknown as Json,
+  });
+  if (erroIndicar) {
+    console.error("Publike: a vaga indicada não ficou guardada:", erroIndicar.message);
+    return false;
+  }
+  const situacao = ((data ?? {}) as { situacao?: VagaIndicada }).situacao ?? "novo";
+  // para o Admin › Publicar pelo WhatsApp: a leitura conta como indicação
+  await p.banco
+    .rpc("servidor_whatsapp_leitura", {
+      p_chave: p.chave,
+      p_conversa: p.conversa,
+      p_numero: p.numero,
+      p_fonte: pdfs.length ? "pdf" : "foto",
+      p_resultado: "indicacao",
+      p_empresa: lida.empresa.nome?.slice(0, 120) || null,
+      p_motivo: situacao,
+      p_ms: Date.now() - inicio,
+      p_vagas: [] as unknown as Json,
+      p_midias: midias.map((m) => m.wamid),
+    })
+    .then(
+      () => undefined,
+      () => undefined,
+    );
+  const titulo = (vagas[0].titulo ?? "").trim() || null;
+  const empresa = lida.empresa.nome?.trim() || null;
+  await p.saida(`${p.ola ?? ""}${respostaDaVagaIndicada(situacao, titulo, empresa, p.nome)}`, { perfil: "trabalho" });
+  return true;
+}

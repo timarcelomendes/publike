@@ -53,14 +53,14 @@ export type Convite = {
   nota: string | null;
   enviada_em: string | null;
   /** por onde saiu (migração 20270913120000): o e-mail marca sozinho; o Enviei à mão, o WhatsApp */
-  enviada_por?: "whatsapp" | "email" | null;
+  enviada_por?: "whatsapp" | "email" | "whatsapp_oficial" | null;
   usuario_id: string | null;
   criado_em: string;
   /** o link do convite: /publicar?convite=<token> */
   token: string;
   /** a vaga lida da imagem do anúncio, que vem pronta no formulário de publicar */
   rascunho: RascunhoConvite | null;
-  origem: "arquivo" | "imagem" | "receita" | null;
+  origem: "arquivo" | "imagem" | "receita" | "indicacao" | null;
   /** quando a empresa publicou pela página do convite */
   aceite_em: string | null;
   anuncio_id: string | null;
