@@ -2976,6 +2976,50 @@ export type Database = {
       };
       meus_selos: { Args: Record<string, never>; Returns: Json };
       servidor_calcular_selos: { Args: { p_chave: string; p_agora?: boolean }; Returns: number };
+      // O aviso de vaga nova pelo WhatsApp e as vagas que já foram (migração 20271005120000)
+      servidor_whatsapp_vagas_da_conversa: { Args: { p_chave: string; p_conversa: string }; Returns: string[] };
+      servidor_guardar_procura_whatsapp: {
+        Args: {
+          p_chave: string;
+          p_conversa: string;
+          p_funcoes: string[];
+          p_cidade: string | null;
+          p_regiao: string | null;
+          p_bairro: string | null;
+          p_lat?: number | null;
+          p_lng?: number | null;
+        };
+        Returns: number;
+      };
+      servidor_avisos_de_vaga_ligado: { Args: { p_chave: string; p_conversa?: string | null }; Returns: boolean };
+      servidor_avisos_de_vaga_para_mandar: {
+        Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
+        Returns: {
+          conversa: string;
+          numero: string;
+          nome: string | null;
+          anuncio_id: string;
+          titulo: string;
+          funcao: string;
+          bairro: string | null;
+          cidade: string | null;
+          outras: number;
+          na_janela: boolean;
+        }[];
+      };
+      servidor_aviso_de_vaga_mandado: {
+        Args: {
+          p_chave: string;
+          p_conversa: string;
+          p_anuncio: string;
+          p_pelo_modelo: boolean;
+          p_wamid?: string | null;
+          p_falhou?: string | null;
+        };
+        Returns: undefined;
+      };
+      admin_avisos_de_vaga_whatsapp: { Args: Record<string, never>; Returns: Json };
+      admin_salvar_avisos_de_vaga_whatsapp: { Args: { p_por_dia: number }; Returns: undefined };
       // Procuradas sem vaga (migração 20270822120000)
       servidor_procura_sem_vaga: {
         Args: { p_chave: string; p_funcoes: string[]; p_cidade: string | null; p_regiao: string | null; p_quem: string; p_origem?: string };

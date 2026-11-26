@@ -107,6 +107,11 @@ globalThis.fetch = (async (url: any, init: any) => {
       usage: { input_tokens: 100, output_tokens: 10, cache_read_input_tokens: 20000 },
     });
   }
+  // o link curto da vaga do aviso de vaga nova (o "sim" escrito depois dele): o id que começa com o código
+  if (u.includes("/rest/v1/anuncios") && u.includes("select=id&") && u.includes("id=gte.")) {
+    const codigo = /id=gte\.([0-9a-f]{8})-/.exec(u)?.[1];
+    return json(codigo ? [{ id: `${codigo}-1111-4111-8111-111111111111` }] : []);
+  }
   if (u.includes("/rpc/config_publica"))
     return json([{ ia_melhorar_texto: true, ia_modelo: modeloEscolhido, ia_modelos: {}, ia_apelido: null }]);
   if (u.includes("/rpc/ia_reserva")) return json(false);
@@ -227,6 +232,11 @@ async function main() {
   let aceitesDaIA: any[] = [];
   let tirados = 0;
   let dispensados = 0;
+  // o aviso de vaga nova (migração 20271005120000): as vagas que já foram (do banco), a promessa e a busca guardada
+  let jaForamNoBanco: string[] = [];
+  let avisoLigadoMock = false;
+  let guardadas: any[] = [];
+  let pedidosDoAviso: any[] = [];
   // o tipo de contratação na conversa (migração 20270926120000)
   let regimes: any[] = [];
   let regimeN = 1;
@@ -295,6 +305,15 @@ async function main() {
         return { data: { ligado: true, ok: true, vagas: vagasDoLugar }, error: null };
       }
       if (nome === "servidor_whatsapp_candidatar_ligado") return { data: candidatarLigadoMock, error: null };
+      if (nome === "servidor_whatsapp_vagas_da_conversa") return { data: jaForamNoBanco, error: null };
+      if (nome === "servidor_avisos_de_vaga_ligado") {
+        pedidosDoAviso.push(args);
+        return { data: avisoLigadoMock, error: null };
+      }
+      if (nome === "servidor_guardar_procura_whatsapp") {
+        guardadas.push(args);
+        return { data: args.p_funcoes.length, error: null };
+      }
       if (nome === "servidor_whatsapp_midias_da_vez" || nome === "servidor_whatsapp_midias_esperando")
         return { data: { midias: midiasDaVez, leituras_hoje: leiturasHoje }, error: null };
       if (nome === "servidor_ia_aceita") return { data: aceitaMock, error: null };
@@ -2546,6 +2565,195 @@ async function main() {
       { id: "b", titulo: "Auxiliar de cozinha industrial noturno" },
     ]);
     conferir(bs.every((b) => b.titulo.length <= 20) && bs[0].titulo !== bs[1].titulo, "os botões das vagas cabem e não repetem", bs);
+  }
+
+  // --- As vagas que não se repetem e o aviso de vaga nova (25/11/2026; migração 20271005120000) ---------------------
+  {
+    const cw = await import("../src/lib/servidor/candidatar-pelo-whatsapp");
+    const procurando3 = [
+      { de: "pessoa", texto: "Olá" },
+      { de: "robo", texto: comBotoes("Oi, Raphael! 👋 Aqui é o Marcelo, do Publike.") },
+      { de: "pessoa", texto: "Procuro trabalho" },
+      { de: "robo", texto: "Que bom! Me conta o que você faz e o bairro onde mora." },
+    ];
+    const buscaCozinheira = () =>
+      ia("Olha as vagas de cozinheira perto do Setor Bueno:", {
+        perfil: "trabalho",
+        acao: "buscar_vagas",
+        busca: { texto: "cozinheira", categoria: "todas", cidade: "", bairro: "Setor Bueno" },
+      });
+    vagasJaEnviadas = 0;
+    candidatarLigadoMock = false;
+    paraCandidatar = null;
+    candidaturaDaVez = null;
+
+    // o Cleiton (25/11/2026): a vaga já foi, mas a mensagem dela saiu das 12 últimas (as perguntas da candidatura no
+    // meio). O banco lembra: a vaga não volta, e a resposta diz que as da função já foram
+    jaForamNoBanco = ["11111111"];
+    respostaIA = buscaCozinheira();
+    let r = await rodar("tem mais vaga de cozinheira?", {
+      perfil: "trabalho",
+      historico: [...procurando3, { de: "pessoa", texto: "tem mais vaga de cozinheira?" }],
+    });
+    conferir(
+      !r.msgs.some((x) => corpo(x).includes("/w/11111111")) &&
+        corpo(r.msgs[0]).startsWith("Essas que te mandei são todas as vagas de cozinheira no ar") &&
+        corpo(r.msgs[0]).includes("Entram vagas novas todo dia: é só me chamar de novo."),
+      "a vaga que já foi (pelo banco) não volta, e a resposta diz que já foram",
+      r.msgs.map(corpo),
+    );
+    // a IA escolhe e as da função já foram: diz isso, e as outras vêm como as que combinam com a experiência
+    jaForamNoBanco = ["22222222"];
+    respostaIA = ia("Olha as vagas de motorista:", {
+      perfil: "trabalho",
+      acao: "buscar_vagas",
+      busca: { texto: "motorista", funcoes: ["motorista"], parecidas: ["cozinheira"], categoria: "todas", cidade: "", bairro: "Setor Bueno" },
+      // a escolha da IA (escolherVagasComIA) lê a mesma resposta de mentira
+      vagas: [{ n: 1, exata: false }],
+      abertura: "Separei estas que combinam com você:",
+    });
+    r = await rodar("tem mais de motorista?", {
+      perfil: "trabalho",
+      historico: [...procurando3, { de: "pessoa", texto: "sou motorista, moro no setor bueno" }, { de: "pessoa", texto: "tem mais de motorista?" }],
+    });
+    conferir(
+      corpo(r.msgs[0]).startsWith(
+        "As vagas de motorista que estão no ar eu já te mandei. Separei outras que combinam com a sua experiência: abra e veja se alguma te interessa.",
+      ) &&
+        !corpo(r.msgs[0]).includes("/w/22222222") &&
+        corpo(r.msgs[0]).includes("/w/11111111"),
+      "as da função já foram: diz isso e manda as que combinam",
+      r.msgs.map(corpo),
+    );
+    jaForamNoBanco = ["11111111"];
+    respostaIA = buscaCozinheira();
+
+    // com o aviso valendo para a conversa: a promessa no lugar do "me chame de novo", e a busca fica guardada
+    avisoLigadoMock = true;
+    guardadas = [];
+    pedidosDoAviso = [];
+    r = await rodar("tem mais vaga de cozinheira?", {
+      perfil: "trabalho",
+      historico: [...procurando3, { de: "pessoa", texto: "tem mais vaga de cozinheira?" }],
+    });
+    conferir(
+      corpo(r.msgs[0]).includes("Quando entrar vaga nova de cozinheira, eu te aviso aqui.") &&
+        !corpo(r.msgs[0]).includes("é só me chamar de novo") &&
+        pedidosDoAviso[0]?.p_conversa === "557799255259",
+      "com o aviso: a promessa, pela conversa",
+      { msgs: r.msgs.map(corpo), pedidosDoAviso },
+    );
+    conferir(
+      guardadas.length === 1 &&
+        JSON.stringify(guardadas[0].p_funcoes) === JSON.stringify(["cozinheira"]) &&
+        guardadas[0].p_cidade === "Goiânia" &&
+        guardadas[0].p_bairro === "Setor Bueno" &&
+        typeof guardadas[0].p_lat === "number" &&
+        guardadas[0].p_conversa === "557799255259",
+      "a busca fica guardada, com o lugar e o ponto",
+      guardadas,
+    );
+
+    // a vaga nova: a promessa vai junto, uma vez (no "Quer se candidatar?", com a candidatura ligada)
+    jaForamNoBanco = [];
+    candidatarLigadoMock = true;
+    respostaIA = buscaCozinheira();
+    r = await rodar("sou cozinheira, moro no setor bueno", {
+      perfil: "trabalho",
+      historico: [...procurando3, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+    });
+    const promessa = a.prometerAviso(["cozinheira"]);
+    conferir(
+      corpo(r.msgs[0]).includes("/w/11111111") &&
+        !corpo(r.msgs[0]).includes(promessa) &&
+        corpo(r.msgs[1]).startsWith(cw.QUER_SE_CANDIDATAR) &&
+        corpo(r.msgs[1]).endsWith(promessa),
+      "a promessa vai no Quer se candidatar?",
+      r.msgs.map(corpo),
+    );
+    // sem a candidatura: no fim das vagas
+    candidatarLigadoMock = false;
+    r = await rodar("sou cozinheira, moro no setor bueno", {
+      perfil: "trabalho",
+      historico: [...procurando3, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+    });
+    conferir(r.msgs.length === 1 && corpo(r.msgs[0]).endsWith(promessa), "sem a candidatura: a promessa no fim das vagas", r.msgs.map(corpo));
+    // já prometeu nesta conversa: não repete
+    r = await rodar("sou cozinheira, moro no setor bueno", {
+      perfil: "trabalho",
+      historico: [
+        ...procurando3,
+        { de: "robo", texto: `Olha as vagas de garçom:\n\n${a.prometerAviso(["garçom"])}` },
+        { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" },
+      ],
+    });
+    conferir(!r.msgs.some((x) => corpo(x).includes("eu te aviso aqui")), "já prometeu: não repete", r.msgs.map(corpo));
+    // a conversa que disse PARAR (ou o aviso desligado): o texto de antes
+    avisoLigadoMock = false;
+    r = await rodar("sou cozinheira, moro no setor bueno", {
+      perfil: "trabalho",
+      historico: [...procurando3, { de: "pessoa", texto: "sou cozinheira, moro no setor bueno" }],
+    });
+    conferir(!r.msgs.some((x) => corpo(x).includes("eu te aviso aqui")), "sem o aviso: sem a promessa", r.msgs.map(corpo));
+
+    // o "sim" escrito depois do aviso de vaga nova: começa a candidatura da vaga do aviso
+    const idDoAviso = "b41120a2-1111-4111-8111-111111111111";
+    const textoDoAviso = a.textoDoAvisoDeVaga(
+      {
+        conversa: "557799255259",
+        numero: "557799255259",
+        nome: "Raphael",
+        anuncio_id: idDoAviso,
+        titulo: "Cozinheira",
+        funcao: "cozinheira",
+        bairro: "Setor Bueno",
+        cidade: "Goiânia",
+        outras: 0,
+        na_janela: true,
+      },
+      null,
+      true,
+    );
+    paraCandidatar = { ligado: true, ok: true, titulo: "Cozinheira", perguntas: [], conta: { existe: true, tipo: "pessoa", tem_curriculo: true } };
+    resultadoCandidatar = { ok: true, status: "pendente", titulo: "Cozinheira", anuncio_id: idDoAviso, tem_curriculo: true };
+    candidaturas = [];
+    r = await rodar("Sim!", {
+      perfil: "trabalho",
+      historico: [{ de: "robo", texto: `${textoDoAviso}\n\n[Botões: Quero me candidatar]` }, { de: "pessoa", texto: "Sim!" }],
+    });
+    conferir(
+      candidaturas.length === 1 && candidaturaDaVez?.anuncio_id === idDoAviso && corpo(r.msgs[0]).startsWith("Pronto! ✅"),
+      "o sim escrito depois do aviso: a candidatura da vaga do aviso",
+      { candidaturas, vaga: candidaturaDaVez?.anuncio_id, msg: corpo(r.msgs[0]) },
+    );
+    candidaturaDaVez = null;
+    // o mesmo pelo modelo (fora das 24 horas): o texto que ficou na conversa
+    candidaturas = [];
+    r = await rodar("quero", {
+      perfil: "trabalho",
+      historico: [
+        { de: "robo", texto: a.textoDoModeloDoAviso("Raphael", "Cozinheira (Setor Bueno)", idDoAviso) },
+        { de: "pessoa", texto: "quero" },
+      ],
+    });
+    conferir(
+      candidaturas.length === 1 && candidaturaDaVez?.anuncio_id === idDoAviso,
+      "o quero depois do modelo: a candidatura",
+      { candidaturas, vaga: candidaturaDaVez?.anuncio_id },
+    );
+    candidaturaDaVez = null;
+    // a pergunta depois do aviso não é o sim: segue o atendimento
+    candidaturas = [];
+    respostaIA = ia("É no Setor Bueno, perto da praça.", { perfil: "trabalho" });
+    r = await rodar("é longe do centro?", {
+      perfil: "trabalho",
+      historico: [{ de: "robo", texto: textoDoAviso }, { de: "pessoa", texto: "é longe do centro?" }],
+    });
+    conferir(candidaturas.length === 0, "a pergunta depois do aviso: sem candidatura", candidaturas);
+    paraCandidatar = null;
+    candidaturaDaVez = null;
+    candidatarLigadoMock = false;
+    jaForamNoBanco = [];
   }
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);

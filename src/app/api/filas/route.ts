@@ -50,7 +50,7 @@ import { ajustarImpulsos } from "@/lib/servidor/impulso-ajuste";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura";
 import { enviarWhatsappPendentes } from "@/lib/servidor/whatsapp";
-import { enviarLembretesWhatsapp } from "@/lib/servidor/atendimento-whatsapp";
+import { enviarAvisosDeVagaNova, enviarLembretesWhatsapp, type AvisosDeVagaNova } from "@/lib/servidor/atendimento-whatsapp";
 import { cancelarPedidosNaoPagos } from "@/lib/servidor/pagamentos";
 import { convidarPelosPacotes } from "@/lib/servidor/convite-do-pacote";
 import { enviarEmailAsEmpresas } from "@/lib/servidor/email-empresas";
@@ -203,11 +203,23 @@ export async function GET(request: Request) {
   }));
   // os lembretes do atendimento do WhatsApp (migração 20270813120000): o erro não derruba a fila
   const lembretesWhatsapp = await enviarLembretesWhatsapp().catch(() => ({ enviados: 0, falhas: 0 }));
+  // o aviso de vaga nova para quem procurou pela conversa (migração 20271005120000; das 8h às 20h, uma rodada a cada 5
+  // minutos, um por dia por pessoa, até o teto do dia): depois do envio dos avisos, que confere os modelos na Meta; com
+  // pouco tempo, fica para a próxima volta (a rodada não é gasta)
+  const semAviso: AvisosDeVagaNova = { enviados: 0, pelo_modelo: 0, falhas: 0, esperando: 0 };
+  const avisosDeVaga =
+    Date.now() - inicio > 45_000
+      ? semAviso
+      : await enviarAvisosDeVagaNova(15).catch((e) => ({
+          ...semAviso,
+          motivo: `Aviso de vaga nova: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300),
+        }));
 
   const problemas = [
     emails.motivo,
     celular.motivo,
     whatsapp.motivo,
+    avisosDeVaga.motivo,
     ia.motivo,
     avaliacoes.motivo,
     recados.motivo,
@@ -298,6 +310,12 @@ export async function GET(request: Request) {
       convites_do_pacote: convitesDoPacote.convidados,
       email_empresas: { enviados: emailEmpresas.enviados, motivo: emailEmpresas.motivo ?? null },
       lembretes_whatsapp: lembretesWhatsapp,
+      avisos_de_vaga: {
+        enviados: avisosDeVaga.enviados,
+        pelo_modelo: avisosDeVaga.pelo_modelo,
+        falhas: avisosDeVaga.falhas,
+        esperando_o_modelo: avisosDeVaga.esperando,
+      },
       resumo_receita: resumoReceita.recontado ?? false,
       consultasSalario: consultasSalario.contas,
       buscasTalentos: buscasTalentos.avisadas,

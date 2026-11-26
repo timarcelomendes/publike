@@ -285,6 +285,24 @@ export const MODELOS: Modelo[] = [
       { tipo: "resposta", texto: "Já preenchi", valor: "preenchi" },
     ],
   },
+  {
+    // o aviso de vaga nova para quem procurou pela conversa (migração 20271005120000; Marcelo: "preciso avisar todos os
+    // usuários pelo whatsapp, quando entrar uma vaga que ele já procurou"), fora das 24 horas: o "Quero me candidatar"
+    // começa a candidatura na conversa ("c:quero:<id>", como o "Quer se candidatar?") e o link abre a vaga. Não sai pela
+    // fila: o robô das filas manda (enviarAvisosDeVagaNova). Marketing, como o convite do pacote
+    nome: "publike_vaga_que_procurou",
+    aviso: "aviso_de_vaga",
+    para: "Quem procurou vaga pela conversa",
+    quando: "Entrou uma vaga da função que a pessoa procurou, perto dela (no máximo um aviso por dia)",
+    corpo:
+      "Oi, {{nome}}! Você procurou vaga no WhatsApp do Publike, e entrou uma nova perto de você: {{vaga}}. Quer se candidatar? Toque em Quero me candidatar que eu mando a sua candidatura por aqui mesmo.",
+    exemplo: { nome: "Cleiton", vaga: "Motorista de caminhão (Jardim Goiás)" },
+    botoes: [
+      { tipo: "resposta", texto: "Quero me candidatar", valor: "quero" },
+      { tipo: "link", texto: "Ver a vaga", exemplo: "w/b41120a2" },
+    ],
+    categoria: "MARKETING",
+  },
 ];
 
 const POR_NOME = new Map(MODELOS.map((m) => [m.nome, m]));

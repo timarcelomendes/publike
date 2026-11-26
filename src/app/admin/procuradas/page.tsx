@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn, SearchX, UserCheck } from "lucide-react";
+import { BellRing, ChartNoAxesColumn, SearchX, UserCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -11,10 +11,12 @@ import { BotaoLink } from "@/components/ui/botao";
 import {
   mandarAtendemAgora,
   mandarProcuradasAgora,
+  salvarAvisosDeVaga,
   salvarConfigAtendem,
   salvarConfigProcuradas,
 } from "@/lib/acoes/admin-procuradas";
-import { formatarDataCurta, plural, primeiro } from "@/lib/formato";
+import { formatarDataCurta, formatarNumero, plural, primeiro } from "@/lib/formato";
+import { emDolares, TARIFA_MARKETING_USD } from "@/lib/whatsapp-tipos";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Procuradas sem vaga" };
@@ -31,6 +33,19 @@ type DadosAtendem = {
   minimo: number;
   avisos: { dia: string; anuncio_id: string; titulo: string; conta_id: string; nome: string; pessoas: number; convites: number }[];
 };
+/** O aviso de vaga nova pelo WhatsApp (migração 20271005120000). */
+type DadosAviso = {
+  ligado: boolean;
+  por_dia: number;
+  whatsapp_ativo: boolean;
+  hoje: number;
+  semana: number;
+  semana_modelo: number;
+  semana_falhas: number;
+  semana_candidaturas: number;
+  pessoas: number;
+  pararam: number;
+};
 type Dados = {
   config: { ligado: boolean; minimo: number; dias: number };
   dias: number;
@@ -45,12 +60,14 @@ const ABAS = [
   { id: "sem-vaga", nome: "Procuradas sem vaga", icone: SearchX },
   { id: "procura", nome: "Muita procura, pouca vaga", icone: ChartNoAxesColumn },
   { id: "atendem", nome: "Quem atende e não curtiu", icone: UserCheck },
+  { id: "aviso", nome: "Aviso de vaga nova", icone: BellRing },
 ] as const;
 
 const ERROS: Record<string, string> = {
   fora: "O admin só funciona com a sua conta de admin.",
   salvar: "Não deu para salvar. Tente de novo.",
   mandar: "Não deu para mandar agora. Tente de novo em instantes.",
+  teto: "O teto do dia vai de 0 a 5.000 avisos.",
 };
 
 export default function Procuradas({ searchParams }: PageProps<"/admin/procuradas">) {
@@ -64,12 +81,13 @@ export default function Procuradas({ searchParams }: PageProps<"/admin/procurada
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/procuradas">["searchParams"] }) {
   const c = await exigirAdminLocal();
   const sp = await searchParams;
-  const [{ data, error }, oferta, atendem] = await Promise.all([
+  const [{ data, error }, oferta, atendem, aviso] = await Promise.all([
     c.rpc("admin_procuradas", { p_dias: null }),
-    // muita procura e pouca vaga (migração 20270909120000) e quem atende e não curtiu (20270908120000): sem a migração,
-    // a parte fica com o aviso de rodar
+    // muita procura e pouca vaga (migração 20270909120000), quem atende e não curtiu (20270908120000) e o aviso de vaga
+    // nova (20271005120000): sem a migração, a parte fica com o aviso de rodar
     c.rpc("admin_procura_e_oferta", { p_dias: 14, p_minimo: 3 }),
     c.rpc("admin_atendem"),
+    c.rpc("admin_avisos_de_vaga_whatsapp"),
   ]);
   if (error)
     return (
@@ -86,6 +104,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
   const at = atendem.data as unknown as DadosAtendem | null;
   const aba = abaPedida(ABAS, primeiro(sp.aba));
   const salvo = primeiro(sp.salvo);
+  const av = aviso.data as unknown as DadosAviso | null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -359,6 +378,84 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
             )}
           </Secao>
         </section>
+      )}
+
+      {aba === "aviso" && (
+        <Secao
+          titulo="Aviso de vaga nova pelo WhatsApp"
+          descricao={
+            <>
+              Quem procurou uma função na conversa do WhatsApp nos últimos 30 dias recebe a vaga dessa função que entrar
+              depois, perto dela (até 30 km, ou na mesma cidade): uma por dia, das 8h às 20h, a que ainda não foi para a
+              conversa, publicada há até 3 dias. Dentro das 24 horas da última mensagem da pessoa, vai de graça, com o botão “Quero me
+              candidatar”; fora delas, pelo modelo publike_vaga_que_procurou (marketing, {emDolares(TARIFA_MARKETING_USD)}{" "}
+              cada), depois de a Meta aprovar. Quem responde PARAR não recebe mais. Ligar e desligar: Admin › WhatsApp ›
+              Parâmetros, com os outros avisos.
+            </>
+          }
+        >
+          {!av ? (
+            <p className="text-body-sm text-ink-muted">
+              {aviso.error?.code === "PGRST202"
+                ? "Rode a migração 20271005120000_whatsapp_aviso_de_vaga_nova.sql primeiro."
+                : (aviso.error?.message ?? "Sem os dados.")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {(!av.ligado || !av.whatsapp_ativo || av.por_dia === 0) && (
+                <Aviso tipo="alerta" titulo="Não está saindo">
+                  {!av.whatsapp_ativo
+                    ? "O envio do WhatsApp está desligado em Admin › WhatsApp › Parâmetros."
+                    : !av.ligado
+                      ? "O aviso “Vaga nova do que a pessoa procurou na conversa” está desmarcado em Admin › WhatsApp › Parâmetros."
+                      : "O teto do dia está em 0."}{" "}
+                  <Link href="/admin/whatsapp?aba=parametros" className="underline underline-offset-2">
+                    Abrir os parâmetros
+                  </Link>
+                </Aviso>
+              )}
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {[
+                  { nome: "Hoje", valor: `${formatarNumero(av.hoje)} de ${formatarNumero(av.por_dia)}` },
+                  {
+                    nome: "Últimos 7 dias",
+                    valor: formatarNumero(av.semana),
+                    nota: `${formatarNumero(av.semana_modelo)} pelo modelo (${emDolares(av.semana_modelo * TARIFA_MARKETING_USD)})`,
+                  },
+                  { nome: "Candidaturas depois do aviso", valor: formatarNumero(av.semana_candidaturas), nota: "7 dias, na vaga do aviso" },
+                  { nome: "Pessoas com busca guardada", valor: formatarNumero(av.pessoas), nota: "procuraram nos últimos 30 dias" },
+                  { nome: "Responderam PARAR", valor: formatarNumero(av.pararam) },
+                  { nome: "Não saíram", valor: formatarNumero(av.semana_falhas), nota: "7 dias: a Meta recusou o número" },
+                ].map((x) => (
+                  <div key={x.nome} className="flex flex-col gap-0.5 rounded-md border border-line p-3">
+                    <dt className="text-caption text-ink-muted">{x.nome}</dt>
+                    <dd className="text-h3 tabular-nums">{x.valor}</dd>
+                    {x.nota && <dd className="text-caption text-ink-muted">{x.nota}</dd>}
+                  </div>
+                ))}
+              </dl>
+              <form action={salvarAvisosDeVaga} className="flex flex-wrap items-end gap-4 rounded-md border border-line p-4">
+                <label className="flex flex-col gap-1 text-body-sm">
+                  Teto do dia
+                  <input
+                    type="number"
+                    name="por_dia"
+                    min={0}
+                    max={5000}
+                    defaultValue={av.por_dia}
+                    className="w-28 rounded-md border border-line bg-surface-100 px-3 py-2"
+                  />
+                </label>
+                <BotaoSalvar variante="secundario" feito={salvo === "aviso" ? "Salvo" : null} />
+                <p className="basis-full text-caption text-ink-muted">
+                  Os avisos de todas as pessoas, somados, por dia (0 para de mandar). Se todos saírem pelo modelo, o teto de{" "}
+                  {formatarNumero(av.por_dia)} custa até {emDolares(av.por_dia * TARIFA_MARKETING_USD)} por dia; os de dentro
+                  das 24 horas são de graça.
+                </p>
+              </form>
+            </div>
+          )}
+        </Secao>
       )}
     </div>
   );

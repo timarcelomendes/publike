@@ -52,3 +52,15 @@ export async function mandarAtendemAgora() {
   const r = await avisarQuemAtende(true);
   redirect(`${AQUI}?aba=atendem&${r.motivo ? "erro=mandar" : `atendem=${r.avisos}`}`);
 }
+
+// O aviso de vaga nova pelo WhatsApp (migração 20271005120000): o teto do dia (0 para de mandar). Ligar e desligar
+// fica em Admin › WhatsApp › Parâmetros, com os outros avisos.
+
+export async function salvarAvisosDeVaga(formData: FormData) {
+  const c = await clienteAdminOuNulo();
+  if (!c) redirect(`${AQUI}?aba=aviso&erro=fora`);
+  const v = Math.floor(Number(formData.get("por_dia")));
+  if (!Number.isFinite(v) || v < 0 || v > 5000) redirect(`${AQUI}?aba=aviso&erro=teto`);
+  const { error } = await c.rpc("admin_salvar_avisos_de_vaga_whatsapp", { p_por_dia: v });
+  redirect(`${AQUI}?aba=aviso&${error ? "erro=salvar" : "salvo=aviso"}`);
+}

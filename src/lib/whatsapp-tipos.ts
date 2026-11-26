@@ -87,6 +87,15 @@ export const TIPOS_WHATSAPP: { tipo: string; nome: string; curto: string; para: 
     para: "Candidato",
     economico: true,
   },
+  // o aviso de vaga nova (migração 20271005120000): para quem procurou pela conversa, sem conta; o robô das filas manda
+  // (não é escolha das Preferências: "Conversa" não aparece lá). Modelo de marketing
+  {
+    tipo: "aviso_de_vaga",
+    nome: "Vaga nova do que a pessoa procurou na conversa",
+    curto: "Vaga nova procurada",
+    para: "Conversa",
+    economico: false,
+  },
 ];
 
 /**

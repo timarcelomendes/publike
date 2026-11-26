@@ -22,9 +22,14 @@ import {
   configMeta,
   enviarComBotoes,
   enviarComLink,
+  enviarModelo,
   enviarTexto,
   marcarLidaDigitando,
+  MODELOS,
+  podeSair,
+  RODAPE_WHATSAPP,
   type ConfigMeta,
+  type SituacaoModelos,
 } from "./whatsapp";
 import {
   AVISO_DA_IA_ARQUIVO,
@@ -1208,6 +1213,17 @@ async function procurarVagas(
           longe: !daCidade(a) || (a.distancia_km ?? 0) > 40,
         });
       aberturaDaIA = escolha.abertura || null;
+      // as vagas da função que ela pediu já foram nesta conversa: a abertura diz isso, e as outras vêm como as que
+      // combinam com a experiência dela (25/11/2026; Marcelo, com o Cleiton: "não pode repetir a sugestão de vaga, deve
+      // informar que não tem e sugerir vagas correlacionadas")
+      const jaForamTodas = funcoes.filter(
+        (f) =>
+          funcoesRepetidas.has(f) && !escolha.escolhidas.some((x) => x.exata && tituloDaFuncao(x.a.titulo, f)),
+      );
+      if (jaForamTodas.length)
+        aberturaDaIA = escolha.escolhidas.some((x) => x.exata)
+          ? `As vagas de ${listaE(jaForamTodas)} que estão no ar eu já te mandei. ${aberturaDaIA ?? ""}`.trim()
+          : `As vagas de ${listaE(jaForamTodas)} que estão no ar eu já te mandei. Separei outras que combinam com a sua experiência: abra e veja se alguma te interessa.`;
     }
   }
   if (!achadas.length && !repetidas && !parecidasQueForam.size) anotarSemVaga?.(funcoes);
@@ -1349,6 +1365,8 @@ async function mensagemDaBusca(
   anotarProcura?: (funcoes: string[]) => void,
   /** o que a pessoa contou (relatoDaPessoa): com ele, a IA escolhe as vagas */
   relato?: string,
+  /** o aviso de vaga nova está ligado (migração 20271005120000): o "eu te aviso aqui" no lugar do "me chame de novo" */
+  avisa = false,
 ) {
   const texto = busca?.texto?.trim().slice(0, 40) ?? "";
   const jeito = [...new Set([...(busca?.jeito ?? []).filter(ehJeito), ...jeitoDoTexto(`${texto} ${textos.join(" ")}`)])];
@@ -1369,7 +1387,11 @@ async function mensagemDaBusca(
     if (funcoes[0]) q.set("q", funcoes[0]);
     return {
       abertura: [
-        `Agora não tem vaga de ${listaE(funcoes)} no ar, e as parecidas que estão no ar (de ${listaE(vagas.parecidas)}) eu já te mandei. Entram vagas novas todo dia: é só me chamar de novo.`,
+        `Agora não tem vaga de ${listaE(funcoes)} no ar, e as parecidas que estão no ar (de ${listaE(vagas.parecidas)}) eu já te mandei. ${
+          avisa
+            ? `Quando entrar vaga nova de ${listaE(funcoes)}${local ? " perto de você" : ""}, eu te aviso aqui.`
+            : "Entram vagas novas todo dia: é só me chamar de novo."
+        }`,
         "E se ainda não deixou o seu *currículo* no Publike, deixe: é grátis, leva uns 2 minutos, e você recebe o aviso quando entrar vaga que combina com você.",
       ].join("\n\n"),
       aberturaPadrao: "",
@@ -1385,7 +1407,11 @@ async function mensagemDaBusca(
     if (funcoes[0]) q.set("q", funcoes[0]);
     return {
       abertura: [
-        `Essas que te mandei são todas as vagas de ${listaE(funcoes)} no ar${local ? " perto de você e nas cidades em volta" : ""} agora. Entram vagas novas todo dia: é só me chamar de novo.`,
+        `Essas que te mandei são todas as vagas de ${listaE(funcoes)} no ar${local ? " perto de você e nas cidades em volta" : ""} agora. ${
+          avisa && funcoes.length
+            ? `Quando entrar vaga nova de ${listaE(funcoes)}, eu te aviso aqui.`
+            : "Entram vagas novas todo dia: é só me chamar de novo."
+        }`,
         "Quer ver de outra função? Me conta qual. 😊",
         "E se ainda não deixou o seu *currículo* no Publike, deixe: é grátis, leva uns 2 minutos, e você recebe o aviso quando entrar vaga que combina com você.",
       ].join("\n\n"),
@@ -1404,7 +1430,11 @@ async function mensagemDaBusca(
     if (funcoes[0]) q.set("q", funcoes[0]);
     return {
       abertura: [
-        `Agora não achei vaga${qual} no ar${local ? ", nem perto de você nem nas cidades em volta" : ""}. Entram vagas novas todo dia.`,
+        `Agora não achei vaga${qual} no ar${local ? ", nem perto de você nem nas cidades em volta" : ""}. ${
+          avisa && funcoes.length
+            ? `Quando entrar vaga de ${listaE(funcoes)}${local ? " perto de você" : ""}, eu te aviso aqui no WhatsApp.`
+            : "Entram vagas novas todo dia."
+        }`,
         "Enquanto isso, deixe o seu *currículo* no Publike: é grátis e leva uns 2 minutos. As empresas da região procuram candidatos por função e chamam direto, e você recebe o aviso quando entrar vaga que combina com você.",
         `Ver todas as vagas no ar: ${link(`/?${q}`)}`,
       ].join("\n\n"),
@@ -1428,8 +1458,27 @@ async function mensagemDaBusca(
     botao: (vagas.outras ? LINKS.curriculo : (vagas.mais ?? (restam - vagas.quantas <= 0 ? LINKS.vagas : null))) as Botao | null,
     quantas: vagas.quantas,
     vagas: vagas.vagas,
+    /** as funções do aviso de vaga nova (o "eu te aviso aqui" depois das vagas, na primeira vez) */
+    avisa: avisa && funcoes.length ? { funcoes, perto: Boolean(local) } : null,
   };
 }
+
+/**
+ * O aviso de vaga nova vale para esta conversa? (migração 20271005120000): ligado, a conversa não disse PARAR e, no modo
+ * de teste, o número está na lista. Sem a migração, não: o texto fica o de antes ("é só me chamar de novo").
+ */
+async function avisoDeVagaLigado(banco: ClienteBanco, chave: string, conversa: string) {
+  const { data, error } = await banco.rpc("servidor_avisos_de_vaga_ligado", { p_chave: chave, p_conversa: conversa });
+  return !error && data === true;
+}
+
+/** O "eu te aviso aqui" (o aviso de vaga nova), uma vez por conversa: a marca acha a promessa de antes. */
+const MARCA_DA_PROMESSA = "Quando entrar vaga";
+export function prometerAviso(funcoes: string[], perto = true) {
+  return `🔔 ${MARCA_DA_PROMESSA} nova de ${listaE(funcoes)}${perto ? " perto de você" : ""}, eu te aviso aqui. Para não receber, é só escrever PARAR.`;
+}
+export const jaPrometeuAviso = (historico: { de: string; texto: string }[]) =>
+  historico.some((m) => m.de !== "pessoa" && m.texto.includes(MARCA_DA_PROMESSA));
 
 /** O parágrafo do currículo nas mensagens das vagas (o "deixe o seu currículo no Publike", com o botão do site). */
 const PARAGRAFO_DO_CURRICULO =
@@ -1759,6 +1808,34 @@ async function anotarProcura(banco: ClienteBanco, chave: string, conversa: strin
     p_origem: "whatsapp",
   });
   if (error && error.code !== "PGRST202") console.error("Publike: não deu para anotar a procura:", error.message);
+}
+
+/**
+ * A busca guardada para o aviso de vaga nova (migração 20271005120000): a função e o lugar, com a conversa. A vaga da
+ * função que entrar depois (até 30 dias depois da busca), perto, vai para a pessoa uma vez por dia
+ * (enviarAvisosDeVagaNova). Sem a migração, nada.
+ */
+async function guardarProcura(banco: ClienteBanco, chave: string, conversa: string, funcoes: string[], local: Local | null) {
+  const fs = unicos(funcoes.map((f) => f.trim()).filter((f) => f.length >= 3), 3);
+  if (!fs.length) return;
+  const ponto = local ? pontoDoLocal(local) : null;
+  const { error } = await banco.rpc("servidor_guardar_procura_whatsapp", {
+    p_chave: chave,
+    p_conversa: conversa,
+    p_funcoes: fs,
+    p_cidade: local?.cidade ?? null,
+    p_regiao: local?.regiao ?? null,
+    p_bairro: local?.bairro || null,
+    p_lat: ponto?.lat ?? null,
+    p_lng: ponto?.lng ?? null,
+  });
+  if (error && error.code !== "PGRST202") console.error("Publike: não deu para guardar a busca do aviso:", error.message);
+}
+
+/** Toda função procurada: a procura (a impressão, para o Admin) e a busca do aviso de vaga nova. */
+function anotarEGuardar(banco: ClienteBanco, chave: string, conversa: string, funcoes: string[], local: Local | null) {
+  void anotarProcura(banco, chave, conversa, funcoes, local);
+  void guardarProcura(banco, chave, conversa, funcoes, local);
 }
 
 /** O teto do mês (migração 20270808120000); sem a migração ou com erro, null (segue normal). */
@@ -2100,10 +2177,22 @@ export async function atenderConversa(
   // as mensagens das vagas com o convite do currículo: com o currículo pelo WhatsApp ligado, "monto aqui, falando", com o
   // botão de montar no lugar do botão do site
   // depois das vagas da busca: "Quer se candidatar a alguma?", com um botão por vaga (migração 20270927120000)
-  const saidaDasVagas = async (texto: string, extra: Parameters<typeof saida>[1], vagas?: { id: string; titulo: string }[]) => {
-    await saida(texto, extra);
+  const saidaDasVagas = async (
+    texto: string,
+    extra: Parameters<typeof saida>[1],
+    vagas?: { id: string; titulo: string }[],
+    /** as funções do aviso de vaga nova (migração 20271005120000): a promessa vai junto, uma vez por conversa */
+    avisa?: { funcoes: string[]; perto: boolean } | null,
+  ) => {
+    const promessa = avisa?.funcoes.length && !jaPrometeuAviso(e.historico) ? prometerAviso(avisa.funcoes, avisa.perto) : null;
     const quer = vagas?.length ? mensagemParaCandidatar(vagas) : null;
-    if (quer && (await candidatarLigado(banco, chave))) await saida(quer.texto, { perfil: extra?.perfil ?? "trabalho", botoes: quer.botoes });
+    const comQuer = quer && (await candidatarLigado(banco, chave)) ? quer : null;
+    await saida(promessa && !comQuer ? `${texto}\n\n${promessa}` : texto, extra);
+    if (comQuer)
+      await saida(promessa ? `${comQuer.texto}\n\n${promessa}` : comQuer.texto, {
+        perfil: extra?.perfil ?? "trabalho",
+        botoes: comQuer.botoes,
+      });
   };
   const comCurriculoFalando = async (texto: string, botao: Botao | null) =>
     botao === LINKS.curriculo && PARAGRAFO_DO_CURRICULO.test(texto) && (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
@@ -2225,7 +2314,12 @@ export async function atenderConversa(
   // respostas das perguntas da vaga (escritas ou faladas) e o nome. Sem a migração ou desligada, segue como antes
   {
     const ctx = { banco, chave, conversa: e.chave, numero: m.numero, nomeDoWhatsapp: e.nome };
-    const quero = PAYLOAD_QUERO.exec(m.payload ?? "")?.[1];
+    // o "sim" ou o "quero" escrito depois do aviso de vaga nova (migração 20271005120000) vale o botão
+    const doAviso =
+      !m.payload && minhaUltima.includes(MARCA_DO_AVISO_DE_VAGA) && textos.length === 1 && querAVagaDoAviso(textos[0])
+        ? await vagaDoAviso(minhaUltima)
+        : null;
+    const quero = PAYLOAD_QUERO.exec(m.payload ?? "")?.[1] ?? doAviso;
     const r = quero
       ? await comecarCandidatura(ctx, quero)
       : await respostaNaCandidatura(ctx, { payload: m.payload ?? null, texto: textos.join(" "), minhaUltima });
@@ -2602,7 +2696,7 @@ export async function atenderConversa(
       null,
       restam,
       [],
-      vagasJaMandadas(e.historico),
+      await vagasQueJaForam(banco, chave, e.chave, e.historico),
     );
     if (!r.quantas) return saida(PEDIR_FUNCAO_E_BAIRRO, { perfil: e.perfil ?? "trabalho" });
     const c = await comCurriculoFalando(`${r.abertura ?? r.aberturaPadrao}\n\n${r.texto}`, r.botao);
@@ -2656,13 +2750,20 @@ export async function atenderConversa(
       if (!busca || (!busca.funcoes?.length && !busca.texto?.trim()))
         return saida(`${ola1}Quer ver as vagas? ${PARA_QUEM_PROCURA.replace(/^Que bom! 😊 /, "")}`, { perfil: "trabalho" });
       const local = lugarDaBusca(busca.cidade ?? "", busca.bairro ?? "");
-      const r = await mensagemDaBusca(busca, local, restam, [], vagasJaMandadas(e.historico), (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
-        (fs) => void anotarProcura(banco, chave, e.chave, fs, local),
+      const r = await mensagemDaBusca(
+        busca,
+        local,
+        restam,
+        [],
+        await vagasQueJaForam(banco, chave, e.chave, e.historico),
+        (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+        (fs) => anotarEGuardar(banco, chave, e.chave, fs, local),
         relatoDaPessoa(e.historico),
+        await avisoDeVagaLigado(banco, chave, e.chave),
       );
       const abertura = r.abertura ?? r.aberturaPadrao;
       const c = await comCurriculoFalando(`${ola1}${abertura}${r.texto ? `\n\n${r.texto}` : ""}`, r.botao);
-      return saidaDasVagas(c.texto, { perfil: "trabalho", ...c.extra }, r.vagas);
+      return saidaDasVagas(c.texto, { perfil: "trabalho", ...c.extra }, r.vagas, r.avisa);
     }
     return saida(
       deNovo
@@ -2856,16 +2957,23 @@ export async function atenderConversa(
     }
     // respondeu a pergunta da função ("Que tipo de trabalho de freelance…?"): o jeito dela continua valendo
     const jeitoDaPergunta = PERGUNTOU_A_FUNCAO.exec(minhaUltima)?.[1];
-    const r = await mensagemDaBusca(plano.busca, local, restam, jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos, vagasJaMandadas(e.historico), (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
-      (fs) => void anotarProcura(banco, chave, e.chave, fs, local),
+    const r = await mensagemDaBusca(
+      plano.busca,
+      local,
+      restam,
+      jeitoDaPergunta ? [...textos, jeitoDaPergunta] : textos,
+      await vagasQueJaForam(banco, chave, e.chave, e.historico),
+      (fs) => void anotarProcuraSemVaga(banco, chave, e.chave, fs, local),
+      (fs) => anotarEGuardar(banco, chave, e.chave, fs, local),
       relatoDaPessoa(e.historico),
+      await avisoDeVagaLigado(banco, chave, e.chave),
     );
     // a frase da IA só quando as vagas são da função, perto; senão, a nossa (com a apresentação, na primeira mensagem)
     const c = await comCurriculoFalando(
       r.abertura === null ? `${resposta || r.aberturaPadrao}\n\n${r.texto}` : `${ola}${r.abertura}${r.texto ? `\n\n${r.texto}` : ""}`,
       r.botao,
     );
-    return saidaDasVagas(c.texto, { perfil: perfil ?? "trabalho", ...c.extra }, r.vagas);
+    return saidaDasVagas(c.texto, { perfil: perfil ?? "trabalho", ...c.extra }, r.vagas, r.avisa);
   }
 
   // o botão que abre o site, quando a conversa leva até ele; senão, os botões do começo, uma vez, enquanto não se sabe
@@ -2978,7 +3086,7 @@ export async function buscaDeNovo(conversa: string, nome: string | null): Promis
   if (!busca) return { ok: false, motivo: "A IA não respondeu." };
   if (busca?.fora && !busca.cidade) return { ok: false, motivo: `A pessoa mora fora de onde o Publike funciona (${busca.fora}).` };
   const local = lugarDaBusca(busca?.cidade ?? "", busca?.bairro ?? "");
-  const jaForam = vagasJaMandadas(historico);
+  const jaForam = await vagasQueJaForam(banco, chave, conversa, historico);
   const r = await mensagemDaBusca(busca, local, restam, [], jaForam, undefined, undefined, relatoDaPessoa(historico));
   // todas as da função já foram (a resposta que repetiu): diz isso, com a pergunta de outra função
   if (!r.quantas && jaForam.size && repetiuVagas(historico))
@@ -3019,6 +3127,21 @@ export function vagasJaMandadas(historico: { de: string; texto: string }[]) {
   for (const m of historico)
     if (m.de !== "pessoa")
       for (const x of m.texto.matchAll(/\/(?:anuncio\/([0-9a-f]{8})[0-9a-f-]{28}|[wifm]\/([0-9a-f]{8}))/g)) ids.add(x[1] ?? x[2]);
+  return ids;
+}
+
+/**
+ * As vagas que já foram para esta conversa: as das mensagens que vieram com ela e as do banco (migração 20271005120000:
+ * os links dos últimos 60 dias, os avisos de vaga nova e as vagas em que a conta do número se candidatou). Antes, só as
+ * das 12 últimas mensagens: com as 4 perguntas da candidatura no meio, a vaga do Cleiton voltou 4 minutos depois, já
+ * candidatada (25/11/2026). Sem a migração, só as das mensagens.
+ */
+async function vagasQueJaForam(banco: ClienteBanco, chave: string, conversa: string, historico: Mensagem[]) {
+  const ids = vagasJaMandadas(historico);
+  const { data, error } = await banco.rpc("servidor_whatsapp_vagas_da_conversa", { p_chave: chave, p_conversa: conversa });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: não deu para ler as vagas que já foram:", error.message);
+  } else if (Array.isArray(data)) for (const c of data) if (typeof c === "string" && /^[0-9a-f]{8}$/.test(c)) ids.add(c);
   return ids;
 }
 
@@ -3326,6 +3449,195 @@ export async function enviarBuscaDeNovo(
   if (!(await conversaSemVaga(banco, chave, conversa)))
     return { ok: false, erro: "A conversa andou: a última resposta já não é a do “não achei”." };
   return mandarDoRobo(cfg, banco, chave, conversa, numero, texto, botao);
+}
+
+// --- O aviso de vaga nova (25/11/2026; migração 20271005120000) ------------------------------------------------------
+//
+// Marcelo: "preciso avisar todos os usuários pelo whatsapp, quando entrar uma vaga que ele já procurou". Toda busca com
+// função fica guardada com a conversa (guardarProcura; as de antes vieram das procuras desde 22/11). O robô das filas, a
+// cada 5 minutos, das 8h às 20h, acha a vaga da função que entrou depois da busca (a busca dos últimos 30 dias, a vaga
+// de até 3 dias), a até 30 km do lugar (ou na mesma cidade), que ainda não foi para a conversa, e manda uma por dia para
+// cada pessoa, até o teto do dia (Admin › Procuradas sem vaga › Aviso de vaga nova). Dentro das 24 horas da última
+// mensagem da pessoa vai a mensagem de sempre, de graça, com o botão "Quero me candidatar" (a candidatura pela
+// conversa); fora delas, o modelo publike_vaga_que_procurou (marketing, US$ 0,0625 cada), só depois de a Meta aprovar.
+// PARAR desliga; liga e desliga como os outros avisos, em Admin › WhatsApp › Parâmetros.
+
+/** O modelo do aviso de vaga nova, fora das 24 horas. */
+export const MODELO_DO_AVISO_DE_VAGA = "publike_vaga_que_procurou";
+/** O começo do aviso, na mensagem e no modelo: o "sim" ou o "quero" escrito depois dele começa a candidatura. */
+export const MARCA_DO_AVISO_DE_VAGA = "Você procurou vaga";
+
+/** O que o robô das filas devolve: a conversa, a vaga e se a janela das 24 horas está aberta. */
+export type AvisoDeVaga = {
+  conversa: string;
+  numero: string;
+  nome: string | null;
+  anuncio_id: string;
+  titulo: string;
+  funcao: string;
+  bairro: string | null;
+  cidade: string | null;
+  /** as outras vagas novas da busca, que ficam para outro dia (ou para ela pedir) */
+  outras: number;
+  na_janela: boolean;
+};
+
+/** A mensagem do aviso dentro das 24 horas: a vaga, o link e, com a candidatura ligada, a pergunta do botão. */
+export function textoDoAvisoDeVaga(a: AvisoDeVaga, valor: string | null, comBotao: boolean) {
+  const nome = primeiroNome(a.nome);
+  const lugar = a.cidade ? formatarLugar(a.bairro ?? "", a.cidade) : (a.bairro ?? "");
+  const linha = `• *${a.titulo}*${valor ? ` · ${valor}` : ""}${lugar ? ` · ${lugar}` : ""}\n${linkDaVaga(a.anuncio_id)}`;
+  const mais =
+    a.outras > 0
+      ? `\n\nEntrou também mais ${a.outras === 1 ? "uma" : String(a.outras)} de ${a.funcao}: é só me pedir que eu mando.`
+      : "";
+  const quer = comBotao
+    ? "\n\nQuer se candidatar? Toque em *Quero me candidatar* que eu mando a sua candidatura daqui mesmo. 😊"
+    : "";
+  return `${nome ? `Oi, ${nome}!` : "Oi!"} 🔔 ${MARCA_DO_AVISO_DE_VAGA} de ${a.funcao} aqui, e acabou de entrar uma nova:\n\n${linha}${mais}${quer}\n\n_Para não receber estes avisos, é só escrever PARAR._`;
+}
+
+/** A vaga do modelo ("Motorista de caminhão (Jardim Goiás)"): o título e o lugar, curtos. */
+export function vagaDoModelo(a: Pick<AvisoDeVaga, "titulo" | "bairro" | "cidade">) {
+  const titulo = a.titulo.replace(/\s+/g, " ").trim().slice(0, 60);
+  const lugar = (a.cidade ? formatarLugar(a.bairro ?? "", a.cidade) : (a.bairro ?? "")).replace(/\s+/g, " ").trim();
+  return lugar ? `${titulo} (${lugar.slice(0, 40)})` : titulo;
+}
+
+/** O texto do modelo, para a conversa guardar o que a pessoa recebeu (com o link e os botões). */
+export function textoDoModeloDoAviso(nome: string, vaga: string, anuncioId: string) {
+  const m = MODELOS.find((x) => x.nome === MODELO_DO_AVISO_DE_VAGA);
+  const corpo = (m?.corpo ?? "").replace("{{nome}}", nome).replace("{{vaga}}", vaga);
+  const botoes = m?.botoes.map((b) => b.texto).join(" · ") ?? "";
+  return `${corpo}\n\nVer a vaga: ${linkDaVaga(anuncioId)}\n\n_${RODAPE_WHATSAPP}_${botoes ? `\n\n[Botões: ${botoes}]` : ""}`;
+}
+
+/** O "sim" ou o "quero" escrito depois do aviso de vaga nova (sem tocar no botão). */
+export function querAVagaDoAviso(texto: string) {
+  return /^(sim|quero|sim quero|quero sim|eu quero|quero muito|tenho interesse|me interessa|interessa|interesse|claro|bora|quero me candidatar|quero candidatar|candidatar|me candidatar|pode mandar|manda|pode ser sim)$/.test(
+    simples(texto).replace(/[!.]+$/, "").trim(),
+  );
+}
+
+/** A vaga do aviso de vaga nova (o link curto da mensagem), pelo começo do id; o mais novo, se houver dois. */
+async function vagaDoAviso(texto: string) {
+  const codigo = /\/[wifm]\/([0-9a-f]{8})\b/.exec(texto)?.[1];
+  if (!codigo) return null;
+  const { data } = await criarClientePublico()
+    .from("anuncios")
+    .select("id")
+    .gte("id", `${codigo}-0000-0000-0000-000000000000`)
+    .lte("id", `${codigo}-ffff-ffff-ffff-ffffffffffff`)
+    .order("criado_em", { ascending: false })
+    .limit(1);
+  return (data?.[0]?.id as string | undefined) ?? null;
+}
+
+/** O que saiu numa rodada: `esperando`, os de fora das 24 horas com o modelo ainda na Meta. */
+export type AvisosDeVagaNova = { enviados: number; pelo_modelo: number; falhas: number; esperando: number; motivo?: string };
+
+/** O /api/filas (o banco faz uma rodada a cada 5 minutos): os avisos de vaga nova que estão na hora (até `limite`). */
+export async function enviarAvisosDeVagaNova(limite = 30): Promise<AvisosDeVagaNova> {
+  const r: AvisosDeVagaNova = { enviados: 0, pelo_modelo: 0, falhas: 0, esperando: 0 };
+  const cfg = configMeta();
+  const acesso = acessoFila();
+  if (!cfg || !acesso) return r;
+  const { cliente: banco, chave } = acesso;
+  const { data, error } = await banco.rpc("servidor_avisos_de_vaga_para_mandar", { p_chave: chave, p_limite: limite });
+  if (error) {
+    // sem a migração, nada
+    if (error.code !== "PGRST202") r.motivo = `Não deu para ler os avisos de vaga nova: ${error.message}`;
+    return r;
+  }
+  const avisos = (data ?? []) as unknown as AvisoDeVaga[];
+  if (!avisos.length) return r;
+  // o modelo (fora das 24 horas) e o pagamento das vagas (o valor na linha da vaga)
+  const [{ data: conf }, { data: pagamentos }, comBotao] = await Promise.all([
+    banco.rpc("servidor_whatsapp_config", { p_chave: chave }),
+    criarClientePublico()
+      .from("anuncios")
+      .select("id, tipo, pagamento_valor, pagamento_unidade, beneficios, pagamento_ate, comissao, ganhos_extras")
+      .in("id", [...new Set(avisos.map((a) => a.anuncio_id))]),
+    candidatarLigado(banco, chave),
+  ]);
+  const modelos = ((conf ?? {}) as { modelos?: SituacaoModelos }).modelos ?? {};
+  const modeloPode = podeSair(modelos, MODELO_DO_AVISO_DE_VAGA);
+  const modelo = MODELOS.find((m) => m.nome === MODELO_DO_AVISO_DE_VAGA)!;
+  type Pagamento = Parameters<typeof valorDoAnuncio>[0] & { id: string };
+  const valores = new Map(((pagamentos ?? []) as unknown as Pagamento[]).map((p) => [p.id, valorDoAnuncio(p)]));
+  const anotar = (a: AvisoDeVaga, peloModelo: boolean, wamid: string | null, falhou: string | null = null) =>
+    banco.rpc("servidor_aviso_de_vaga_mandado", {
+      p_chave: chave,
+      p_conversa: a.conversa,
+      p_anuncio: a.anuncio_id,
+      p_pelo_modelo: peloModelo,
+      p_wamid: wamid,
+      p_falhou: falhou,
+    });
+
+  for (const a of avisos) {
+    // dentro das 24 horas: a mensagem de sempre (de graça), com o botão da candidatura
+    if (a.na_janela) {
+      const texto = textoDoAvisoDeVaga(a, valores.get(a.anuncio_id) || null, comBotao);
+      const s = await mandarDoRobo(
+        cfg,
+        banco,
+        chave,
+        a.conversa,
+        a.numero,
+        texto,
+        comBotao ? null : { titulo: "Ver a vaga", caminho: `/w/${codigoDaVaga(a.anuncio_id)}` },
+        comBotao ? [{ id: `c:quero:${a.anuncio_id}`, titulo: "Quero me candidatar" }] : undefined,
+      );
+      if (s.ok) {
+        await anotar(a, false, null);
+        r.enviados++;
+        continue;
+      }
+      // a janela fechou nesse meio-tempo: vai pelo modelo, se puder
+      if (!modeloPode) {
+        await anotar(a, false, null, s.erro);
+        r.falhas++;
+        continue;
+      }
+    }
+    if (!modeloPode) {
+      // o modelo ainda na Meta (em análise, ou na categoria errada): espera, a pessoa continua na fila (não é problema
+      // da fila: o resumo do /api/filas só conta)
+      r.esperando++;
+      continue;
+    }
+    const nome = primeiroNome(a.nome) ?? "tudo bem";
+    const vaga = vagaDoModelo(a);
+    const envio = await enviarModelo(cfg, a.numero, modelo, { nome, vaga }, {
+      link: `w/${codigoDaVaga(a.anuncio_id)}`,
+      respostas: [`c:quero:${a.anuncio_id}`],
+    });
+    if (envio.ok) {
+      await banco.rpc("servidor_whatsapp_conversa_saida", {
+        p_chave: chave,
+        p_conversa: a.conversa,
+        p_texto: textoDoModeloDoAviso(nome, vaga, a.anuncio_id),
+        p_wamid: envio.wamid,
+      });
+      await anotar(a, true, envio.wamid);
+      r.enviados++;
+      r.pelo_modelo++;
+    } else if (envio.configuracao) {
+      // o token ou o número com problema: para tudo, e tenta de novo na próxima rodada
+      r.falhas++;
+      r.motivo = `Os avisos de vaga nova pararam: a Meta recusou o envio (${envio.erro.slice(0, 160)}).`;
+      break;
+    } else if (envio.passageiro) {
+      // fora do ar por um instante: fica para a próxima rodada
+      r.falhas++;
+    } else {
+      // o número fora do WhatsApp, o limite de marketing da pessoa: amanhã
+      await anotar(a, true, null, envio.erro.slice(0, 300));
+      r.falhas++;
+    }
+  }
+  return r;
 }
 
 /** O botão que pode ir junto: um dos links do atendimento ou "Ver mais vagas" de uma busca. */
