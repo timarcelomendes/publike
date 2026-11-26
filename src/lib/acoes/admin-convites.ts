@@ -106,10 +106,32 @@ export async function importarConvites(itens: NovoConvite[]): Promise<Resultado>
   const { data: atuais, error: erroLer } = leitura;
   if (erroLer)
     return { ok: false, erro: mensagemDeErro(erroLer, "Não deu para ler a lista. A migração dos convites já rodou?") };
-  const chave = (s: string) => s.trim().toLowerCase();
+  // a mesma chave do banco (convites_nome_idx: lower(btrim(nome))), com os espaços de dentro juntos
+  const chave = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
   const existentes = new Map((atuais ?? []).map((a) => [chave(a.nome), a]));
-  const novos = limpos.filter((n) => !existentes.has(chave(n.nome)));
+  // a mesma empresa duas vezes no mesmo lote (26/11/2026: "Isso já foi feito antes." e nada entrava): um convite só,
+  // com as vagas e os contatos juntos
+  const doLote = new Map<string, NovoConvite>();
+  for (const n of limpos) {
+    if (existentes.has(chave(n.nome))) continue;
+    const igual = doLote.get(chave(n.nome));
+    if (!igual) {
+      doLote.set(chave(n.nome), { ...n, nome: n.nome.replace(/\s+/g, " ").trim() });
+      continue;
+    }
+    doLote.set(chave(n.nome), {
+      ...igual,
+      vagas: [...new Set([...igual.vagas, ...n.vagas])].slice(0, 20),
+      whatsapp: [...new Set([...igual.whatsapp, ...n.whatsapp])].slice(0, 5),
+      telefones: [...new Set([...igual.telefones, ...n.telefones])].slice(0, 5),
+      email: igual.email ?? n.email,
+      rascunho: igual.rascunho ?? n.rascunho,
+      link_vagas: igual.link_vagas ?? n.link_vagas,
+    });
+  }
+  const novos = [...doLote.values()];
   const semLink = !comColuna && limpos.some((n) => n.link_vagas);
+  let jaNaLista = 0;
   if (novos.length) {
     const linhas = comColuna
       ? novos
@@ -119,7 +141,14 @@ export async function importarConvites(itens: NovoConvite[]): Promise<Resultado>
           return resto;
         });
     const { error } = await c.from("convites").insert(linhas);
-    if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para importar agora.") };
+    // alguém entrou na lista no meio (outra aba, dois cliques): um por um, e o repetido fica de fora
+    if (error?.code === "23505") {
+      for (const linha of linhas) {
+        const { error: erroDeUm } = await c.from("convites").insert(linha);
+        if (erroDeUm?.code === "23505") jaNaLista++;
+        else if (erroDeUm) return { ok: false, erro: mensagemDeErro(erroDeUm, "Não deu para importar agora.") };
+      }
+    } else if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para importar agora.") };
   }
   // quem já estava e ganhou no arquivo o link das vagas: só o link entra (o resto fica como estava)
   let linksNovos = 0;
@@ -132,11 +161,15 @@ export async function importarConvites(itens: NovoConvite[]): Promise<Resultado>
     }
   }
   refresh();
-  const repetidas = limpos.length - novos.length;
+  const entraram = novos.length - jaNaLista;
+  const repetidas = limpos.filter((n) => existentes.has(chave(n.nome))).length + jaNaLista;
+  // a mesma empresa mais de uma vez no lote: virou um convite só
+  const juntadas = limpos.length - entraram - repetidas;
   return {
     ok: true,
     mensagem:
-      `${novos.length === 1 ? "1 convite entrou" : `${novos.length} convites entraram`} na lista.` +
+      `${entraram === 1 ? "1 convite entrou" : `${entraram} convites entraram`} na lista.` +
+      (juntadas > 0 ? ` ${juntadas === 1 ? "1 empresa repetida no lote foi juntada" : `${juntadas} empresas repetidas no lote foram juntadas`}.` : "") +
       (repetidas
         ? ` ${repetidas === 1 ? "1 já estava e ficou como estava" : `${repetidas} já estavam e ficaram como estavam`}`
         : "") +
