@@ -76,6 +76,12 @@ const QUEM: Record<string, QuemRecebe[]> = {
   vaga_continua_sim: ["procura"],
   // quem você contratou? com os nomes (migração 20271006120000)
   quem_contratou: ["contrata"],
+  // a resposta no prazo (migração 20271008120000)
+  demora_alerta: ["contrata"],
+  demora_suspensa: ["contrata"],
+  demora_religada: ["contrata"],
+  regra_da_resposta: ["contrata"],
+  vaga_suspensa: ["procura"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],
@@ -155,7 +161,7 @@ export function textoDoIntervalo(minutos: number) {
 export type NumerosDosEmails = { por_dia: number; semana_dia: number; semana_hora: number };
 
 const DA_SEMANA = new Set(["vagas_semana", "talentos_semana", "resumo_vagas", "talentos_reativar", "curriculo_semana"]);
-const DE_CONTA = new Set(["conta_suspensa", "conta_banida", "conta_reativada"]);
+const DE_CONTA = new Set(["conta_suspensa", "conta_banida", "conta_reativada", "demora_alerta", "demora_suspensa"]);
 const DE_MODERACAO = new Set(["em_analise", "removido", "liberado"]);
 
 /** As regras de frequência e de quem recebe que valem para o e-mail, em frases curtas. */

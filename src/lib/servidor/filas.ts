@@ -653,6 +653,28 @@ export async function perguntarQuemContratou(limite = 30, agora = false): Promis
   return { perguntas: Number(data ?? 0) };
 }
 
+/**
+ * A resposta no prazo (migração 20271008120000): candidatura sem resposta há 5 dias numa vaga no ar dá o alerta a
+ * quem publicou, com 3 dias de prazo; vencido o prazo com gente esperando, a vaga é suspensa (e quem esperava recebe o
+ * retorno); respondeu, volta ao ar. Os avisos das 8h às 20h. Sem a migração, nada (e sem `motivo`).
+ */
+export async function cobrarRespostasNoPrazo(
+  limite = 50,
+): Promise<{ alertas: number; suspensas: number; religadas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { alertas: 0, suspensas: 0, religadas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_respostas_no_prazo", {
+    p_chave: acesso.chave,
+    p_limite: limite,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { alertas: 0, suspensas: 0, religadas: 0 };
+    console.error("Publike: falha ao cobrar as respostas no prazo:", error.message);
+    return { alertas: 0, suspensas: 0, religadas: 0, motivo: "Não foi possível cobrar as respostas no prazo." };
+  }
+  return { alertas: Number(data?.alertas ?? 0), suspensas: Number(data?.suspensas ?? 0), religadas: Number(data?.religadas ?? 0) };
+}
+
 export async function perguntarSeContinua(limite = 50): Promise<{ perguntas: number; motivo?: string }> {
   const acesso = acessoFila();
   if (!acesso) return { perguntas: 0 };

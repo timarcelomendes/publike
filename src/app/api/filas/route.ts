@@ -23,6 +23,7 @@ import {
   avisarVencimentos,
   perguntarSeContinua,
   perguntarQuemContratou,
+  cobrarRespostasNoPrazo,
   calcularSelos,
   avisarCurriculosDaSemana,
   avisarProcuradas,
@@ -103,6 +104,9 @@ export async function GET(request: Request) {
   // 5 dias depois do primeiro aceite numa vaga sem ninguém em Contratados: "Quem você contratou?", com os nomes (no
   // e-mail, um botão por pessoa, sem entrar; migração 20271006120000; das 8h às 20h, uma vaga por conta por dia)
   const contratou = await comTempo(() => perguntarQuemContratou());
+  // a resposta no prazo (migração 20271008120000): 5 dias sem resposta, o alerta com 3 dias de prazo; vencido, a vaga
+  // é suspensa até a resposta (e volta sozinha)
+  const prazo = await comTempo(() => cobrarRespostasNoPrazo());
   // os selos de quem publica (migração 20271004120000): a conta de quem tem vaga no ar, no máximo a cada meia hora
   const selos = await comTempo(() => calcularSelos());
   // procuraram e não acharam vaga: a empresa que já anunciou a função e as agências (uma vez por semana)
@@ -234,6 +238,7 @@ export async function GET(request: Request) {
     vencimentos.motivo,
     continua.motivo,
     contratou.motivo,
+    prazo.motivo,
     selos.motivo,
     procuradas.motivo,
     atendem.motivo,
@@ -295,6 +300,7 @@ export async function GET(request: Request) {
       vencimentos: vencimentos.avisos,
       vaga_continua: continua.perguntas,
       quem_contratou: contratou.perguntas,
+      resposta_no_prazo: { alertas: prazo.alertas, suspensas: prazo.suspensas, religadas: prazo.religadas },
       selos: selos.contas,
       procuradas: procuradas.avisos,
       atendem: atendem.avisos,

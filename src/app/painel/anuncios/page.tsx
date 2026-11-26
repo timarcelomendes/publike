@@ -34,6 +34,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
 import { lerVisao, ordemPedeVoce, resumirVaga, VISOES_PAGAS, type VisaoDasVagas } from "@/lib/visoes-das-vagas";
 import { prontosDasMinhasVagas } from "@/lib/servidor/prontos";
+import { minhasVagasNoPrazo } from "@/lib/servidor/conquistas";
 
 export const metadata: Metadata = { title: "Meus anúncios" };
 
@@ -129,11 +130,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   // a visão (11/11/2026, claude/plano-visoes-das-vagas.md): a Lista e "Pelo que pede você" grátis; o Mosaico e a
   // Linha do tempo nos planos, com 15 dias grátis (sem plano, a prévia com as vagas da conta). Cartões e Linhas,
   // as de antes, viram a Lista
-  const [entrevistas, acesso, prontos] = await Promise.all([
+  const [entrevistas, acesso, prontos, noPrazo] = await Promise.all([
     entrevistasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)),
     acessoAsVisoes(),
     // a chamada dos prontos para assumir (migração 20270922120000; sem ela, nenhuma)
     prontosDasMinhasVagas(),
+    // a resposta no prazo (migração 20271008120000; sem ela, nada): as vagas com alerta e as suspensas
+    vagas > 0 ? minhasVagasNoPrazo() : Promise.resolve([]),
   ]);
   const pedidaVisao = lerVisao(primeiro(sp.visao) ?? (await cookies()).get(COOKIE_VISAO_VAGAS)?.value);
   const visao: VisaoDasVagas = !acesso.disponivel && VISOES_PAGAS.includes(pedidaVisao) ? "lista" : pedidaVisao;
@@ -242,6 +245,25 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
         </Aviso>
       )}
       {primeiro(sp.excluido) === "1" && <Aviso tipo="sucesso" titulo="Anúncio excluído." />}
+      {/* a resposta no prazo (migração 20271008120000): a suspensa e o prazo de cada vaga com gente esperando */}
+      {noPrazo.map((v) => (
+        <Aviso
+          key={v.anuncio_id}
+          tipo="alerta"
+          titulo={
+            v.estado === "suspensa"
+              ? `${v.titulo} está suspensa: ${v.esperando === 1 ? "1 pessoa espera" : `${v.esperando} pessoas esperam`} resposta`
+              : `${v.esperando === 1 ? "1 pessoa espera" : `${v.esperando} pessoas esperam`} resposta em ${v.titulo} há mais de 5 dias`
+          }
+        >
+          {v.estado === "suspensa"
+            ? "Aceite ou dispense quem espera e a vaga volta ao ar sozinha, com os candidatos que já tinha. "
+            : `Aceite ou dispense até ${v.prazo_ate ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(v.prazo_ate)) : "o prazo"}: sem resposta, a vaga é suspensa. `}
+          <Link href={`/painel/caixa?aba=responder&vaga=${v.anuncio_id}`} className="font-medium underline underline-offset-2">
+            Responder agora
+          </Link>
+        </Aviso>
+      ))}
       {/* "Publicar também para outros cargos": as vagas que saíram de uma vez (e as que não) */}
       {(() => {
         const n = Number(primeiro(sp.publicadas));

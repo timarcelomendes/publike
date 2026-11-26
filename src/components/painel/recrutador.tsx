@@ -18,7 +18,7 @@ import {
   Wallet,
   PartyPopper,
 } from "lucide-react";
-import { conquistasParaConfirmar, minhasPerguntasQuemContratou } from "@/lib/servidor/conquistas";
+import { conquistasParaConfirmar, minhasPerguntasQuemContratou, minhasVagasNoPrazo } from "@/lib/servidor/conquistas";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { meusSelos, respostaDeQuemPublica } from "@/lib/dados";
@@ -45,6 +45,9 @@ import { DicaDeNovidade } from "@/components/ui/dica-de-novidade";
 import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
 import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 import { linkDosProntos, prontosDasMinhasVagas } from "@/lib/servidor/prontos";
+/** "29/11", no horário de Brasília (o prazo da resposta). */
+const diaEMes = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
 
 /** As perguntas sem resposta de quem publicou, por vaga (migração 20270318120000; sem ela, nada). */
 async function perguntasSemResposta(ids: string[]) {
@@ -156,6 +159,7 @@ export async function PainelRecrutador({
     prontos,
     selos,
     quemContratou,
+    noPrazoDaResposta,
   ] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
@@ -182,6 +186,8 @@ export async function PainelRecrutador({
     noAr.length > 0 ? meusSelos().catch(() => null) : Promise.resolve(null),
     // "Quem você contratou?" (migração 20271006120000; sem ela, nada): as perguntas que esperam a resposta
     vagas.length > 0 ? minhasPerguntasQuemContratou() : Promise.resolve([]),
+    // a resposta no prazo (migração 20271008120000; sem ela, nada): as vagas com alerta e as suspensas
+    vagas.length > 0 ? minhasVagasNoPrazo() : Promise.resolve([]),
   ]);
   const noPrazo = pedidosAg?.noPrazo ?? null;
   // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
@@ -646,6 +652,26 @@ export async function PainelRecrutador({
   cartoes.push(...extras);
   // os finalistas com o prazo do cliente perto vêm primeiro (o cartão escuro)
   cartoes.unshift(...finalistasNoPrazo);
+  // a resposta no prazo (migração 20271008120000): a vaga suspensa e o prazo para não ser suspensa, antes de tudo
+  cartoes.unshift(
+    ...noPrazoDaResposta.map(
+      (v): Cartao => ({
+        icone: Hourglass,
+        tom: "urgente",
+        quando: v.estado === "suspensa" ? "Suspensa" : v.prazo_ate ? `Até ${diaEMes(v.prazo_ate)}` : "Hoje",
+        titulo:
+          v.estado === "suspensa"
+            ? `${v.titulo} foi suspensa: ${plural(v.esperando, "pessoa espera", "pessoas esperam")} resposta`
+            : `${plural(v.esperando, "pessoa espera", "pessoas esperam")} resposta em ${v.titulo} há mais de 5 dias`,
+        texto:
+          v.estado === "suspensa"
+            ? "Aceite ou dispense quem espera e a vaga volta ao ar sozinha."
+            : `Aceite ou dispense até ${v.prazo_ate ? diaEMes(v.prazo_ate) : "o prazo"}. Sem resposta, a vaga é suspensa: candidato sem retorno tira a confiança na sua empresa e no Publike.`,
+        href: `/painel/caixa?aba=responder&vaga=${v.anuncio_id}`,
+        acao: "Responder",
+      }),
+    ),
+  );
 
   // a vaga sem cliente (agência) ou todas (empresa); e quantos chegaram por indicação (parte 3)
   const listaDeVagas = agencia

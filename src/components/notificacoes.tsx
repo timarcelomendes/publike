@@ -156,6 +156,11 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   vaga_continua_sim: CircleCheck,
   // "Quem você contratou?", com os nomes (migração 20271006120000)
   quem_contratou: Handshake,
+  // a resposta no prazo (migração 20271008120000)
+  demora_alerta: Hourglass,
+  demora_suspensa: Hourglass,
+  demora_religada: CircleCheck,
+  vaga_suspensa: HeartCrack,
 };
 
 type Notificacao = {

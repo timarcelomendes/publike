@@ -117,6 +117,11 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   atendem_a_vaga: "Quem atende a vaga e não curtiu (a cada 3 pessoas novas)",
   vaga_continua: "A vaga ainda está aberta? (para quem publicou)",
   vaga_continua_sim: "A vaga continua aberta (para quem perguntou)",
+  demora_alerta: "Candidatos esperando: responda no prazo (para quem publicou)",
+  demora_suspensa: "Vaga suspensa por falta de resposta (para quem publicou)",
+  demora_religada: "Vaga de volta ao ar (para quem publicou)",
+  vaga_suspensa: "A vaga saiu do ar sem resposta (para quem esperava)",
+  regra_da_resposta: "A regra da resposta no prazo (uma vez)",
 };
 
 export const STATUS_EMAIL: Record<string, string> = {

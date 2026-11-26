@@ -600,3 +600,10 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 ## O "Voltar para..." pula os passos da própria tela (26/11/2026; Marcelo: "hoje ele vai voltando em todas telas que foi navegado, deve voltar direto")
 
 - `Voltar` marca a entrada do histórico com a tela (`history.state.telaVoltar`); os passos que a tela empilha (o publicar em 5 passos, a conversa do assistente) copiam o `history.state` e levam a marca. O clique volta e segue voltando enquanto a marca é a desta tela (no máximo 30); se o histórico acaba nela, abre a anterior pelo link.
+
+## A resposta no prazo: alerta e vaga suspensa (26/11/2026; migração 20271008120000; Marcelo: "alertar as empresas sobre a demora em responder, sob penalidade das vagas serem suspensas")
+
+- Candidatura pendente há 5 dias ou mais numa vaga no ar: o robô das filas (`servidor_respostas_no_prazo`, das 8h às 20h) manda o alerta `demora_alerta` a quem publicou (sino, celular e e-mail; e-mail como aviso de conta, mesmo com os avisos desligados), com o nome de quem espera e 3 dias de prazo. Um alerta por vaga a cada 3 dias, no máximo.
+- Prazo vencido com gente esperando há 5 dias ou mais: a vaga vai para `pausado` (`privado.vagas_demora.suspensa_em`), sai o `demora_suspensa` e quem esperava (todas as pendentes) recebe `vaga_suspensa` (neutro, com as parecidas; a candidatura continua).
+- Respondeu (aceitou, dispensou) ou a pessoa desistiu e não sobra ninguém esperando há 5 dias: o gatilho `curtidas_religa_vaga` põe a vaga de volta no ar (se não venceu nem foi preenchida) e avisa (`demora_religada`). Antes disso, "Reativar" e "Renovar" respondem com o que falta (hint `suspensa_demora`); o admin passa.
+- O painel mostra o cartão no topo de Para fazer e o aviso em Vagas (`minhas_vagas_no_prazo`). Vale para todos que publicam vaga. O aviso da regra (`regra_da_resposta` e o sino) saiu uma vez na migração.

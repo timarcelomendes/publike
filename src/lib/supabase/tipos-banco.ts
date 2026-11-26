@@ -2953,6 +2953,15 @@ export type Database = {
       confirmar_vaga_continua: { Args: { p_anuncio: string }; Returns: number };
       situacao_da_vaga_continua: { Args: { p_anuncio: string }; Returns: Json };
       servidor_perguntar_se_continua: { Args: { p_chave: string; p_limite?: number; p_agora?: boolean }; Returns: number };
+      // A resposta no prazo: o alerta, a suspensão e a volta ao ar (migração 20271008120000)
+      servidor_respostas_no_prazo: {
+        Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
+        Returns: { alertas: number; suspensas: number; resolvidas: number; religadas: number; avisados: number };
+      };
+      minhas_vagas_no_prazo: {
+        Args: Record<string, never>;
+        Returns: { anuncio_id: string; titulo: string; estado: "alerta" | "suspensa"; prazo_ate: string | null; esperando: number }[];
+      };
       // Os selos de reputação de quem publica (migração 20271004120000)
       selos_das_vagas: {
         Args: { p_ids: string[] };

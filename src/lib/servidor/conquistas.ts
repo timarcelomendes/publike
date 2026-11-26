@@ -97,3 +97,23 @@ export async function minhasPerguntasQuemContratou(): Promise<
     return [];
   }
 }
+
+/**
+ * A resposta no prazo (migração 20271008120000): as vagas da conta com alerta (gente esperando há 5 dias ou mais, com
+ * o prazo) e as suspensas por falta de resposta. Sem a migração, nada.
+ */
+export async function minhasVagasNoPrazo(): Promise<
+  { anuncio_id: string; titulo: string; estado: "alerta" | "suspensa"; prazo_ate: string | null; esperando: number }[]
+> {
+  if (MODO_DEMO) return [];
+  try {
+    const { data, error } = await (await criarClienteServidor()).rpc("minhas_vagas_no_prazo");
+    if (error) {
+      semMigracao(error, "as vagas com resposta no prazo");
+      return [];
+    }
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
