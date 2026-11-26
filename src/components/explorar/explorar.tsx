@@ -3,6 +3,7 @@ import { BellPlus, MapPinned, Percent, SearchX, Store } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { vagaNoTurno, type Aderencia } from "@/lib/aderencia";
+import { temSelos } from "@/lib/selos";
 import {
   buscarAnuncios,
   listarMeusAnuncios,
@@ -354,12 +355,22 @@ export async function Explorar({
   const turno = filtros.turno;
   // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
   const ja = filtros.ja;
+  // "Com selo" (migração 20271004120000): só as vagas de quem tem selo (a busca do banco não sabe dele)
+  const selo = filtros.selo;
+  // quantas vagas com selo a lista tem: o filtro só aparece com 3 ou mais (com menos, a lista ficaria quase vazia)
+  const comSelo = requisitos
+    ? (doCartao ?? encontrados).filter((a) => a.tipo === "vaga" && temSelos(requisitos.get(a.id)?.selos)).length
+    : 0;
   let anuncios =
-    (turno || ja) && requisitos
+    (turno || ja || selo) && requisitos
       ? (doCartao ?? encontrados).filter((a) => {
           const v = requisitos.get(a.id);
           return (
-            a.tipo === "vaga" && v !== undefined && (!turno || vagaNoTurno(v, turno)) && (!ja || Boolean(v.comeca_ja))
+            a.tipo === "vaga" &&
+            v !== undefined &&
+            (!turno || vagaNoTurno(v, turno)) &&
+            (!ja || Boolean(v.comeca_ja)) &&
+            (!selo || temSelos(v.selos))
           );
         })
       : (doCartao ?? encontrados);
@@ -643,7 +654,7 @@ export async function Explorar({
           </>
         }
       >
-        {busca || filtros.turno || filtros.ja || filtros.categoria || filtros.regime || filtros.quem
+        {busca || filtros.turno || filtros.ja || filtros.selo || filtros.categoria || filtros.regime || filtros.quem
           ? "Com estes filtros, nenhuma das vagas que combinam com você aparece. Tire um filtro para ver mais."
           : `Quando entrar uma vaga da sua área${regiaoDoCartao ? ` em ${regiaoDoCartao}` : ""}, ela aparece aqui. Com a sua profissão e as experiências no currículo, o Publike acha as vagas certas para você.`}
       </Vazio>
@@ -697,13 +708,15 @@ export async function Explorar({
       >
         {filtros.ja
           ? "Nenhuma vaga marcada como “Começa já” por aqui agora. Tire esse filtro para ver todas as vagas perto."
-          : filtros.turno
-            ? "Nenhuma vaga neste horário por aqui. Tente outro horário ou uma distância maior."
-            : filtros.tipo === "servico"
-              ? "Ainda ninguém oferece isso perto de você. Publique o pedido grátis: quem faz e mora perto curte, e você escolhe."
-              : filtros.q || filtros.categoria
-                ? "Tente outra palavra, outra categoria ou uma distância maior."
-                : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
+          : filtros.selo
+            ? "Nenhuma vaga de quem tem selo por aqui agora. Tire o filtro “Com selo” para ver todas as vagas perto."
+            : filtros.turno
+              ? "Nenhuma vaga neste horário por aqui. Tente outro horário ou uma distância maior."
+              : filtros.tipo === "servico"
+                ? "Ainda ninguém oferece isso perto de você. Publique o pedido grátis: quem faz e mora perto curte, e você escolhe."
+                : filtros.q || filtros.categoria
+                  ? "Tente outra palavra, outra categoria ou uma distância maior."
+                  : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );
   // "Combina mais" sem currículo (ou sem entrar): a lista de sempre, dizendo por quê e o que fazer
@@ -923,6 +936,7 @@ export async function Explorar({
           <FiltrosLista
             filtros={filtros}
             soMeus={publica}
+            selo={comSelo >= 3 || Boolean(filtros.selo)}
             combina={Boolean(quem)}
             quebrar={feed}
             semOrdem={ordemFora}

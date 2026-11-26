@@ -41,6 +41,7 @@ import { estudosDoBanco } from "./estudos";
 import { UUID } from "./validacao";
 import { perguntasDoBanco, respostasDoBanco, type Pergunta, type Respostas } from "./vaga-extra";
 import { situacaoDoBanco, type SituacaoContinua } from "./vaga-continua";
+import { selosDoBanco, situacaoDosSelosDoBanco, type Selos, type SituacaoDosSelos } from "./selos";
 import { comFuncaoDasVagas } from "./servidor/funcoes-pelo-contexto";
 
 // Leituras do banco usadas pelas páginas (sempre no servidor).
@@ -668,6 +669,8 @@ export type DetalhesDaVaga = CamposDaVaga & {
   comeca_ja?: boolean;
   /** a vaga ainda está aberta? (migração 20271003120000; sem ela, null) */
   continua?: SituacaoContinua | null;
+  /** os selos de quem publicou (migração 20271004120000; sem selo ou sem a migração, null) */
+  selos?: Selos | null;
 };
 
 const COLUNAS_DOS_REQUISITOS =
@@ -678,7 +681,7 @@ export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[
   if (MODO_DEMO || !ids.length) return [];
   const supabase = await criarClienteServidor();
   const ler = (colunas: string) => supabase.from("anuncios").select(colunas).in("id", ids).returns<DetalhesDaVaga[]>();
-  const [lidas, continua] = await Promise.all([
+  const [lidas, continua, selos] = await Promise.all([
     (async () => {
       let { data, error } = await ler(`${COLUNAS_DOS_REQUISITOS}, comeca_ja`);
       // sem a migração 20261212 (a coluna comeca_ja): lê sem ela (nenhuma vaga com "Começa já")
@@ -687,10 +690,51 @@ export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[
       return data ?? [];
     })(),
     confirmacaoDasVagas(ids),
+    selosDasVagas(ids),
   ]);
   // a função (CBO) que a IA leu da vaga: o % pelo contexto (claude/plano-match-pelo-contexto.md)
   const vagas = await comFuncaoDasVagas(lidas);
-  return vagas.map((v) => ({ ...v, continua: continua.get(v.id) ?? null }));
+  return vagas.map((v) => ({ ...v, continua: continua.get(v.id) ?? null, selos: selos.get(v.id) ?? null }));
+}
+
+/**
+ * Os selos de quem publicou cada vaga (migração 20271004120000; src/lib/selos.ts): só as vagas de quem tem algum selo.
+ * Sem a migração ou com falha, vazio (o cartão fica como antes).
+ */
+export async function selosDasVagas(ids: string[]): Promise<Map<string, Selos>> {
+  if (MODO_DEMO || !ids.length) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("selos_das_vagas", { p_ids: ids.slice(0, 200) });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler os selos das vagas:", error.message);
+    return new Map();
+  }
+  return new Map((data ?? []).map((r) => [r.anuncio_id, selosDoBanco(r)]));
+}
+
+/** Os selos de cada conta (o perfil e a página da vaga), só de quem tem algum. Sem a migração, vazio. */
+export async function selosDasContas(ids: string[]): Promise<Map<string, Selos>> {
+  const contas = [...new Set(ids)].filter((id) => UUID.test(id)).slice(0, 200);
+  if (MODO_DEMO || !contas.length) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("selos_das_contas", { p_contas: contas });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler os selos das contas:", error.message);
+    return new Map();
+  }
+  return new Map((data ?? []).map((r) => [r.conta_id, selosDoBanco(r)]));
+}
+
+/** O painel: a conta dos selos de quem está nele, ao vivo, com o que falta. Sem a migração, null. */
+export async function meusSelos(): Promise<SituacaoDosSelos | null> {
+  if (MODO_DEMO) return null;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("meus_selos");
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler os seus selos:", error.message);
+    return null;
+  }
+  return situacaoDosSelosDoBanco(data);
 }
 
 /**

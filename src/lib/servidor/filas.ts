@@ -647,6 +647,22 @@ export async function perguntarSeContinua(limite = 50): Promise<{ perguntas: num
 }
 
 /**
+ * Os selos de reputação de quem publica vaga (migração 20271004120000; src/lib/selos.ts): o banco refaz a conta de quem
+ * tem vaga no ar, no máximo a cada meia hora (o robô chama a cada minuto). Sem a migração, nada (e sem `motivo`).
+ */
+export async function calcularSelos(): Promise<{ contas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { contas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_calcular_selos", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { contas: 0 };
+    console.error("Publike: falha ao refazer os selos:", error.message);
+    return { contas: 0, motivo: "Não foi possível refazer os selos de quem publica." };
+  }
+  return { contas: Number(data ?? 0) };
+}
+
+/**
  * "A empresa te respondeu?" (migração 20270526120000): 2 dias depois do contato numa vaga, a pergunta para a pessoa (no
  * sino, no celular e por e-mail); sem resposta ou "Ainda não", de novo em 3 dias, no máximo 2 vezes. Sem a migração,
  * nada (e sem `motivo`).

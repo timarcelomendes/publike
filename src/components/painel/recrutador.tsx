@@ -20,7 +20,7 @@ import {
 import { conquistasParaConfirmar } from "@/lib/servidor/conquistas";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
-import { respostaDeQuemPublica } from "@/lib/dados";
+import { meusSelos, respostaDeQuemPublica } from "@/lib/dados";
 import { ateQuando, formatarMoeda, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { comoResponde } from "@/lib/resposta";
@@ -36,6 +36,7 @@ import { pedidosDaAgencia, resumoDosPedidos } from "@/lib/servidor/pedidos-do-cl
 import { indicadosDasVagas } from "@/lib/servidor/indicacao";
 import { documentosPendentesDaConta } from "@/lib/servidor/documentos-admissao";
 import { NumerosDoHoje, type NumeroDoHoje } from "./numeros-hoje";
+import { SeusSelos } from "./seus-selos";
 import { ConviteNotificacoes } from "@/components/convite-notificacoes";
 import { vapidPublica } from "@/lib/servidor/ambiente";
 import { TabelaDasVagas, type GrupoDeVagas, type LinhaDaVaga } from "./tabela-vagas";
@@ -152,6 +153,7 @@ export async function PainelRecrutador({
     paraConfirmar,
     whatsapp,
     prontos,
+    selos,
   ] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
@@ -174,6 +176,8 @@ export async function PainelRecrutador({
     noAr.length > 0 ? meuWhatsapp().catch(() => null) : Promise.resolve(null),
     // a chamada dos prontos para assumir (migração 20270922120000; sem ela, nenhuma)
     noAr.length > 0 ? prontosDasMinhasVagas() : Promise.resolve(new Map<string, number>()),
+    // os selos e o que falta (migração 20271004120000; sem ela, nada): só com vaga no ar
+    noAr.length > 0 ? meusSelos().catch(() => null) : Promise.resolve(null),
   ]);
   const noPrazo = pedidosAg?.noPrazo ?? null;
   // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
@@ -915,10 +919,14 @@ export async function PainelRecrutador({
               )}
             </div>
             <div className="order-2 min-w-0 xl:sticky xl:top-24">
-              <NumerosDoHoje
-                candidatos={{ dias: chaves.map((d) => ({ dia: diaMes(d), n: porDia.get(d) ?? 0 })), antes }}
-                numeros={numeros}
-              />
+              <div className="flex flex-col gap-8">
+                <NumerosDoHoje
+                  candidatos={{ dias: chaves.map((d) => ({ dia: diaMes(d), n: porDia.get(d) ?? 0 })), antes }}
+                  numeros={numeros}
+                />
+                {/* os selos: o que a conta já tem e o que falta (migração 20271004120000) */}
+                {selos && selos.vagasNoAr > 0 && <SeusSelos situacao={selos} />}
+              </div>
             </div>
           </div>
         </>

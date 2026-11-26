@@ -25,6 +25,7 @@ import {
   obterMeuPerfil,
   obterNotaDoProcesso,
   obterNotaDoProfissional,
+  selosDasContas,
   obterPerfilPublico,
   obterUsuario,
 } from "@/lib/dados";
@@ -38,6 +39,7 @@ import { modosMarcados } from "@/lib/servidor/modo";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
+import { SelosDeReputacao } from "@/components/selos-de-reputacao";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 
 export async function generateMetadata({ params }: PageProps<"/perfil/[id]">): Promise<Metadata> {
@@ -63,7 +65,7 @@ export default function PerfilPublico({ params }: PageProps<"/perfil/[id]">) {
 
 async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"] }) {
   const { id } = await params;
-  const [dados, usuario, avaliacoes, nota, seguidos, doProcesso, notaDoProcesso] = await Promise.all([
+  const [dados, usuario, avaliacoes, nota, seguidos, doProcesso, notaDoProcesso, selos] = await Promise.all([
     obterPerfilPublico(id),
     obterUsuario(),
     listarAvaliacoesPublicas(id),
@@ -72,6 +74,8 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
     // o processo seletivo de quem contrata (anônimo; migração 20270928120000)
     listarAvaliacoesDoProcesso(id),
     obterNotaDoProcesso(id),
+    // os selos de quem tem vaga no ar (migração 20271004120000)
+    selosDasContas([id]).then((m) => m.get(id) ?? null),
   ]);
   if (!dados) notFound();
   const { perfil, anuncios } = dados;
@@ -118,6 +122,7 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             {oQueFaz ?? tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} · no Publike desde{" "}
             {formatarMesAno(perfil.criado_em)}
           </p>
+          {selos && !suspensa && <SelosDeReputacao selos={selos} tipo={perfil.tipo} className="mt-2" />}
           {perfil.cnpj && (
             <CnpjDoPerfil cnpj={perfil.cnpj} verificada={agencia && perfil.verificado} className="mt-1" />
           )}

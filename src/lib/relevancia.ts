@@ -1,6 +1,7 @@
 import { outraArea, type Aderencia } from "./aderencia";
 import { pontosDaArea, semAcento, type QuemProcura } from "./descobrir";
 import { chaveBairro } from "./regioes";
+import { pontosDosSelos, type Selos } from "./selos";
 
 // "Relevantes para você", na linha do tempo: a ordem de cada pessoa, e não a mesma para todos. Conta o
 // que diz respeito a ela e, com peso menor, o que está em alta (as curtidas recentes da vaga):
@@ -12,6 +13,8 @@ import { chaveBairro } from "./regioes";
 //                        curtiu e o que salvou (0 a 25)
 //   em alta ............ a vaga curtida nas últimas 24 horas, 3 dias ou 7 dias, mais com 3 curtidas
 //                        ou mais (0 a 15). Em Recentes a curtida não muda o lugar: vale a publicação
+//   os selos ........... quem publicou responde rápido (8), é bem avaliado (5) ou já contratou pelo
+//                        Publike (3) (migração 20271004120000)
 // O que ela já curtiu desce (já está nas Candidaturas), e os anúncios dela também. Para empresa,
 // comércio e agência (sem currículo para comparar): perto, o que é novo e o interesse.
 
@@ -66,6 +69,8 @@ export type AnuncioParaRelevancia = {
   resposta?: { taxa: number; horas: number | null } | null;
   /** o Publike perguntou se a vaga continua aberta e ninguém respondeu em 3 dias (migração 20271003120000) */
   semResposta?: boolean;
+  /** os selos de quem publicou (migração 20271004120000): sobe um pouco, sem passar o que está perto ou combina mais */
+  selos?: Selos | null;
 };
 
 /** As categorias do que a pessoa curtiu, cada uma com a parte do total (0 a 1). */
@@ -148,7 +153,10 @@ export function relevanciaParaVoce(
     pontosDePerto(a) +
     pontosDeInteresse(a, s) +
     (a.tipo === "vaga"
-      ? pontosEmAlta(a.emAlta, agora) + pontosDeResposta(a.resposta) + pontosDaConfirmacao(a.semResposta)
+      ? pontosEmAlta(a.emAlta, agora) +
+        pontosDeResposta(a.resposta) +
+        pontosDaConfirmacao(a.semResposta) +
+        pontosDosSelos(a.selos)
       : 0);
   const novo = pontosDeNovo(a.criado_em, agora);
   if (s.empresa) {

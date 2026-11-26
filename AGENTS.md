@@ -530,3 +530,20 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 - **Sem resposta em 3 dias:** a vaga fica no ar, mostra "A empresa não confirmou se continua aberta" e desce. Os pontos do "Mais relevantes" são divididos por 4 (`privado.pontos_do_anuncio`), e o "Relevantes" da linha tira 20 (`pontosDaConfirmacao`, src/lib/relevancia.ts).
 - O quadro "Vagas impulsionadas na região" põe os dois cartões lado a lado só quando cabem (`@container/quadro`, 42rem). Na Lista e na coluna ao lado do mapa, fica um por linha.
 - Teste: `npx tsx scripts/testar-vaga-continua.ts`.
+
+## Os selos de reputação de quem publica vaga (25/11/2026; migração 20271004120000; Marcelo: "dar destaque aos anúncios das empresas, agências e anunciantes que respondem rápido, tem boa reputação"; "Selo e sobe na lista", "Histórico no Publike" e o filtro)
+
+- **Uma conta só por anunciante** (`privado.selos_calculados`, ao vivo). O robô das filas (`servidor_calcular_selos`, `calcularSelos` em filas.ts) guarda a conta de quem tem vaga no ar em `privado.selos_das_contas`, no máximo a cada meia hora. Tudo sai dela:
+  - **Responde rápido**, por um de dois caminhos. Quem se candidatou confirma: no "A empresa te respondeu?" (`privado.te_respondeu`, 90 dias), 7 de cada 10 dizem sim, com 3 respostas ou mais. Ou pelo Publike: `resposta_de_quem_publica` com taxa 0,7 ou mais, mediana de até 48 h, menos da metade automática (o contato direto aceita sozinho e não conta) e sem ficar 7 dias sem entrar. Some enquanto houver vaga no ar com o "Ainda está aberta?" sem resposta.
+  - **Bem avaliada**: `nota_do_processo` de 4,5 ou mais, com 3 avaliações ou mais.
+  - **Contratou pelo Publike**: conquistas com `resposta = 'comecei'`, sem a empresa negar.
+  - Denúncia procedente nos últimos 90 dias ou conta suspensa: nenhum selo.
+- **Onde aparecem:** no cartão (embaixo do nome; com o "Responde rápido", o "Responde em X" do rodapé sai), no tíquete da linha do tempo (etiquetas verdes, sem o balão), na página da vaga e no perfil (`SelosDeReputacao`, src/components/selos-de-reputacao.tsx, com a explicação no toque). Os dados vêm de `selos_das_vagas`, por `requisitosDasVagas` (como o `continua`), e de `selos_das_contas`. O selo de verificada continua só para CNPJ.
+- **Sobe na lista:** no "Mais relevantes", `privado.pontos_do_anuncio` multiplica os pontos por 1 + 0,5 (Responde rápido) + 0,25 (Bem avaliada) + 0,1 (Contratou). No "Relevantes" da linha, `pontosDosSelos` soma 8, 5 e 3: entre vagas parecidas, a de quem tem selo vem antes, sem passar uma vaga bem mais perto. No "Mais perto" e no "Mais recentes", nada muda.
+- **Filtro "Com selo"** (`selo=1`; "Reputação" nos filtros, só em Vagas): filtra pelos requisitos, como o "Começa já". Só aparece quando a lista tem 3 vagas ou mais de quem tem selo, ou quando já está ligado. Na busca, a conta é `comSelo` em explorar.tsx; na linha do tempo, é `d.comSelo`.
+- **Painel:** "Seus selos", embaixo de "Seus números" no Hoje de quem contrata, com vaga no ar (`meus_selos`, ao vivo; `oQueFalta` em src/lib/selos.ts diz o que falta, com os números da conta).
+- Teste: `npx tsx scripts/testar-selos.ts`.
+
+## A vaga ainda está aberta? na linha do tempo (25/11/2026)
+
+- O tíquete da linha do tempo mostra "Confirmada aberta" (verde) ou "Não confirmou se está aberta" (terra), pelo mesmo `continua` dos requisitos. O botão "Ainda está aberta?" fica no cartão e na página da vaga.

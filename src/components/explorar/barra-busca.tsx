@@ -546,9 +546,15 @@ export function FiltrosLista({
   ordemDaLinha = false,
   comRotulos = false,
   semLugar = false,
+  selo = false,
 }: {
   filtros: Filtros;
   soMeus?: boolean;
+  /**
+   * o filtro "Com selo" (migração 20271004120000): só quando a lista tem 3 vagas ou mais de quem tem selo (com menos, a
+   * lista ficaria quase vazia), ou quando ele já está ligado
+   */
+  selo?: boolean;
   /** quem tem currículo pode ordenar por "Combina mais" (o % de match) */
   combina?: boolean;
   /** numa coluna estreita (o feed): os filtros quebram em linhas, em vez de uma faixa que rola */
@@ -653,6 +659,21 @@ export function FiltrosLista({
           >
             <option value="">{comRotulos ? "Qualquer" : "Começo: qualquer"}</option>
             <option value="ja">Começa já</option>
+          </Seletor>,
+        )}
+      {filtros.tipo === "vaga" &&
+        selo &&
+        rotulado(
+          "Reputação",
+          <Seletor
+            aria-label="Reputação de quem contrata"
+            value={filtros.selo ? "selo" : ""}
+            onChange={(e) => ir({ selo: e.target.value === "selo" })}
+            className={classe}
+            envoltorio={envoltorio}
+          >
+            <option value="">{comRotulos ? "Qualquer" : "Reputação: qualquer"}</option>
+            <option value="selo">Com selo</option>
           </Seletor>,
         )}
       {rotulado(

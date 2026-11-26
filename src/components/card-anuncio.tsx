@@ -19,9 +19,11 @@ import type { DadosCard } from "@/lib/tipos";
 import type { GanhoExtra } from "@/lib/vaga-extra";
 import { NotaDoProfissional } from "./avaliacoes";
 import type { SituacaoContinua } from "@/lib/vaga-continua";
+import { temSelos, type Selos } from "@/lib/selos";
 import { AcoesDaVagaNoCartao } from "./anuncio/acoes-no-feed";
 import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
 import { SituacaoDaContinua } from "./anuncio/vaga-continua";
+import { SelosDeReputacao } from "./selos-de-reputacao";
 import { BotaoCurtir } from "./botao-curtir";
 import { AnelDeMatch, ehOutraArea, SeloMatch, type MatchResumo } from "./match-vaga";
 import { AnelMatchFechado, SeloMatchFechado } from "./selo-match-fechado";
@@ -55,6 +57,8 @@ export type ExtrasDaVaga = {
   resumo?: string | null;
   /** a vaga ainda está aberta? (migração 20271003120000) */
   continua?: SituacaoContinua | null;
+  /** os selos de quem publicou: "Responde rápido", "Bem avaliada", "Contratou pelo Publike" (migração 20271004120000) */
+  selos?: Selos | null;
 };
 
 /** Para quem publicou: o que chegou na própria vaga. */
@@ -177,7 +181,10 @@ export function CardAnuncio({
   const prazo = extras && !proprio && !preenchida ? encerra(extras.expiraEm, agora) : null;
   // mais de uma vaga: a faixa no alto do cartão (preenchida, não conta mais)
   const vagas = extras && !servico && !preenchida ? extras.vagas : 1;
-  const respostaDaVaga = resposta && !proprio ? comoResponde(resposta) : null;
+  // os selos de quem publicou (de outra conta, na vaga que não foi preenchida)
+  const selos = !proprio && !preenchida && temSelos(extras?.selos) ? extras.selos : null;
+  // com o "Responde rápido", o "Responde em 2 dias" do rodapé sobra
+  const respostaDaVaga = resposta && !proprio && !selos?.respondeRapido ? comoResponde(resposta) : null;
   // só a partir de 3 (o banco já não manda menos), e não na própria vaga (lá vai o botão dos candidatos)
   const curtidasDeOutros = curtidas !== null && curtidas >= 3 && !proprio ? curtidas : null;
   // a vaga ainda está aberta? Só de outra conta, no ar (a preenchida já diz)
@@ -319,6 +326,12 @@ export function CardAnuncio({
                 <p className="truncate text-body-sm text-ink-muted group-data-[visao=lista]/visao:hidden">
                   <span>{tipoCurto(anuncio.autor_tipo, servico)}</span> · {tempoRelativo(anuncio.criado_em, agora)}
                 </p>
+                {/* na Lista, os selos ficam embaixo do nome (nos Blocos, numa linha só deles, logo abaixo) */}
+                {selos && (
+                  <span className="mt-1 hidden group-data-[visao=lista]/visao:block">
+                    <SelosDeReputacao selos={selos} tipo={anuncio.autor_tipo} />
+                  </span>
+                )}
               </div>
             </>
           )}
@@ -332,6 +345,14 @@ export function CardAnuncio({
             </span>
           )}
         </div>
+
+        {/* os selos de quem publicou (migração 20271004120000), na largura do cartão: quem responde rápido, é bem
+            avaliado ou já contratou pelo Publike aparece (na Grade, não: o cartão é pequeno) */}
+        {selos && (
+          <span className="block group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
+            <SelosDeReputacao selos={selos} tipo={anuncio.autor_tipo} />
+          </span>
+        )}
 
         <div className="flex items-start gap-3 group-data-[visao=lista]/visao:col-start-1 group-data-[visao=lista]/visao:row-start-1">
           <div className="min-w-0 flex-1">

@@ -57,6 +57,7 @@ import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
 import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { SituacaoDaContinua } from "@/components/anuncio/vaga-continua";
+import { SelosDeReputacao } from "@/components/selos-de-reputacao";
 import { QuadroNoSite } from "@/components/anuncio/candidatar-no-site";
 import { candidaturaNoSite, nomeDoSiteDeCandidatura } from "@/lib/candidatura";
 import { idasAoSiteDasVagas, minhaIdaAoSite } from "@/lib/servidor/idas-ao-site";
@@ -86,6 +87,7 @@ import {
 import {
   aceitoEsperandoMeuCurriculo,
   confirmacaoDasVagas,
+  selosDasContas,
   contarVisita,
   contatoDoMatch,
   minhaEntrevista,
@@ -386,11 +388,14 @@ async function DetalheAnuncio({
   const nomeParaSeguir = anuncio.autor_tipo === "pessoa" ? primeiroNome : anuncio.autor_nome;
   const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
   const comecaJa = vaga && anuncio.status === "ativo" && !anuncio.preenchida_em && (await comecaJaDaVaga(anuncio.id));
-  // a vaga ainda está aberta? A confirmação de quem publicou ou o "Ainda está aberta?" (migração 20271003120000)
-  const continua =
+  // a vaga ainda está aberta? A confirmação de quem publicou ou o "Ainda está aberta?" (migração 20271003120000); e os
+  // selos de quem publicou: "Responde rápido", "Bem avaliada", "Contratou pelo Publike" (migração 20271004120000)
+  const [continua, selos] = await Promise.all([
     vaga && !proprio && anuncio.status === "ativo" && !anuncio.preenchida_em
-      ? ((await confirmacaoDasVagas([anuncio.id])).get(anuncio.id) ?? null)
-      : null;
+      ? confirmacaoDasVagas([anuncio.id]).then((m) => m.get(anuncio.id) ?? null)
+      : Promise.resolve(null),
+    vaga ? selosDasContas([anuncio.autor_id]).then((m) => m.get(anuncio.autor_id) ?? null) : Promise.resolve(null),
+  ]);
   // depois do match, só pelo chat do Publike (sem o contato de quem publicou; claude/plano-so-chat-ou-whatsapp.md)
   const soChat = vaga && !proprio && (await contatoPorDaVaga(anuncio.id)) === "chat";
   // quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais)
@@ -673,6 +678,8 @@ async function DetalheAnuncio({
               <span className="text-body-sm font-semibold text-cerrado-text">Empresa conferida pelo Publike</span>
             )}
           </p>
+          {/* os selos de quem publicou (migração 20271004120000): a explicação abre no toque */}
+          {selos && <SelosDeReputacao selos={selos} tipo={anuncio.autor_tipo} className="mt-2" />}
           {vaga && !proprio && anuncio.status === "ativo" && !anuncio.preenchida_em && (
             <Suspense fallback={null}>
               <AtalhosDaVaga anuncioId={anuncio.id} titulo={anuncio.titulo} logado={usuario !== null} />

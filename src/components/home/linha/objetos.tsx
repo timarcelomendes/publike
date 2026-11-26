@@ -2,12 +2,16 @@ import {
   Bus,
   CalendarClock,
   CircleCheck,
+  CircleHelp,
   ExternalLink,
   Footprints,
+  Handshake,
   Heart,
   MapPin,
   MessageCircle,
+  MessageCircleReply,
   MessagesSquare,
+  Star,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +24,7 @@ import { formatarDistancia, formatarLugar, formatarNumero, linkWhatsApp, rotuloM
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import { SEM_COMENTARIOS, type RespostaNoFeed } from "@/lib/comentarios";
+import { selosVisiveis } from "@/lib/selos";
 import type { Conquista } from "@/lib/conquistas";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
@@ -143,8 +148,11 @@ export function TicketDaVaga({
   const todosBeneficios = item.requisitos?.beneficios_lista ?? [];
   const direto = Boolean(item.requisitos?.contato_direto) && !preenchida && !proprio;
   const comecaJa = Boolean(item.requisitos?.comeca_ja) && !preenchida;
-  // com o "Contato direto" ou o "Começa já", os benefícios ficam todos no "+N" (cabe numa linha)
-  const beneficios = todosBeneficios.slice(0, direto || comecaJa ? 0 : 1);
+  // os selos de quem publicou (migração 20271004120000) e a confirmação do "Ainda está aberta?" (20271003120000)
+  const selos = !preenchida && !proprio ? selosVisiveis(item.requisitos?.selos, a.autor_tipo) : [];
+  const estado = !preenchida && !proprio ? item.requisitos?.continua?.estado : null;
+  // com o "Contato direto", o "Começa já" ou um selo, os benefícios ficam todos no "+N" (cabe numa linha)
+  const beneficios = todosBeneficios.slice(0, direto || comecaJa || selos.length > 0 ? 0 : 1);
   const outros = todosBeneficios.length - beneficios.length;
   // a vaga de outra área fica sem selo na linha (o "Outra área" fica na página da vaga e no Descobrir)
   const match =
@@ -177,6 +185,37 @@ export function TicketDaVaga({
       <li key="d" className="inline-flex items-center gap-1 text-cerrado-text">
         <Zap aria-hidden className="size-3.5" />
         Contato direto
+      </li>,
+    );
+  // quem responde, é bem avaliado ou já contratou pelo Publike: em verde (a explicação fica na página da vaga)
+  const ICONE_DO_SELO = { responde: MessageCircleReply, avaliada: Star, contratou: Handshake } as const;
+  // no máximo dois no tíquete: com os três, o "Contratou" fica para a página da vaga
+  for (const selo of selos.length > 2 ? selos.filter((x) => x.chave !== "contratou") : selos) {
+    const Icone = ICONE_DO_SELO[selo.chave];
+    etiquetas.push(
+      <li
+        key={`selo-${selo.chave}`}
+        className="inline-flex items-center gap-1 bg-cerrado/10! text-cerrado-text"
+        title={`${selo.texto}: ${selo.explicacao}`}
+      >
+        <Icone aria-hidden className="size-3.5" />
+        {selo.curto}
+        {selo.chave === "avaliada" && <span className="sr-only"> de nota, bem avaliada</span>}
+      </li>,
+    );
+  }
+  if (estado === "confirmada")
+    etiquetas.push(
+      <li key="aberta" className="inline-flex items-center gap-1 text-cerrado-text">
+        <CircleCheck aria-hidden className="size-3.5" />
+        Confirmada aberta
+      </li>,
+    );
+  else if (estado === "sem_resposta")
+    etiquetas.push(
+      <li key="sem-confirmar" className="inline-flex items-center gap-1 text-terra-text">
+        <CircleHelp aria-hidden className="size-3.5" />
+        Não confirmou se está aberta
       </li>,
     );
   for (const b of beneficios) etiquetas.push(<li key={b}>{BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}</li>);

@@ -319,7 +319,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
               />
             </div>
             {/* cada filtro com o nome em cima, em grade: nada fica escondido numa faixa que rola de lado */}
-            <FiltrosLista filtros={base} semOrdem comRotulos />
+            <FiltrosLista filtros={base} semOrdem comRotulos selo={d.comSelo >= 3 || Boolean(base.selo)} />
             {mudados > 0 && (
               <Link
                 href={hrefFiltros(base, { ...SEM_FILTROS, ordem: base.ordem })}

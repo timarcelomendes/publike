@@ -22,6 +22,7 @@ import {
   perguntarSeRespondeu,
   avisarVencimentos,
   perguntarSeContinua,
+  calcularSelos,
   avisarCurriculosDaSemana,
   avisarProcuradas,
   perguntarRotas,
@@ -98,6 +99,8 @@ export async function GET(request: Request) {
   // a vaga antiga com muitas curtidas, ou que alguém perguntou: "Sua vaga ainda está aberta?" para quem publicou
   // (migração 20271003120000; das 8h às 20h, no máximo uma a cada 7 dias por vaga)
   const continua = await comTempo(() => perguntarSeContinua());
+  // os selos de quem publica (migração 20271004120000): a conta de quem tem vaga no ar, no máximo a cada meia hora
+  const selos = await comTempo(() => calcularSelos());
   // procuraram e não acharam vaga: a empresa que já anunciou a função e as agências (uma vez por semana)
   const procuradas = await comTempo(() => avisarProcuradas());
   // quem atende a vaga e ainda não curtiu: a cada 3 pessoas novas no "Atende a vaga", um por dia por vaga (migração
@@ -214,6 +217,7 @@ export async function GET(request: Request) {
     respondeu.motivo,
     vencimentos.motivo,
     continua.motivo,
+    selos.motivo,
     procuradas.motivo,
     atendem.motivo,
     curriculoSemana.motivo,
@@ -273,6 +277,7 @@ export async function GET(request: Request) {
       te_respondeu: respondeu.perguntas,
       vencimentos: vencimentos.avisos,
       vaga_continua: continua.perguntas,
+      selos: selos.contas,
       procuradas: procuradas.avisos,
       atendem: atendem.avisos,
       curriculo_semana: curriculoSemana.avisos,

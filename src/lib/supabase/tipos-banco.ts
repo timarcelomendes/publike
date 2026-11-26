@@ -2949,6 +2949,33 @@ export type Database = {
       confirmar_vaga_continua: { Args: { p_anuncio: string }; Returns: number };
       situacao_da_vaga_continua: { Args: { p_anuncio: string }; Returns: Json };
       servidor_perguntar_se_continua: { Args: { p_chave: string; p_limite?: number; p_agora?: boolean }; Returns: number };
+      // Os selos de reputação de quem publica (migração 20271004120000)
+      selos_das_vagas: {
+        Args: { p_ids: string[] };
+        Returns: {
+          anuncio_id: string;
+          responde_rapido: boolean;
+          responde_por: string | null;
+          bem_avaliada: boolean;
+          nota: number | null;
+          avaliacoes: number;
+          contratou: number;
+        }[];
+      };
+      selos_das_contas: {
+        Args: { p_contas: string[] };
+        Returns: {
+          conta_id: string;
+          responde_rapido: boolean;
+          responde_por: string | null;
+          bem_avaliada: boolean;
+          nota: number | null;
+          avaliacoes: number;
+          contratou: number;
+        }[];
+      };
+      meus_selos: { Args: Record<string, never>; Returns: Json };
+      servidor_calcular_selos: { Args: { p_chave: string; p_agora?: boolean }; Returns: number };
       // Procuradas sem vaga (migração 20270822120000)
       servidor_procura_sem_vaga: {
         Args: { p_chave: string; p_funcoes: string[]; p_cidade: string | null; p_regiao: string | null; p_quem: string; p_origem?: string };

@@ -45,6 +45,8 @@ export type Filtros = {
   turno: Turno | null;
   /** só vagas: as que precisam de alguém para começar logo ("Começa já") */
   ja?: boolean;
+  /** só vagas: as de quem tem selo (responde rápido, bem avaliada ou contratou pelo Publike; migração 20271004120000) */
+  selo?: boolean;
   raio: number;
   /** "Até X min de ônibus": quando há, vale no lugar do raio */
   tempo: number | null;
@@ -107,6 +109,7 @@ export function lerFiltros(sp: Parametros): Filtros {
     // só em Vagas (sem tipo na URL, a intenção ainda pode abrir em Vagas: aplicarIntencao confere)
     turno: (tipo === "vaga" || !tipo) && TURNOS.some((t) => t.valor === turno) ? (turno as Turno) : null,
     ja: (tipo === "vaga" || !tipo) && primeiro(sp.ja) === "1",
+    selo: (tipo === "vaga" || !tipo) && primeiro(sp.selo) === "1",
     raio: raio && (RAIOS as readonly number[]).includes(raio) ? raio : RAIO_PADRAO,
     tempo: tempo && (TEMPOS as readonly number[]).includes(tempo) ? tempo : null,
     ordem:
@@ -132,6 +135,7 @@ export function aplicarIntencao(f: Filtros, tipoPadrao: TipoAnuncio | null): Fil
     regime: tipo === "servico" ? null : f.regime,
     turno: tipo === "vaga" ? f.turno : null,
     ja: tipo === "vaga" ? f.ja : false,
+    selo: tipo === "vaga" ? f.selo : false,
   };
 }
 
@@ -146,6 +150,7 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
   if (f.regime && f.tipo !== "servico") p.set("regime", f.regime);
   if (f.turno && f.tipo === "vaga") p.set("turno", f.turno);
   if (f.ja && f.tipo === "vaga") p.set("ja", "1");
+  if (f.selo && f.tipo === "vaga") p.set("selo", "1");
   if (f.tempo) p.set("tempo", String(f.tempo));
   else if (f.raio !== RAIO_PADRAO) p.set("raio", String(f.raio));
   if (f.ordem !== "perto") p.set("ordem", f.ordem);
@@ -169,6 +174,7 @@ export function filtrosMudados(f: Filtros, ordemFora = false) {
     f.regime,
     f.turno,
     f.ja,
+    f.selo,
     f.categoria,
     f.tempo || f.raio !== RAIO_PADRAO,
     !ordemFora && f.ordem !== "perto",
@@ -183,6 +189,7 @@ export const SEM_FILTROS: Partial<Filtros> = {
   regime: null,
   turno: null,
   ja: false,
+  selo: false,
   raio: RAIO_PADRAO,
   tempo: null,
   meus: false,

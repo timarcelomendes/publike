@@ -50,6 +50,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, Match, MeuPerfil } from "@/lib/tipos";
 import type { Resposta } from "@/lib/resposta";
 import { semResposta } from "@/lib/vaga-continua";
+import { temSelos } from "@/lib/selos";
 import type { OrigemMapa, PontoMapa } from "@/components/mapa/mapa-anuncios";
 import { deslocamentoProvavel } from "@/lib/deslocamento";
 import {
@@ -267,6 +268,8 @@ export type DadosDaLinha = {
   deOnde: ReturnType<typeof dadosDoDeOnde>;
   /** o que o raio deixou de fora: quantos há em cada distância maior e de que cidades (null: nada de fora) */
   maisLonge: MaisLonge | null;
+  /** quantas vagas de quem tem selo a linha encontrou (o filtro "Com selo" aparece com 3 ou mais; 20271004120000) */
+  comSelo: number;
 };
 
 /** O que ficou fora do raio: `faixas` = quantos aparecem a mais com cada raio maior (só os que somam). */
@@ -388,8 +391,10 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   const turno = filtros.turno;
   // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
   const ja = filtros.ja;
-  // com o turno ou o "Começa já", a lista é filtrada pelos requisitos antes de contar as curtidas da ordem
-  const filtraPelosRequisitos = Boolean(turno || ja);
+  // "Com selo" (migração 20271004120000): só as vagas de quem tem selo
+  const selo = filtros.selo;
+  // com o turno, o "Começa já" ou o "Com selo", a lista é filtrada pelos requisitos antes de contar as curtidas da ordem
+  const filtraPelosRequisitos = Boolean(turno || ja || selo);
   // nas relevantes, as curtidas recentes entram na ordem ("em alta"), e quem responde as curtidas sobe (o mesmo
   // número do selo de quem responde rápido): contadas antes de cortar a lista
   const comCurtidasNaOrdem = relevantes && (aba === "tudo" || aba === "vaga");
@@ -427,10 +432,18 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       ? encontrados.filter((a) => {
           const v = requisitos.get(a.id);
           return (
-            a.tipo === "vaga" && v !== undefined && (!turno || vagaNoTurno(v, turno)) && (!ja || Boolean(v.comeca_ja))
+            a.tipo === "vaga" &&
+            v !== undefined &&
+            (!turno || vagaNoTurno(v, turno)) &&
+            (!ja || Boolean(v.comeca_ja)) &&
+            (!selo || temSelos(v.selos))
           );
         })
       : encontrados;
+  // quantas vagas de quem tem selo a linha encontrou: o filtro "Com selo" só aparece com 3 ou mais
+  const comSelo = requisitos
+    ? encontrados.filter((a) => a.tipo === "vaga" && temSelos(requisitos.get(a.id)?.selos)).length
+    : 0;
   // o % de match de todas (nas relevantes, ele entra na ordem antes de cortar a lista)
   const matches =
     usuarioId && quem && requisitos ? matchDasVagas(filtrados, requisitos, quem, usuarioId, agora) : new Map();
@@ -675,6 +688,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     origemDoRaio: textoDaOrigem(filtros, local, visita.praca.cidade),
     deOnde: dadosDoDeOnde(filtros, local, visita.praca.cidade),
     maisLonge,
+    comSelo,
   };
 });
 
@@ -766,6 +780,7 @@ function ordenarDaPessoa(
       resposta: resposta?.get(a.autor_id) ?? null,
       // perguntamos se continua aberta e ninguém respondeu em 3 dias: desce (migração 20271003120000)
       semResposta: semResposta(requisitos?.get(a.id)?.continua),
+      selos: requisitos?.get(a.id)?.selos ?? null,
     };
   });
   return ordenarPorRelevancia(comDescricao, sinais, matches, agora).map((a) => porId.get(a.id)!);
