@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   CalendarClock,
+  Handshake,
   Clock,
   FileCheck2,
   Hourglass,
@@ -17,7 +18,7 @@ import {
   Wallet,
   PartyPopper,
 } from "lucide-react";
-import { conquistasParaConfirmar } from "@/lib/servidor/conquistas";
+import { conquistasParaConfirmar, minhasPerguntasQuemContratou } from "@/lib/servidor/conquistas";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { meusSelos, respostaDeQuemPublica } from "@/lib/dados";
@@ -154,6 +155,7 @@ export async function PainelRecrutador({
     whatsapp,
     prontos,
     selos,
+    quemContratou,
   ] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
@@ -178,6 +180,8 @@ export async function PainelRecrutador({
     noAr.length > 0 ? prontosDasMinhasVagas() : Promise.resolve(new Map<string, number>()),
     // os selos e o que falta (migração 20271004120000; sem ela, nada): só com vaga no ar
     noAr.length > 0 ? meusSelos().catch(() => null) : Promise.resolve(null),
+    // "Quem você contratou?" (migração 20271006120000; sem ela, nada): as perguntas que esperam a resposta
+    vagas.length > 0 ? minhasPerguntasQuemContratou() : Promise.resolve([]),
   ]);
   const noPrazo = pedidosAg?.noPrazo ?? null;
   // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
@@ -616,6 +620,27 @@ export async function PainelRecrutador({
       texto: `Pela vaga ${c.titulo}. Confirme para ela ir para Contratado.`,
       href: `/painel/anuncio/${c.anuncio_id}#conquistas`,
       acao: "Confirmar",
+    });
+  }
+  // "Quem você contratou?" (migração 20271006120000): a mesma página do link do e-mail, com o nome de cada aceito
+  if (quemContratou.length) {
+    const q = quemContratou[0];
+    cartoes.push({
+      icone: Handshake,
+      quando: "Hoje",
+      titulo:
+        quemContratou.length === 1
+          ? `Quem você contratou para ${q.titulo}?`
+          : `Quem você contratou? ${quemContratou.length} vagas esperam a resposta`,
+      texto:
+        (quemContratou.length === 1
+          ? q.contato_direto
+            ? `${q.aceitos === 1 ? "1 pessoa recebeu" : `${q.aceitos} pessoas receberam`} o seu contato pelo Publike. `
+            : `Você aceitou ${plural(q.aceitos, "pessoa", "pessoas")}. `
+          : `Comece por ${q.titulo}. `) +
+        "Toque em quem foi contratado: a pessoa recebe os parabéns, e quem ficou, o retorno.",
+      href: `/quem-contratou/${q.token}`,
+      acao: "Responder",
     });
   }
   cartoes.push(...extras);

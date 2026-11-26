@@ -61,6 +61,21 @@ export async function salvarAvisosDeVaga(formData: FormData) {
   if (!c) redirect(`${AQUI}?aba=aviso&erro=fora`);
   const v = Math.floor(Number(formData.get("por_dia")));
   if (!Number.isFinite(v) || v < 0 || v > 5000) redirect(`${AQUI}?aba=aviso&erro=teto`);
-  const { error } = await c.rpc("admin_salvar_avisos_de_vaga_whatsapp", { p_por_dia: v });
+  // o freio (migração 20271006120000): o % de quem pede para parar que faz o aviso parar sozinho
+  const bruto = formData.get("freio_pct");
+  const freio = bruto == null || bruto === "" ? null : Math.floor(Number(bruto));
+  if (freio !== null && (!Number.isFinite(freio) || freio < 1 || freio > 50)) redirect(`${AQUI}?aba=aviso&erro=freio`);
+  const { error } = await c.rpc("admin_salvar_avisos_de_vaga_whatsapp", {
+    p_por_dia: v,
+    ...(freio !== null ? { p_freio_pct: freio } : {}),
+  });
   redirect(`${AQUI}?aba=aviso&${error ? "erro=salvar" : "salvo=aviso"}`);
+}
+
+/** Solta o freio do aviso de vaga nova: as contas recomeçam de agora (migração 20271006120000). */
+export async function religarAvisosDeVaga() {
+  const c = await clienteAdminOuNulo();
+  if (!c) redirect(`${AQUI}?aba=aviso&erro=fora`);
+  const { error } = await c.rpc("admin_religar_avisos_de_vaga_whatsapp");
+  redirect(`${AQUI}?aba=aviso&${error ? "erro=salvar" : "salvo=religado"}`);
 }

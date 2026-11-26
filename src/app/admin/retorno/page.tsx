@@ -556,7 +556,16 @@ function TabelaCandidaturas({ linhas, agora }: { linhas: Candidatura[]; agora: n
 
 type Tres = {
   te_respondeu: { perguntadas: number; sim: number; ainda_nao: number; desisti: number; sem_resposta: number };
-  quem_contratou: { respostas: number; daqui: number; pessoas: number; ninguem: number };
+  quem_contratou: { respostas: number; daqui: number; pessoas: number; ninguem: number; pela_pergunta?: number };
+  // a pergunta que vai até quem publicou, com os nomes (migração 20271006120000; sem ela, não vem)
+  pergunta_empresa?: {
+    perguntadas: number;
+    respondidas: number;
+    contratei: number;
+    ainda_nao: number;
+    ninguem: number;
+    pelo_link: number;
+  };
   comecou: {
     pessoa_comecei: number;
     pessoa_nao_deu: number;
@@ -572,13 +581,14 @@ function TresPerguntas({ t, periodo }: { t: Tres; periodo: string }) {
   const r = t.te_respondeu;
   const respondidas = r.sim + r.ainda_nao + r.desisti;
   const q = t.quem_contratou;
+  const e = t.pergunta_empresa;
   const k = t.comecou;
   return (
     <Secao
       titulo="O que os candidatos e as empresas contaram"
-      descricao={`As três perguntas dos últimos ${periodo}: “A empresa te respondeu?” (2 dias depois do contato), “Quem você contratou?” (ao encerrar a vaga ou marcar como preenchida) e, 7 dias depois, “Começou a trabalhar?” e “Chamaria de novo?”.`}
+      descricao={`As três perguntas dos últimos ${periodo}: “A empresa te respondeu?” (2 dias depois do contato), “Quem você contratou?” (5 dias depois do primeiro aceite, por e-mail com os nomes, no WhatsApp e no painel, e ao encerrar a vaga ou marcar como preenchida) e, 7 dias depois, “Começou a trabalhar?” e “Chamaria de novo?”.`}
     >
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Numero
           rotulo="A empresa respondeu"
           valor={pct(r.sim, respondidas)}
@@ -590,6 +600,14 @@ function TresPerguntas({ t, periodo }: { t: Tres; periodo: string }) {
           valor={formatarNumero(q.daqui)}
           detalhe={`${formatarNumero(q.pessoas)} pessoas; ${formatarNumero(q.ninguem)} disseram ninguém daqui`}
         />
+        {e && (
+          <Numero
+            rotulo="Responderam “Quem você contratou?”"
+            valor={pct(e.respondidas, e.perguntadas)}
+            detalhe={`${formatarNumero(e.respondidas)} de ${formatarNumero(e.perguntadas)} vagas perguntadas: ${formatarNumero(e.contratei)} contrataram, ${formatarNumero(e.ainda_nao)} ainda não, ${formatarNumero(e.ninguem)} ninguém daqui (${formatarNumero(e.pelo_link)} pelo link, sem entrar)`}
+            alerta={e.perguntadas >= 10 && e.respondidas * 5 < e.perguntadas}
+          />
+        )}
         <Numero
           rotulo="Começaram a trabalhar"
           valor={formatarNumero(Math.max(k.pessoa_comecei, k.empresa_confirmou))}

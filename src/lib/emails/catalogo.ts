@@ -72,6 +72,8 @@ const QUEM: Record<string, QuemRecebe[]> = {
   // a vaga ainda está aberta? (migração 20271003120000)
   vaga_continua: ["contrata"],
   vaga_continua_sim: ["procura"],
+  // quem você contratou? com os nomes (migração 20271006120000)
+  quem_contratou: ["contrata"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],

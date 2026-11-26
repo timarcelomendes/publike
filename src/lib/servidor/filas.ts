@@ -631,6 +631,28 @@ export async function avisarVencimentos(limite = 100): Promise<{ avisos: number;
  * 20h, no máximo uma a cada 7 dias por vaga; no sino, no celular, no WhatsApp e por e-mail). Sem a migração, nada (e
  * sem `motivo`).
  */
+/**
+ * "Quem você contratou?" (migração 20271006120000): 5 dias depois do primeiro aceite numa vaga sem ninguém em
+ * Contratados, a pergunta vai até quem publicou, com o nome de cada aceito (no e-mail, um botão por pessoa; sem entrar
+ * no Publike), no sino, no celular e no WhatsApp. Das 8h às 20h, uma vaga por conta por dia. `agora`: fora do horário
+ * (o Admin). Sem a migração, nada (e sem `motivo`).
+ */
+export async function perguntarQuemContratou(limite = 30, agora = false): Promise<{ perguntas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { perguntas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_perguntar_quem_contratou", {
+    p_chave: acesso.chave,
+    p_limite: limite,
+    p_agora: agora,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { perguntas: 0 };
+    console.error("Publike: falha ao perguntar quem foi contratado:", error.message);
+    return { perguntas: 0, motivo: "Não foi possível perguntar às empresas quem foi contratado." };
+  }
+  return { perguntas: Number(data ?? 0) };
+}
+
 export async function perguntarSeContinua(limite = 50): Promise<{ perguntas: number; motivo?: string }> {
   const acesso = acessoFila();
   if (!acesso) return { perguntas: 0 };

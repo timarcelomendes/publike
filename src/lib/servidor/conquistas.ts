@@ -77,3 +77,23 @@ export async function perguntasDeResposta(): Promise<PerguntaDeResposta[]> {
     return [];
   }
 }
+
+/**
+ * "Quem você contratou?" (migração 20271006120000): as perguntas que o Publike fez à conta e esperam a resposta, com o
+ * código do link (o cartão do painel abre a mesma página do e-mail). Sem a migração, nada.
+ */
+export async function minhasPerguntasQuemContratou(): Promise<
+  { anuncio_id: string; titulo: string; token: string; aceitos: number; contato_direto: boolean; perguntada_em: string }[]
+> {
+  if (MODO_DEMO) return [];
+  try {
+    const { data, error } = await (await criarClienteServidor()).rpc("minhas_perguntas_quem_contratou");
+    if (error) {
+      semMigracao(error, "as perguntas de quem foi contratado");
+      return [];
+    }
+    return (data ?? []).filter((x) => /^[0-9a-f]{64}$/.test(x.token));
+  } catch {
+    return [];
+  }
+}

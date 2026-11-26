@@ -9,7 +9,8 @@
 //   2 dias, a maior parte com alguém clicando, e entra pelo menos uma vez por semana. Some com o "Ainda está aberta?"
 //   sem resposta.
 // - Bem avaliada: nota do processo seletivo 4,5 ou mais, com 3 avaliações ou mais.
-// - Contratou pelo Publike: quem foi contratado confirmou que começou.
+// - Contratou pelo Publike: quem foi contratado confirmou que começou, ou quem publicou contou quem contratou (está em
+//   Contratados) e a pessoa não disse "Não deu certo" (migração 20271006120000).
 // - Denúncia confirmada (90 dias) ou conta suspensa: sem selo nenhum.
 
 import { formatarNumero, plural } from "./formato";
@@ -21,7 +22,7 @@ export type Selos = {
   bemAvaliada: boolean;
   nota: number | null;
   avaliacoes: number;
-  /** quantas pessoas confirmaram que começaram a trabalhar */
+  /** quantas pessoas foram contratadas pelo Publike (a pessoa confirmou, ou está em Contratados sem "Não deu certo") */
   contratou: number;
 };
 
@@ -111,8 +112,8 @@ export function selosVisiveis(s: Selos | null | undefined, tipo?: string | null)
       curto: "Contratou pelo Publike",
       explicacao:
         s.contratou === 1
-          ? "Uma pessoa confirmou que começou a trabalhar depois de se candidatar pelo Publike."
-          : `${formatarNumero(s.contratou)} pessoas confirmaram que começaram a trabalhar depois de se candidatar pelo Publike.`,
+          ? "Uma pessoa que se candidatou pelo Publike foi contratada aqui."
+          : `${formatarNumero(s.contratou)} pessoas que se candidataram pelo Publike foram contratadas aqui.`,
     });
   return lista;
 }
@@ -271,8 +272,8 @@ export function oQueFalta(s: SituacaoDosSelos): ItemDosSelos[] {
           ganho: true,
           texto:
             s.contratou === 1
-              ? "Uma pessoa confirmou que começou a trabalhar com você."
-              : `${formatarNumero(s.contratou)} pessoas confirmaram que começaram a trabalhar com você.`,
+              ? "Uma pessoa que se candidatou pelo Publike foi contratada por você."
+              : `${formatarNumero(s.contratou)} pessoas que se candidataram pelo Publike foram contratadas por você.`,
         }
       : {
           chave: "contratou",
@@ -280,7 +281,7 @@ export function oQueFalta(s: SituacaoDosSelos): ItemDosSelos[] {
           ganho: false,
           texto:
             bloqueio ??
-            "Quando você marca a vaga como preenchida e diz quem contratou, o Publike pergunta à pessoa se ela começou. Com a confirmação, o selo aparece.",
+            "Conte quem você contratou: responda o “Quem você contratou?” que chega por e-mail e no WhatsApp, ou ponha a pessoa em Contratados. Se ela não disser que não deu certo, o selo aparece.",
         };
 
   return [responde, avaliada, contratou];

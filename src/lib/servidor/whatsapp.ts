@@ -286,6 +286,18 @@ export const MODELOS: Modelo[] = [
     ],
   },
   {
+    // "Quem você contratou?" (migração 20271006120000): o botão abre a página do link, com o nome de cada aceito (sem
+    // entrar no Publike). Fala só da vaga da conta (utilidade, como o publike_confirma_inicio)
+    nome: "publike_quem_contratou",
+    aviso: "quem_contratou",
+    para: "Quem contrata",
+    quando: "5 dias depois do primeiro aceite numa vaga sem ninguém em Contratados (de novo a cada 7 dias, no máximo 3 vezes)",
+    corpo:
+      "Oi, {{nome}}! Atualize a sua vaga de {{vaga}} no Publike: você já contratou alguém que se candidatou por lá? Toque em Responder para escolher quem foi contratado.",
+    exemplo: { nome: "Padaria Pão de Ouro", vaga: "Atendente de padaria" },
+    botoes: [{ tipo: "link", texto: "Responder", exemplo: "quem-contratou/3f9a" }],
+  },
+  {
     // o aviso de vaga nova para quem procurou pela conversa (migração 20271005120000; Marcelo: "preciso avisar todos os
     // usuários pelo whatsapp, quando entrar uma vaga que ele já procurou"), fora das 24 horas: o "Quero me candidatar"
     // começa a candidatura na conversa ("c:quero:<id>", como o "Quer se candidatar?") e o link abre a vaga. Não sai pela
@@ -1042,6 +1054,11 @@ export function montarMensagem(item: ItemWhatsapp): Montada {
         params: { nome, vaga },
         respostas: ["sim", "preenchi"].map((r) => `v:${item.id}:${r}`),
       };
+    case "quem_contratou":
+      // o botão leva à página do link (o link do aviso), onde estão os nomes
+      if (!vaga) return { pular: "a vaga não existe mais" };
+      if (!item.aviso?.link?.startsWith("/quem-contratou/")) return { pular: "sem o link da pergunta" };
+      return { modelo: "publike_quem_contratou", params: { nome, vaga } };
     default:
       return { pular: `sem modelo para ${item.tipo}` };
   }
@@ -1101,6 +1118,10 @@ export async function enviarWhatsappPendentes(limite = 30): Promise<ResultadoWha
       await cliente.rpc("servidor_whatsapp_salvar_modelos", { p_chave: chave, p_modelos: m });
     });
     if (r.ok) modelos = r.modelos;
+    // a nota do número na Meta, junto (migração 20271006120000): fora do verde, o freio do aviso de vaga nova puxa
+    const numero = await conferirNumero(cfg).catch(() => null);
+    if (numero?.ok && numero.quality_rating)
+      await cliente.rpc("servidor_guardar_qualidade_do_numero", { p_chave: chave, p_qualidade: numero.quality_rating });
   }
 
   const { data, error } = await cliente.rpc("servidor_whatsapp_pegar", { p_chave: chave, p_limite: limite });

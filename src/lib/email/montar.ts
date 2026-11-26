@@ -192,6 +192,31 @@ function rodape(
 /** Link a mais embaixo do botão (ex.: "Adicionar ao Google Agenda" no e-mail da entrevista). */
 export type LinkExtra = { rotulo: string; link: string };
 
+/** Uma resposta de um toque no e-mail ("Contratei Ana S.", "Ainda não contratei"), com o endereço já montado. */
+export type OpcaoDoEmail = { rotulo: string; link: string; secundaria: boolean };
+
+/**
+ * As respostas de um toque que a fila põe nos dados (`opcoes`: rótulo e caminho do site; migração 20271006120000, o
+ * "Quem você contratou?" com o nome de cada aceito). Só caminho do site e no máximo 10; o resto é ignorado.
+ */
+export function opcoesDoEmail(dados: unknown, siteUrl: string): OpcaoDoEmail[] {
+  if (!dados || typeof dados !== "object" || Array.isArray(dados)) return [];
+  const lista = (dados as Record<string, unknown>).opcoes;
+  if (!Array.isArray(lista)) return [];
+  const site = siteUrl.replace(/\/+$/, "");
+  const opcoes: OpcaoDoEmail[] = [];
+  for (const o of lista) {
+    if (!o || typeof o !== "object") continue;
+    const { rotulo, caminho, tom } = o as Record<string, unknown>;
+    if (typeof rotulo !== "string" || typeof caminho !== "string") continue;
+    const texto = rotulo.replace(/\s+/g, " ").trim().slice(0, 80);
+    if (!texto || !caminho.startsWith("/") || caminho.startsWith("//") || /[\s"'<>\\]/.test(caminho)) continue;
+    opcoes.push({ rotulo: texto, link: `${site}${caminho}`, secundaria: tom === "secundario" });
+    if (opcoes.length >= 10) break;
+  }
+  return opcoes;
+}
+
 /**
  * `logo`: endereço da imagem do topo (null = só o nome, em texto). Precisa ser
  * um endereço público: o e-mail é aberto no celular de quem recebe.
@@ -220,8 +245,11 @@ export function montarEmail(
   );
 
   const links = extras.filter((x) => x.rotulo.trim() && /^https:\/\/[^\s"'<>\\]+$/.test(x.link));
+  // as respostas de um toque, antes do botão (o botão abre a página com todas)
+  const opcoes = opcoesDoEmail(dados, siteUrl);
   const texto = [
     ...partes,
+    opcoes.length ? opcoes.map((o) => `${o.rotulo}: ${o.link}`).join("\n") : null,
     botao ? `${botao}: ${link}` : null,
     dicaDoAdmin,
     ...links.map((x) => `${x.rotulo}: ${x.link}`),
@@ -237,6 +265,21 @@ export function montarEmail(
         `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:${CORES.tinta};">${escaparHtml(p).replace(/\n/g, "<br>")}</p>`,
     )
     .join("");
+  // uma resposta por linha, do tamanho da caixa (fácil de tocar no celular); as secundárias com contorno
+  const htmlOpcoes = opcoes.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 12px;">` +
+      opcoes
+        .map(
+          (o) =>
+            `<tr><td style="padding:0 0 8px;"><a href="${escaparHtml(o.link)}" style="display:block;padding:12px 16px;font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;` +
+            (o.secundaria
+              ? `color:${CORES.tinta};background:${CORES.cartao};border:1px solid ${CORES.linha};`
+              : `color:${CORES.tinta};background:${CORES.fundo};border:1px solid ${CORES.terra};`) +
+            `">${escaparHtml(o.rotulo)}</a></td></tr>`,
+        )
+        .join("") +
+      `</table>`
+    : "";
   const htmlBotao = botao
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 4px;"><tr><td style="border-radius:8px;background:${CORES.terra};">` +
       `<a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">${escaparHtml(botao)}</a>` +
@@ -268,7 +311,7 @@ export function montarEmail(
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
 ${cabecalho}
 <tr><td style="background:${CORES.cartao};border:1px solid ${CORES.linha};border-radius:12px;padding:28px 24px;">
-${htmlParagrafos}${htmlBotao}${htmlDica}${htmlExtras}
+${htmlParagrafos}${htmlOpcoes}${htmlBotao}${htmlDica}${htmlExtras}
 </td></tr>
 <tr><td style="padding:16px 4px 0;font-size:13px;line-height:1.5;color:${CORES.apagado};">${textoRodape.html}</td></tr>
 </table>
@@ -302,4 +345,14 @@ export const EXEMPLOS_EMAIL: Record<string, string> = {
   destaque: "2 pessoas esperam sua resposta",
   lista:
     "• Auxiliar de cozinha, Padaria Pão Quente, Setor Sul: 88% de match\n• Atendente de balcão, Padaria Pão Quente, Setor Sul: 81% de match\n• Repositor, Supermercado Bom Preço, Campinas: 74% de match",
+};
+
+/** As respostas de um toque de exemplo, para a prévia no admin (por modelo). */
+export const EXEMPLOS_OPCOES_EMAIL: Record<string, { rotulo: string; caminho: string; tom?: string }[]> = {
+  quem_contratou: [
+    { rotulo: "Contratei Ana S.", caminho: "/quem-contratou/exemplo?p=1" },
+    { rotulo: "Contratei Bruno C.", caminho: "/quem-contratou/exemplo?p=2" },
+    { rotulo: "Ainda não contratei", caminho: "/quem-contratou/exemplo?r=ainda", tom: "secundario" },
+    { rotulo: "Não contratei ninguém daqui", caminho: "/quem-contratou/exemplo?r=ninguem", tom: "secundario" },
+  ],
 };

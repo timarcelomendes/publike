@@ -21,7 +21,7 @@ import {
 } from "@/lib/acoes/admin";
 import { enviarBoasVindasPendentes } from "@/lib/acoes/admin-contas";
 import type { ConfigSite, ModeloEmailAdmin } from "@/lib/admin/dados";
-import { EXEMPLOS_EMAIL, LOGO_EMAIL, montarEmail } from "@/lib/email/montar";
+import { EXEMPLOS_EMAIL, EXEMPLOS_OPCOES_EMAIL, LOGO_EMAIL, montarEmail } from "@/lib/email/montar";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -366,7 +366,8 @@ function EditorModelo({ m, siteUrl, logo }: { m: ModeloEmailAdmin; siteUrl: stri
     () =>
       montarEmail(
         { modelo: m.chave, grupo: m.grupo, assunto, corpo, botao: botao || null },
-        EXEMPLOS_EMAIL,
+        // o "Quem você contratou?" vem com um botão por aceito (os dados da fila; migração 20271006120000)
+        { ...EXEMPLOS_EMAIL, ...(EXEMPLOS_OPCOES_EMAIL[m.chave] ? { opcoes: EXEMPLOS_OPCOES_EMAIL[m.chave] } : {}) },
         siteUrl,
         logo,
       ),

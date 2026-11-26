@@ -154,6 +154,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // a vaga ainda está aberta? A pergunta para quem publicou e a resposta para quem perguntou (migração 20271003120000)
   vaga_continua: MessageCircleQuestion,
   vaga_continua_sim: CircleCheck,
+  // "Quem você contratou?", com os nomes (migração 20271006120000)
+  quem_contratou: Handshake,
 };
 
 type Notificacao = {

@@ -157,7 +157,7 @@ async function main() {
   conferir(itens.map((i) => `${i.chave}:${i.ganho}`).join() === "responde:false,avaliada:false,contratou:false", "a conta nova", itens);
   conferir(itens[0].texto.startsWith("Dois dias depois de cada contato"), "sem respostas ainda: como funciona", itens[0].texto);
   conferir(itens[1].texto.startsWith("Ainda sem avaliações"), "sem avaliações", itens[1].texto);
-  conferir(itens[2].texto.includes("marca a vaga como preenchida"), "como ganhar o contratou", itens[2].texto);
+  conferir(itens[2].texto.startsWith("Conte quem você contratou"), "como ganhar o contratou", itens[2].texto);
 
   itens = sl.oQueFalta(situacao({ te_sim: 1, te_ainda_nao: 1 }));
   conferir(itens[0].texto.startsWith("Até agora, 2 pessoas responderam (1 disse que sim)"), "menos de 3 respostas", itens[0].texto);
@@ -190,7 +190,7 @@ async function main() {
   conferir(itens.every((i) => i.ganho), "com os três", itens);
   conferir(itens[0].texto === "8 de cada 10 pessoas que se candidataram disseram que você respondeu.", "o número de quem confirmou", itens[0].texto);
   conferir(itens[1].texto === "Nota 4,8 em 6 avaliações do seu processo seletivo.", "a nota", itens[1].texto);
-  conferir(itens[2].texto === "2 pessoas confirmaram que começaram a trabalhar com você.", "as contratações", itens[2].texto);
+  conferir(itens[2].texto === "2 pessoas que se candidataram pelo Publike foram contratadas por você.", "as contratações", itens[2].texto);
   itens = sl.oQueFalta(situacao({ responde_rapido: true, responde_por: "painel", resposta_taxa: 0.9, resposta_horas: 5 }));
   conferir(itens[0].texto === "Você responde 9 de cada 10 candidaturas pelo Publike, em geral no mesmo dia.", "pelo painel", itens[0].texto);
   itens = sl.oQueFalta(situacao({ responde_rapido: true, responde_por: "painel", resposta_taxa: 1, resposta_horas: 10 }));

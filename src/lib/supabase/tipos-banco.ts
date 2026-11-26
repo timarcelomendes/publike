@@ -3019,7 +3019,31 @@ export type Database = {
         Returns: undefined;
       };
       admin_avisos_de_vaga_whatsapp: { Args: Record<string, never>; Returns: Json };
-      admin_salvar_avisos_de_vaga_whatsapp: { Args: { p_por_dia: number }; Returns: undefined };
+      admin_salvar_avisos_de_vaga_whatsapp: { Args: { p_por_dia: number; p_freio_pct?: number }; Returns: undefined };
+      // o freio do aviso de vaga nova e a nota do número (migração 20271006120000)
+      admin_religar_avisos_de_vaga_whatsapp: { Args: Record<string, never>; Returns: undefined };
+      servidor_guardar_qualidade_do_numero: { Args: { p_chave: string; p_qualidade: string }; Returns: undefined };
+      // "Quem você contratou?" com os nomes e um toque (migração 20271006120000)
+      servidor_perguntar_quem_contratou: {
+        Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
+        Returns: number;
+      };
+      quem_contratou_pelo_link: { Args: { p_token: string }; Returns: Json };
+      responder_quem_contratou_pelo_link: {
+        Args: { p_token: string; p_resposta: string; p_perfis?: string[]; p_preencher?: boolean };
+        Returns: Json;
+      };
+      minhas_perguntas_quem_contratou: {
+        Args: Record<string, never>;
+        Returns: {
+          anuncio_id: string;
+          titulo: string;
+          token: string;
+          aceitos: number;
+          contato_direto: boolean;
+          perguntada_em: string;
+        }[];
+      };
       // Procuradas sem vaga (migração 20270822120000)
       servidor_procura_sem_vaga: {
         Args: { p_chave: string; p_funcoes: string[]; p_cidade: string | null; p_regiao: string | null; p_quem: string; p_origem?: string };

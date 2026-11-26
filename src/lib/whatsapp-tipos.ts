@@ -87,6 +87,14 @@ export const TIPOS_WHATSAPP: { tipo: string; nome: string; curto: string; para: 
     para: "Candidato",
     economico: true,
   },
+  // "Quem você contratou?" (migração 20271006120000): o botão abre a página com o nome de cada aceito, sem entrar
+  {
+    tipo: "quem_contratou",
+    nome: "\"Quem você contratou?\" (com os nomes, pelo link)",
+    curto: "Quem você contratou?",
+    para: "Quem contrata",
+    economico: true,
+  },
   // o aviso de vaga nova (migração 20271005120000): para quem procurou pela conversa, sem conta; o robô das filas manda
   // (não é escolha das Preferências: "Conversa" não aparece lá). Modelo de marketing
   {
@@ -117,6 +125,7 @@ const ROTULO_PARA_QUEM_RECEBE: Record<string, string> = {
   interesse_local: "“Quero trabalhar aqui”: currículo enviado para a sua empresa",
   mensagem: "Mensagem nova no chat",
   convite: "Vagas perto de você que combinam com o seu currículo",
+  quem_contratou: "“Quem você contratou?”, para contar com um toque",
 };
 
 export function avisosParaEscolher(conta: {

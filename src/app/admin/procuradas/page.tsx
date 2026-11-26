@@ -11,11 +11,12 @@ import { BotaoLink } from "@/components/ui/botao";
 import {
   mandarAtendemAgora,
   mandarProcuradasAgora,
+  religarAvisosDeVaga,
   salvarAvisosDeVaga,
   salvarConfigAtendem,
   salvarConfigProcuradas,
 } from "@/lib/acoes/admin-procuradas";
-import { formatarDataCurta, formatarNumero, plural, primeiro } from "@/lib/formato";
+import { formatarDataCurta, formatarDataHora, formatarNumero, plural, primeiro } from "@/lib/formato";
 import { emDolares, TARIFA_MARKETING_USD } from "@/lib/whatsapp-tipos";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 
@@ -45,6 +46,27 @@ type DadosAviso = {
   semana_candidaturas: number;
   pessoas: number;
   pararam: number;
+  /** o freio (migração 20271006120000; sem ela, não vem) */
+  freio?: {
+    desde: string;
+    avisadas: number;
+    pararam: number;
+    recusaram: number;
+    pct: number;
+    qualidade: string | null;
+    qualidade_em: string | null;
+    freado_em: string | null;
+    motivo: string | null;
+    religado_em: string | null;
+  };
+};
+
+/** A nota do número na Meta, em palavras. */
+const NOTA_DO_NUMERO: Record<string, string> = {
+  GREEN: "verde (boa)",
+  YELLOW: "amarela (atenção)",
+  RED: "vermelha (ruim)",
+  UNKNOWN: "sem nota ainda",
 };
 type Dados = {
   config: { ligado: boolean; minimo: number; dias: number };
@@ -68,6 +90,7 @@ const ERROS: Record<string, string> = {
   salvar: "Não deu para salvar. Tente de novo.",
   mandar: "Não deu para mandar agora. Tente de novo em instantes.",
   teto: "O teto do dia vai de 0 a 5.000 avisos.",
+  freio: "O freio vai de 1% a 50% de quem pede para parar.",
 };
 
 export default function Procuradas({ searchParams }: PageProps<"/admin/procuradas">) {
@@ -389,8 +412,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
               depois, perto dela (até 30 km, ou na mesma cidade): uma por dia, das 8h às 20h, a que ainda não foi para a
               conversa, publicada há até 3 dias. Dentro das 24 horas da última mensagem da pessoa, vai de graça, com o botão “Quero me
               candidatar”; fora delas, pelo modelo publike_vaga_que_procurou (marketing, {emDolares(TARIFA_MARKETING_USD)}{" "}
-              cada), depois de a Meta aprovar. Quem responde PARAR não recebe mais. Ligar e desligar: Admin › WhatsApp ›
-              Parâmetros, com os outros avisos.
+              cada), depois de a Meta aprovar. Quem responde PARAR não recebe mais; se muita gente pedir para parar, ou se a
+              nota do número cair, o aviso para sozinho (o freio). Ligar e desligar: Admin › WhatsApp › Parâmetros, com
+              os outros avisos.
             </>
           }
         >
@@ -413,6 +437,53 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
                     Abrir os parâmetros
                   </Link>
                 </Aviso>
+              )}
+              {av.freio?.freado_em && (
+                <Aviso tipo="erro" titulo={`Parou sozinho em ${formatarDataHora(av.freio.freado_em)}`}>
+                  <span className="flex flex-col gap-3">
+                    <span>{av.freio.motivo ?? "O freio puxou."}</span>
+                    <form action={religarAvisosDeVaga}>
+                      <BotaoSalvar variante="secundario" enviando="Religando…" feito={null}>
+                        Religar o aviso
+                      </BotaoSalvar>
+                    </form>
+                    <span className="text-caption">
+                      Religar recomeça as contas de agora. Com a nota do número fora do verde, ele para de novo na próxima
+                      rodada.
+                    </span>
+                  </span>
+                </Aviso>
+              )}
+              {salvo === "religado" && !av.freio?.freado_em && (
+                <Aviso tipo="sucesso" titulo="Religado">
+                  O aviso volta a sair na próxima rodada (das 8h às 20h), e o freio conta de novo a partir de agora.
+                </Aviso>
+              )}
+              {av.freio && (
+                <div className="flex flex-col gap-1 rounded-md border border-line p-4 text-body-sm">
+                  <p className="text-label">Freio automático</p>
+                  <p className="text-ink-muted">
+                    Para sozinho quando {av.freio.pct}% ou mais das pessoas avisadas (com 20 avisadas ou mais, e pelo
+                    menos 2 pessoas) respondem PARAR em até 3 dias ou recusam o marketing na Meta, ou quando a nota do
+                    número sai do verde. A equipe recebe o e-mail.
+                  </p>
+                  <p>
+                    Desde {formatarDataHora(av.freio.desde)}:{" "}
+                    <strong className="tabular-nums">
+                      {formatarNumero(av.freio.pararam + av.freio.recusaram)} de {formatarNumero(av.freio.avisadas)}
+                    </strong>{" "}
+                    pediram para parar
+                    {av.freio.avisadas
+                      ? ` (${Math.round(((av.freio.pararam + av.freio.recusaram) * 100) / av.freio.avisadas)}%)`
+                      : ""}
+                    : {formatarNumero(av.freio.pararam)} PARAR e {formatarNumero(av.freio.recusaram)} recusas da Meta.
+                  </p>
+                  <p>
+                    Nota do número na Meta:{" "}
+                    {av.freio.qualidade ? (NOTA_DO_NUMERO[av.freio.qualidade] ?? av.freio.qualidade) : "ainda não conferida"}
+                    {av.freio.qualidade_em ? `, conferida em ${formatarDataHora(av.freio.qualidade_em)}` : ""}.
+                  </p>
+                </div>
               )}
               <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {[
@@ -446,6 +517,19 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/proc
                     className="w-28 rounded-md border border-line bg-surface-100 px-3 py-2"
                   />
                 </label>
+                {av.freio && (
+                  <label className="flex flex-col gap-1 text-body-sm">
+                    Freio (% que pede para parar)
+                    <input
+                      type="number"
+                      name="freio_pct"
+                      min={1}
+                      max={50}
+                      defaultValue={av.freio.pct}
+                      className="w-28 rounded-md border border-line bg-surface-100 px-3 py-2"
+                    />
+                  </label>
+                )}
                 <BotaoSalvar variante="secundario" feito={salvo === "aviso" ? "Salvo" : null} />
                 <p className="basis-full text-caption text-ink-muted">
                   Os avisos de todas as pessoas, somados, por dia (0 para de mandar). Se todos saírem pelo modelo, o teto de{" "}
