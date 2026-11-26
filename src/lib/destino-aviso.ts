@@ -53,9 +53,10 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   // "Quem você contratou?" (migração 20271006120000): a página do link, com os nomes (o link vem do banco)
   if (n.tipo === "quem_contratou")
     return n.link?.startsWith("/quem-contratou/") ? n.link : n.anuncio_id ? `/painel/anuncio/${n.anuncio_id}/quadro` : "/painel";
-  // a resposta no prazo (migração 20271008120000): quem publicou responde na Caixa de entrada; quem esperava, as parecidas
+  // a resposta no prazo (migrações 20271008120000 e 20271009120000): quem publicou dá o retorno no quadro da vaga;
+  // quem esperava, as parecidas
   if ((n.tipo === "demora_alerta" || n.tipo === "demora_suspensa") && n.anuncio_id)
-    return `/painel/caixa?aba=responder&vaga=${n.anuncio_id}`;
+    return `/painel/anuncio/${n.anuncio_id}/quadro`;
   if (n.tipo === "demora_religada" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
   if (n.tipo === "vaga_suspensa" && n.anuncio_id) return `/anuncio/${n.anuncio_id}/parecidas`;
   // a vaga ainda está aberta? (migração 20271003120000): quem publicou responde; quem perguntou abre a vaga

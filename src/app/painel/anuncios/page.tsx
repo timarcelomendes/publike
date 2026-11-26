@@ -252,15 +252,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
           tipo="alerta"
           titulo={
             v.estado === "suspensa"
-              ? `${v.titulo} está suspensa: ${v.esperando === 1 ? "1 pessoa espera" : `${v.esperando} pessoas esperam`} resposta`
-              : `${v.esperando === 1 ? "1 pessoa espera" : `${v.esperando} pessoas esperam`} resposta em ${v.titulo} há mais de 5 dias`
+              ? `${v.titulo} está suspensa: ${v.esperando === 1 ? "1 pessoa espera" : `${v.esperando} pessoas esperam`} o seu retorno`
+              : `${v.esperando === 1 ? "1 pessoa espera" : `${v.esperando} pessoas esperam`} o seu retorno em ${v.titulo} há mais de 5 dias`
           }
         >
           {v.estado === "suspensa"
-            ? "Aceite ou dispense quem espera e a vaga volta ao ar sozinha, com os candidatos que já tinha. "
-            : `Aceite ou dispense até ${v.prazo_ate ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(v.prazo_ate)) : "o prazo"}: sem resposta, a vaga é suspensa. `}
-          <Link href={`/painel/caixa?aba=responder&vaga=${v.anuncio_id}`} className="font-medium underline underline-offset-2">
-            Responder agora
+            ? "Dispense quem não serve ou fale com quem você aceitou (mensagem, WhatsApp ou entrevista): a vaga volta ao ar sozinha, com os candidatos que já tinha. "
+            : `Até ${v.prazo_ate ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(v.prazo_ate)) : "o prazo"}, dispense quem não serve ou fale com quem você aceitou (mensagem, WhatsApp ou entrevista). Só aceitar não é retorno; sem retorno, a vaga é suspensa. `}
+          <Link href={`/painel/anuncio/${v.anuncio_id}/quadro`} className="font-medium underline underline-offset-2">
+            Dar o retorno agora
           </Link>
         </Aviso>
       ))}

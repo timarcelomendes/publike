@@ -661,14 +661,14 @@ export async function PainelRecrutador({
         quando: v.estado === "suspensa" ? "Suspensa" : v.prazo_ate ? `Até ${diaEMes(v.prazo_ate)}` : "Hoje",
         titulo:
           v.estado === "suspensa"
-            ? `${v.titulo} foi suspensa: ${plural(v.esperando, "pessoa espera", "pessoas esperam")} resposta`
-            : `${plural(v.esperando, "pessoa espera", "pessoas esperam")} resposta em ${v.titulo} há mais de 5 dias`,
+            ? `${v.titulo} foi suspensa: ${plural(v.esperando, "pessoa espera", "pessoas esperam")} o seu retorno`
+            : `${plural(v.esperando, "pessoa espera", "pessoas esperam")} o seu retorno em ${v.titulo} há mais de 5 dias`,
         texto:
           v.estado === "suspensa"
-            ? "Aceite ou dispense quem espera e a vaga volta ao ar sozinha."
-            : `Aceite ou dispense até ${v.prazo_ate ? diaEMes(v.prazo_ate) : "o prazo"}. Sem resposta, a vaga é suspensa: candidato sem retorno tira a confiança na sua empresa e no Publike.`,
-        href: `/painel/caixa?aba=responder&vaga=${v.anuncio_id}`,
-        acao: "Responder",
+            ? "Dispense quem não serve ou fale com quem você aceitou (mensagem, WhatsApp ou entrevista): a vaga volta ao ar sozinha."
+            : `Até ${v.prazo_ate ? diaEMes(v.prazo_ate) : "o prazo"}, dispense quem não serve ou fale com quem você aceitou (mensagem, WhatsApp ou entrevista); só aceitar não é retorno. Sem retorno, a vaga é suspensa.`,
+        href: `/painel/anuncio/${v.anuncio_id}/quadro`,
+        acao: "Dar o retorno",
       }),
     ),
   );
