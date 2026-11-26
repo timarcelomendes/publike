@@ -1,9 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, MapPinned } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { dentro, useAreaDoMapa } from "./area-do-mapa";
+import { Fragment, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 // Quantos por página, pelo tamanho da tela: 4 no celular, até 12 no computador grande
 // (sempre linhas cheias: 2 colunas no tablet, 3 no computador).
@@ -29,8 +28,8 @@ function usePorPagina() {
 }
 
 /**
- * Os cartões da busca, em páginas (4 no celular, até 12 no computador). Com o mapa na tela, só os que estão na parte do mapa à
- * mostra (mexeu no mapa, a lista acompanha e volta para a primeira página).
+ * Os cartões da busca, em páginas (4 no celular, até 12 no computador). Até 26/11/2026, com o mapa na tela, só os que
+ * estavam na parte do mapa à mostra; agora é o mapa que acompanha a lista (VisaoExplorar), e a lista é a busca inteira.
  */
 export function ListaPaginada({
   itens,
@@ -40,7 +39,7 @@ export function ListaPaginada({
   className,
   maisHref,
 }: {
-  itens: { id: string; lat: number; lng: number }[];
+  itens: { id: string }[];
   /** os cartões, na mesma ordem dos itens (podem vir só os primeiros: o resto, pelo maisHref) */
   cartoes: ReactNode[];
   /** o endereço com todos os cartões (quando vieram só os primeiros) */
@@ -54,43 +53,28 @@ export function ListaPaginada({
   entre?: ReactNode;
   className: string;
 }) {
-  const area = useAreaDoMapa();
   const porPagina = usePorPagina();
   const topo = useRef<HTMLDivElement>(null);
-  // a página volta para a primeira quando a área muda (a chave é a área)
-  const chaveArea = `${porPagina}:${area ? area.map((n) => n.toFixed(4)).join(",") : "toda"}`;
-  const [pagina, setPagina] = useState({ area: chaveArea, n: 1 });
-  const atual = pagina.area === chaveArea ? pagina.n : 1;
+  // a página volta para a primeira quando o tamanho da página muda (a chave é o tamanho)
+  const [pagina, setPagina] = useState({ porPagina, n: 1 });
+  const atual = pagina.porPagina === porPagina ? pagina.n : 1;
 
   const carregados = cartoes.length;
-  const naArea = useMemo(
-    () => itens.map((it, i) => ({ ...it, i })).filter((it) => !area || dentro(area, it.lat, it.lng)),
-    [itens, area],
-  );
-  const total = naArea.length;
+  const total = itens.length;
   // só os que têm o cartão na página; os outros, pelo "Ver os outros"
-  const visiveis = naArea.filter((it) => it.i < carregados);
+  const visiveis = itens.map((it, i) => ({ ...it, i })).filter((it) => it.i < carregados);
   const faltam = total - visiveis.length;
   const paginas = Math.max(1, Math.ceil(visiveis.length / porPagina));
   const n = Math.min(atual, paginas);
   const desta = visiveis.slice((n - 1) * porPagina, n * porPagina);
-  const foraDaArea = itens.length - total;
 
   function ir(p: number) {
-    setPagina({ area: chaveArea, n: p });
+    setPagina({ porPagina, n: p });
     topo.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }
 
   return (
     <div ref={topo} className="flex scroll-mt-24 flex-col gap-4">
-      {area && foraDaArea > 0 && (
-        <p className="flex items-center gap-2 text-body-sm text-ink-muted" aria-live="polite">
-          <MapPinned aria-hidden className="size-4 shrink-0" />
-          {total === 0
-            ? "Nenhum anúncio nesta parte do mapa. Afaste o mapa ou toque em Buscar nesta área."
-            : `${total} ${total === 1 ? "anúncio" : "anúncios"} nesta parte do mapa (${foraDaArea} fora dela).`}
-        </p>
-      )}
       {desta.length > 0 && (
         <div className={className}>
           {desta.map((it, i) => (

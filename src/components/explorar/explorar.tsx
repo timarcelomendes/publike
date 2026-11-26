@@ -543,15 +543,16 @@ export async function Explorar({
 
   const lista =
     n > 0 ? (
-      // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar).
+      // blocos: 1 a 3 colunas; blocos + mapa: um cartão por linha (o mapa ao lado mostra o caminho até o da vez); grade:
+      // cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar).
       // "dense": com 3 colunas, o terceiro anúncio sobe para o lado dos dois primeiros, antes das perguntas.
       <ListaPaginada
         className={
           feed
             ? "grid grid-cols-1 gap-4 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=lista]/visao:gap-2"
-            : "grid grid-flow-row-dense grid-cols-1 gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2"
+            : "grid grid-flow-row-dense grid-cols-1 gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=blocos-mapa]/visao:sm:grid-cols-1 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2"
         }
-        itens={anuncios.map((a) => ({ id: a.id, lat: a.lat, lng: a.lng }))}
+        itens={anuncios.map((a) => ({ id: a.id }))}
         entre={!feed && !usuario && !busca && !filtros.meus ? doPublike : null}
         maisHref={hrefDeTodos}
         cartoes={anuncios.slice(0, todosOsCartoes ? undefined : CARTOES_NA_PAGINA).map((a) => (
@@ -566,6 +567,7 @@ export async function Explorar({
               match={matches.get(a.id) ?? null}
               resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
               curtidas={a.tipo === "vaga" ? (curtidas.get(a.id)?.total ?? null) : null}
+              ultimaCurtida={a.tipo === "vaga" ? (curtidas.get(a.id)?.ultima ?? null) : null}
               comentarios={a.tipo === "vaga" ? (comentarios.get(a.id) ?? SEM_COMENTARIOS) : null}
               extras={extrasDe(requisitos?.get(a.id), false)}
               salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}

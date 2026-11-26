@@ -106,6 +106,7 @@ export function CardAnuncio({
   match = null,
   resposta = null,
   curtidas = null,
+  ultimaCurtida = null,
   extras = null,
   salva = null,
   minha = null,
@@ -129,6 +130,8 @@ export function CardAnuncio({
   resposta?: Resposta | null;
   /** Vaga: quantas pessoas já curtiram (só a partir de 3; quem curtiu nunca aparece). */
   curtidas?: number | null;
+  /** Vaga: quando foi a última curtida (o movimento da vaga: "a última há 2 horas", nas últimas 24 horas). */
+  ultimaCurtida?: string | null;
   /** Vaga: benefícios, se pede currículo, quantas pessoas e até quando fica no ar. */
   extras?: ExtrasDaVaga | null;
   /** Vaga de outra pessoa, para quem tem conta: se está salva (null: sem a estrela). */
@@ -187,6 +190,11 @@ export function CardAnuncio({
   const respostaDaVaga = resposta && !proprio && !selos?.respondeRapido ? comoResponde(resposta) : null;
   // só a partir de 3 (o banco já não manda menos), e não na própria vaga (lá vai o botão dos candidatos)
   const curtidasDeOutros = curtidas !== null && curtidas >= 3 && !proprio ? curtidas : null;
+  // o movimento da vaga: a última curtida, se foi nas últimas 24 horas (26/11/2026; Marcelo: "informar quem estiver
+  // no site toda vez que uma vaga for curtida"). Com umas 35 curtidas por dia no Publike, "hoje" quase nunca passa de 2
+  // numa vaga, mas 1 em cada 4 vagas tem uma curtida nas últimas 24 horas: o "há quanto tempo" aparece de verdade
+  const curtidaRecente =
+    !proprio && ultimaCurtida && agora - Date.parse(ultimaCurtida) < DIA ? tempoRelativo(ultimaCurtida, agora) : null;
   // a vaga ainda está aberta? Só de outra conta, no ar (a preenchida já diz)
   const continua = !proprio && !preenchida && !noSite && extras?.continua?.estado ? extras.continua : null;
   // o próprio anúncio fora da busca (no perfil, por exemplo) não tem o que mostrar no rodapé
@@ -278,10 +286,11 @@ export function CardAnuncio({
     );
   }
 
+  // data-no-mapa: o cartão que o mapa ao lado mostra, com o caminho até ele (Blocos + mapa; VisaoExplorar)
   return (
     <article
       id={`anuncio-${anuncio.id}`}
-      className={`group/cartao @container relative flex min-w-0 flex-col rounded-lg border ${impulsionada && lugar === "lista" ? "border-terra/50" : "border-line"} bg-surface-200 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4`}
+      className={`group/cartao @container relative flex min-w-0 flex-col rounded-lg border ${impulsionada && lugar === "lista" ? "border-terra/50" : "border-line"} bg-surface-200 shadow-card transition-shadow hover:shadow-raised data-[no-mapa]:ring-2 data-[no-mapa]:ring-terra/60 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4`}
     >
       {vagas > 1 && (
         // o raio de dentro do cartão (o de fora menos a borda)
@@ -446,7 +455,7 @@ export function CardAnuncio({
             {/* sem espaço ao lado dos botões, vão para uma linha só deles, em cima (antes, espremiam e cortavam) */}
             <span
               className={`flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 group-data-[visao=lista]/visao:hidden ${
-                respostaDaVaga || curtidasDeOutros !== null || continua ? "min-w-[13rem]" : "min-w-0"
+                respostaDaVaga || curtidasDeOutros !== null || curtidaRecente || continua ? "min-w-[13rem]" : "min-w-0"
               }`}
             >
               {respostaDaVaga && (
@@ -455,13 +464,21 @@ export function CardAnuncio({
                   <span className="leading-tight">{respostaDaVaga.texto}</span>
                 </span>
               )}
-              {curtidasDeOutros !== null && (
+              {curtidasDeOutros !== null ? (
                 <span className="flex items-center gap-1">
                   <Heart aria-hidden className="size-4 shrink-0 text-like" />
                   <span className="leading-tight">
                     <b className="font-semibold tabular-nums">{curtidasDeOutros}</b> já curtiram
+                    {curtidaRecente && <>, a última {curtidaRecente}</>}
                   </span>
                 </span>
+              ) : (
+                curtidaRecente && (
+                  <span className="flex items-center gap-1">
+                    <Heart aria-hidden className="size-4 shrink-0 text-like" />
+                    <span className="leading-tight">Alguém curtiu {curtidaRecente}</span>
+                  </span>
+                )
               )}
               {/* a vaga ainda está aberta? A confirmação de quem publicou ou o "Ainda está aberta?" (10 curtidas ou mais) */}
               {continua && (

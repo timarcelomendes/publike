@@ -5,6 +5,7 @@ import {
   LayoutGrid,
   List,
   Map as IconeMapa,
+  Maximize2,
   PanelRight,
   Rows3,
   SlidersHorizontal,
@@ -14,6 +15,7 @@ import Link from "next/link";
 import {
   useEffect,
   useId,
+  useRef,
   useState,
   useSyncExternalStore,
   type FocusEvent,
@@ -25,7 +27,6 @@ import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/fi
 import { CHAVE_VISAO, CHAVE_VISAO_BUSCA, semDetalhes, VISOES_CELULAR, type Visao } from "@/lib/visao";
 import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
 import { MapaAnuncios } from "../mapa/mapa-sob-demanda";
-import { AreaDoMapa, type Limites } from "./area-do-mapa";
 import { DicaVerComo } from "./dica-ver-como";
 import { ListaComDetalhe } from "./lista-com-detalhe";
 
@@ -36,8 +37,10 @@ const TELA_GRANDE = "(min-width: 1024px)";
  *   lista ........ uma linha por anúncio: título, lugar, valor e curtir
  *   grade ........ cartões pequenos, muitos por linha (só título, lugar e valor)
  *   blocos ....... os cartões completos, sem mapa
- *   mapa ......... só o mapa, grande
- *   blocos-mapa .. cartões e mapa lado a lado (só no computador)
+ *   mapa ......... só o mapa, grande, com todos os anúncios em volta (o "Ver mapa inteiro" do Blocos + mapa)
+ *   blocos-mapa .. um cartão por linha e, ao lado, o mapa do anúncio da vez (só no computador): ao rolar, o mapa
+ *                  acompanha o cartão que está na altura da leitura e mostra o caminho da casa (ou de onde a
+ *                  pessoa está) até ele, com o tempo (26/11/2026; Marcelo: "hoje o mapa não tem uso")
  *   lista-detalhes a lista e, ao lado, o anúncio aberto (só no computador e só para quem não entrou)
  * A escolha fica guardada neste navegador. No celular só há Blocos e Mapa: lista e grade
  * apertam demais os cartões numa tela pequena, e o mapa em cima dos blocos empurra a lista
@@ -117,6 +120,63 @@ function cookieEmDia(chave: string) {
 }
 
 const escolhidaAgora = new Map<string, Visao>();
+/** O jeito de ver de antes do "Ver mapa inteiro": o "Ver com a lista" volta para ele. */
+let antesDoMapa: Visao | null = null;
+/**
+ * Trocou pelo botão do canto do mapa: a tela vai para o começo da busca (sem a lista, a página encolhe, e a rolagem de
+ * antes caía no fim da página, longe do mapa inteiro).
+ */
+let irParaOComeco = false;
+
+/**
+ * O anúncio da vez numa lista com o mapa ao lado: o cartão na altura da leitura (um pouco acima do meio da tela), ao
+ * rolar; o mais perto dela, quando nenhum a cruza (o começo e o fim da lista). Os escondidos (a página) não contam.
+ */
+function useCartaoDaVez(ligado: boolean) {
+  const lista = useRef<HTMLDivElement>(null);
+  const [daVez, setDaVez] = useState<string | null>(null);
+  useEffect(() => {
+    const raiz = lista.current;
+    if (!ligado || !raiz) {
+      setDaVez(null);
+      return;
+    }
+    let quadro = 0;
+    const medir = () => {
+      quadro = 0;
+      const linha = window.innerHeight * 0.42;
+      let escolhido: string | null = null;
+      let melhor = Infinity;
+      for (const el of raiz.querySelectorAll<HTMLElement>('article[id^="anuncio-"]')) {
+        const r = el.getBoundingClientRect();
+        if (!r.height) continue;
+        const d = r.top > linha ? r.top - linha : r.bottom < linha ? linha - r.bottom : 0;
+        if (d < melhor) {
+          melhor = d;
+          escolhido = el.id.slice("anuncio-".length);
+        }
+        if (!d) break;
+      }
+      setDaVez(escolhido);
+    };
+    const pedir = () => {
+      if (!quadro) quadro = requestAnimationFrame(medir);
+    };
+    pedir();
+    window.addEventListener("scroll", pedir, { passive: true });
+    window.addEventListener("resize", pedir);
+    // a página da lista mudou (ou os cartões chegaram): mede de novo
+    const mudou = new MutationObserver(pedir);
+    mudou.observe(raiz, { childList: true, subtree: true });
+    return () => {
+      if (quadro) cancelAnimationFrame(quadro);
+      window.removeEventListener("scroll", pedir);
+      window.removeEventListener("resize", pedir);
+      mudou.disconnect();
+    };
+  }, [ligado]);
+  return { lista, daVez };
+}
 
 /**
  * A visão escolhida (ou a padrão: blocos + mapa no computador, blocos no celular). `padrao`:
@@ -264,27 +324,80 @@ export function VisaoExplorar({
   const mapaFora = (visao === "blocos-mapa" || visao === "lista") && compacto && colunaFora ? colunaFora : null;
   const comMapa = visao === "mapa" || visao === "blocos-mapa" || mapaFora !== null;
   const comLista = visao !== "mapa";
+  // a lista com o mapa ao lado: o mapa acompanha a lista (antes, a lista acompanhava a parte do mapa na tela, e o mapa
+  // só servia para isso)
+  const mapaDaLista = comMapa && comLista;
   const mudados = filtrosMudados(filtros, ordemFora);
   const [filtrosAbertos, setFiltrosAbertos] = useState(mudados > 0);
   const alternarFiltros = () => setFiltrosAbertos((a) => !a);
-  // a parte do mapa na tela (com o mapa à mostra): a lista mostra só o que está nela
-  const [area, setArea] = useState<Limites | null>(null);
-  // o cartão com o mouse em cima (ou com o Tab): o mapa ao lado marca o anúncio e mostra o caminho até ele
-  const [foco, setFoco] = useState<string | null>(null);
+  // o anúncio da vez: o cartão com o mouse em cima (ou com o Tab); sem ele, o que está na altura da leitura. O mapa ao
+  // lado marca o anúncio e mostra o caminho até ele
+  const [focoMouse, setFocoMouse] = useState<string | null>(null);
+  const { lista: listaRef, daVez } = useCartaoDaVez(mapaDaLista);
+  const foco = focoMouse ?? daVez;
   const doCartao = (alvo: EventTarget | null) =>
     alvo instanceof Element
       ? (alvo.closest<HTMLElement>('article[id^="anuncio-"]')?.id.slice("anuncio-".length) ?? null)
       : null;
   const focoNaLista = comMapa
     ? {
-        onPointerOver: (e: PointerEvent<HTMLDivElement>) => e.pointerType === "mouse" && setFoco(doCartao(e.target)),
-        onPointerLeave: () => setFoco(null),
-        onFocus: (e: FocusEvent<HTMLDivElement>) => setFoco(doCartao(e.target)),
+        onPointerOver: (e: PointerEvent<HTMLDivElement>) => e.pointerType === "mouse" && setFocoMouse(doCartao(e.target)),
+        onPointerLeave: () => setFocoMouse(null),
+        onFocus: (e: FocusEvent<HTMLDivElement>) => setFocoMouse(doCartao(e.target)),
         onBlur: (e: FocusEvent<HTMLDivElement>) => {
-          if (!e.currentTarget.contains(e.relatedTarget)) setFoco(null);
+          if (!e.currentTarget.contains(e.relatedTarget)) setFocoMouse(null);
         },
       }
     : {};
+  // o mapa inteiro (a vista Mapa, com todos em volta) e a volta para a lista; só no computador (no celular, o "Blocos"
+  // e o "Mapa" estão logo em cima do mapa)
+  const botaoDoCanto =
+    "hidden min-h-9 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-3 text-label text-ink shadow-raised hover:bg-surface-300 lg:inline-flex";
+  const verMapaInteiro = (
+    <button
+      type="button"
+      onClick={() => {
+        antesDoMapa = visao;
+        irParaOComeco = true;
+        guardar("mapa", chave);
+      }}
+      className={botaoDoCanto}
+    >
+      <Maximize2 aria-hidden className="size-4" />
+      Ver mapa inteiro
+    </button>
+  );
+  const verComALista = (
+    <button
+      type="button"
+      onClick={() => {
+        irParaOComeco = true;
+        guardar(antesDoMapa && antesDoMapa !== "mapa" ? antesDoMapa : "blocos-mapa", chave);
+      }}
+      className={botaoDoCanto}
+    >
+      <List aria-hidden className="size-4" />
+      Ver com a lista
+    </button>
+  );
+  // o cartão que o mapa mostra fica com o contorno (o da vez, ou o com o mouse em cima): o elo entre a lista e o mapa
+  useEffect(() => {
+    const raiz = listaRef.current;
+    if (!mapaDaLista || !foco || !raiz) return;
+    const cartoes = [...raiz.querySelectorAll<HTMLElement>(`article[id="anuncio-${foco}"]`)];
+    for (const el of cartoes) el.setAttribute("data-no-mapa", "");
+    return () => {
+      for (const el of cartoes) el.removeAttribute("data-no-mapa");
+    };
+  }, [mapaDaLista, foco, listaRef]);
+  // trocou pelo botão do canto do mapa: a tela vai para o começo da busca
+  const comeco = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!irParaOComeco) return;
+    irParaOComeco = false;
+    const devagar = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    comeco.current?.scrollIntoView({ block: "start", behavior: devagar ? "smooth" : "auto" });
+  }, [visao]);
   const idFiltros = useId();
   const botaoFiltros = (classes: string) => (
     <button
@@ -310,7 +423,7 @@ export function VisaoExplorar({
   );
 
   return (
-    <div>
+    <div ref={comeco} className="scroll-mt-20">
       {compacto ? (
         // numa coluna estreita (o feed), discreto: a contagem e de onde a lista conta, com o
         // "Filtros" ao lado; os filtros e o jeito de ver abrem num painel logo embaixo
@@ -397,7 +510,8 @@ export function VisaoExplorar({
       <div
         // na Lista + detalhes, os cartões ficam como na Lista (uma linha por anúncio)
         data-visao={visao === "lista-detalhes" ? "lista" : visao}
-        className={`group/visao ${visao === "blocos-mapa" && !mapaFora ? "flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6" : ""}`}
+        // Blocos + mapa: um cartão por linha e o mapa mais largo, que é quem mostra o caminho
+        className={`group/visao ${visao === "blocos-mapa" && !mapaFora ? "flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-6" : ""}`}
       >
         {/* Blocos + mapa no computador: a coluna do mapa estica até a altura dos cartões, e o mapa
             ocupa essa altura (no máximo a da tela, preso no topo ao rolar). Assim a borda de baixo
@@ -409,8 +523,17 @@ export function VisaoExplorar({
           createPortal(
             <>
               {acimaDoMapa}
-              <div className="sticky top-20 h-[calc(100dvh-7rem)] min-h-80">
-                <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} foco={foco} aoMudarArea={setArea} aoLado />
+              {/* data-mapa-da-lista: a coluna da página fica da largura da lista (a home de quem entrou) */}
+              <div data-mapa-da-lista="" className="sticky top-20 h-[calc(100dvh-7rem)] min-h-80">
+                <MapaAnuncios
+                  pontos={pontos}
+                  filtros={filtros}
+                  origem={origem}
+                  foco={foco}
+                  aoLado
+                  seguir
+                  canto={verMapaInteiro}
+                />
               </div>
             </>,
             mapaFora,
@@ -433,19 +556,18 @@ export function VisaoExplorar({
                 filtros={filtros}
                 origem={origem}
                 foco={foco}
-                aoMudarArea={setArea}
                 aoLado={visao === "blocos-mapa"}
+                seguir={mapaDaLista}
+                canto={visao === "mapa" ? verComALista : verMapaInteiro}
               />
             </div>
           </div>
         )}
         {comLista && visao === "lista-detalhes" ? (
-          <ListaComDetalhe>
-            <AreaDoMapa value={null}>{lista}</AreaDoMapa>
-          </ListaComDetalhe>
+          <ListaComDetalhe>{lista}</ListaComDetalhe>
         ) : comLista ? (
-          <div className={visao === "blocos-mapa" && !mapaFora ? "lg:order-1" : ""} {...focoNaLista}>
-            <AreaDoMapa value={comMapa ? area : null}>{lista}</AreaDoMapa>
+          <div ref={listaRef} className={visao === "blocos-mapa" && !mapaFora ? "lg:order-1" : ""} {...focoNaLista}>
+            {lista}
           </div>
         ) : null}
       </div>

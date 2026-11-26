@@ -199,7 +199,9 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
     // no computador grande, até 1280 px: o meio fica com espaço para o tíquete inteiro
     <Container data-pagina-larga="" className="pt-4 pb-4 sm:pt-6 xl:max-w-7xl">
       <MarcarPaginaLarga />
-      <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px]">
+      {/* com o mapa da lista na coluna da direita (a busca em Blocos + mapa), ela fica da largura da lista: é o mapa que
+          mostra o caminho até o anúncio da vez (26/11/2026) */}
+      <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px] xl:has-[[data-mapa-da-lista]]:grid-cols-[232px_minmax(0,1fr)_minmax(0,1fr)]">
         {/* as colunas dos lados ficam presas ao rolar (a grade é alta; a coluna, do tamanho dela) */}
         <aside className="hidden flex-col gap-4 lg:sticky lg:top-[88px] lg:flex">
           {soOlhar ? (

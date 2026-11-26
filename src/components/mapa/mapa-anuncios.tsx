@@ -3,7 +3,7 @@
 import type { GeoJSONSource, Map as MapaML, Marker, Popup } from "maplibre-gl";
 import { House, LocateFixed, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import { formatarMinutos } from "@/lib/deslocamento";
 import { hrefFiltros, raioDaBusca, type Filtros } from "@/lib/filtros";
 import { AVISOS_GPS, pedirPosicao } from "../explorar/barra-busca";
@@ -234,6 +234,19 @@ function preencherRotulo(el: HTMLElement, minutos: number, aPe: boolean, de: "ca
   el.append(document.createTextNode(formatarMinutos(minutos)));
 }
 
+/**
+ * O alfinete da vaga da vez quando a etiqueta dela não está na tela (dentro de um grupo): a ponta do caminho, na cor
+ * do alfinete dos cartões.
+ */
+function criarDestino() {
+  const el = document.createElement("div");
+  el.setAttribute("aria-hidden", "true");
+  el.className = "pointer-events-none flex size-9 text-terra drop-shadow-md [&>svg]:size-9";
+  el.innerHTML = ICONE.alfinete;
+  el.style.zIndex = "4";
+  return el;
+}
+
 /** Marcador de um grupo de anúncios próximos: um círculo com a quantidade. */
 function criarGrupo(quantos: number, abrir: () => void) {
   const botao = document.createElement("button");
@@ -348,8 +361,8 @@ function conteudoDoCartao(
 
 /**
  * Mapa da busca: etiquetas com o valor, grupos de anúncios próximos, o raio e a casa. Com a casa (CEP) ou a
- * localização, o caminho até a vaga: uma linha reta tracejada com o tempo no meio, para a vaga com o mouse em
- * cima (no mapa ou na lista ao lado, `foco`) ou com o cartão aberto. Sem nenhum dos dois, um botão pede a
+ * localização, o caminho até a vaga: uma linha reta tracejada com o tempo no meio, para a vaga da vez na lista ao
+ * lado (`foco`), a com o mouse em cima no mapa ou a com o cartão aberto. Sem nenhum dos dois, um botão pede a
  * localização para mostrar o tempo.
  */
 export function MapaAnuncios({
@@ -357,16 +370,19 @@ export function MapaAnuncios({
   filtros,
   origem = null,
   foco = null,
-  aoMudarArea,
   aoLado = false,
+  seguir = false,
+  canto = null,
 }: {
   pontos: PontoMapa[];
   filtros: Filtros;
   origem?: OrigemMapa;
-  /** o anúncio com o mouse em cima na lista ao lado: fica marcado e, com a origem, mostra o caminho */
+  /** o anúncio da vez na lista ao lado (o da altura da leitura, ou com o mouse em cima): fica marcado e, com a origem, mostra o caminho */
   foco?: string | null;
-  /** a parte do mapa na tela mudou: [oeste, sul, leste, norte] (a lista mostra só o que está nela) */
-  aoMudarArea?: (limites: [number, number, number, number] | null) => void;
+  /** o mapa acompanha a lista ao lado: enquadra a origem e o anúncio da vez, com o caminho entre os dois */
+  seguir?: boolean;
+  /** o botão do canto de cima, à direita, ao lado do zoom (o "Ver mapa inteiro" e o "Ver com a lista") */
+  canto?: ReactNode;
   /**
    * o mapa ao lado da lista (Blocos + mapa, só no computador): carrega com metade dele na tela, ou com o mouse ou o
    * foco nele. Na home, ele começa quase todo abaixo da dobra, e a lista é o principal. Na vista Mapa (o mapa é a
@@ -380,10 +396,8 @@ export function MapaAnuncios({
   const marcadores = useRef(new Map<string, Marker>());
   const naTela = useRef(new Map<string, Marker>());
   const atualizar = useRef<() => void>(() => {});
-  const avisarArea = useRef(aoMudarArea);
-  useEffect(() => {
-    avisarArea.current = aoMudarArea;
-  }, [aoMudarArea]);
+  // a etiqueta da vaga da vez fica escura (data-foco): nas que já estão na tela e nas que entram depois (o zoom)
+  const pintarFoco = useRef<() => void>(() => {});
   // o que o caminho até a vaga precisa saber, à mão para os eventos do mapa (que é criado uma vez só)
   const origemAgora = useRef<OrigemMapa>(null);
   const porId = useRef(new Map<string, PontoMapa>());
@@ -431,6 +445,33 @@ export function MapaAnuncios({
         let sobre: string | null = null;
         let rotulo: Marker | null = null;
         let pontas: [[number, number], [number, number]] | null = null;
+        let destino: Marker | null = null;
+
+        // a vaga da vez sem a etiqueta dela na tela (dentro de um grupo): o alfinete no lugar dela, a ponta do caminho
+        const marcarDestino = () => {
+          const m = instancia;
+          if (!m) return;
+          const id = sobre ?? focoAgora.current ?? selecionado;
+          const alvo = id ? porId.current.get(id) : undefined;
+          if (!alvo || visiveis.has(alvo.id)) {
+            destino?.remove();
+            return;
+          }
+          destino ??= new ml.Marker({ element: criarDestino(), anchor: "bottom" });
+          destino.setLngLat([alvo.lng, alvo.lat]).addTo(m);
+        };
+
+        pintarFoco.current = () => {
+          const id = focoAgora.current;
+          for (const [chave, marcador] of todos) {
+            const el = marcador.getElement();
+            const daVez = chave === id;
+            if (daVez === el.hasAttribute("data-foco")) continue;
+            el.toggleAttribute("data-foco", daVez);
+            el.style.zIndex = daVez ? "3" : "2";
+          }
+          marcarDestino();
+        };
 
         const desmarcar = () => {
           marcadoAgora?.setAttribute("aria-pressed", "false");
@@ -456,6 +497,7 @@ export function MapaAnuncios({
           const id = sobre ?? focoAgora.current ?? selecionado;
           const alvo = id ? porId.current.get(id) : undefined;
           const o = origemAgora.current;
+          marcarDestino();
           if (!o || !alvo || alvo.minutos == null) {
             fonte.setData(SEM_TRAJETO);
             rotulo?.remove();
@@ -566,6 +608,8 @@ export function MapaAnuncios({
           for (const [chave, marcador] of visiveis) if (!agora.has(chave)) marcador.remove();
           visiveis.clear();
           for (const [chave, marcador] of agora) visiveis.set(chave, marcador);
+          // as etiquetas novas da tela: a da vaga da vez fica escura (e o alfinete sai, ou entra, conforme ela)
+          pintarFoco.current();
         };
 
         recolherCreditos(instancia);
@@ -637,23 +681,9 @@ export function MapaAnuncios({
           });
 
           // Refaz as etiquetas quando o mapa para de mexer ou os dados chegam (não a cada quadro:
-          // no meio de um toque a etiqueta sumiria e o clique cairia no mapa)
+          // no meio de um toque a etiqueta sumiria e o clique cairia no mapa). A lista não acompanha mais a parte do
+          // mapa na tela (26/11/2026): é o mapa que acompanha a lista; mexeu no mapa, o "Buscar nesta área" busca ali
           m.on("moveend", () => atualizar.current());
-          // a lista acompanha a parte do mapa na tela: quando a pessoa mexe no mapa (ou a busca o move).
-          // Se só o tamanho do mapa mudou, a lista fica como está: em Blocos + mapa, o mapa tem a altura
-          // dos cartões, e a página 2 (mais curta) encolhia o mapa, a área mudava, a lista voltava para a
-          // página 1, crescia, o mapa crescia de novo... e a tela ficava piscando entre as duas páginas.
-          let ultimaCamera = "";
-          const area = () => {
-            const c = m.getCenter();
-            const camera = `${c.lng.toFixed(6)},${c.lat.toFixed(6)},${m.getZoom().toFixed(3)}`;
-            if (camera === ultimaCamera) return;
-            ultimaCamera = camera;
-            const b = m.getBounds();
-            avisarArea.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
-          };
-          m.on("moveend", area);
-          area();
           m.on("sourcedata", (e) => {
             if (e.sourceId === "anuncios" && e.isSourceLoaded) atualizar.current();
           });
@@ -675,9 +705,9 @@ export function MapaAnuncios({
 
     return () => {
       cancelado = true;
-      avisarArea.current?.(null);
       // o cartão aberto fecha junto com o mapa e chamaria o caminho de um mapa que já saiu
       refazerTrajeto.current = () => {};
+      pintarFoco.current = () => {};
       for (const marcador of todos.values()) marcador.remove();
       todos.clear();
       visiveis.clear();
@@ -705,19 +735,39 @@ export function MapaAnuncios({
     refazerTrajeto.current();
   }, [pronto, origem, pontos]);
 
-  // O cartão com o mouse em cima, na lista ao lado: o anúncio fica marcado no mapa (e o caminho até ele aparece)
+  // O anúncio da vez, na lista ao lado: fica marcado no mapa (e o caminho até ele aparece)
   useEffect(() => {
     focoAgora.current = foco;
     refazerTrajeto.current();
-    const el = pronto && foco ? marcadores.current.get(foco)?.getElement() : undefined;
-    if (!el) return;
-    el.setAttribute("data-foco", "");
-    el.style.zIndex = "3";
-    return () => {
-      el.removeAttribute("data-foco");
-      el.style.zIndex = "2";
-    };
+    pintarFoco.current();
   }, [pronto, foco]);
+
+  // O mapa acompanha a lista (Blocos + mapa): enquadra a origem e a vaga da vez, com o caminho entre elas no meio do
+  // mapa (no raio da busca inteiro, a linha de 3 km ficava escondida embaixo de um grupo). Sem a origem, a vaga, de
+  // perto. Espera a rolagem (ou o mouse) parar; quem pede menos movimento, sem animação
+  useEffect(() => {
+    const m = mapa.current;
+    if (!seguir || !pronto || !m || !foco) return;
+    const espera = window.setTimeout(() => {
+      const alvo = porId.current.get(foco);
+      if (!alvo) return;
+      const o = origemAgora.current;
+      const duracao = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 600;
+      if (!o || alvo.minutos == null) {
+        m.easeTo({ center: [alvo.lng, alvo.lat], zoom: Math.max(m.getZoom(), 13), duration: duracao });
+        return;
+      }
+      m.fitBounds(
+        [
+          [Math.min(o.lng, alvo.lng), Math.min(o.lat, alvo.lat)],
+          [Math.max(o.lng, alvo.lng), Math.max(o.lat, alvo.lat)],
+        ],
+        // em cima, o "Calculado de onde você está" e o "Ver mapa inteiro"; embaixo, a legenda
+        { padding: { top: 112, bottom: 80, left: 72, right: 72 }, maxZoom: 15, duration: duracao },
+      );
+    }, 250);
+    return () => window.clearTimeout(espera);
+  }, [seguir, pronto, foco]);
 
   // A casa (ou o GPS) no mapa
   useEffect(() => {
@@ -859,11 +909,15 @@ export function MapaAnuncios({
           )}
         </div>
       )}
+      {canto && <div className="absolute top-2.5 right-12 z-10 flex">{canto}</div>}
       {movido && (
         <button
           type="button"
           onClick={buscarAqui}
-          className="absolute top-3 left-1/2 z-10 inline-flex min-h-10 -translate-x-1/2 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink shadow-raised hover:bg-surface-300"
+          // com o botão do canto à direita, no canto esquerdo (o "Calculado da sua casa" some quando o mapa é mexido)
+          className={`absolute top-3 z-10 inline-flex min-h-10 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink shadow-raised hover:bg-surface-300 ${
+            canto ? "left-3" : "left-1/2 -translate-x-1/2"
+          }`}
         >
           <Search aria-hidden className="size-4" />
           Buscar nesta área

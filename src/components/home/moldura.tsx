@@ -39,7 +39,8 @@ export function MolduraDaHome({
   const visao = useVisao(padrao);
   const largo = visao === "mapa" || visao === "blocos-mapa";
   const tres = Boolean(direita) && !largo;
-  // Blocos + mapa na lista: o mapa ganha uma coluna própria, de cima a baixo; a caixa de publicar,
+  // Blocos + mapa na lista: o mapa ganha uma coluna própria, de cima a baixo, da largura da lista (é ele que mostra o
+  // caminho até o anúncio da vez); a caixa de publicar,
   // a barra, os filtros e a lista ficam todos na largura da coluna da lista. Sem lista no meio
   // (o Hoje da empresa), a moldura fica como sempre, qualquer que seja o jeito de ver guardado.
   const comMapa = mapaAoLado && visao === "blocos-mapa";
@@ -53,7 +54,7 @@ export function MolduraDaHome({
       <div
         className={`flex flex-col gap-6 lg:grid lg:items-start ${
           comMapa
-            ? "lg:grid-cols-[15rem_minmax(0,7fr)_minmax(0,5fr)] lg:gap-6"
+            ? "lg:grid-cols-[15rem_minmax(0,1fr)_minmax(0,1fr)] lg:gap-6"
             : `lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8 ${tres ? "xl:grid-cols-[15rem_minmax(0,1fr)_18rem]" : ""}`
         }`}
       >
