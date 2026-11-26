@@ -1930,6 +1930,18 @@ async function main() {
     conferir(corpo(r.msgs[0]).startsWith(M.passo1), "o “sim” escrito à pergunta começa o currículo", corpo(r.msgs[0]));
     r = await rodar("Montar meu currículo", { perfil: "trabalho", historico: [...procurando, pergunta, { de: "pessoa", texto: "Montar meu currículo" }] }, { payload: "a:cv-montar" });
     conferir(corpo(r.msgs[0]).startsWith(M.passo1), "o botão da pergunta começa o currículo");
+    // "Qual valor?" depois da oferta: o currículo é grátis, sem a IA e com os botões (26/11/2026, a Cecilia)
+    pedidosIA.length = 0;
+    r = await rodar("Qual valor?", { perfil: "trabalho", historico: [...procurando, pergunta, { de: "pessoa", texto: "Qual valor?" }] });
+    conferir(
+      corpo(r.msgs[0]).includes(a.RESPOSTA_DO_PRECO_DO_CURRICULO) && pedidosIA.length === 0 && JSON.stringify(r.msgs[0]).includes("Montar meu currículo"),
+      "o preço do currículo: grátis, com os botões",
+      corpo(r.msgs[0]),
+    );
+    for (const t of ["Qual valor?", "quanto custa", "É pago?", "tem alguma taxa?", "é de graça?", "valor?"])
+      conferir(a.perguntaDePreco(t), `pergunta de preço: ${t}`);
+    for (const t of ["qual o salário?", "quanto paga?", "quero ser caixa", "sim"])
+      conferir(!a.perguntaDePreco(t), `não é pergunta de preço: ${t}`);
 
     // as perguntas guardadas da função: a IA parte delas; sem a IA, vão elas
     cvGuardadas = [

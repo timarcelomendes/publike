@@ -1679,6 +1679,26 @@ export function respostasDaVaga(historico: Mensagem[], agora: string[]) {
 const BOTAO_DA_VAGA_PREPARADA = /\[Botão: (Conferir e publicar|Ver as vagas)\]|\[Botões: Sim, publicar/;
 
 /**
+ * "Qual valor?", "quanto custa?", "é pago?", "tem taxa?": a pergunta do preço, curta e sem falar de salário (26/11/2026).
+ * Só vale logo depois da oferta de montar o currículo.
+ */
+export function perguntaDePreco(texto: string) {
+  const t = texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  if (!t || t.length > 80 || /salario|paga(m)? quanto|quanto paga|remunera|ganha/.test(t)) return false;
+  return /\b(qual (e |o |seria )?(o )?(valor|preco)|quanto (custa|e|fica|sai|cobra|vou pagar|tenho que pagar)|tem (algum |alguma )?(custo|taxa|valor)|(e|vai ser) pago|(e|eh) (de )?gratis|(e|eh) de graca|e gratuito|precisa pagar|tem que pagar|vou ter que pagar|cobra(m)? (alguma coisa|algo)?|valor\??$|preco\??$)/.test(
+    t,
+  );
+}
+
+/** A resposta: o currículo e as candidaturas são de graça. */
+export const RESPOSTA_DO_PRECO_DO_CURRICULO =
+  "Montar o currículo é *grátis*, sem nenhum custo, e se candidatar às vagas também. Para quem procura trabalho, o Publike não cobra nada. Quer montar agora? É só mandar áudio, leva uns 5 minutos.";
+
+/**
  * A vaga escrita que já virou o link (a última mensagem do robô é a vaga preparada): o texto lido, para ler de novo com
  * o que a pessoa contou depois. `null`: a última não é a vaga preparada, ou a vaga veio de foto ou arquivo.
  */
@@ -2478,6 +2498,21 @@ export async function atenderConversa(
     if (passoAgora && PASSOS_DO_MEIO.includes(passoAgora) && textos.some((_, i) => !midias[i]) && !textos.some(querParar)) {
       const visto = avisoVisto(e.historico);
       if (visto?.origem === "montar") await aceitar("montar", visto.aviso);
+    }
+  }
+
+  // "Qual valor?" logo depois da oferta de montar o currículo: é o preço do currículo, não o salário das vagas
+  // (26/11/2026; a Cecilia perguntou e a IA respondeu sobre o valor das vagas): é grátis, com os botões de novo
+  {
+    const ultimaCrua = respostas.filter((x) => !mensagemDeLado(x.texto)).at(-1)?.texto ?? "";
+    if (/Montar meu currículo/i.test(ultimaCrua) && !midias.some(Boolean) && perguntaDePreco(textos.join(" "))) {
+      const montar = await curriculoPeloWhatsappLigado(banco, chave, m.numero);
+      return saida(
+        `${ola}${RESPOSTA_DO_PRECO_DO_CURRICULO}`,
+        montar
+          ? { perfil: "trabalho", botoes: [BOTAO_MONTAR_CURRICULO, BOTAO_AGORA_NAO] }
+          : { perfil: "trabalho", botao: LINKS.curriculo },
+      );
     }
   }
 
