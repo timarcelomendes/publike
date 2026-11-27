@@ -273,6 +273,10 @@ for (let i = 0; i < 4000; i++) {
     ["cargo operador de sistema de monitoramento", { experiencias: [exp("Operador de sistema de monitoramento", "2023-01", "2024-01")] }, false],
     ["faculdade de Sistemas de Informação", { curso: "Sistemas de Informação" }, true],
     ["curso Análise e desenvolvimento de sistemas", { curso: "Análise e desenvolvimento de sistemas" }, true],
+    // 27/11/2026: o Eric, farmacêutico, com 75% ("desenvolvimento" ~ "desenvolvedor")
+    ["cargo Analista de Desenvolvimento Farmacotécnico", { titulo: "Farmacêutico", experiencias: [exp("Analista de Desenvolvimento Farmacotécnico", "2023-07", "2026-11")] }, false],
+    ["cargo Desenvolvedor de Software", { experiencias: [exp("Desenvolvedor de Software Full Stack", "2021-01", "2026-08")] }, true],
+    ["cargo Desenvolvedor web", { experiencias: [exp("Desenvolvedor web", "2022-01", "2026-08")] }, true],
   ];
   for (const [nome, o, deveContar] of casosSistema) {
     const f = funcao(o) ?? 0;

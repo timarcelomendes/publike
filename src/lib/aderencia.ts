@@ -330,6 +330,12 @@ function palavrasDaFuncao(texto: string) {
  */
 const PALAVRAS_COM_CONTEXTO: [RegExp, RegExp][] = [
   [/^sistema/, /\b(analis\w*|desenvolv\w*|informac\w*|informat\w*|program\w*|computa\w*|software|ti|tecnologia)\b/],
+  // 27/11/2026: "Analista de Desenvolvimento Farmacotécnico" dava "área parecida: tecnologia" e 75% para Analista de
+  // sistemas ("desenvolvimento" ~ "desenvolvedor"). Desenvolvimento só é de TI com sistema, software, web, app...
+  [
+    /^desenvolv/,
+    /\b(sistema\w*|software|program\w*|web|apps?|aplicativ\w*|site\w*|informat\w*|computa\w*|ti|tecnologia|front\w*|back\w*|full ?stack|mobile|php|java\w*|python|sql|dados)\b/,
+  ],
 ];
 
 /** As palavras da função do lado do currículo: sem as que precisam de contexto e não têm ("sistema" sem TI). */
@@ -453,6 +459,8 @@ function tipoDoTrabalho(
   if (porCbo === "exata") return { tipo: "mesma" };
   if (porCbo === "familia") return { tipo: daVaga.length && batem(daVaga, doCargo) ? "mesma" : "parecida" };
   if (porCbo === "parecida") return { tipo: "parecida" };
+  // a CBO dos dois lados diz que são de outras áreas: a palavra em comum não muda isso
+  if (porCbo === "outras") return { tipo: "outras" };
   const area = daVaga.length ? areaEmComum(daVaga, doCargo) : null;
   if (porCbo === null && daVaga.length && batem(daVaga, doCargo)) {
     return { tipo: vaga.cbo && lido ? "parecida" : "mesma" };
