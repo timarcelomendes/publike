@@ -29,6 +29,8 @@ export type PassoDoCurriculo = keyof typeof MARCAS_DO_CURRICULO;
 
 /** O botão que começa (o nome vai até 20 letras). */
 export const BOTAO_MONTAR_CURRICULO = { id: "a:cv-montar", titulo: "Montar meu currículo" } as const;
+/** Quem já tem o currículo pronto: o Publike pede o PDF ou a foto aqui mesmo (27/11/2026, depois da candidatura). */
+export const BOTAO_ENVIAR_CURRICULO = { id: "a:cv-enviar", titulo: "Enviar meu currículo" } as const;
 /** O id dos botões das opções de uma pergunta ("a:cv-op:1"): a resposta é o nome do botão. */
 export const OPCAO_DO_CURRICULO = "a:cv-op:";
 /** O "Agora não" da pergunta depois das vagas. */

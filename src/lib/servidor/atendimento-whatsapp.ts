@@ -50,6 +50,7 @@ import {
   arquivoNaoLido,
   arquivoNaoLidoDeNovo,
   BOTAO_AGORA_NAO,
+  BOTAO_ENVIAR_CURRICULO,
   BOTAO_MONTAR_CURRICULO,
   lembreteDoCurriculo,
   MARCA_DO_LEMBRETE,
@@ -2464,6 +2465,12 @@ export async function atenderConversa(
       : await respostaNaCandidatura(ctx, { payload: m.payload ?? null, texto: textos.join(" "), minhaUltima });
     if (r) return saida(r.texto, { perfil: "trabalho", botoes: r.botoes, botao: r.botao ?? null });
   }
+  // o "Enviar meu currículo" do pedido depois da candidatura (27/11/2026): o PDF ou a foto vem aqui mesmo
+  if (m.payload === BOTAO_ENVIAR_CURRICULO.id)
+    return saida(
+      (await curriculoPeloWhatsappLigado(banco, chave, m.numero)) ? PARA_QUEM_TEM_CURRICULO_AQUI : PARA_QUEM_TEM_CURRICULO,
+      { perfil: "trabalho", botao: LINKS.enviarCurriculo },
+    );
 
   {
     let doLote = PAYLOAD_LOTE.exec(m.payload ?? "")?.[1] ?? null;

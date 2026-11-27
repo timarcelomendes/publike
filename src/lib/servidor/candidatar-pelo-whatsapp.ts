@@ -1,6 +1,8 @@
 import "server-only";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { LIMITES_EXTRA, perguntasDoBanco, type Pergunta } from "@/lib/vaga-extra";
+import { BOTAO_ENVIAR_CURRICULO, BOTAO_MONTAR_CURRICULO } from "@/lib/curriculo-pelo-whatsapp";
+import { curriculoPeloWhatsappLigado } from "./curriculo-pelo-whatsapp";
 import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 
 // Candidatar-se pelo WhatsApp (25/11/2026, migração 20270927120000; Marcelo, com o que o mercado já tem: a Gupy faz a
@@ -201,14 +203,21 @@ async function vagaPedeCurriculo(ctx: Contexto, anuncio: string | undefined) {
   return data?.pede_curriculo === true;
 }
 
-/** O pedido do currículo depois da candidatura: mandar o pronto aqui mesmo, ou fazer junto por áudio. */
-export function pedidoDoCurriculo(pede: boolean) {
-  return [
-    pede ? "📄 *Esta vaga pede o currículo.*" : "📄 A empresa decide mais rápido quando vê o currículo.",
-    "Já tem o seu pronto? Mande aqui o PDF ou uma foto de cada página, que ele vai junto com a sua candidatura.",
-    "Não tem? Escreva *currículo* que a gente faz junto, aqui mesmo, por áudio.",
-  ].join(" ");
+/** O pedido do currículo depois da candidatura: mandar o pronto aqui mesmo, ou fazer junto por áudio. Com os botões
+ * (27/11/2026; Marcelo: "o ideal é ter dois botões"), o texto só explica; sem eles (a mensagem que já leva o botão do
+ * site), diz o que escrever. */
+export function pedidoDoCurriculo(pede: boolean, comBotoes: boolean) {
+  const abertura = pede ? "📄 *Esta vaga pede o currículo.*" : "📄 A empresa decide mais rápido quando vê o currículo.";
+  return comBotoes
+    ? `${abertura} Já tem o seu pronto? Toque em *Enviar meu currículo* e mande aqui o PDF ou uma foto, que ele vai junto com a sua candidatura. Ainda não tem? Toque em *Fazer meu currículo* que a gente faz junto, aqui mesmo, por áudio.`
+    : `${abertura} Já tem o seu pronto? Mande aqui o PDF ou uma foto de cada página, que ele vai junto com a sua candidatura. Não tem? Escreva *currículo* que a gente faz junto, aqui mesmo, por áudio.`;
 }
+
+/** Os dois botões do pedido: fazer (o mesmo começo do currículo conversando) ou mandar o pronto. */
+export const BOTOES_DO_CURRICULO = [
+  { id: BOTAO_MONTAR_CURRICULO.id, titulo: "Fazer meu currículo" },
+  BOTAO_ENVIAR_CURRICULO,
+];
 
 /** A curtida, no banco, pela conta do número (ou a nova); a resposta do fim. */
 async function candidatar(ctx: Contexto, nome: string | null): Promise<Resposta> {
@@ -242,17 +251,23 @@ async function candidatar(ctx: Contexto, nome: string | null): Promise<Resposta>
   const avisos = "Eu te aviso aqui no WhatsApp quando a empresa responder (para parar os avisos, é só escrever *PARAR*).";
   // sem currículo: o pedido claro (a vaga que pede diz que pede), com os dois caminhos, mandar o pronto ou fazer junto
   // (27/11/2026; Marcelo: "deixar claro que a vaga exige o currículo, já pedindo que envie... ou a gente faz junto")
-  const curriculo = r.tem_curriculo ? "" : `\n\n${pedidoDoCurriculo(await vagaPedeCurriculo(ctx, r.anuncio_id))}`;
+  const semCurriculo = !r.tem_curriculo;
+  const pede = semCurriculo && (await vagaPedeCurriculo(ctx, r.anuncio_id));
+  // os botões só com o currículo pelo WhatsApp ligado (o "Fazer" e o "Enviar" acontecem na conversa)
+  const comBotoes = semCurriculo && (await curriculoPeloWhatsappLigado(ctx.banco, ctx.chave, ctx.numero));
   if (r.status === "match") {
     // contato direto: a empresa já recebeu o contato; o dela fica no Publike (o link entra com um toque)
     const destino = `/anuncio/${r.anuncio_id}`;
     const caminho = (await caminhoDeEntrar(ctx.numero, destino).catch(() => null)) ?? destino;
     return {
-      texto: `Pronto! ✅ Você se candidatou a ${titulo}. Essa vaga é de contato direto: a empresa já recebeu o seu WhatsApp e pode te chamar. Toque em *Ver o contato* para falar com ela também.${curriculo}`,
+      texto: `Pronto! ✅ Você se candidatou a ${titulo}. Essa vaga é de contato direto: a empresa já recebeu o seu WhatsApp e pode te chamar. Toque em *Ver o contato* para falar com ela também.${semCurriculo ? `\n\n${pedidoDoCurriculo(pede, false)}` : ""}`,
       botao: { titulo: "Ver o contato", caminho },
     };
   }
-  return { texto: `Pronto! ✅ Mandei a sua candidatura para ${titulo}. ${avisos}${curriculo}` };
+  return {
+    texto: `Pronto! ✅ Mandei a sua candidatura para ${titulo}. ${avisos}${semCurriculo ? `\n\n${pedidoDoCurriculo(pede, comBotoes)}` : ""}`,
+    ...(comBotoes ? { botoes: BOTOES_DO_CURRICULO } : {}),
+  };
 }
 
 /**
