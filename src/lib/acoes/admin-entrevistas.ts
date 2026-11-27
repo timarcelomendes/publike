@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { horariosDoTexto } from "@/lib/agenda-horarios";
+import { horariosConferidos, horariosDoTexto } from "@/lib/agenda-horarios";
 import { mensagemDeErro } from "@/lib/erros";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -22,9 +22,35 @@ async function cliente(): Promise<ClienteBanco | null> {
   return await criarClienteServidor();
 }
 
+/** Os horários do seletor (a lista em ISO) ou do texto (uma linha por dia). */
+function lerHorarios(
+  horarios: string | string[],
+  duracao: number,
+): { ok: true; horarios: string[] } | { ok: false; erro: string } {
+  if (Array.isArray(horarios)) {
+    const lista = horariosConferidos(horarios);
+    if (!lista) return { ok: false, erro: "Pedido inválido." };
+    if (!lista.length)
+      return {
+        ok: false,
+        erro: "Escolha pelo menos um horário daqui a mais de 1 hora.",
+      };
+    return { ok: true, horarios: lista };
+  }
+  const { horarios: lidos, erros } = horariosDoTexto(horarios, duracao);
+  if (erros.length)
+    return { ok: false, erro: `Não entendi: ${erros.slice(0, 3).join(" · ")}` };
+  if (!lidos.length)
+    return {
+      ok: false,
+      erro: "Ponha pelo menos um horário daqui a mais de 1 hora.",
+    };
+  return { ok: true, horarios: lidos };
+}
+
 export async function criarAgenda(dados: {
   anuncio: string;
-  horarios: string;
+  horarios: string | string[];
   duracao: number;
   formato: string;
   local: string;
@@ -35,14 +61,9 @@ export async function criarAgenda(dados: {
   if (!UUID.test(dados.anuncio)) return { ok: false, erro: "Escolha a vaga." };
   if (!FORMATOS.includes(dados.formato as (typeof FORMATOS)[number]))
     return { ok: false, erro: "Escolha como vai ser a entrevista." };
-  const { horarios, erros } = horariosDoTexto(dados.horarios, dados.duracao);
-  if (erros.length)
-    return { ok: false, erro: `Não entendi: ${erros.slice(0, 3).join(" · ")}` };
-  if (!horarios.length)
-    return {
-      ok: false,
-      erro: "Ponha pelo menos um horário daqui a mais de 1 hora.",
-    };
+  const lidos = lerHorarios(dados.horarios, dados.duracao);
+  if (!lidos.ok) return lidos;
+  const horarios = lidos.horarios;
   const { data, error } = await c.rpc("admin_agenda_criar", {
     p_anuncio: dados.anuncio,
     p_horarios: horarios,
@@ -61,20 +82,15 @@ export async function criarAgenda(dados: {
 
 export async function maisHorarios(
   agenda: string,
-  texto: string,
+  texto: string | string[],
   duracao: number,
 ): Promise<Resultado> {
   const c = await cliente();
   if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(agenda)) return { ok: false, erro: "Pedido inválido." };
-  const { horarios, erros } = horariosDoTexto(texto, duracao);
-  if (erros.length)
-    return { ok: false, erro: `Não entendi: ${erros.slice(0, 3).join(" · ")}` };
-  if (!horarios.length)
-    return {
-      ok: false,
-      erro: "Ponha pelo menos um horário daqui a mais de 1 hora.",
-    };
+  const lidos = lerHorarios(texto, duracao);
+  if (!lidos.ok) return lidos;
+  const horarios = lidos.horarios;
   const { error } = await c.rpc("admin_agenda_horarios", {
     p_agenda: agenda,
     p_mais: horarios,

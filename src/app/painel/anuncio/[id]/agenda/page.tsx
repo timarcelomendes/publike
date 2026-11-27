@@ -108,7 +108,7 @@ async function Conteudo({ id }: { id: string }) {
             ? "Ninguém se candidatou ainda. Monte a agenda agora e chame as pessoas quando elas chegarem."
             : `${v.com_whatsapp} de ${v.candidatos} ${v.candidatos === 1 ? "candidato aceita" : "candidatos aceitam"} receber pelo WhatsApp${semWhats > 0 ? `; ${semWhats === 1 ? "o outro você chama" : "os outros você chama"} pelo quadro` : ""}.`}
         </p>
-        <FormNovaAgenda anuncio={id} localPadrao={endereco} noPainel aoVivo={v.ao_vivo !== false} />
+        <FormNovaAgenda anuncio={id} localPadrao={endereco} noPainel aoVivo={v.ao_vivo !== false} agora={agora} />
       </section>
       {v.antes.length > 0 && (
         <p className="text-body-sm text-ink-muted">

@@ -222,6 +222,7 @@ async function NovaAgenda({
             escolhida.endereco ??
             [escolhida.bairro, escolhida.cidade].filter(Boolean).join(", ")
           }
+          agora={await agoraDaRequisicao()}
         />
       </Secao>
     );

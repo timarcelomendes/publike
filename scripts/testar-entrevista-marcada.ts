@@ -105,6 +105,30 @@ async function main() {
     "o dia",
   );
 
+  // 1b. o seletor (27/11/2026): os dias, a faixa e a lista conferida no servidor
+  const dias = h.proximosDias(agora, 3);
+  conferir(
+    dias[0].rotulo === "hoje, 27/11" && dias[1].rotulo === "amanhã, 28/11" && dias[2].rotulo === "dom, 29/11" && dias[2].domingo,
+    "os próximos dias",
+    dias,
+  );
+  let escolha = h.horariosDaEscolha(["2026-12-02", "2026-12-01"], "09:00", "11:00", 30, agora);
+  conferir(
+    escolha.length === 8 && escolha[0] === "2026-12-01T09:00:00-03:00" && escolha[7] === "2026-12-02T10:30:00-03:00",
+    "a escolha: 9h às 11h, de 30 em 30, nos dois dias, em ordem",
+    escolha,
+  );
+  escolha = h.horariosDaEscolha(["2026-11-27"], "09:00", "12:00", 30, agora);
+  conferir(JSON.stringify(escolha) === JSON.stringify(["2026-11-27T11:30:00-03:00"]), "hoje: só a mais de 1 hora", escolha);
+  conferir(h.horariosDaEscolha(["2026-12-02"], "09:00", "10:00", 45, agora).length === 1, "45 min: o último acaba até o fim");
+  conferir(
+    JSON.stringify(h.horariosConferidos(["2026-12-02T10:00:00-03:00", "2026-12-02T09:00:00-03:00", "2026-12-02T09:00:00-03:00", "2026-11-27T10:30:00-03:00"], agora)) ===
+      JSON.stringify(["2026-12-02T09:00:00-03:00", "2026-12-02T10:00:00-03:00"]),
+    "o servidor confere: em ordem, sem repetir, sem o que já está perto",
+  );
+  conferir(h.horariosConferidos(["amanhã"], agora) === null && h.horariosConferidos("x", agora) === null, "o servidor recusa o que não é horário");
+  conferir(h.nomeDaHora("09:00") === "9h" && h.nomeDaHora("13:30") === "13h30", "o nome da hora");
+
   // 2. os modelos da Meta
   const nomes = [
     ag.MODELO_CONVITE_ENTREVISTA,

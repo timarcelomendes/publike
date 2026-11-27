@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import {
   aprovarNaAgenda,
@@ -21,13 +21,9 @@ import {
   tirarDaAgenda,
   tirarHorario,
 } from "@/lib/acoes/admin-entrevistas";
-import {
-  diaDoHorario,
-  FORMATOS_DA_AGENDA,
-  horaDoHorario,
-  horariosDoTexto,
-} from "@/lib/agenda-horarios";
+import { FORMATOS_DA_AGENDA } from "@/lib/agenda-horarios";
 import { Botao } from "../ui/botao";
+import { SeletorDeHorarios, useEscolhaDeHorarios } from "./seletor-de-horarios";
 import { Campo, classesEntrada, Seletor } from "../ui/campo";
 
 // A agenda de entrevistas pelo WhatsApp (migrações 20271013120000 e 20271014120000): as partes que mexem nela, no
@@ -51,51 +47,12 @@ function Ok({ texto }: { texto: string | null }) {
   ) : null;
 }
 
-/** Os horários lidos do texto, por dia, para conferir antes de salvar. */
-function PreviaDosHorarios({
-  texto,
-  duracao,
-}: {
-  texto: string;
-  duracao: number;
-}) {
-  const { horarios, erros } = useMemo(
-    () => horariosDoTexto(texto, duracao),
-    [texto, duracao],
-  );
-  if (!texto.trim()) return null;
-  const porDia = new Map<string, string[]>();
-  for (const h of horarios)
-    porDia.set(diaDoHorario(h), [
-      ...(porDia.get(diaDoHorario(h)) ?? []),
-      horaDoHorario(h),
-    ]);
-  return (
-    <div className="flex flex-col gap-1 rounded-md border border-line bg-surface-100 p-3 text-body-sm">
-      <p className="font-semibold">
-        {horarios.length === 0
-          ? "Nenhum horário ainda"
-          : horarios.length === 1
-            ? "1 horário"
-            : `${horarios.length} horários`}
-      </p>
-      {[...porDia].map(([dia, horas]) => (
-        <p key={dia}>
-          <span className="font-semibold">{dia}:</span> {horas.join(", ")}
-        </p>
-      ))}
-      {erros.length > 0 && (
-        <p className="text-danger">Não entendi: {erros.join(" · ")}</p>
-      )}
-    </div>
-  );
-}
-
 export function FormNovaAgenda({
   anuncio,
   localPadrao,
   noPainel = false,
   aoVivo = true,
+  agora,
 }: {
   anuncio: string;
   localPadrao: string;
@@ -103,10 +60,12 @@ export function FormNovaAgenda({
   noPainel?: boolean;
   /** a conta tem a entrevista ao vivo pelo Publike (o limite do mês) */
   aoVivo?: boolean;
+  /** a hora da requisição (os dias do seletor) */
+  agora: number;
 }) {
   const router = useRouter();
-  const [horarios, setHorarios] = useState("");
   const [duracao, setDuracao] = useState(30);
+  const escolha = useEscolhaDeHorarios(agora, duracao);
   const [formato, setFormato] = useState<string>("presencial");
   const [local, setLocal] = useState(localPadrao);
   const [obs, setObs] = useState("");
@@ -120,7 +79,7 @@ export function FormNovaAgenda({
     const r = await chamarAcao(() =>
       criarAgenda({
         anuncio,
-        horarios,
+        horarios: escolha.horarios,
         duracao,
         formato,
         local: formato === "publike" || formato === "telefone" ? "" : local,
@@ -129,28 +88,18 @@ export function FormNovaAgenda({
     );
     setSalvando(false);
     if (r.ok && "id" in r)
-      router.push(noPainel ? `/painel/anuncio/${anuncio}/agenda` : `/admin/entrevistas?agenda=${r.id}`);
+      router.push(
+        noPainel
+          ? `/painel/anuncio/${anuncio}/agenda`
+          : `/admin/entrevistas?agenda=${r.id}`,
+      );
     else if (!r.ok) setErro(r.erro);
   }
 
   return (
     <form onSubmit={salvar} className="flex flex-col gap-4">
-      <Campo
-        rotulo={noPainel ? "Os dias e horários que você tem livres" : "Dias e horários que a empresa passou"}
-        nome="horarios"
-        ajuda="Uma linha por dia. Ex.: 02/12 14h-17h · terça e quarta 9h às 11h30 · amanhã 9h, 10h, 11h"
-      >
-        <textarea
-          id="horarios"
-          rows={4}
-          value={horarios}
-          onChange={(e) => setHorarios(e.target.value)}
-          className={classesEntrada}
-          placeholder={"02/12 14h-17h\n03/12 9h às 11h30"}
-        />
-      </Campo>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Cada entrevista" nome="duracao">
+        <Campo rotulo="Cada entrevista dura" nome="duracao">
           <Seletor
             id="duracao"
             value={duracao}
@@ -171,7 +120,9 @@ export function FormNovaAgenda({
             onChange={(e) => setFormato(e.target.value)}
             className={classesEntrada}
           >
-            {FORMATOS_DA_AGENDA.filter((f) => aoVivo || f.valor !== "publike").map((f) => (
+            {FORMATOS_DA_AGENDA.filter(
+              (f) => aoVivo || f.valor !== "publike",
+            ).map((f) => (
               <option key={f.valor} value={f.valor}>
                 {f.nome}
               </option>
@@ -179,7 +130,7 @@ export function FormNovaAgenda({
           </Seletor>
         </Campo>
       </div>
-      <PreviaDosHorarios texto={horarios} duracao={duracao} />
+      <SeletorDeHorarios escolha={escolha} noPainel={noPainel} />
       {(formato === "presencial" || formato === "video") && (
         <Campo
           rotulo={
@@ -230,9 +181,17 @@ export function FormNovaAgenda({
       </Campo>
       <Erro texto={erro} />
       <div>
-        <Botao type="submit" variante="primario" disabled={salvando}>
+        <Botao
+          type="submit"
+          variante="primario"
+          disabled={salvando || escolha.horarios.length === 0}
+        >
           <CalendarPlus aria-hidden />
-          {salvando ? "Criando…" : "Criar a agenda"}
+          {salvando
+            ? "Criando…"
+            : escolha.horarios.length
+              ? `Criar a agenda com ${escolha.horarios.length === 1 ? "1 horário" : `${escolha.horarios.length} horários`}`
+              : "Criar a agenda"}
         </Botao>
       </div>
     </form>
@@ -427,12 +386,14 @@ export function AcoesDoConvite({
 export function MaisHorarios({
   agenda,
   duracao,
+  agora,
 }: {
   agenda: string;
   duracao: number;
+  agora: number;
 }) {
   const [aberto, setAberto] = useState(false);
-  const [texto, setTexto] = useState("");
+  const escolha = useEscolhaDeHorarios(agora, duracao);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -451,40 +412,33 @@ export function MaisHorarios({
     setSalvando(true);
     setErro(null);
     setOk(null);
-    const r = await chamarAcao(() => maisHorarios(agenda, texto, duracao));
+    const r = await chamarAcao(() =>
+      maisHorarios(agenda, escolha.horarios, duracao),
+    );
     setSalvando(false);
     if (r.ok) {
       setOk(r.mensagem ?? "Pronto.");
-      setTexto("");
+      escolha.limpar();
     } else setErro(r.erro);
   }
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-100 p-3">
-      <Campo
-        rotulo="Mais dias e horários"
-        nome="mais-horarios"
-        ajuda="Uma linha por dia, como na criação."
-      >
-        <textarea
-          id="mais-horarios"
-          rows={3}
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          className={classesEntrada}
-        />
-      </Campo>
-      <PreviaDosHorarios texto={texto} duracao={duracao} />
+      <SeletorDeHorarios escolha={escolha} dias={21} />
       <Erro texto={erro} />
       <Ok texto={ok} />
       <div className="flex flex-wrap gap-2">
         <Botao
           tamanho="sm"
           variante="primario"
-          disabled={salvando || !texto.trim()}
+          disabled={salvando || escolha.horarios.length === 0}
           onClick={salvar}
         >
-          {salvando ? "Salvando…" : "Pôr os horários"}
+          {salvando
+            ? "Salvando…"
+            : escolha.horarios.length
+              ? `Pôr ${escolha.horarios.length === 1 ? "1 horário" : `${escolha.horarios.length} horários`}`
+              : "Pôr os horários"}
         </Botao>
         <Botao
           tamanho="sm"

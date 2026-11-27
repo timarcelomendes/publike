@@ -207,3 +207,69 @@ export function diaDoHorario(quando: string | Date) {
 export function horaDoHorario(quando: string | Date) {
   return rotuloDoHorario(quando).split(" às ")[1];
 }
+
+// --- O seletor (27/11/2026; Marcelo: "aqui deve ter um seletor, algo mais facilitado") ----------------------------
+// Toca nos dias, escolhe das tantas às tantas e tira os horários que não servem: no lugar de escrever o texto.
+
+/** As horas que o seletor oferece, de meia em meia hora ("07:00" … "22:00"). */
+export const HORAS_DO_SELETOR = Array.from({ length: 31 }, (_, i) => {
+  const t = 7 * 60 + i * 30;
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+});
+
+/** "09:00" → "9h"; "09:30" → "9h30". */
+export function nomeDaHora(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h}h${m ? String(m).padStart(2, "0") : ""}`;
+}
+
+/** Os próximos `n` dias a partir de hoje em Brasília: o dia ("2026-11-27"), o rótulo ("sex, 27/11") e o domingo. */
+export function proximosDias(agora: Date, n = 14) {
+  const hoje = hojeEmBrasilia(agora);
+  return Array.from({ length: n }, (_, i) => {
+    const d = somarDias(hoje, i);
+    const p = (x: number) => String(x).padStart(2, "0");
+    const semana = new Date(Date.UTC(d.ano, d.mes - 1, d.dia)).getUTCDay();
+    return {
+      dia: `${d.ano}-${p(d.mes)}-${p(d.dia)}`,
+      rotulo: `${i === 0 ? "hoje" : i === 1 ? "amanhã" : SEMANA[semana]}, ${p(d.dia)}/${p(d.mes)}`,
+      domingo: semana === 0,
+    };
+  });
+}
+
+/**
+ * Os horários da escolha: em cada dia, de `ini` a `fim` ("09:00", "12:00"), de `duracao` em `duracao` minutos (a
+ * última entrevista acaba até `fim`), só os a mais de 1 hora de agora. Em ISO com o fuso de Brasília, em ordem.
+ */
+export function horariosDaEscolha(dias: string[], ini: string, fim: string, duracao: number, agora: Date) {
+  const dur = Math.max(10, Math.min(240, Math.round(duracao) || 30));
+  const min = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const de = min(ini);
+  const ate = min(fim);
+  const saida: string[] = [];
+  for (const dia of [...new Set(dias)].sort()) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) continue;
+    for (let t = de; t + dur <= ate; t += dur) {
+      const iso = `${dia}T${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}:00-03:00`;
+      if (new Date(iso).getTime() > agora.getTime() + 3600_000) saida.push(iso);
+    }
+  }
+  return saida;
+}
+
+/** Os horários que chegam do seletor, conferidos: o formato, a mais de 1 hora e até 120 dias de agora, sem repetir. */
+export function horariosConferidos(lista: unknown, agora: Date = new Date()): string[] | null {
+  if (!Array.isArray(lista) || lista.length > 300) return null;
+  const vistos = new Set<string>();
+  for (const x of lista) {
+    if (typeof x !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00-03:00$/.test(x)) return null;
+    const t = new Date(x).getTime();
+    if (!Number.isFinite(t)) return null;
+    if (t > agora.getTime() + 3600_000 && t < agora.getTime() + 120 * 86_400_000) vistos.add(x);
+  }
+  return [...vistos].sort();
+}

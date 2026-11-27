@@ -157,7 +157,7 @@ export function DetalheDaAgenda({
               </ul>
             </div>
           ))}
-          {aberta && <MaisHorarios agenda={g.id} duracao={g.duracao_min} />}
+          {aberta && <MaisHorarios agenda={g.id} duracao={g.duracao_min} agora={agora} />}
         </div>
       </Secao>
 
