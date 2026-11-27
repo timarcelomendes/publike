@@ -95,6 +95,16 @@ async function main() {
   conferir(v.pedidoDoEmail().includes(v.MARCA_DO_EMAIL) && v.pedidoDoEmail(false).includes(v.MARCA_DO_EMAIL), "o pedido tem a marca");
   conferir(!v.pedidoDoEmail(false).includes("por aqui"), "sem os avisos pelo WhatsApp, não promete por aqui");
 
+  // o motivo da vaga do lote que não saiu (26/11/2026: "nesses casos, o ideal é informar o motivo")
+  const pw = await import("../src/lib/servidor/publicar-no-whatsapp");
+  const mr = pw.motivoDoAcerto({ tipo: "regime", token: "t", titulo: "Secretária" });
+  conferir(mr === "*Secretária*: falta dizer o tipo de contratação (CLT, PJ, freelancer…).", "motivo: o tipo", mr);
+  const ms = pw.motivoDoAcerto({ tipo: "site", token: "t", erros: ["Escreva o salário."], titulo: "Vendedor" });
+  conferir(ms === "*Vendedor*: escreva o salário.", "motivo: a regra do site", ms);
+  const mf = pw.motivoDoAcerto({ tipo: "fora", token: "t", lugar: "Barueri, SP" });
+  conferir(Boolean(mf?.startsWith("Uma vaga: é de Barueri, SP")), "motivo: fora da região, sem título", mf);
+  conferir(pw.motivoDoAcerto({ tipo: "ja", anuncioId: null }) === null, "a que já está no ar não tem motivo");
+
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);
   process.exit(falhas ? 1 : 0);
 }

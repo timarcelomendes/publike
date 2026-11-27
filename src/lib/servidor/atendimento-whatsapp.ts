@@ -117,6 +117,7 @@ import {
   botoesDoRegime,
   ehRegime,
   guardarRegime,
+  motivoDoAcerto,
   publicarPeloWhatsapp,
   regimeDaResposta,
   tokensDoLote,
@@ -2460,6 +2461,10 @@ export async function atenderConversa(
         const titulos = [r.titulo];
         let ultima = r.token;
         const doSite: string[] = [];
+        const motivos: string[] = [];
+        // as que só não saíram por falta do tipo de contratação: a pergunta aqui mesmo, em vez do site
+        const soORegime: string[] = [];
+        let tudoRegime = true;
         let semSaberAsOutras = false;
         const emLote = r.restantes > 0 && Boolean(doLote || nomeRespondido);
         if (emLote) {
@@ -2471,7 +2476,13 @@ export async function atenderConversa(
               titulos.push(outra.titulo);
               ultima = outra.token;
               await avisarMetaDaVaga(outra.anuncioId).catch(() => undefined);
-            } else if (outra.tipo !== "ja") doSite.push(token);
+            } else if (outra.tipo !== "ja") {
+              doSite.push(token);
+              const motivo = motivoDoAcerto(outra);
+              if (motivo) motivos.push(motivo);
+              if (outra.tipo === "regime") soORegime.push(outra.titulo ?? "");
+              else tudoRegime = false;
+            }
           }
         }
         // o "está no ar", com o botão da vaga (ou do painel, no lote), a conta nova e a oferta dos candidatos por aqui
@@ -2487,11 +2498,29 @@ export async function atenderConversa(
             "As outras vagas do anúncio não saíram por aqui. Toque em *Conferir as vagas* para publicar no site, já preenchidas.",
             { perfil: "contratar", botao: { titulo: "Conferir as vagas", caminho: caminhoDaVagaDoWhatsapp(r.token, true) } },
           );
+        else if (doSite.length && tudoRegime)
+          await saida(
+            [
+              `${doSite.length === 1 ? "Na outra vaga" : `Nas outras ${doSite.length} vagas`}, ${MARCA_DO_REGIME}:`,
+              soORegime.map((t) => `• *${t || "Vaga"}*`).join("\n"),
+              `${doSite.length === 1 ? "É" : "São"} com carteira assinada (CLT)? Se for outro, toque em *Outro tipo* ou escreva qual é: estágio, temporário, freelance, jovem aprendiz, PJ…${doSite.length > 1 ? ` Vale para todas. Se cada uma for de um tipo, acerte no site: ${urlDosEmails() ?? SITE_URL}${caminhoDaVagaDoWhatsapp(doSite[0], true)}` : ""}`,
+            ].join("\n\n"),
+            { perfil: "contratar", botoes: botoesDoRegime(doSite[0]) },
+          );
         else if (doSite.length)
           await saida(
-            doSite.length === 1
-              ? "Uma das vagas precisa de um acerto antes de publicar. Toque em *Conferir e publicar* para completar no site."
-              : `${doSite.length} vagas precisam de um acerto antes de publicar. Toque em *Conferir as vagas* para completar no site.`,
+            // o motivo de cada uma (Marcelo, 26/11/2026: "nesses casos, o ideal é informar o motivo")
+            [
+              doSite.length === 1
+                ? "Uma das vagas precisa de um acerto antes de publicar:"
+                : `${doSite.length} vagas precisam de um acerto antes de publicar:`,
+              motivos.map((x) => `• ${x}`).join("\n"),
+              doSite.length === 1
+                ? "Toque em *Conferir e publicar* para acertar no site, já preenchida."
+                : "Toque em *Conferir as vagas* para acertar no site, já preenchidas.",
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
             {
               perfil: "contratar",
               botao:

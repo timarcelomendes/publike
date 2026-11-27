@@ -215,11 +215,11 @@ export type ResultadoPublicar =
   | { tipo: "pedir_nome" }
   | { tipo: "nome_ruim" }
   /** as regras do site não passaram: o link para completar lá */
-  | { tipo: "site"; token: string; erros: string[] }
+  | { tipo: "site"; token: string; erros: string[]; titulo?: string }
   /** só falta o tipo de contratação: a pergunta, com os botões (migração 20270926120000) */
-  | { tipo: "regime"; token: string }
+  | { tipo: "regime"; token: string; titulo?: string }
   /** a vaga é de fora de onde o Publike funciona: não publica */
-  | { tipo: "fora"; token: string; lugar: string }
+  | { tipo: "fora"; token: string; lugar: string; titulo?: string }
   | { tipo: "nao_achou" }
   | { tipo: "desligado" }
   | { tipo: "erro"; token: string | null; mensagem: string };
@@ -266,15 +266,16 @@ export async function publicarPeloWhatsapp(p: {
 
   // a vaga de fora de onde o Publike funciona nunca é publicada (25/11/2026: a de Barueri, SP, ia como Goiânia)
   const fora = foraDoRascunho(v.rascunho);
-  if (fora) return { tipo: "fora", token: v.token, lugar: fora };
+  const titulo = v.rascunho.titulo?.trim() || undefined;
+  if (fora) return { tipo: "fora", token: v.token, lugar: fora, titulo };
 
   // as regras do site antes do nome: o que falta e se responde aqui (o tipo de contratação) vem antes da pergunta do
   // nome, que não fica guardada (a resposta do nome publica na hora)
   const conferida = await registroDaVagaLida(v.rascunho);
   if (!conferida.ok)
     return soFaltaORegime(conferida) && !v.rascunho.regime
-      ? { tipo: "regime", token: v.token }
-      : { tipo: "site", token: v.token, erros: conferida.erros };
+      ? { tipo: "regime", token: v.token, titulo }
+      : { tipo: "site", token: v.token, erros: conferida.erros, titulo };
 
   // o nome só importa sem o perfil: o que ela respondeu ou, sem resposta, o lido no anúncio
   const precisaNome = !v.tem_perfil;
@@ -337,4 +338,20 @@ export async function tokensDoLote(banco: ClienteBanco, chave: string, conversa:
     return null;
   }
   return (data as string[] | null) ?? [];
+}
+
+/**
+ * O motivo de a vaga do lote não ter saído pelo WhatsApp, numa linha (26/11/2026; Marcelo: "nesses casos, o ideal é
+ * informar o motivo"): "*Auxiliar fiscal*: falta o tipo de contratação."
+ */
+export function motivoDoAcerto(r: ResultadoPublicar): string | null {
+  const nome = "titulo" in r && r.titulo ? `*${r.titulo}*` : "Uma vaga";
+  if (r.tipo === "regime") return `${nome}: falta dizer o tipo de contratação (CLT, PJ, freelancer…).`;
+  if (r.tipo === "fora") return `${nome}: é de ${r.lugar}, fora de onde o Publike funciona (Goiânia e região).`;
+  if (r.tipo === "site") {
+    const erro = r.erros.map((x) => x.trim()).filter(Boolean)[0];
+    return `${nome}: ${erro ? erro.charAt(0).toLowerCase() + erro.slice(1) : "falta completar um dado."}`;
+  }
+  if (r.tipo === "erro") return `${nome}: ${r.mensagem.charAt(0).toLowerCase()}${r.mensagem.slice(1)}`;
+  return null;
 }
