@@ -208,6 +208,19 @@ const LINKS = {
   entrar: { titulo: "Entrar no Publike", caminho: "/entrar" },
 } as const;
 type NomeDoLink = keyof typeof LINKS;
+
+/**
+ * Quem já tem o currículo pronto (disse "eu tenho", "já tenho", "tenho em PDF", ou a resposta pede o PDF ou a foto):
+ * o botão é o de mandar o arquivo, e não o "Fazer meu currículo".
+ */
+export function vaiMandarOCurriculo(daPessoa: string, resposta: string) {
+  const t = daPessoa.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+  const disseQueTem =
+    /^(sim |tenho sim |)?(eu )?(ja )?tenho( sim| ja| um| o meu| sim tenho)?( curriculo)?( pronto)?$/.test(t) ||
+    /\b(ja tenho|tenho (o |um |meu )?curriculo|tenho (ele )?(em|no) (pdf|word|celular)|curriculo (ja )?pronto)\b/.test(t);
+  const pedeOArquivo = /\b(o PDF|em PDF|PDF d[oe]|uma foto d[ao] (folha|curr[ií]culo|p[aá]gina)|foto de cada p[aá]gina)\b/i.test(resposta);
+  return disseQueTem || pedeOArquivo;
+}
 type Botao = { titulo: string; caminho: string };
 
 /** Quanto esperar por outra mensagem antes de responder: quem digita manda em pedaços; o toque num botão é um só. */
@@ -1995,7 +2008,7 @@ O que fazer (campo "acao")
 Fora de buscar_vagas, "busca" vai com texto, cidade, bairro e fora vazios, funcoes, parecidas e jeito vazios e categoria "todas".
 
 O botão (campo "link")
-- vagas: ver as vagas no ar. publicar: publicar uma vaga. curriculo: fazer ou mudar o currículo. empresas: o que o Publike oferece a quem contrata, com os planos. ajuda: as perguntas e respostas do site. entrar: entrar na conta. nenhum: sem botão.
+- vagas: ver as vagas no ar. publicar: publicar uma vaga. curriculo: fazer o currículo do zero ou mudar o que já está no Publike. enviarCurriculo: a pessoa já tem o currículo pronto (PDF, foto, Word) e vai mandar o arquivo; use este, e nunca curriculo, quando ela disser que tem. empresas: o que o Publike oferece a quem contrata, com os planos. ajuda: as perguntas e respostas do site. entrar: entrar na conta. nenhum: sem botão.
 - Escolha um só quando a pessoa precisar abrir o site para fazer o que vocês falaram. Na dúvida, nenhum. Não repita o botão que foi na sua mensagem anterior (o histórico mostra entre colchetes os botões que foram junto; não escreva colchetes).
 
 "perfil": trabalho, contratar ou indefinido, pelo que a conversa mostra até agora.
@@ -3164,7 +3177,10 @@ export async function atenderConversa(
 
   // o botão que abre o site, quando a conversa leva até ele; senão, os botões do começo, uma vez, enquanto não se sabe
   // o que a pessoa quer
-  const botao = plano.link && plano.link !== "nenhum" && plano.link in LINKS ? LINKS[plano.link] : null;
+  const escolhido = plano.link && plano.link !== "nenhum" && plano.link in LINKS ? LINKS[plano.link] : null;
+  // quem já tem o currículo pronto manda o arquivo: "Fazer meu currículo" dá a ideia de criar de novo (27/11/2026;
+  // Marcelo: "que o usuário entenda que é como se fosse um anexo do currículo")
+  const botao = escolhido === LINKS.curriculo && vaiMandarOCurriculo(textos.join(" "), resposta) ? LINKS.enviarCurriculo : escolhido;
   const menuJaFoi = respostas.some((x) => x.texto.includes("[Botões:"));
   return saida(resposta, {
     perfil,

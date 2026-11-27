@@ -194,6 +194,22 @@ function respostaDoErro(erro: string | undefined, titulo: string | undefined, an
   }
 }
 
+/** A vaga pede o currículo (o "Pedir currículo" de quem publicou)? Na dúvida, não. */
+async function vagaPedeCurriculo(ctx: Contexto, anuncio: string | undefined) {
+  if (!anuncio) return false;
+  const { data } = await ctx.banco.from("anuncios").select("pede_curriculo").eq("id", anuncio).maybeSingle();
+  return data?.pede_curriculo === true;
+}
+
+/** O pedido do currículo depois da candidatura: mandar o pronto aqui mesmo, ou fazer junto por áudio. */
+export function pedidoDoCurriculo(pede: boolean) {
+  return [
+    pede ? "📄 *Esta vaga pede o currículo.*" : "📄 A empresa decide mais rápido quando vê o currículo.",
+    "Já tem o seu pronto? Mande aqui o PDF ou uma foto de cada página, que ele vai junto com a sua candidatura.",
+    "Não tem? Escreva *currículo* que a gente faz junto, aqui mesmo, por áudio.",
+  ].join(" ");
+}
+
 /** A curtida, no banco, pela conta do número (ou a nova); a resposta do fim. */
 async function candidatar(ctx: Contexto, nome: string | null): Promise<Resposta> {
   const { data, error } = await ctx.banco.rpc("servidor_whatsapp_candidatar", {
@@ -224,9 +240,9 @@ async function candidatar(ctx: Contexto, nome: string | null): Promise<Resposta>
   }
   const titulo = r.titulo ? `*${r.titulo}*` : "a vaga";
   const avisos = "Eu te aviso aqui no WhatsApp quando a empresa responder (para parar os avisos, é só escrever *PARAR*).";
-  const curriculo = r.tem_curriculo
-    ? ""
-    : "\n\n📄 A empresa decide mais rápido quando vê o currículo. Quer montar o seu? Escreva *currículo* que eu monto com você aqui mesmo, por áudio.";
+  // sem currículo: o pedido claro (a vaga que pede diz que pede), com os dois caminhos, mandar o pronto ou fazer junto
+  // (27/11/2026; Marcelo: "deixar claro que a vaga exige o currículo, já pedindo que envie... ou a gente faz junto")
+  const curriculo = r.tem_curriculo ? "" : `\n\n${pedidoDoCurriculo(await vagaPedeCurriculo(ctx, r.anuncio_id))}`;
   if (r.status === "match") {
     // contato direto: a empresa já recebeu o contato; o dela fica no Publike (o link entra com um toque)
     const destino = `/anuncio/${r.anuncio_id}`;
