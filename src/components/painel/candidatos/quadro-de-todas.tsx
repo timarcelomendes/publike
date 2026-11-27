@@ -159,18 +159,17 @@ function Cartao({ c, href, aoMover }: { c: CartaoDeTodas; href: string; aoMover:
         </span>
       </div>
       <select
-        aria-label={`Mover ${c.nome} para`}
-        value=""
-        onChange={(e) => e.target.value && aoMover(c.chave, e.target.value)}
+        aria-label={`Etapa de ${c.nome}`}
+        value={c.coluna}
+        onChange={(e) => e.target.value !== c.coluna && aoMover(c.chave, e.target.value)}
         className="min-h-9 w-full rounded-pill border border-line bg-transparent px-3 text-body-sm text-ink-muted hover:bg-surface-300"
       >
-        <option value="">Mover para…</option>
-        {COLUNAS.filter((x) => x.valor !== c.coluna).map((x) => (
+        {COLUNAS.map((x) => (
           <option key={x.valor} value={x.valor}>
-            {x.nome}
+            {x.valor === c.coluna ? `Etapa: ${x.nome}` : `Mover para ${x.nome}`}
           </option>
         ))}
-        <option value="nao_seguiu">Não seguiu</option>
+        <option value="nao_seguiu">Mover para Não seguiu</option>
       </select>
     </article>
   );

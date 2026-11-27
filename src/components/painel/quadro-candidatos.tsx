@@ -699,20 +699,19 @@ function Cartao({
           )}
         </div>
       )}
+      {/* a etapa de agora, e o toque muda (27/11/2026; Marcelo: "quando muda o status tem que atualizar o campo
+          Mover para"): o campo acompanha a coluna do cartão */}
       <Seletor
-        aria-label={`Mover ${c.nome} para`}
-        value=""
-        onChange={(ev) => ev.target.value && moverPara(ev.target.value)}
+        aria-label={`Etapa de ${c.nome}`}
+        value={chave}
+        onChange={(ev) => ev.target.value !== chave && moverPara(ev.target.value)}
         className={`${classesEntrada} min-h-9 py-1 text-body-sm`}
       >
-        <option value="">Mover para…</option>
-        {colunas
-          .filter((col) => col.chave !== chave)
-          .map((col) => (
-            <option key={col.chave} value={col.chave}>
-              {col.nome}
-            </option>
-          ))}
+        {colunas.map((col) => (
+          <option key={col.chave} value={col.chave}>
+            {col.chave === chave ? `Etapa: ${col.nome}` : `Mover para ${col.nome}`}
+          </option>
+        ))}
       </Seletor>
     </article>
   );
