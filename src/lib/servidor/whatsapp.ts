@@ -144,6 +144,75 @@ export const MODELOS: Modelo[] = [
     exemplo: { nome: "Ana", vaga: "Atendente de padaria", quando: "ter, 18/11 às 14h, presencial, na Rua 10, 250" },
     botoes: [{ tipo: "link", texto: "Ver a entrevista", exemplo: "anuncio/123" }],
   },
+  // a entrevista marcada pelo WhatsApp (migração 20271013120000; claude/plano-entrevista-marcada.md): o convite com
+  // [Quero marcar] (abre a janela de 24 horas e a lista de horários vem na conversa) e os lembretes com botões. Não saem
+  // pela fila: o robô das filas manda (cuidarDasAgendas, agenda-entrevistas.ts), com o código do convite em cada botão
+  {
+    nome: "publike_convite_entrevista",
+    aviso: "agenda_convite",
+    para: "Candidato",
+    quando: "A agenda da vaga chamou a pessoa (Admin › Entrevistas)",
+    corpo:
+      "Oi, {{nome}}! {{empresa}} quer entrevistar você para a vaga de {{vaga}}, a que você se candidatou no Publike. A entrevista é {{formato}}. Quer escolher um horário?",
+    exemplo: {
+      nome: "Ana",
+      empresa: "Padaria Pão de Ouro",
+      vaga: "Atendente de padaria",
+      formato: "presencial, na Rua 10, 250, Setor Bueno",
+    },
+    botoes: [
+      { tipo: "resposta", texto: "Quero marcar", valor: "sim" },
+      { tipo: "resposta", texto: "Não tenho interesse", valor: "nao" },
+    ],
+  },
+  {
+    nome: "publike_entrevista_confirmar",
+    aviso: "agenda_vespera",
+    para: "Candidato",
+    quando: "Véspera da entrevista marcada pela agenda, à noite",
+    corpo: "Oi, {{nome}}! Amanhã é a sua entrevista para a vaga de {{vaga}} ({{empresa}}): {{quando}}. Você vai?",
+    exemplo: {
+      nome: "Ana",
+      vaga: "Atendente de padaria",
+      empresa: "Padaria Pão de Ouro",
+      quando: "ter, 02/12 às 14h30, presencial, na Rua 10, 250",
+    },
+    botoes: [
+      { tipo: "resposta", texto: "Confirmo", valor: "conf" },
+      { tipo: "resposta", texto: "Não vou mais", valor: "cancelar" },
+      { tipo: "resposta", texto: "Trocar horário", valor: "remarcar" },
+    ],
+  },
+  {
+    nome: "publike_entrevista_hoje",
+    aviso: "agenda_hoje",
+    para: "Candidato",
+    quando: "Umas 2 horas antes da entrevista marcada pela agenda",
+    corpo: "Oi, {{nome}}! Hoje é a sua entrevista para a vaga de {{vaga}} ({{empresa}}): {{quando}}. Está tudo certo?",
+    exemplo: {
+      nome: "Ana",
+      vaga: "Atendente de padaria",
+      empresa: "Padaria Pão de Ouro",
+      quando: "ter, 02/12 às 14h30, presencial, na Rua 10, 250",
+    },
+    botoes: [
+      { tipo: "resposta", texto: "Tudo certo", valor: "ok" },
+      { tipo: "resposta", texto: "Não vou mais", valor: "cancelar" },
+    ],
+  },
+  {
+    nome: "publike_entrevista_hoje_video",
+    aviso: "agenda_hoje",
+    para: "Candidato",
+    quando: "Umas 2 horas antes da entrevista por vídeo pelo Publike marcada pela agenda",
+    corpo:
+      "Oi, {{nome}}! Hoje é a sua entrevista para a vaga de {{vaga}} ({{empresa}}), às {{hora}}, por vídeo pelo Publike. A sala abre 10 minutos antes: na hora, toque em Entrar na sala.",
+    exemplo: { nome: "Ana", vaga: "Atendente de padaria", empresa: "Padaria Pão de Ouro", hora: "14h30" },
+    botoes: [
+      { tipo: "link", texto: "Entrar na sala", exemplo: "entrar/whatsapp?t=3f9a" },
+      { tipo: "resposta", texto: "Não vou mais", valor: "cancelar" },
+    ],
+  },
   {
     nome: "publike_te_respondeu",
     aviso: "te_respondeu",
@@ -595,6 +664,45 @@ export async function enviarComBotoes(
         body: { text: texto.slice(0, 1024) },
         action: {
           buttons: botoes.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id.slice(0, 256), title: b.titulo.slice(0, 20) } })),
+        },
+      },
+    },
+  });
+  return r.ok ? { ok: true as const, wamid: r.dados.messages?.[0]?.id ?? null } : { ok: false as const, erro: r.texto };
+}
+
+/**
+ * Texto com uma lista de opções (só na janela de 24 horas): até 10 linhas atrás de um botão ("Ver horários"). A entrevista
+ * marcada usa para os horários livres (migração 20271013120000). O toque volta no webhook como `interactive.list_reply`.
+ */
+export async function enviarLista(
+  cfg: ConfigMeta,
+  numero: string,
+  texto: string,
+  lista: { botao: string; secao?: string; linhas: { id: string; titulo: string; descricao?: string }[] },
+) {
+  const r = await graph<{ messages?: { id: string }[] }>(cfg, `${cfg.phoneId}/messages`, {
+    metodo: "POST",
+    corpo: {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: numero.replace(/\D/g, ""),
+      type: "interactive",
+      interactive: {
+        type: "list",
+        body: { text: texto.slice(0, 1024) },
+        action: {
+          button: lista.botao.slice(0, 20),
+          sections: [
+            {
+              title: (lista.secao ?? lista.botao).slice(0, 24),
+              rows: lista.linhas.slice(0, 10).map((l) => ({
+                id: l.id.slice(0, 200),
+                title: l.titulo.slice(0, 24),
+                ...(l.descricao ? { description: l.descricao.slice(0, 72) } : {}),
+              })),
+            },
+          ],
         },
       },
     },

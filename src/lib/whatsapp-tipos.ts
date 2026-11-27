@@ -106,6 +106,29 @@ export const TIPOS_WHATSAPP: { tipo: string; nome: string; curto: string; para: 
   },
   // o convite com a vaga pronta para a empresa que está contratando (migração 20271011120000): o robô das filas manda,
   // em lote, com o teto de Admin › Convites (desligado até a equipe ligar). Modelo de marketing
+  // a entrevista marcada pelo WhatsApp (migração 20271013120000): o robô das filas manda o convite e os lembretes da
+  // agenda (Admin › Entrevistas). Utilidade: é sobre a candidatura da pessoa
+  {
+    tipo: "agenda_convite",
+    nome: "Convite para marcar a entrevista (agenda da vaga)",
+    curto: "Convite da entrevista",
+    para: "Candidato",
+    economico: true,
+  },
+  {
+    tipo: "agenda_vespera",
+    nome: "Véspera da entrevista da agenda, com botões",
+    curto: "Véspera da entrevista",
+    para: "Candidato",
+    economico: true,
+  },
+  {
+    tipo: "agenda_hoje",
+    nome: "No dia da entrevista da agenda, umas 2 horas antes",
+    curto: "Entrevista hoje",
+    para: "Candidato",
+    economico: true,
+  },
   {
     tipo: "convite_vaga_pronta",
     nome: "Convite com a vaga pronta (empresa que está contratando)",

@@ -54,6 +54,7 @@ import { conferirLinksDeCandidatura } from "@/lib/servidor/links-de-candidatura"
 import { enviarWhatsappPendentes } from "@/lib/servidor/whatsapp";
 import { enviarAvisosDeVagaNova, enviarLembretesWhatsapp, type AvisosDeVagaNova } from "@/lib/servidor/atendimento-whatsapp";
 import { enviarConvitesPeloWhatsapp, type ConvitesPeloWhatsapp } from "@/lib/servidor/convites-whatsapp";
+import { cuidarDasAgendas, type AgendasDaRodada } from "@/lib/servidor/agenda-entrevistas";
 import { cancelarPedidosNaoPagos } from "@/lib/servidor/pagamentos";
 import { convidarPelosPacotes } from "@/lib/servidor/convite-do-pacote";
 import { enviarEmailAsEmpresas } from "@/lib/servidor/email-empresas";
@@ -234,7 +235,18 @@ export async function GET(request: Request) {
           motivo: `Convites pelo WhatsApp: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300),
         }));
 
+  // a entrevista marcada pelo WhatsApp (migração 20271013120000): os convites da agenda e os lembretes com botões
+  const semAgenda: AgendasDaRodada = { convites: 0, lembretes: 0, falhas: 0, esperando: [] };
+  const agendas =
+    Date.now() - inicio > 50_000
+      ? semAgenda
+      : await cuidarDasAgendas(20).catch((e) => ({
+          ...semAgenda,
+          motivo: `Agenda de entrevistas: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300),
+        }));
+
   const problemas = [
+    agendas.motivo,
     emails.motivo,
     celular.motivo,
     whatsapp.motivo,
@@ -335,6 +347,7 @@ export async function GET(request: Request) {
       email_empresas: { enviados: emailEmpresas.enviados, motivo: emailEmpresas.motivo ?? null },
       lembretes_whatsapp: lembretesWhatsapp,
       convites_whatsapp: { enviados: convitesWhatsapp.enviados, falhas: convitesWhatsapp.falhas, esperando: convitesWhatsapp.esperando },
+      agendas: { convites: agendas.convites, lembretes: agendas.lembretes, falhas: agendas.falhas },
       avisos_de_vaga: {
         enviados: avisosDeVaga.enviados,
         pelo_modelo: avisosDeVaga.pelo_modelo,

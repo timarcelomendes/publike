@@ -2983,6 +2983,80 @@ export type Database = {
       servidor_whatsapp_email_da_conta: { Args: { p_chave: string; p_conversa: string; p_email: string }; Returns: Json };
       servidor_email_a_confirmar: { Args: { p_chave: string; p_token: string; p_usar?: boolean }; Returns: Json };
       servidor_whatsapp_conta_sem_email: { Args: { p_chave: string; p_conversa: string }; Returns: boolean };
+      // A entrevista marcada pelo WhatsApp (migração 20271013120000)
+      admin_agenda_vagas: { Args: { p_busca?: string | null }; Returns: Json };
+      admin_agenda_criar: {
+        Args: {
+          p_anuncio: string;
+          p_horarios: string[];
+          p_formato: string;
+          p_local?: string | null;
+          p_obs?: string | null;
+          p_duracao?: number;
+        };
+        Returns: string;
+      };
+      admin_agenda_horarios: {
+        Args: { p_agenda: string; p_mais?: string[] | null; p_tirar?: number[] | null };
+        Returns: number;
+      };
+      admin_agendas: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_agenda: { Args: { p_agenda: string }; Returns: Json };
+      admin_agenda_aprovar: { Args: { p_agenda: string; p_perfis: string[] }; Returns: number };
+      admin_agenda_tirar: { Args: { p_convite: number }; Returns: boolean };
+      admin_agenda_resultado: { Args: { p_convite: number; p_resultado: string }; Returns: boolean };
+      admin_agenda_encerrar: { Args: { p_agenda: string }; Returns: boolean };
+      servidor_agenda_a_convidar: {
+        Args: { p_chave: string; p_agora?: string; p_limite?: number };
+        Returns: {
+          convite_id: number;
+          token: string;
+          numero: string;
+          nome: string;
+          empresa: string;
+          vaga: string;
+          formato: string;
+        }[];
+      };
+      servidor_agenda_lembretes: {
+        Args: { p_chave: string; p_agora?: string; p_limite?: number };
+        Returns: {
+          convite_id: number;
+          tipo: string;
+          token: string;
+          numero: string;
+          nome: string;
+          empresa: string;
+          vaga: string;
+          quando: string;
+          formato: string;
+          como: string;
+          entrevista_id: string;
+        }[];
+      };
+      servidor_agenda_enviada: {
+        Args: {
+          p_chave: string;
+          p_convite: number;
+          p_tipo: string;
+          p_wamid: string | null;
+          p_falhou: string | null;
+          p_texto: string | null;
+          p_numero?: string | null;
+        };
+        Returns: undefined;
+      };
+      servidor_agenda_resposta: {
+        Args: {
+          p_chave: string;
+          p_conversa: string;
+          p_acao: string;
+          p_token: string;
+          p_horario?: number | null;
+          p_agora?: string;
+        };
+        Returns: Json;
+      };
       admin_convites_whatsapp: { Args: { p_ligado?: boolean | null; p_por_dia?: number | null }; Returns: Json };
       // O vencimento com um toque (migração 20271010120000)
       vencimento_pelo_link: { Args: { p_token: string }; Returns: Json };

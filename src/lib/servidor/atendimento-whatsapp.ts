@@ -22,6 +22,7 @@ import {
   configMeta,
   enviarComBotoes,
   enviarComLink,
+  enviarLista,
   enviarModelo,
   enviarTexto,
   marcarLidaDigitando,
@@ -69,6 +70,7 @@ import {
   type Midia,
 } from "./curriculo-por-arquivo";
 import { emailCorrigido } from "@/lib/email-valido";
+import { MARCA_DOS_HORARIOS, respostaDaAgenda } from "./agenda-entrevistas";
 import { caminhoDeEntrar, ultimoDestinoDeEntrar } from "./entrar-pelo-whatsapp";
 import {
   configVagasWhatsapp,
@@ -2177,10 +2179,34 @@ export async function atenderConversa(
       botao?: Botao | null;
       /** outros botões de resposta no lugar do menu (os da entrada de quem quer publicar vaga) */
       botoes?: { id: string; titulo: string }[];
+      /** uma lista de opções atrás de um botão (os horários da entrevista marcada, migração 20271013120000) */
+      lista?: { botao: string; secao?: string; linhas: { id: string; titulo: string; descricao?: string }[] };
     } = {},
   ) => {
     const texto = comCampanhaDoAnuncio(textoDaResposta, campanha);
     const url = extra.botao ? comCampanhaDoAnuncio(link(extra.botao.caminho), campanha) : null;
+    if (extra.lista?.linhas.length) {
+      let r = await enviarLista(cfg, m.numero, caber(texto), extra.lista);
+      let marca = `[Lista: ${extra.lista.botao}]`;
+      // a lista não saiu: os 3 primeiros viram botões
+      if (!r.ok) {
+        console.error("Publike: a lista do atendimento não saiu:", r.erro);
+        const botoes = extra.lista.linhas.slice(0, 3).map((l) => ({ id: l.id, titulo: l.titulo.slice(0, 20) }));
+        r = await enviarComBotoes(cfg, m.numero, caber(texto), botoes);
+        marca = `[Botões: ${botoes.map((b) => b.titulo).join(" · ")}]`;
+      }
+      if (!r.ok) console.error("Publike: a resposta do atendimento não saiu:", r.erro);
+      await banco.rpc("servidor_whatsapp_conversa_saida", {
+        p_chave: chave,
+        p_conversa: e.chave,
+        p_texto: r.ok ? `${texto}\n\n${marca}` : "",
+        p_wamid: r.ok ? r.wamid : null,
+        p_perfil: extra.perfil ?? null,
+        p_equipe: false,
+        p_motivo: null,
+      });
+      return;
+    }
     const botoes = extra.botoes ?? (extra.menu ? MENU : null);
     let r = botoes
       ? await enviarComBotoes(cfg, m.numero, caber(texto), botoes)
@@ -2265,6 +2291,17 @@ export async function atenderConversa(
   const novas = semResposta(e.historico);
   const textos = novas.length ? novas.map((x) => x.texto) : [m.texto];
   const midias = textos.map(midiaDaMensagem);
+  // a entrevista marcada pelo WhatsApp (migração 20271013120000): os botões do convite, a lista dos horários e os
+  // lembretes. Depois da lista, a resposta escrita ganha a dica de tocar nela (uma vez: a dica não tem a marca)
+  {
+    const daAgenda = await respostaDaAgenda(banco, chave, e.chave, m.payload);
+    if (daAgenda) return saida(daAgenda.texto, { perfil: "trabalho", botoes: daAgenda.botoes, lista: daAgenda.lista });
+    if (!m.payload && minhaUltima.includes(MARCA_DOS_HORARIOS) && !midias.some(Boolean))
+      return saida(
+        "Para marcar, toque em *Ver horários* na mensagem acima e escolha um. 🙂 Se tiver alguma dúvida sobre a vaga, é só escrever.",
+        { perfil: "trabalho" },
+      );
+  }
   // o e-mail da conta que nasceu pelo WhatsApp (migração 20271012120000): o botão da confirmação do domínio, ou o e-mail
   // escrito depois do pedido (nas últimas 3 mensagens do Publike). O domínio digitado errado ("gamil.com") pergunta antes
   {

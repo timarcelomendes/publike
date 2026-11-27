@@ -43,6 +43,7 @@ export const GRUPOS_ADMIN: {
       { href: "/admin/curtidas", nome: "Curtidas" },
       { href: "/admin/matches", nome: "Matches" },
       { href: "/admin/esperando", nome: "Esperando" },
+      { href: "/admin/entrevistas", nome: "Entrevistas" },
       { href: "/admin/vagas-paradas", nome: "Vagas paradas" },
       { href: "/admin/procuradas", nome: "Procuradas sem vaga" },
       { href: "/admin/qualificados", nome: "Qualificados" },
@@ -132,6 +133,8 @@ export const TELAS_DO_SITE: {
   { href: "/admin/retorno", nome: "Retorno", precisa: "equipe" },
   // as empresas com gente esperando e a mensagem pronta (migração 20270915130000; só a equipe publike.org)
   { href: "/admin/esperando", nome: "Esperando", precisa: "equipe" },
+  // a entrevista marcada pelo WhatsApp: a agenda da vaga (migração 20271013120000; só a equipe publike.org)
+  { href: "/admin/entrevistas", nome: "Entrevistas", precisa: "equipe" },
   // a base de empresas da Receita (migração 20270602120000; só a equipe publike.org)
   { href: "/admin/receita", nome: "Base da Receita", precisa: "equipe" },
   // o WhatsApp oficial (migração 20270619120000; só a equipe publike.org)
