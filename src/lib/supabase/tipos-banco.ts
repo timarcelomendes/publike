@@ -3007,7 +3007,7 @@ export type Database = {
       admin_agenda_resultado: { Args: { p_convite: number; p_resultado: string }; Returns: boolean };
       admin_agenda_encerrar: { Args: { p_agenda: string }; Returns: boolean };
       servidor_agenda_a_convidar: {
-        Args: { p_chave: string; p_agora?: string; p_limite?: number };
+        Args: { p_chave: string; p_agora?: string; p_limite?: number; p_so_janela?: boolean };
         Returns: {
           convite_id: number;
           token: string;
@@ -3016,10 +3016,11 @@ export type Database = {
           empresa: string;
           vaga: string;
           formato: string;
+          na_janela: boolean;
         }[];
       };
       servidor_agenda_lembretes: {
-        Args: { p_chave: string; p_agora?: string; p_limite?: number };
+        Args: { p_chave: string; p_agora?: string; p_limite?: number; p_so_janela?: boolean };
         Returns: {
           convite_id: number;
           tipo: string;
@@ -3032,7 +3033,11 @@ export type Database = {
           formato: string;
           como: string;
           entrevista_id: string;
+          local: string | null;
+          na_janela: boolean;
         }[];
+      };
+      agenda_da_vaga: { Args: { p_anuncio: string }; Returns: Json
       };
       servidor_agenda_enviada: {
         Args: {

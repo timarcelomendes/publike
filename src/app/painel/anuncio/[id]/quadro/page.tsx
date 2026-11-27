@@ -1,4 +1,4 @@
-import { ChevronRight, Columns3, Send, Sparkles, Users } from "lucide-react";
+import { CalendarClock, ChevronRight, Columns3, Send, Sparkles, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -226,6 +226,27 @@ async function Conteudo({
         <Suspense fallback={null}>
           <FaixaDosProntos anuncioId={id} />
         </Suspense>
+      )}
+      {status === "ativo" && cartoes.length > 0 && (
+        <Link
+          href={`/painel/anuncio/${id}/agenda`}
+          className="group flex items-center gap-3 rounded-lg border border-line bg-surface-100 p-4 hover:border-line-strong"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-cerrado/10">
+            <CalendarClock aria-hidden className="size-5 text-cerrado-text" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-2 text-label">
+              Marcar as entrevistas pelo WhatsApp
+              <Selo variante="novo">Novo</Selo>
+            </span>
+            <span className="block text-body-sm text-ink-muted">
+              Passe os horários livres e escolha quem chamar: cada pessoa escolhe o horário na conversa e recebe os
+              lembretes.
+            </span>
+          </span>
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />
+        </Link>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <VistaDosCandidatos id={id} atual="quadro" />

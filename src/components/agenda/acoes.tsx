@@ -30,8 +30,8 @@ import {
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada, Seletor } from "../ui/campo";
 
-// Admin › Entrevistas (migração 20271013120000): as partes que mexem na agenda. A página (src/app/admin/entrevistas)
-// lê do banco; daqui saem as ações.
+// A agenda de entrevistas pelo WhatsApp (migrações 20271013120000 e 20271014120000): as partes que mexem nela, no
+// Admin › Entrevistas (a equipe) e no painel da vaga (a conta dona). As páginas leem do banco; daqui saem as ações.
 
 const DURACOES = [20, 30, 45, 60];
 
@@ -94,9 +94,15 @@ function PreviaDosHorarios({
 export function FormNovaAgenda({
   anuncio,
   localPadrao,
+  noPainel = false,
+  aoVivo = true,
 }: {
   anuncio: string;
   localPadrao: string;
+  /** no painel da vaga (a conta dona): depois de criar, volta para a agenda da vaga */
+  noPainel?: boolean;
+  /** a conta tem a entrevista ao vivo pelo Publike (o limite do mês) */
+  aoVivo?: boolean;
 }) {
   const router = useRouter();
   const [horarios, setHorarios] = useState("");
@@ -122,14 +128,15 @@ export function FormNovaAgenda({
       }),
     );
     setSalvando(false);
-    if (r.ok && "id" in r) router.push(`/admin/entrevistas?agenda=${r.id}`);
+    if (r.ok && "id" in r)
+      router.push(noPainel ? `/painel/anuncio/${anuncio}/agenda` : `/admin/entrevistas?agenda=${r.id}`);
     else if (!r.ok) setErro(r.erro);
   }
 
   return (
     <form onSubmit={salvar} className="flex flex-col gap-4">
       <Campo
-        rotulo="Dias e horários que a empresa passou"
+        rotulo={noPainel ? "Os dias e horários que você tem livres" : "Dias e horários que a empresa passou"}
         nome="horarios"
         ajuda="Uma linha por dia. Ex.: 02/12 14h-17h · terça e quarta 9h às 11h30 · amanhã 9h, 10h, 11h"
       >
@@ -164,7 +171,7 @@ export function FormNovaAgenda({
             onChange={(e) => setFormato(e.target.value)}
             className={classesEntrada}
           >
-            {FORMATOS_DA_AGENDA.map((f) => (
+            {FORMATOS_DA_AGENDA.filter((f) => aoVivo || f.valor !== "publike").map((f) => (
               <option key={f.valor} value={f.valor}>
                 {f.nome}
               </option>

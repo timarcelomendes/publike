@@ -33,6 +33,7 @@ const NOMES: Record<string, string> = {
   "/noticias/[slug]": "Uma notícia",
   "/painel": "Painel",
   "/painel/anuncio/[id]": "Painel › Vaga",
+  "/painel/anuncio/[id]/agenda": "Painel › Entrevistas pelo WhatsApp",
   "/painel/anuncio/[id]/convidar": "Painel › Chamar candidato de fora",
   "/painel/anuncio/[id]/numeros": "Painel › Resultados da vaga",
   "/painel/anuncio/[id]/copiloto": "Painel › Triagem com IA da vaga",

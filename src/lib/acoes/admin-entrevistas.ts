@@ -3,24 +3,23 @@
 import { refresh } from "next/cache";
 import { horariosDoTexto } from "@/lib/agenda-horarios";
 import { mensagemDeErro } from "@/lib/erros";
-import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 
-// Admin › Entrevistas (migração 20271013120000; claude/plano-entrevista-marcada.md): a equipe monta a agenda da vaga,
-// aprova quem chamar e anota o resultado. O admin do computador do dono ou, no site no ar, a equipe publike.org.
+// A agenda de entrevistas (migrações 20271013120000 e 20271014120000; claude/plano-entrevista-marcada.md): monta a
+// agenda da vaga, aprova quem chamar e anota o resultado. No Admin › Entrevistas (o admin do computador do dono ou a
+// equipe publike.org) e no painel da vaga (a conta dona). Quem pode mexer em cada agenda o banco confere
+// (privado.exigir_agenda): a equipe em todas, a conta só nas das vagas dela.
 
-const FORA = "Só a equipe do Publike usa esta tela.";
+const FORA = "Entre na sua conta para mexer na agenda.";
 const FORMATOS = ["presencial", "telefone", "video", "publike"] as const;
 
 async function cliente(): Promise<ClienteBanco | null> {
   const admin = await clienteAdminOuNulo();
   if (admin) return admin;
-  return (await possoVerTela("/admin/entrevistas"))
-    ? await criarClienteServidor()
-    : null;
+  return await criarClienteServidor();
 }
 
 export async function criarAgenda(dados: {

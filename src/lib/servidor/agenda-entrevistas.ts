@@ -1,10 +1,11 @@
 import "server-only";
-import { LOGIN_CELULAR } from "@/lib/config";
+import { LOGIN_CELULAR, SITE_URL } from "@/lib/config";
 import { caminhoDeEntrar } from "./entrar-pelo-whatsapp";
 import { acessoFila } from "./filas";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import {
   configMeta,
+  enviarComBotoes,
   enviarModelo,
   MODELOS,
   podeSair,
@@ -222,15 +223,27 @@ export function mensagemDaAgenda(
   }
 }
 
+type Envio = { ok: true; wamid: string | null; waId?: string | null } | { ok: false; erro: string };
+
+/** O corpo de um modelo com as variáveis. */
+function corpoDoModelo(nome: string, params: Record<string, string>) {
+  const m = MODELOS.find((x) => x.nome === nome)!;
+  return m.corpo.replace(/\{\{(\w+)\}\}/g, (_, k: string) => params[k] ?? "");
+}
+
+/** Os botões de resposta de um modelo, com os códigos (para a mensagem comum, na janela de 24 horas). */
+function botoesDoModelo(nome: string, respostas: string[]) {
+  const m = MODELOS.find((x) => x.nome === nome)!;
+  return m.botoes
+    .map((b, i) => (b.tipo === "resposta" ? { id: respostas[i] ?? "", titulo: b.texto.slice(0, 20) } : null))
+    .filter((b): b is { id: string; titulo: string } => Boolean(b?.id));
+}
+
 /** O texto de um modelo com as variáveis, para guardar na conversa o que a pessoa recebeu. */
 function textoDoModelo(nome: string, params: Record<string, string>) {
   const m = MODELOS.find((x) => x.nome === nome)!;
-  const corpo = m.corpo.replace(
-    /\{\{(\w+)\}\}/g,
-    (_, k: string) => params[k] ?? "",
-  );
   const botoes = m.botoes.map((b) => b.texto).join(" · ");
-  return `${corpo}\n\n_${RODAPE_WHATSAPP}_\n\n[Botões: ${botoes}]`;
+  return `${corpoDoModelo(nome, params)}\n\n_${RODAPE_WHATSAPP}_\n\n[Botões: ${botoes}]`;
 }
 
 export type AgendasDaRodada = {
@@ -250,6 +263,7 @@ type ConviteDaVez = {
   empresa: string;
   vaga: string;
   formato: string;
+  na_janela: boolean;
 };
 type LembreteDaVez = {
   convite_id: number;
@@ -263,6 +277,8 @@ type LembreteDaVez = {
   formato: string;
   como: string;
   entrevista_id: string;
+  local: string | null;
+  na_janela: boolean;
 };
 
 /**
@@ -297,12 +313,7 @@ export async function cuidarDasAgendas(
     if (!ok) r.esperando.push(nome);
     return ok;
   };
-  const anotar = (
-    convite: number,
-    tipo: string,
-    envio: Awaited<ReturnType<typeof enviarModelo>>,
-    texto: string,
-  ) =>
+  const anotar = (convite: number, tipo: string, envio: Envio, texto: string) =>
     banco.rpc("servidor_agenda_enviada", {
       p_chave: chave,
       p_convite: convite,
@@ -313,94 +324,97 @@ export async function cuidarDasAgendas(
       p_numero: envio.ok ? (envio.waId ?? null) : null,
     });
 
-  // 1. os convites da vez
-  if (aprovado(MODELO_CONVITE_ENTREVISTA)) {
+  // 1. os convites da vez. Quem escreveu ao Publike nas últimas 23 horas recebe uma mensagem comum com os botões (sem
+  // modelo, de graça); os outros, o modelo. Sem o modelo aprovado, só os da janela saem (o banco segura os outros)
+  const conviteAprovado = aprovado(MODELO_CONVITE_ENTREVISTA);
+  {
     const { data, error } = await banco.rpc("servidor_agenda_a_convidar", {
       p_chave: chave,
       p_limite: limite,
+      p_so_janela: !conviteAprovado,
       ...(agora ? { p_agora: agora.toISOString() } : {}),
     });
     if (error) {
-      if (error.code !== "PGRST202")
-        r.motivo = `Agenda de entrevistas: ${error.message}`.slice(0, 300);
+      if (error.code !== "PGRST202") r.motivo = `Agenda de entrevistas: ${error.message}`.slice(0, 300);
     } else {
       const modelo = MODELOS.find((m) => m.nome === MODELO_CONVITE_ENTREVISTA)!;
       for (const c of (data ?? []) as unknown as ConviteDaVez[]) {
-        const params = {
-          nome: c.nome,
-          empresa: c.empresa,
-          vaga: c.vaga,
-          formato: c.formato,
-        };
-        const envio = await enviarModelo(cfg, c.numero, modelo, params, {
-          respostas: [`g:sim:${c.token}`, `g:nao:${c.token}`],
-        });
-        await anotar(
-          c.convite_id,
-          "convite",
-          envio,
-          textoDoModelo(modelo.nome, params),
-        );
+        const params = { nome: c.nome, empresa: c.empresa, vaga: c.vaga, formato: c.formato };
+        const respostas = [`g:sim:${c.token}`, `g:nao:${c.token}`];
+        let envio: Envio;
+        let texto: string;
+        if (c.na_janela) {
+          texto = corpoDoModelo(modelo.nome, params);
+          envio = await enviarComBotoes(cfg, c.numero, texto, botoesDoModelo(modelo.nome, respostas));
+          texto = `${texto}\n\n[Botões: ${modelo.botoes.map((b) => b.texto).join(" · ")}]`;
+        } else {
+          envio = await enviarModelo(cfg, c.numero, modelo, params, { respostas });
+          texto = textoDoModelo(modelo.nome, params);
+        }
+        await anotar(c.convite_id, "convite", envio, texto);
         if (envio.ok) r.convites++;
         else r.falhas++;
       }
     }
   }
 
-  // 2. os lembretes (os três modelos aprovados: o banco anota o lembrete ao entregar a linha)
-  if (
-    [
-      MODELO_ENTREVISTA_VESPERA,
-      MODELO_ENTREVISTA_HOJE,
-      MODELO_ENTREVISTA_HOJE_VIDEO,
-    ]
-      .map(aprovado)
-      .every(Boolean)
-  ) {
+  // 2. os lembretes: na janela, mensagem comum; fora dela, os modelos (os três aprovados). O banco anota o lembrete ao
+  // entregar a linha
+  const lembretesAprovados = [MODELO_ENTREVISTA_VESPERA, MODELO_ENTREVISTA_HOJE, MODELO_ENTREVISTA_HOJE_VIDEO]
+    .map(aprovado)
+    .every(Boolean);
+  {
     const { data, error } = await banco.rpc("servidor_agenda_lembretes", {
       p_chave: chave,
       p_limite: limite * 2,
+      p_so_janela: !lembretesAprovados,
       ...(agora ? { p_agora: agora.toISOString() } : {}),
     });
     if (error) {
-      if (error.code !== "PGRST202")
-        r.motivo = `Agenda de entrevistas: ${error.message}`.slice(0, 300);
+      if (error.code !== "PGRST202") r.motivo = `Agenda de entrevistas: ${error.message}`.slice(0, 300);
     } else {
       for (const l of (data ?? []) as unknown as LembreteDaVez[]) {
         const quando = `${l.quando}, ${l.como}`;
         let nome: string;
         let params: Record<string, string>;
-        let extra: { link?: string; respostas?: string[] };
+        let extra: { link?: string; respostas: string[] };
         if (l.tipo === "vespera") {
           nome = MODELO_ENTREVISTA_VESPERA;
           params = { nome: l.nome, vaga: l.vaga, empresa: l.empresa, quando };
-          extra = {
-            respostas: [
-              `g:conf:${l.token}`,
-              `g:cancelar:${l.token}`,
-              `g:remarcar:${l.token}`,
-            ],
-          };
+          extra = { respostas: [`g:conf:${l.token}`, `g:cancelar:${l.token}`, `g:remarcar:${l.token}`] };
         } else if (l.formato === "publike") {
           nome = MODELO_ENTREVISTA_HOJE_VIDEO;
           const hora = l.quando.split(" às ")[1] ?? l.quando;
           params = { nome: l.nome, vaga: l.vaga, empresa: l.empresa, hora };
           const destino = `/entrevista/${l.entrevista_id}`;
-          const entrar = LOGIN_CELULAR
-            ? await caminhoDeEntrar(l.numero, destino).catch(() => null)
-            : null;
-          extra = {
-            link: (entrar ?? destino).replace(/^\//, ""),
-            respostas: ["", `g:cancelar:${l.token}`],
-          };
+          const entrar = LOGIN_CELULAR ? await caminhoDeEntrar(l.numero, destino).catch(() => null) : null;
+          extra = { link: (entrar ?? destino).replace(/^\//, ""), respostas: ["", `g:cancelar:${l.token}`] };
         } else {
           nome = MODELO_ENTREVISTA_HOJE;
           params = { nome: l.nome, vaga: l.vaga, empresa: l.empresa, quando };
           extra = { respostas: [`g:ok:${l.token}`, `g:cancelar:${l.token}`] };
         }
         const modelo = MODELOS.find((m) => m.nome === nome)!;
-        const envio = await enviarModelo(cfg, l.numero, modelo, params, extra);
-        await anotar(l.convite_id, l.tipo, envio, textoDoModelo(nome, params));
+        let envio: Envio;
+        let texto: string;
+        if (l.na_janela) {
+          // a mensagem comum: o mesmo texto; no vídeo, o link da sala no texto e os botões Tudo certo e Não vou mais
+          texto = corpoDoModelo(nome, params);
+          let botoes = botoesDoModelo(nome, extra.respostas);
+          if (extra.link) {
+            texto = `${texto}\n\nA sala: ${SITE_URL}/${extra.link}`;
+            botoes = [
+              { id: `g:ok:${l.token}`, titulo: "Tudo certo" },
+              { id: `g:cancelar:${l.token}`, titulo: "Não vou mais" },
+            ];
+          }
+          envio = await enviarComBotoes(cfg, l.numero, texto, botoes);
+          texto = `${texto}\n\n[Botões: ${botoes.map((b) => b.titulo).join(" · ")}]`;
+        } else {
+          envio = await enviarModelo(cfg, l.numero, modelo, params, extra);
+          texto = textoDoModelo(nome, params);
+        }
+        await anotar(l.convite_id, l.tipo, envio, texto);
         if (envio.ok) r.lembretes++;
         else r.falhas++;
       }
