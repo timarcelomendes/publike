@@ -6,7 +6,6 @@ import { caminhoDaAreaContabil, caminhoDaBusca, vagaDaAreaContabil } from "@/lib
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { agoraDaPaginaPublica } from "@/lib/tempo";
 import { linkDasVagasContabeis } from "@/lib/whatsapp-oficial";
-import { IMAGEM_DO_SITE } from "@/lib/seo";
 import { CardAnuncio } from "./card-anuncio";
 import { DadosEstruturados } from "./dados-estruturados";
 import { AvisarBusca } from "./explorar/avisar-busca";
@@ -56,7 +55,8 @@ export async function metadadosDaAreaContabil(cidade: string): Promise<Metadata>
     description: descricao,
     alternates: { canonical: caminho },
     openGraph: {
-      images: [IMAGEM_DO_SITE],
+      // a imagem com as vagas no ar agora (a prévia do link no WhatsApp e nas redes)
+      images: [{ url: `${caminho}/imagem?post`, width: 1080, height: 1350, alt: titulo(cidade) }],
       title: `${titulo(cidade)} · Publike`,
       description: descricao,
       url: caminho,
@@ -140,6 +140,21 @@ export function PaginaDaAreaContabil({ cidade }: { cidade: string }) {
           </BotaoLink>
         </div>
       </section>
+
+      <p className="mt-4 max-w-3xl text-body-sm text-ink-muted">
+        Para divulgar no Instagram ou nos grupos, a imagem com as vagas de hoje:{" "}
+        <a href={`${caminhoDaAreaContabil(cidade)}/imagem?baixar`} className="font-semibold underline underline-offset-2">
+          Stories
+        </a>{" "}
+        ·{" "}
+        <a
+          href={`${caminhoDaAreaContabil(cidade)}/imagem?post&baixar`}
+          className="font-semibold underline underline-offset-2"
+        >
+          Feed
+        </a>
+        .
+      </p>
 
       <section aria-labelledby="perguntas" className="mt-12 max-w-3xl">
         <h2 id="perguntas" className="text-h3">

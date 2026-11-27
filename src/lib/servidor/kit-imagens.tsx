@@ -339,6 +339,66 @@ export async function imagemDaVaga(empresa: Empresa, v: VagaSozinha, link: strin
   );
 }
 
+/**
+ * As vagas de uma área da região, no ar agora (27/11/2026; a página /vagas/goiania/contabil-fiscal-e-dp): o título da
+ * área, as vagas que pagam mais primeiro (as sem valor depois), "e mais N" e o QR Code. `formato`: "story" (1080×1920)
+ * ou "post" (1080×1350). Para os posts, os Stories, os grupos e a prévia do link: sempre com as vagas do dia.
+ */
+export async function imagemDaArea(
+  area: { selo: string; titulo: string; subtitulo: string },
+  vagas: VagaDaImagem[],
+  link: string,
+  formato: "story" | "post",
+  arquivo: string | null,
+) {
+  const story = formato === "story";
+  const ordem = [...vagas].sort((x, y) => (y.pagamento_valor ?? -1) - (x.pagamento_valor ?? -1));
+  const mostradas = ordem.slice(0, story ? 6 : 4);
+  const total = vagas.length;
+  const fonte = story ? 44 : 36;
+  return responder(
+    <div style={{ ...base(story ? 80 : 64, { nome: "", foto: null }), justifyContent: "space-between" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: story ? 26 : 18 }}>
+        <div
+          style={{
+            display: "flex",
+            alignSelf: "flex-start",
+            background: "#f5b301",
+            color: COR.tinta,
+            fontWeight: 700,
+            fontSize: story ? 34 : 28,
+            borderRadius: 999,
+            padding: "10px 26px",
+          }}
+        >
+          {area.selo}
+        </div>
+        <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: story ? 92 : 72, lineHeight: 1 }}>
+          {area.titulo}
+        </div>
+        <div style={{ display: "flex", fontSize: story ? 38 : 32, color: COR.apagado }}>
+          {total ? `${plural(total, "vaga aberta", "vagas abertas")} ${area.subtitulo}` : area.subtitulo}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: story ? 20 : 14 }}>
+        {mostradas.length ? (
+          mostradas.map((v) => <LinhaDaVaga key={v.id} v={v} fonte={fonte} />)
+        ) : (
+          <div style={{ display: "flex", fontSize: 40, color: COR.apagado }}>As vagas novas aparecem no link.</div>
+        )}
+        {total > mostradas.length && (
+          <div style={{ display: "flex", fontSize: story ? 38 : 32, fontWeight: 700, color: COR.terra, paddingLeft: 8 }}>
+            {`e mais ${plural(total - mostradas.length, "vaga", "vagas")} no link`}
+          </div>
+        )}
+      </div>
+      <Convite link={link} qr={story ? 230 : 170} fonte={story ? 40 : 34} texto="Candidate-se de graça" />
+    </div>,
+    { width: 1080, height: story ? 1920 : 1350 },
+    arquivo,
+  );
+}
+
 /** "loja-bom-preco": para o nome do arquivo baixado. */
 export function nomeDeArquivo(nome: string) {
   return (
