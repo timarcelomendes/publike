@@ -4,10 +4,12 @@ import { lerFuncao, metadadosDaFuncao, PaginaDeFuncao } from "@/components/pagin
 import { lerHoje, metadadosDeHoje, PaginaDeHoje } from "@/components/pagina-hoje";
 import { metadadosDosProgramas, PaginaDosProgramas } from "@/components/pagina-programas";
 import { lerRecentes, metadadosDasRecentes, PaginaDasRecentes } from "@/components/pagina-recentes";
+import { metadadosDaAreaContabil, PaginaDaAreaContabil } from "@/components/pagina-contabil";
 import { CATEGORIAS } from "@/lib/constantes";
 import {
   areaDoSlug,
   CIDADES_PRINCIPAIS,
+  SLUG_CONTABIL,
   SLUG_HOJE,
   SLUG_PROGRAMAS,
   SLUG_RECENTES,
@@ -25,7 +27,7 @@ import { paginasDeFuncao } from "@/lib/servidor/paginas-funcao";
 // cache, com o título e o texto no começo do HTML; as outras continuam abrindo na hora.
 export async function generateStaticParams() {
   const fixas = CIDADES_PRINCIPAIS.flatMap((c) =>
-    [...CATEGORIAS.map((a) => a.slug), SLUG_RECENTES, SLUG_PROGRAMAS, SLUG_HOJE].map((area) => ({
+    [...CATEGORIAS.map((a) => a.slug), SLUG_RECENTES, SLUG_PROGRAMAS, SLUG_HOJE, SLUG_CONTABIL].map((area) => ({
       cidade: slugDaCidade(c),
       area,
     })),
@@ -47,6 +49,7 @@ export async function generateMetadata({ params }: PageProps<"/vagas/[cidade]/[a
   const { cidade, area } = await params;
   if (area === SLUG_RECENTES) return metadadosDasRecentes(lerRecentes(cidade));
   if (area === SLUG_PROGRAMAS) return metadadosDosProgramas(lerRecentes(cidade));
+  if (area === SLUG_CONTABIL) return metadadosDaAreaContabil(lerRecentes(cidade));
   if (area === SLUG_HOJE) return metadadosDeHoje(lerHoje(cidade));
   if (areaDoSlug(area)) return metadadosDaBusca(lerBusca("vaga", cidade, area));
   const funcao = await lerFuncao(cidade, area);
@@ -63,6 +66,7 @@ async function AreaOuFuncao({ params }: { params: PageProps<"/vagas/[cidade]/[ar
   const { cidade, area } = await params;
   if (area === SLUG_RECENTES) return <PaginaDasRecentes cidade={lerRecentes(cidade)} />;
   if (area === SLUG_PROGRAMAS) return <PaginaDosProgramas cidade={lerRecentes(cidade)} />;
+  if (area === SLUG_CONTABIL) return <PaginaDaAreaContabil cidade={lerRecentes(cidade)} />;
   if (area === SLUG_HOJE) return <PaginaDeHoje cidade={lerHoje(cidade)} />;
   if (areaDoSlug(area)) return <PaginaDeBusca {...lerBusca("vaga", cidade, area)} />;
   const funcao = await lerFuncao(cidade, area);

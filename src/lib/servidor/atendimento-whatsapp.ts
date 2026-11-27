@@ -1,4 +1,5 @@
 import "server-only";
+import { vagaDaAreaContabil } from "@/lib/paginas-busca";
 import { textoDaAjuda } from "@/lib/ajuda";
 import { BAIRROS } from "@/lib/bairros";
 import { REDES_DO_PUBLIKE, SITE_URL } from "@/lib/config";
@@ -527,7 +528,7 @@ export function lugarDaBusca(cidade: string, bairro: string): Local | null {
 }
 
 const REGRAS_DA_BUSCA =
-  `Preencha "busca.texto" com o que ela faz, como ela falou ("vigilante patrimonial", "auxiliar de costura e de cozinha"); "busca.funcoes" com cada função que ela disse, separada, no singular e com o nome que os anúncios usam (até 3: ["auxiliar de costura", "auxiliar de cozinha"]); "busca.parecidas" com até 4 outras funções que essa pessoa consegue fazer com a experiência que tem, do mesmo ramo, as mais próximas primeiro (vigilante: vigia, porteiro, controlador de acesso; auxiliar de costura: costureira, auxiliar de produção têxtil, arrematadeira; auxiliar de cozinha: ajudante de cozinha, cozinheira, auxiliar de padaria; cargo de liderança: o mesmo cargo em outro nível da mesma área, como supervisor de logística: coordenador de logística, encarregado de logística, gerente de logística). O que ela estuda também conta (24/11/2026: a estudante de recursos humanos que foi supervisora de call center só recebeu vaga de supervisor): quem diz que estuda, faz faculdade ou curso técnico, ou se formou numa área ("estudante de recursos humanos", "cursando enfermagem", "técnico em logística") ganha em "busca.funcoes", além do trabalho que já fez, o estágio da área ("estágio em recursos humanos") e a função de entrada da área ("assistente de recursos humanos"); quem já se formou, só a função de entrada. Cuidado com as parecidas: elas aparecem quando não há vaga da função, como oportunidades que podem combinar com o perfil, então nunca ponha uma função só porque divide uma palavra (auxiliar de escritório não é parecida com auxiliar de costura) nem funções que pedem outra formação; na dúvida, deixe de fora; "busca.jeito" com o jeito de trabalho que ela pediu, se pediu: "sem_experiencia" (primeiro emprego, nunca trabalhou, sem experiência), "pcd" (pessoa com deficiência), "diaria", "freelance", "remoto" (home office), "meio_periodo", "fim_de_semana" e "qualquer" (topa o que tiver, outras áreas, o que aparecer); senão, []. O jeito não é função: "primeiro emprego", "PCD", "diária" e "home office" vão em "busca.jeito", nunca em "busca.funcoes" (em "atendimento home office", a função é "atendimento");`;
+  `Preencha "busca.texto" com o que ela faz, como ela falou ("vigilante patrimonial", "auxiliar de costura e de cozinha"); "busca.funcoes" com cada função que ela disse, separada, no singular e com o nome que os anúncios usam (até 3: ["auxiliar de costura", "auxiliar de cozinha"]); "busca.parecidas" com até 4 outras funções que essa pessoa consegue fazer com a experiência que tem, do mesmo ramo, as mais próximas primeiro (vigilante: vigia, porteiro, controlador de acesso; auxiliar de costura: costureira, auxiliar de produção têxtil, arrematadeira; auxiliar de cozinha: ajudante de cozinha, cozinheira, auxiliar de padaria; cargo de liderança: o mesmo cargo em outro nível da mesma área, como supervisor de logística: coordenador de logística, encarregado de logística, gerente de logística). O que ela estuda também conta (24/11/2026: a estudante de recursos humanos que foi supervisora de call center só recebeu vaga de supervisor): quem diz que estuda, faz faculdade ou curso técnico, ou se formou numa área ("estudante de recursos humanos", "cursando enfermagem", "técnico em logística") ganha em "busca.funcoes", além do trabalho que já fez, o estágio da área ("estágio em recursos humanos") e a função de entrada da área ("assistente de recursos humanos"); quem já se formou, só a função de entrada. Cuidado com as parecidas: elas aparecem quando não há vaga da função, como oportunidades que podem combinar com o perfil, então nunca ponha uma função só porque divide uma palavra (auxiliar de escritório não é parecida com auxiliar de costura) nem funções que pedem outra formação; na dúvida, deixe de fora; "busca.jeito" com o jeito de trabalho que ela pediu, se pediu: "sem_experiencia" (primeiro emprego, nunca trabalhou, sem experiência), "pcd" (pessoa com deficiência), "diaria", "freelance", "remoto" (home office), "meio_periodo", "fim_de_semana" e "qualquer" (topa o que tiver, outras áreas, o que aparecer); senão, []. O jeito não é função: "primeiro emprego", "PCD", "diária" e "home office" vão em "busca.jeito", nunca em "busca.funcoes" (em "atendimento home office", a função é "atendimento"); quem pede as vagas de uma área sem dizer o cargo ("Quero vagas de contábil e fiscal", da página e do anúncio da área) vai com as funções de entrada da área: contábil e fiscal = ["auxiliar fiscal", "auxiliar contábil", "auxiliar de departamento pessoal"], com as parecidas ["assistente fiscal", "assistente contábil", "analista fiscal", "auxiliar financeiro"];`;
 
 // --- As vagas da função (19/11/2026; Marcelo: "privilegiar a função solicitada, mesmo que mais longe, cidade e região"
 // e "se não tiver a profissão, exibir vagas semelhantes [...] deixar claro ao usuário [...] cuidado com essa lista") --
@@ -1503,6 +1504,13 @@ const PARAGRAFO_DO_CURRICULO =
 export const CONVITE_CURRICULO_FALANDO =
   "Ainda não tem currículo? Eu monto com você aqui mesmo, *falando*: é só mandar áudio, sem precisar digitar. É grátis, leva uns 5 minutos, e as empresas da região passam a te achar. Toque em *Montar meu currículo*.";
 
+/**
+ * Quem é da área contábil, fiscal, DP ou financeiro (27/11/2026; Marcelo: "queria que os perfis mais qualificados também
+ * chegassem"): em geral já tem o currículo em PDF. O convite pede o arquivo primeiro; montar conversando fica de opção.
+ */
+export const CONVITE_CURRICULO_PDF =
+  "Tem o seu currículo em *PDF*? Mande aqui mesmo: eu leio e monto o seu perfil no Publike, para os escritórios e as empresas da região acharem você. Não tem o arquivo? Toque em *Montar meu currículo* e eu monto com você, conversando.";
+
 // --- Os textos prontos ------------------------------------------------------------------------------------------
 
 /** "Bom dia", "Boa tarde" ou "Boa noite", quando a pessoa cumprimentou assim; senão, "Oi". */
@@ -2267,9 +2275,15 @@ export async function atenderConversa(
         botoes: comQuer.botoes,
       });
   };
+  // da área contábil, fiscal ou DP (o que ela disse na conversa ou o pedido da página e do anúncio da área): o PDF primeiro
+  const daAreaContabil = () =>
+    e.historico.some((x) => x.de === "pessoa" && vagaDaAreaContabil(x.texto)) || [m.texto].some(vagaDaAreaContabil);
   const comCurriculoFalando = async (texto: string, botao: Botao | null) =>
     botao === LINKS.curriculo && PARAGRAFO_DO_CURRICULO.test(texto) && (await curriculoPeloWhatsappLigado(banco, chave, m.numero))
-      ? { texto: texto.replace(PARAGRAFO_DO_CURRICULO, CONVITE_CURRICULO_FALANDO), extra: { botoes: [BOTAO_MONTAR_CURRICULO] } }
+      ? {
+          texto: texto.replace(PARAGRAFO_DO_CURRICULO, daAreaContabil() ? CONVITE_CURRICULO_PDF : CONVITE_CURRICULO_FALANDO),
+          extra: { botoes: [BOTAO_MONTAR_CURRICULO] },
+        }
       : { texto, extra: { botao } };
 
   // a oferta depois de publicar pelo WhatsApp: o "Sim, quero receber" é o aceite dos avisos (migração 20270806120000)

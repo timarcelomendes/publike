@@ -10,6 +10,8 @@ import {
   caminhoDeAnunciar,
   caminhoDeHoje,
   caminhoDosProgramas,
+  caminhoDaAreaContabil,
+  vagaDaAreaContabil,
   caminhoDoBairro,
   cidadeDoSlug,
   CIDADES_PRINCIPAIS,
@@ -83,6 +85,16 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
           lastModified: maisNova(daCidade.filter((a) => REGIMES_PROGRAMAS.includes(a.regime ?? ""))),
           changeFrequency: "daily",
           priority: 0.6,
+        });
+      }
+      // contábil, fiscal e DP (27/11/2026): Goiânia sempre; as outras, com 2 vagas da área no ar
+      const daArea = daCidade.filter((a) => vagaDaAreaContabil(a.titulo));
+      if (tipo === "vaga" && (cidade === "Goiânia" || daArea.length >= 2)) {
+        lista.push({
+          url: `${SITE_URL}${caminhoDaAreaContabil(cidade)}`,
+          lastModified: maisNova(daArea),
+          changeFrequency: "daily",
+          priority: 0.7,
         });
       }
       // os bairros com pelo menos 2 vagas no ar (só vagas: /vagas/goiania/bairro/setor-bueno); com uma só, a página

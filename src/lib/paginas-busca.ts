@@ -57,6 +57,28 @@ export function caminhoDosProgramas(cidade: string) {
 }
 
 /**
+ * Contábil, fiscal e departamento pessoal (27/11/2026; Marcelo: "queria que os perfis mais qualificados também
+ * chegassem, contábil e fiscal tem muita vaga"): /vagas/goiania/contabil-fiscal-e-dp, com as vagas da área na região.
+ * É a página do Google, do anúncio da área e da lista que vai às faculdades e ao CRC-GO.
+ */
+export const SLUG_CONTABIL = "contabil-fiscal-e-dp";
+export function caminhoDaAreaContabil(cidade: string) {
+  return `/vagas/${slugDaCidade(cidade)}/${SLUG_CONTABIL}`;
+}
+const AREA_CONTABIL =
+  /\b(contab\w*|contador\w*|fiscal|fiscais|tribut\w*|faturament\w*|financeir\w*|departamento pessoal|dp|controladoria|contas a (pagar|receber)|tesouraria|auditor\w*|custos|escrita fiscal|folha de pagamento)\b/;
+/** O título da vaga é da área contábil, fiscal, financeira ou de departamento pessoal. */
+export function vagaDaAreaContabil(titulo: string) {
+  const t = titulo
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  // "fiscal de loja" e "fiscal de prevenção" são de segurança, não do fiscal tributário
+  if (/fiscal de (loja|caixa|prevencao|piso|obra|patio|salao)/.test(t)) return false;
+  return AREA_CONTABIL.test(t);
+}
+
+/**
  * As vagas de hoje na cidade, com os números do dia (claude/plano-organico.md, item 2): /vagas/goiania/hoje. É a
  * página que as IAs e a busca "vagas de emprego em Goiânia hoje" citam.
  */

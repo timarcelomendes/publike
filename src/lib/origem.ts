@@ -396,7 +396,7 @@ export function tipoDaEntrada(caminho: string | null | undefined): TipoDeEntrada
   if (c === "/") return "inicio";
   if (/^\/anuncio\//.test(c)) return "vaga";
   if (/^\/vagas\/[^/]+\/bairro(\/|$)/.test(c)) return "bairro";
-  if (/^\/vagas\/[^/]+\/(hoje|ultimos-3-dias|estagio-e-jovem-aprendiz)$/.test(c)) return "recentes";
+  if (/^\/vagas\/[^/]+\/(hoje|ultimos-3-dias|estagio-e-jovem-aprendiz|contabil-fiscal-e-dp)$/.test(c)) return "recentes";
   if (/^\/vagas\/[^/]+\/[^/]+$/.test(c)) return "funcao";
   if (/^\/vagas(\/[^/]+)?$/.test(c)) return "cidade";
   if (/^\/(servicos|profissionais|vitrine)(\/|$)/.test(c)) return "servicos";

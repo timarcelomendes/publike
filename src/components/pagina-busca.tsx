@@ -11,6 +11,7 @@ import {
   caminhoDasRecentes,
   caminhoDeHoje,
   caminhoDosProgramas,
+  caminhoDaAreaContabil,
   caminhoDoBairro,
   caminhoDeAnunciar,
   cidadeDoSlug,
@@ -282,6 +283,9 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
               </Link>
               <Link href={caminhoDosProgramas(cidade)} className="font-semibold underline underline-offset-2">
                 Estágio e jovem aprendiz
+              </Link>
+              <Link href={caminhoDaAreaContabil(cidade)} className="font-semibold underline underline-offset-2">
+                Contábil, fiscal e DP
               </Link>
             </p>
           )}

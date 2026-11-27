@@ -50,3 +50,13 @@ export function whatsappDaReceita(telefone: string | null): { numero: string; ce
   return { numero: `55${d}`, celular };
 }
 
+
+/**
+ * As vagas de contábil, fiscal e DP pela conversa (27/11/2026; a página /vagas/goiania/contabil-fiscal-e-dp e o anúncio
+ * da área): o pedido já escrito. O atendimento manda as vagas da área e pede o currículo em PDF.
+ */
+export const TEXTO_DAS_VAGAS_CONTABEIS = "Quero vagas de contábil e fiscal";
+
+export function linkDasVagasContabeis(numero: string = WHATSAPP_OFICIAL.numero) {
+  return `https://wa.me/${numero}?text=${encodeURIComponent(TEXTO_DAS_VAGAS_CONTABEIS)}`;
+}
