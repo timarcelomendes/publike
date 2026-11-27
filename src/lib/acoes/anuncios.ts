@@ -53,6 +53,47 @@ function erroDoBanco(error: { code?: string; message?: string; hint?: string | n
 
 type Banco = Awaited<ReturnType<typeof criarClienteServidor>>;
 
+/** O título para comparar: sem maiúsculas, acentos, pontuação e espaços a mais. */
+const tituloComparavel = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/**
+ * A vaga da conta, no ar (ou em análise, ou pausada) e criada nos últimos 7 dias, com o mesmo título na mesma cidade
+ * (e o mesmo cliente, na agência). Null: nenhuma. Falhou a leitura: null (não trava a publicação).
+ */
+async function vagaParecidaNoAr(
+  supabase: Banco,
+  autor: string,
+  tipo: string,
+  titulo: string,
+  cidade: string,
+  cliente: string | null,
+) {
+  const desde = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  let q = supabase
+    .from("anuncios")
+    .select("id, titulo, cidade, criado_em, cliente_id")
+    .eq("autor_id", autor)
+    .eq("tipo", tipo)
+    .in("status", ["ativo", "em_analise", "pausado"])
+    .gte("criado_em", desde)
+    .order("criado_em", { ascending: false })
+    .limit(50);
+  if (cliente) q = q.eq("cliente_id", cliente);
+  const { data, error } = await q;
+  if (error || !data) return null;
+  const alvo = tituloComparavel(titulo);
+  const achou = data.find(
+    (a) => tituloComparavel(a.titulo ?? "") === alvo && tituloComparavel(a.cidade ?? "") === tituloComparavel(cidade),
+  );
+  return achou ? { id: achou.id, titulo: achou.titulo ?? titulo, criado_em: achou.criado_em } : null;
+}
+
 /** Agência: a empresa escrita à mão vira cliente (ou acha o cliente com o mesmo nome). */
 async function garantirCliente(supabase: Banco, nome: string) {
   const { data, error } = await supabase.rpc("garantir_cliente", { p_nome: nome });
@@ -172,6 +213,16 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     if (cliente) await cuidarDoCliente(supabase, cliente, d, false);
     destino = `/anuncio/${id}?salvo=1${erroTriagem ? "&triagem=0" : ""}`;
   } else {
+    // a mesma vaga de novo, com outro texto (o banco só barra a cópia idêntica): pergunta antes de publicar
+    if (formData.get("mesmo_assim") !== "1") {
+      const parecido = await vagaParecidaNoAr(supabase, usuario.id, d.tipo, d.titulo, d.cidade, cliente);
+      if (parecido)
+        return {
+          ok: false,
+          erro: `Você já publicou “${parecido.titulo}” há pouco, e ela está no ar. É a mesma vaga?`,
+          parecido,
+        };
+    }
     const { data, error } = await gravarVaga(registro, (r) =>
       supabase
         .from("anuncios")

@@ -194,4 +194,10 @@ export type EstadoForm = {
   semSalvar?: boolean;
   /** o site foi publicado de novo enquanto a pessoa preenchia (a ação antiga não existe mais): recarregar resolve */
   versaoNova?: boolean;
+  /**
+   * A conta já tem no ar uma vaga com o mesmo título na mesma cidade, publicada há pouco (27/11/2026: a Omni
+   * Hospitalar publicou "Auxiliar Logístico" duas vezes, com o texto reescrito). Nada foi publicado: a pessoa confirma
+   * ("Publicar mesmo assim", `mesmo_assim=1`) ou vai à que está no ar.
+   */
+  parecido?: { id: string; titulo: string; criado_em: string };
 };

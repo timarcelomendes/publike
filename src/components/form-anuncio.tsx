@@ -69,7 +69,7 @@ import { trocarBairro } from "./mapa/seletor-local";
 import { OutrosCargos } from "./outros-cargos";
 import { AvisoAoSair, useFormularioMudou } from "./ui/aviso-ao-sair";
 import { Aviso, Selo } from "./ui/basicos";
-import { Botao } from "./ui/botao";
+import { Botao, BotaoLink } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
 import { ResumoErros } from "./ui/resumo-erros";
 import { jeitosDeEntrar } from "@/lib/login-social";
@@ -574,11 +574,15 @@ export function FormAnuncio({
     if (estado.ok && enviado.current && aposConferir) aposConferir(enviado.current);
   }, [estado, aposConferir]);
 
+  // "Publicar mesmo assim" depois do aviso da vaga parecida no ar (EstadoForm.parecido)
+  const mesmoAssim = useRef(false);
   async function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     if (await faltaAntesDeEnviar()) return;
     const dados = new FormData(form);
+    if (mesmoAssim.current) dados.set("mesmo_assim", "1");
+    mesmoAssim.current = false;
     enviado.current = new FormData(form);
     if (!semConta) comecarSalvar();
     startTransition(() => acao(dados));
@@ -1602,16 +1606,44 @@ export function FormAnuncio({
           )}
         </Aviso>
       )}
-      {estado.erro && (
-        <ResumoErros
-          erros={erros}
-          nomes={NOMES_CAMPOS}
-          acao={semConta ? "continuar" : equipe || editando ? "salvar" : "publicar"}
-          reserva={estado.erro}
-          antesDeIr={(campo) => {
-            if (passos) irPara(passoDoCampo(campo));
-          }}
-        />
+      {estado.parecido ? (
+        <Aviso tipo="alerta" titulo="Esta vaga já está no ar?">
+          <span className="flex flex-col items-start gap-3">
+            <span>
+              Você publicou “{estado.parecido.titulo}” há pouco, e ela está no ar. Se é a mesma vaga, mude a que já
+              está publicada, para os candidatos não ficarem divididos em duas. Nada foi publicado agora.
+            </span>
+            <span className="flex flex-wrap gap-2">
+              <BotaoLink href={`/painel/anuncio/${estado.parecido.id}/editar`} variante="primario" tamanho="sm">
+                Editar a vaga que está no ar
+              </BotaoLink>
+              <Botao
+                type="button"
+                variante="secundario"
+                tamanho="sm"
+                disabled={enviando}
+                onClick={() => {
+                  mesmoAssim.current = true;
+                  formulario.current?.requestSubmit();
+                }}
+              >
+                É outra vaga: publicar mesmo assim
+              </Botao>
+            </span>
+          </span>
+        </Aviso>
+      ) : (
+        estado.erro && (
+          <ResumoErros
+            erros={erros}
+            nomes={NOMES_CAMPOS}
+            acao={semConta ? "continuar" : equipe || editando ? "salvar" : "publicar"}
+            reserva={estado.erro}
+            antesDeIr={(campo) => {
+              if (passos) irPara(passoDoCampo(campo));
+            }}
+          />
+        )
       )}
     </>
   );
