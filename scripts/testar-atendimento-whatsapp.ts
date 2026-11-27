@@ -1838,6 +1838,26 @@ async function main() {
     // "cancelar" no meio das perguntas: para
     r = await rodar("cancelar", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, q1, { de: "pessoa", texto: "cancelar" }] });
     conferir(corpo(r.msgs[0]) === cv.TEXTOS_DO_CURRICULO.parou, "cancelar numa pergunta: para", corpo(r.msgs[0]));
+    // o "oi" e o pedido de vagas no meio não são resposta (27/11/2026; Marcelo testando: "Ola" 5 dias depois, "Tem vagas
+    // para analista de sistemas" e "quero ver vagas" viraram as respostas): o atendimento segue e "continuar" retoma
+    for (const t of ["Ola", "oi", "Bom dia", "oi tudo bem", "Tem vagas para analista de sistemas", "quero ver vagas", "vagas", "Tem vaga de motorista?", "me manda as vagas"])
+      conferir(cv.saiDoCurriculo(t), `“${t}” sai do currículo`);
+    for (const t of ["procuro vaga de auxiliar de cozinha, trabalhei 2 anos numa lanchonete", "De 50 a 150", "sim, fechava o caixa", "trabalhei com vendas", "oi, trabalhei 3 anos de caixa no supermercado"])
+      conferir(!cv.saiDoCurriculo(t), `“${t}” é resposta`);
+    respostaIA = ia("Vou procurar as vagas de analista de sistemas.", { perfil: "trabalho" });
+    r = await rodar("quero ver vagas", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }, q1, { de: "pessoa", texto: "quero ver vagas" }] });
+    conferir(!corpo(r.msgs[0]).startsWith("📝") && pedidosIA.length >= 1, "“quero ver vagas” numa pergunta: o atendimento responde, sem a próxima pergunta", corpo(r.msgs[0]));
+    respostaIA = ia("Oi, Raphael! Que trabalho você procura?", { perfil: "trabalho" });
+    r = await rodar("Ola", { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: "Ola" }] });
+    conferir(!corpo(r.msgs[0]).startsWith("📝"), "“Ola” no passo 1: não vira a resposta", corpo(r.msgs[0]));
+    const vagasNoMeio = [...procurando, p1, { de: "pessoa", texto: relato }, q1, { de: "pessoa", texto: "quero ver vagas" }, { de: "robo", texto: "Achei estas vagas de auxiliar de cozinha: …" }];
+    r = await rodar("continuar", { perfil: "trabalho", historico: [...vagasNoMeio, { de: "pessoa", texto: "continuar" }] });
+    const volta = corpo(r.msgs[0]);
+    conferir(volta.startsWith(M.pergunta1) && volta.includes("vamos continuar") && volta.includes("Na lanchonete, quantos lanches") && pedidosIA.length === 0, "“continuar” retoma a pergunta de onde parou", volta);
+    r = await rodar("currículo", { perfil: "trabalho", historico: [...vagasNoMeio, { de: "pessoa", texto: "currículo" }] });
+    conferir(corpo(r.msgs[0]).startsWith(M.pergunta1), "“currículo” com um pela metade: retoma, não recomeça", corpo(r.msgs[0]));
+    r = await rodar("continuar", { perfil: "trabalho", historico: [...procurando, { de: "pessoa", texto: "continuar" }] });
+    conferir(!corpo(r.msgs[0]).startsWith("📝"), "“continuar” sem currículo pela metade: segue o atendimento", corpo(r.msgs[0]));
     // a IA perguntou o que não pode (estudo): a de sempre
     respostaIA = { pergunta: "Até que ano você estudou na escola?", exemplo: "8ª série", opcoes: [] };
     r = await rodar(relato, { perfil: "trabalho", historico: [...procurando, p1, { de: "pessoa", texto: relato }] });

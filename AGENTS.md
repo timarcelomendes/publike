@@ -633,6 +633,11 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 - O lembrete de sempre da véspera (`servidor_lembretes_entrevista`) não vai mais ao candidato da agenda (quem contrata continua recebendo). O resultado (veio ou faltou) a equipe anota na agenda (`admin_agenda_resultado`).
 - Testes: `scripts/testar-entrevista-marcada.ts` (os horários, os modelos, a lista e as mensagens).
 
+## O currículo pelo WhatsApp: o que não é resposta (27/11/2026; Marcelo testando: "Horrível essa interação")
+
+- No meio do currículo, o cumprimento sozinho ("Ola", "bom dia") e o pedido de vagas ("Tem vagas para analista de sistemas", "quero ver vagas") não viram resposta (`saiDoCurriculo`): o atendimento segue normal. "continuar" ou "currículo" retoma a pergunta de onde parou (`passoPendente`, `retomarCurriculo`), em vez de recomeçar.
+- A pergunta da IA não é mais cortada no meio (o exemplo que não cabe sai inteiro; `MAX_PERGUNTA` 280), e o pedido proíbe cumprimentar e repetir a pergunta anterior com outras palavras.
+
 ## A agenda de entrevistas no painel da vaga e o convite na janela (27/11/2026; migração 20271014120000; Marcelo: "desenvolver completa e permite gerenciar no admin")
 
 - **No painel**: `/painel/anuncio/[id]/agenda` (link "Marcar as entrevistas pelo WhatsApp" no quadro, com a vaga no ar e candidatos). A conta dona cria a agenda (`FormNovaAgenda noPainel`; o formato Publike só com `ao_vivo`), põe e tira horários, escolhe quem chamar, anota veio/faltou e encerra. `public.agenda_da_vaga` diz a agenda aberta, as de antes e quantos candidatos aceitam o WhatsApp. Os componentes ficam em `src/components/agenda/` (`acoes.tsx`, cliente; `detalhe.tsx`, `DetalheDaAgenda`, o mesmo no Admin e no painel).

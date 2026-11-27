@@ -57,6 +57,7 @@ import {
   passoDoCurriculo,
   PORQUES_DA_CORRECAO,
   querParar,
+  saiDoCurriculo,
   TEXTOS_DO_CURRICULO,
   type ArquivoNaoLidoNaConversa,
 } from "@/lib/curriculo-pelo-whatsapp";
@@ -2625,7 +2626,13 @@ export async function atenderConversa(
   // responder a um passo do currículo depois do aviso (o passo 1 traz) é o aceite da IA (migração 20271001120000)
   {
     const passoAgora = passoDoCurriculo(minhaUltima);
-    if (passoAgora && PASSOS_DO_MEIO.includes(passoAgora) && textos.some((_, i) => !midias[i]) && !textos.some(querParar)) {
+    if (
+      passoAgora &&
+      PASSOS_DO_MEIO.includes(passoAgora) &&
+      textos.some((_, i) => !midias[i]) &&
+      !textos.some(querParar) &&
+      !textos.every(saiDoCurriculo)
+    ) {
       const visto = avisoVisto(e.historico);
       if (visto?.origem === "montar") await aceitar("montar", visto.aviso);
     }

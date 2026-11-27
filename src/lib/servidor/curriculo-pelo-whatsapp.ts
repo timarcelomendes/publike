@@ -12,7 +12,11 @@ import {
   pedeArquivo,
   previaDoCurriculo,
   querMontarCurriculo,
+  passoPendente,
+  querContinuar,
   querParar,
+  retomarCurriculo,
+  saiDoCurriculo,
   relatoDoPasso1,
   TEXTOS_DO_CURRICULO,
   TITULO_CONFERIR_E_SALVAR,
@@ -128,12 +132,19 @@ export async function seguirCurriculoPeloWhatsapp(p: {
     aceitou ||
     p.payload === BOTAO_MONTAR_CURRICULO.id ||
     (!p.payload && !passo && p.textos.some((t) => querMontarCurriculo(t)));
+  // o currículo que ficou pela metade (ela saiu para ver vagas): "continuar" ou "currículo" volta de onde parou
+  const pendente =
+    !p.payload && !passo && p.textos.some((t) => querContinuar(t) || querMontarCurriculo(t)) ? passoPendente(p.historico) : null;
   const naoAgora = p.payload === BOTAO_AGORA_NAO.id;
-  if (!comecar && !passo && !naoAgora) return false;
+  if (!comecar && !passo && !naoAgora && !(p.textos.some(querContinuar) && passoPendente(p.historico))) return false;
   if (!(await curriculoPeloWhatsappLigado(p.banco, p.chave, p.numero))) return false;
   const perfil = "trabalho";
   if (naoAgora) {
     await p.saida(TEXTOS_DO_CURRICULO.parou, { perfil });
+    return true;
+  }
+  if (pendente) {
+    await p.saida(`${p.ola}${retomarCurriculo(pendente.passo, pendente.texto)}`, { perfil });
     return true;
   }
   if (comecar) {
@@ -168,6 +179,9 @@ export async function seguirCurriculoPeloWhatsapp(p: {
     await p.saida(TEXTOS_DO_CURRICULO.parou, { perfil });
     return true;
   }
+  // o "oi" de quem volta depois e o pedido de vagas não são resposta: o atendimento segue normal (as vagas, o
+  // cumprimento) e "continuar" retoma o currículo
+  if (noMeio && !p.payload && p.textos.every((t, i) => !p.midias[i] && saiDoCurriculo(t))) return false;
   // o currículo pronto no meio da conversa (25/11/2026: a Arlete respondeu o passo 1 com o PDF dela): lê; deu, sai a
   // prévia com o "Conferir e salvar" e a conversa acaba ali; não deu, ela ouve o porquê e a mesma pergunta, com a marca
   // do passo (a conversa segue de onde estava). Com o arquivo veio uma resposta escrita de verdade: segue com ela

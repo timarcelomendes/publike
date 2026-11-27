@@ -237,6 +237,52 @@ export function pedeArquivo(texto: string): "cartao" | "pdf" | null {
   return null;
 }
 
+/**
+ * A mensagem no meio do currículo que não é resposta (27/11/2026; Marcelo testando: o "Ola" de 5 dias depois virou a
+ * resposta do passo 1, e "Tem vagas para analista de sistemas" e "quero ver vagas" viraram as respostas das perguntas):
+ * o cumprimento sozinho e o pedido de vagas. Ela sai do currículo e o atendimento segue normal; "continuar" ou
+ * "currículo" retoma de onde parou (`passoPendente`).
+ */
+export function saiDoCurriculo(texto: string) {
+  const t = simples(texto.replace(/^🎤\s*/, ""));
+  if (!t) return false;
+  if (
+    /^(oi+e?|ola+|opa|ei|hey|hello|bom dia|boa tarde|boa noite|e ai|tudo bem|tudo bom)( (tudo bem|tudo bom|bom dia|boa tarde|boa noite|[a-z]{2,12}))?$/.test(t)
+  )
+    return true;
+  if (t.length > 90) return false;
+  if (/^(as |mais |outras )?vagas?( por favor)?$/.test(t)) return true;
+  return /^(tem|teria|tens|ha|existe|existem|quais|qual|alguma|algum|quero ver|queria ver|quero|queria|ver|mostra|mostrar|me (mostra|manda|envia|passa)|manda|cade|onde)\b.{0,60}\bvagas?\b/.test(t);
+}
+
+/** Quem pede para seguir o currículo que ficou pela metade. */
+export function querContinuar(texto: string) {
+  return /^(continuar|continua|vamos continuar|quero continuar|seguir|voltar)( (o |meu |com o )?curriculo)?$/.test(simples(texto.replace(/^🎤\s*/, "")));
+}
+
+/**
+ * O currículo que ficou pela metade: a última mensagem do Publike com a marca de um passo do currículo, se ela é de um
+ * passo do meio (depois dela, a conversa foi para outro assunto). Null: não tem ou já acabou.
+ */
+export function passoPendente(historico: { de: "pessoa" | "robo" | "equipe"; texto: string }[]) {
+  for (let i = historico.length - 1; i >= 0; i--) {
+    const m = historico[i];
+    if (m.de === "pessoa") continue;
+    const passo = passoDoCurriculo(m.texto);
+    if (!passo) continue;
+    return PASSOS_DO_MEIO.includes(passo) ? { passo, texto: m.texto } : null;
+  }
+  return null;
+}
+
+/** A volta ao currículo pela metade: a marca do passo (a conversa segue de onde estava) e a mesma pergunta. */
+export function retomarCurriculo(passo: PassoDoCurriculo, ultima: string) {
+  return [
+    `${MARCAS_DO_CURRICULO[passo]} vamos continuar de onde paramos. 😊 É só responder por aqui, escrevendo ou em áudio 🎤:`,
+    perguntaDoPasso(passo, ultima),
+  ].join("\n\n");
+}
+
 /** A pessoa quer parar no meio. */
 export function querParar(texto: string) {
   const t = simples(texto.replace(/^🎤\s*/, ""));

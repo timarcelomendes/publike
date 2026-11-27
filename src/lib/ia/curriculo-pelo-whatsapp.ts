@@ -16,7 +16,9 @@ import { chamarIA, ErroIA, lerJson } from "./openai";
 //      só com o que a pessoa disse. O tempo solto ("uns 2 anos", "desde março") vira data aproximada; o trabalho sem
 //      carteira entra com o nome honesto ("Por conta própria", "Diárias", "Casa de família").
 
-const MAX_PERGUNTA = 220;
+// a pergunta com o exemplo; o exemplo que não cabe sai inteiro (27/11/2026: o corte no meio deixou "…e cuidav" e o
+// itálico aberto)
+const MAX_PERGUNTA = 280;
 
 const ESQUEMA_DAS_PERGUNTAS = {
   type: "object",
@@ -64,8 +66,9 @@ function comoPergunta(p: { pergunta?: unknown; exemplo?: unknown }) {
   const pergunta = typeof p.pergunta === "string" ? p.pergunta.replace(/\s+/g, " ").trim() : "";
   const exemplo = typeof p.exemplo === "string" ? p.exemplo.replace(/[_*]/g, "").replace(/\s+/g, " ").trim() : "";
   if (pergunta.length < 10 || temContatoNoTexto(pergunta) || PROIBIDA.test(pergunta)) return "";
+  if (pergunta.length > MAX_PERGUNTA) return "";
   const comExemplo = exemplo && exemplo.length <= 80 ? `${pergunta} _Ex.: ${exemplo.replace(/\.$/, "")}._` : pergunta;
-  return comExemplo.slice(0, MAX_PERGUNTA);
+  return comExemplo.length <= MAX_PERGUNTA ? comExemplo : pergunta;
 }
 
 /** As guardadas da função, prontas para a conversa (3), ou null. */
@@ -95,7 +98,8 @@ const SISTEMA_DA_PROXIMA = `${SISTEMA_DAS_PERGUNTAS.replace(
   "Você vai fazer 3 perguntas, uma de cada vez, como um bom recrutador, para tirar dela a experiência que ainda não apareceu e que conta para o trabalho que ela procura. Agora escreva só a próxima pergunta, olhando o que ela já respondeu:",
 )}
 - "opcoes": quando a resposta cabe em poucas escolhas (quantidade, tempo, sim ou não, com que frequência), até 3 respostas curtas para ela tocar, até 20 letras cada, do jeito que ela falaria ("Até 50 por dia", "De 50 a 150", "Mais de 150"; "Sim, sempre", "Às vezes", "Nunca"). Quando a resposta é livre (o que ela fazia, que máquina usava), deixe vazio: ela responde escrevendo ou em áudio.
-- Não repita pergunta já feita nem pergunte o que ela já disse.`;
+- Não repita pergunta já feita nem pergunte o que ela já disse. Se ela não respondeu a anterior (mandou outra coisa), pergunte outra coisa, não a mesma com outras palavras.
+- Não cumprimente ("Oi", "Olá") nem comece com "Antes de tudo": a conversa já está andando. Vá direto à pergunta.`;
 
 /** As opções que servem como botão (até 3, até 20 letras, sem repetir). */
 function opcoesLimpas(opcoes: unknown): string[] {
