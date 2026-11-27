@@ -14,13 +14,14 @@ import { UUID } from "@/lib/validacao";
 
 const TELA = "/admin/recursos-pagos";
 const FORA = "Só a equipe do Publike usa esta tela.";
-const RECURSOS = ["copiloto", "testes", "video", "automacoes", "salarios", "visoes", "contato_no_convite"];
+const RECURSOS = ["copiloto", "testes", "video", "automacoes", "salarios", "agenda", "visoes", "contato_no_convite"];
 const NOME: Record<string, string> = {
   copiloto: "Triagem com IA",
   testes: "Teste Prático",
   video: "Entrevista em vídeo",
   automacoes: "Automações",
   salarios: "Consulta de salários",
+  agenda: "Entrevistas pelo WhatsApp",
   visoes: "Visões das vagas",
   contato_no_convite: "Contato no convite",
 };

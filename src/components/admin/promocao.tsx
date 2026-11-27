@@ -22,6 +22,8 @@ const RECURSOS = [
   { id: "video", nome: "Entrevista em vídeo" },
   { id: "automacoes", nome: "Automações" },
   { id: "salarios", nome: "Consulta de salários" },
+  // migração 20271015120000
+  { id: "agenda", nome: "Entrevistas pelo WhatsApp" },
   // migração 20270918140000
   { id: "visoes", nome: "Visões das vagas" },
   { id: "contato_no_convite", nome: "Contato no convite" },
