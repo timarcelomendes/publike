@@ -5078,6 +5078,7 @@ export type Database = {
         Args: { p_triagem: number; p_gravadas: number; p_ao_vivo: number };
         Returns: undefined;
       };
+      admin_gratis_agenda: { Args: { p_vagas: number }; Returns: undefined };
       registrar_contato_candidato: {
         Args: { p_anuncio: string; p_perfil: string; p_canal: string };
         Returns: undefined;

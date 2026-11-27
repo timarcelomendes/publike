@@ -178,6 +178,16 @@ async function Conteudo({
           },
         ]
       : []),
+    ...(recursos && !recursos.agenda.indisponivel && !assinados.has("agenda")
+      ? [
+          {
+            nome: NOME_PRODUTO.agenda,
+            href: "/painel/assinar?recurso=agenda",
+            e: recursos.agenda,
+            recurso: undefined,
+          },
+        ]
+      : []),
   ];
   const aviso = volta
     ? VOLTA[volta]

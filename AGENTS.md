@@ -633,6 +633,11 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 - O lembrete de sempre da véspera (`servidor_lembretes_entrevista`) não vai mais ao candidato da agenda (quem contrata continua recebendo). O resultado (veio ou faltou) a equipe anota na agenda (`admin_agenda_resultado`).
 - Testes: `scripts/testar-entrevista-marcada.ts` (os horários, os modelos, a lista e as mensagens).
 
+## As Entrevistas pelo WhatsApp, recurso pago (27/11/2026; migração 20271015120000; Marcelo: "essa feature vai ser paga mas deve dar gratuitamente 3 vagas no mes com todos os candidatos"; recurso novo de R$ 49 por mês; todos os planos liberam)
+
+- O produto `agenda` ("Entrevistas pelo WhatsApp"), como a Consulta de salários: sem os 15 dias grátis, a liberação em `privado.agenda_contas`, o checkout liga pela descrição (`%whatsapp%`, antes de "entrevista", que é a Entrevista em vídeo). O Plano Completo e os planos por faixa liberam (`recursosDo`, `recalcular_recurso_pago`). Preço em `privado.planos` (MONTHLY R$ 49, ligado); promoção pela equipe também vale.
+- O grátis: `config_pagamentos.gratis_agenda_mes` (3; Admin › Pagamentos, 0 desliga) vagas por mês com agenda aberta pela conta (`privado.agenda_vagas_no_mes`; abrir de novo na mesma vaga, no mesmo mês, não gasta; as agendas da equipe não contam), cada uma com todos os candidatos. `admin_agenda_criar` chama `privado.exigir_agenda_gratis` (a recusa leva o hint `agenda_sem_gratis`). `agenda_da_vaga` devolve `liberada`, `gratis` (limite, usados, esta_conta, renova_em) e `pode_assinar`; o painel da vaga mostra quanto sobra e, sem sobra, a oferta da assinatura (`/painel/assinar?recurso=agenda`). `recursos_pagos().agenda.gratis` aparece em Planos.
+
 ## O currículo pelo WhatsApp: o que não é resposta (27/11/2026; Marcelo testando: "Horrível essa interação")
 
 - No meio do currículo, o cumprimento sozinho ("Ola", "bom dia") e o pedido de vagas ("Tem vagas para analista de sistemas", "quero ver vagas") não viram resposta (`saiDoCurriculo`): o atendimento segue normal. "continuar" ou "currículo" retoma a pergunta de onde parou (`passoPendente`, `retomarCurriculo`), em vez de recomeçar.

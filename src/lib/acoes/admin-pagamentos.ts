@@ -63,7 +63,13 @@ export async function salvarConfigPagamentos(d: {
  * O grátis de cada mês (migração 20270730120000): quantos candidatos a IA lê, quantas entrevistas gravadas e quantas
  * ao vivo cada conta que contrata tem por mês, sem assinar. 0 desliga.
  */
-export async function salvarGratisDoMes(d: { triagem: number; gravadas: number; aoVivo: number }): Promise<Resultado> {
+export async function salvarGratisDoMes(d: {
+  triagem: number;
+  gravadas: number;
+  aoVivo: number;
+  /** as vagas das Entrevistas pelo WhatsApp (migração 20271015120000) */
+  agenda?: number;
+}): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
   const inteiro = (n: unknown, max: number) => {
@@ -76,7 +82,13 @@ export async function salvarGratisDoMes(d: { triagem: number; gravadas: number; 
   if (triagem === null || gravadas === null || aoVivo === null) {
     return { ok: false, erro: "Use números inteiros: de 0 a 1000 (na ao vivo, de 0 a 100)." };
   }
+  const agenda = d.agenda === undefined ? undefined : inteiro(d.agenda, 100);
+  if (agenda === null) return { ok: false, erro: "Nas Entrevistas pelo WhatsApp, use de 0 a 100 vagas." };
   const { error } = await c.rpc("admin_gratis_do_mes", { p_triagem: triagem, p_gravadas: gravadas, p_ao_vivo: aoVivo });
+  if (!error && agenda !== undefined) {
+    const r = await c.rpc("admin_gratis_agenda", { p_vagas: agenda });
+    if (r.error) return falha(r.error);
+  }
   if (error) {
     if (error.code === "PGRST202")
       return { ok: false, erro: "Rode a migração 20270730120000_gratis_de_cada_mes.sql primeiro." };

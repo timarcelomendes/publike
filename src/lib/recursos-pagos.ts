@@ -71,11 +71,13 @@ export type EstadoRecurso = {
  * Página de carreiras (`carreiras`, migração 20270406120000), que também libera com 10 vagas publicadas e não tem
  * estado em `RecursosPagos` (a página pergunta a `minha_pagina_de_vagas`).
  */
-export type Liberavel = RecursoPago | "salarios" | "carreiras";
+export type Liberavel = RecursoPago | "salarios" | "carreiras" | "agenda";
 
 export type RecursosPagos = Record<RecursoPago, EstadoRecurso> & {
   /** a Consulta de salários (sem a migração 20270218120000, fechada) */
   salarios: EstadoRecurso;
+  /** as Entrevistas pelo WhatsApp (migração 20271015120000): sem os 15 dias; o grátis são as vagas do mês */
+  agenda: EstadoRecurso;
 };
 
 export const NOME_RECURSO: Record<RecursoPago, string> = {
@@ -211,6 +213,7 @@ export function lerRecursos(data: unknown): RecursosPagos | null {
     video: lerEstado(o.video) ?? fechado(),
     automacoes: lerEstado(o.automacoes) ?? fechado(),
     salarios: lerEstado(o.salarios) ?? fechado(),
+    agenda: lerEstado(o.agenda) ?? fechado(),
   };
 }
 

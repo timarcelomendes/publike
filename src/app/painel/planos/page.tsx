@@ -51,6 +51,10 @@ const AVULSOS: { p: Produto; faz: string }[] = [
     faz: "Confirme que a pessoa sabe fazer: respostas gravadas com o resumo da IA, sem limite, e até 10 entrevistas ao vivo pelo Publike por mês.",
   },
   { p: "automacoes", faz: "As suas regras, o Publike faz sozinho." },
+  {
+    p: "agenda",
+    faz: "O Publike convida os candidatos pelo WhatsApp, cada um escolhe o horário e recebe os lembretes.",
+  },
   { p: "salarios", faz: "Quanto o mercado paga para cada função." },
   { p: "carreiras", faz: "A sua página de vagas com a cara da empresa." },
 ];
@@ -162,7 +166,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
             {avulsos.map(({ p, faz }) => {
               const valor = preco(pag, p, "MONTHLY")?.valor ?? 0;
               const estado =
-                p === "copiloto" || p === "testes" || p === "video" || p === "automacoes" || p === "salarios"
+                p === "copiloto" || p === "testes" || p === "video" || p === "automacoes" || p === "salarios" || p === "agenda"
                   ? recursos?.[p]
                   : undefined;
               const tem = situacao(estado, agora) ?? (valendo.some((a) => a.recurso === p) ? "Assinado" : null);
@@ -176,6 +180,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
                     {/* o que dá para usar sem assinar (o grátis de cada mês, migração 20270730120000) */}
                     {!tem && ehRecursoPago(p) && textoDoGratis(p, estado?.gratis) && (
                       <p className="text-body-sm text-cerrado-text">{textoDoGratis(p, estado?.gratis)}</p>
+                    )}
+                    {!tem && p === "agenda" && estado?.gratis && estado.gratis.limite > 0 && (
+                      <p className="text-body-sm text-cerrado-text">
+                        Grátis: {estado.gratis.limite === 1 ? "1 vaga" : `${estado.gratis.limite} vagas`} por mês, com
+                        todos os candidatos. Neste mês: {estado.gratis.usados} de {estado.gratis.limite}.
+                      </p>
                     )}
                   </div>
                   <p className="text-body-sm tabular-nums">

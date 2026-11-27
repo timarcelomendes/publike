@@ -18,7 +18,7 @@ export function ehPlanoPorFaixa(x: unknown): x is PlanoPorFaixa {
   return (PLANOS_POR_FAIXA as unknown[]).includes(x);
 }
 
-export type Produto = RecursoPago | "combo" | "completo" | "salarios" | "carreiras" | PlanoPorFaixa;
+export type Produto = RecursoPago | "combo" | "completo" | "salarios" | "carreiras" | "agenda" | PlanoPorFaixa;
 
 /** Os pacotes: liberam mais de um recurso. */
 export const PACOTES = ["completo", "combo", "empresa_5", "empresa_20", "empresa_50", "agencia_15", "agencia_200"] as const;
@@ -32,6 +32,7 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   automacoes: "Automações personalizadas",
   salarios: "Consulta de salários",
   carreiras: "Página de carreiras",
+  agenda: "Entrevistas pelo WhatsApp",
   empresa_5: "Plano Empresa até 20 vagas",
   empresa_20: "Plano Empresa até 50 vagas",
   empresa_50: "Plano Empresa até 50 vagas (faixa antiga)",
@@ -49,6 +50,7 @@ export const O_PRODUTO: Record<Produto, string> = {
   automacoes: "as Automações personalizadas",
   salarios: "a Consulta de salários",
   carreiras: "a Página de carreiras",
+  agenda: "as Entrevistas pelo WhatsApp",
   empresa_5: "o Plano Empresa até 20 vagas",
   empresa_20: "o Plano Empresa até 50 vagas",
   empresa_50: "o Plano Empresa até 50 vagas (faixa antiga)",
@@ -66,6 +68,7 @@ export const DO_PRODUTO: Record<Produto, string> = {
   automacoes: "das Automações personalizadas",
   salarios: "da Consulta de salários",
   carreiras: "da Página de carreiras",
+  agenda: "das Entrevistas pelo WhatsApp",
   empresa_5: "do Plano Empresa até 20 vagas",
   empresa_20: "do Plano Empresa até 50 vagas",
   empresa_50: "do Plano Empresa até 50 vagas (faixa antiga)",
@@ -83,6 +86,7 @@ export function ehProduto(x: unknown): x is Produto {
     x === "automacoes" ||
     x === "salarios" ||
     x === "carreiras" ||
+    x === "agenda" ||
     ehPlanoPorFaixa(x)
   );
 }
@@ -90,7 +94,7 @@ export function ehProduto(x: unknown): x is Produto {
 /** Os recursos que o produto libera. */
 export function recursosDo(p: Produto): Liberavel[] {
   // o Plano Completo libera a Página de carreiras também (qualquer assinatura libera; migração 20270406120000)
-  if (p === "completo" || ehPlanoPorFaixa(p)) return ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras"];
+  if (p === "completo" || ehPlanoPorFaixa(p)) return ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras", "agenda"];
   return p === "combo" ? ["copiloto", "testes"] : [p];
 }
 

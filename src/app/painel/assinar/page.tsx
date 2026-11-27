@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   ChevronRight,
   ClipboardCheck,
   HandCoins,
@@ -63,6 +64,7 @@ const ICONE: Record<Produto, typeof Sparkles> = {
   automacoes: Workflow,
   salarios: HandCoins,
   carreiras: Palette,
+  agenda: CalendarClock,
   empresa_5: PackageCheck,
   empresa_20: PackageCheck,
   empresa_50: PackageCheck,
@@ -71,7 +73,7 @@ const ICONE: Record<Produto, typeof Sparkles> = {
 };
 
 const TUDO =
-  "Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras";
+  "Triagem com IA, Teste Prático, Entrevista em vídeo, Entrevistas pelo WhatsApp, Automações personalizadas, Consulta de salários e Página de carreiras";
 // os planos que liberam tudo também dão os limites maiores dos avisos no WhatsApp (migração 20270714120000) e da API
 // (migração 20270713120000)
 const E_MAIS = "E mais avisos no WhatsApp por mês e mais chamadas por dia na API, para o CRM da empresa.";
@@ -79,12 +81,14 @@ const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
   combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
-  completo: `Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras, por menos que separados. ${E_MAIS}`,
+  completo: `Tudo numa assinatura só: ${TUDO}, por menos que separados. ${E_MAIS}`,
   video: "O candidato grava as respostas pelo celular e a IA resume; e a entrevista ao vivo, sem instalar nada.",
   automacoes:
     "As suas regras: quando algo acontece, se a pessoa atende o que você escolher, o Publike faz o que você mandar.",
   salarios:
     "Consultas sem limite: quanto o mercado paga para cada função, o que as vagas do Publike oferecem e quantos talentos combinam.",
+  agenda:
+    "Marque as entrevistas pelo WhatsApp em todas as vagas: o Publike convida cada candidato, ele escolhe o horário na conversa e recebe os lembretes. Sem assinatura, são 3 vagas grátis por mês.",
   carreiras:
     "A sua página de vagas com a cara da empresa: a cor da marca, a capa, por que trabalhar aí, os benefícios e um endereço curto. Libera sozinha com 10 vagas publicadas.",
   // as faixas desde 17/11/2026 (migração 20270715120000): as chaves são as de quando os planos nasceram
@@ -434,6 +438,11 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "Quanto o mercado paga para cada função, com a fonte, e quanto oferecer para fechar rápido. Sem limite.",
     botao: "Conhecer a Consulta de salários",
   },
+  agenda: {
+    titulo: "Entrevistas pelo WhatsApp",
+    texto: "O Publike convida os candidatos pelo WhatsApp, cada um escolhe o horário e recebe os lembretes. Em todas as vagas.",
+    botao: "Conhecer as Entrevistas pelo WhatsApp",
+  },
   carreiras: {
     titulo: "Página de carreiras",
     texto: "As suas vagas num endereço curto, com a cor, a capa e os benefícios da empresa.",
@@ -476,6 +485,7 @@ const OUTRAS: Record<Produto, Produto[]> = {
   automacoes: ["completo", "video", "copiloto"],
   salarios: ["completo", "copiloto", "automacoes"],
   carreiras: ["completo", "salarios", "copiloto"],
+  agenda: ["completo", "video", "automacoes"],
 };
 
 const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);

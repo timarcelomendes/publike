@@ -75,7 +75,19 @@ export function AvisarDoGratis({ quantas }: { quantas: number }) {
 }
 
 /** O grátis de cada mês (migração 20270730120000): os três números, que valem já para o mês de agora. */
-export function GratisDoMes({ triagem, gravadas, aoVivo }: { triagem: number; gravadas: number; aoVivo: number }) {
+export function GratisDoMes({
+  triagem,
+  gravadas,
+  aoVivo,
+  agenda,
+}: {
+  triagem: number;
+  gravadas: number;
+  aoVivo: number;
+  /** as vagas das Entrevistas pelo WhatsApp (sem a migração 20271015120000: undefined, sem o campo) */
+  agenda?: number;
+}) {
+  const [a, setA] = useState(String(agenda ?? 3));
   const [t, setT] = useState(String(triagem));
   const [g, setG] = useState(String(gravadas));
   const [v, setV] = useState(String(aoVivo));
@@ -91,13 +103,23 @@ export function GratisDoMes({ triagem, gravadas, aoVivo }: { triagem: number; gr
     },
     { id: "gratis-gravadas", rotulo: "Entrevista gravada", ajuda: "pedidos", valor: g, mudar: setG, max: 1000 },
     { id: "gratis-ao-vivo", rotulo: "Entrevista ao vivo", ajuda: "pelo Publike", valor: v, mudar: setV, max: 100 },
+    ...(agenda === undefined
+      ? []
+      : [{ id: "gratis-agenda", rotulo: "Entrevistas pelo WhatsApp", ajuda: "vagas", valor: a, mudar: setA, max: 100 }]),
   ];
   return (
     <form
       className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
-        rodar(() => salvarGratisDoMes({ triagem: Number(t), gravadas: Number(g), aoVivo: Number(v) }));
+        rodar(() =>
+          salvarGratisDoMes({
+            triagem: Number(t),
+            gravadas: Number(g),
+            aoVivo: Number(v),
+            ...(agenda === undefined ? {} : { agenda: Number(a) }),
+          }),
+        );
       }}
     >
       <div className="flex flex-wrap gap-4">

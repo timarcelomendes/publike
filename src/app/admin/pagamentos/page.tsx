@@ -50,6 +50,7 @@ type Dados = {
     gratis_triagem_mes?: number;
     gratis_gravadas_mes?: number;
     gratis_ao_vivo_mes?: number;
+    gratis_agenda_mes?: number;
   };
   planos: { id: string; recurso: Produto; ciclo: Ciclo; valor: number | null; ligado: boolean }[];
   /** sandbox: sem a migração 20270125120000, undefined */
@@ -329,6 +330,7 @@ async function Conteudo() {
             triagem={d.config.gratis_triagem_mes}
             gravadas={d.config.gratis_gravadas_mes ?? 0}
             aoVivo={d.config.gratis_ao_vivo_mes ?? 0}
+            agenda={d.config.gratis_agenda_mes}
           />
         </Secao>
       )}

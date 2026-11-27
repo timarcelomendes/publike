@@ -1,5 +1,6 @@
 import { CalendarClock, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { FormNovaAgenda } from "@/components/agenda/acoes";
@@ -28,7 +29,18 @@ type DaVaga = {
   com_whatsapp: number;
   candidatos: number;
   ao_vivo: boolean | null;
+  /** migração 20271015120000: a assinatura (ou um plano) libera sem limite; sem ela, as vagas grátis do mês */
+  liberada?: boolean;
+  gratis?: { limite: number; usados: number; esta_conta: boolean; renova_em: string } | null;
+  pode_assinar?: boolean;
 };
+
+/** "1º de dezembro" */
+function diaDaVirada(iso: string) {
+  const d = new Date(new Date(iso).getTime() - 3 * 3600_000);
+  const mes = d.toLocaleDateString("pt-BR", { month: "long", timeZone: "UTC" });
+  return `${d.getUTCDate() === 1 ? "1º" : d.getUTCDate()} de ${mes}`;
+}
 
 export default function AgendaDaVaga({ params }: PageProps<"/painel/anuncio/[id]/agenda">) {
   return (
@@ -84,6 +96,10 @@ async function Conteudo({ id }: { id: string }) {
 
   const endereco = [anuncio.endereco, formatarLugar(anuncio.bairro, anuncio.cidade)].filter(Boolean).join(", ");
   const semWhats = v.candidatos - v.com_whatsapp;
+  // as vagas grátis do mês (migração 20271015120000): esta vaga já contou, ou ainda sobra; senão, a assinatura
+  const g = v.liberada ? null : (v.gratis ?? null);
+  const acabou = Boolean(g && !g.esta_conta && g.usados >= g.limite);
+  const vagas = (n: number) => (n === 1 ? "1 vaga" : `${n} vagas`);
   return (
     <div className="flex flex-col gap-5">
       {cabecalho}
@@ -108,7 +124,45 @@ async function Conteudo({ id }: { id: string }) {
             ? "Ninguém se candidatou ainda. Monte a agenda agora e chame as pessoas quando elas chegarem."
             : `${v.com_whatsapp} de ${v.candidatos} ${v.candidatos === 1 ? "candidato aceita" : "candidatos aceitam"} receber pelo WhatsApp${semWhats > 0 ? `; ${semWhats === 1 ? "o outro você chama" : "os outros você chama"} pelo quadro` : ""}.`}
         </p>
-        <FormNovaAgenda anuncio={id} localPadrao={endereco} noPainel aoVivo={v.ao_vivo !== false} agora={agora} />
+        {g && !acabou && (
+          <p className="rounded-md bg-cerrado/10 px-3 py-2 text-body-sm text-cerrado-text">
+            {g.esta_conta
+              ? `Esta vaga já conta nas ${vagas(g.limite)} grátis deste mês: monte a agenda de novo à vontade.`
+              : `Grátis: ${vagas(g.limite)} por mês, com todos os candidatos. Neste mês, ${g.usados === 0 ? "nenhuma usada" : `${g.usados} de ${g.limite} usada${g.usados === 1 ? "" : "s"}`}; esta vai ser a ${g.usados + 1}ª.`}
+          </p>
+        )}
+        {acabou && g ? (
+          <div className="flex flex-col gap-3 rounded-md border border-terra-text/40 bg-terra-soft/40 p-4">
+            <p className="text-label">
+              {g.limite === 0
+                ? "As entrevistas pelo WhatsApp são da assinatura"
+                : g.limite === 1
+                  ? "A vaga grátis deste mês já foi usada"
+                  : `As ${vagas(g.limite)} grátis deste mês já foram usadas`}
+            </p>
+            <p className="text-body-sm">
+              Com a assinatura das Entrevistas pelo WhatsApp, você marca as entrevistas em todas as vagas, sem limite.
+              {g.limite === 1
+                ? ` Ou espere: a vaga grátis volta em ${diaDaVirada(g.renova_em)}.`
+                : g.limite > 1
+                  ? ` Ou espere: as ${vagas(g.limite)} grátis voltam em ${diaDaVirada(g.renova_em)}.`
+                  : ""}
+            </p>
+            {v.pode_assinar ? (
+              <div>
+                <BotaoLink href="/painel/assinar?recurso=agenda" variante="primario" tamanho="sm">
+                  Assinar as Entrevistas pelo WhatsApp
+                </BotaoLink>
+              </div>
+            ) : (
+              <p className="text-body-sm text-ink-muted">
+                Os planos do Publike também liberam: <Link href="/painel/planos">veja os planos</Link>.
+              </p>
+            )}
+          </div>
+        ) : (
+          <FormNovaAgenda anuncio={id} localPadrao={endereco} noPainel aoVivo={v.ao_vivo !== false} agora={agora} />
+        )}
       </section>
       {v.antes.length > 0 && (
         <p className="text-body-sm text-ink-muted">

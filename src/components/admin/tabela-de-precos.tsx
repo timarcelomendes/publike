@@ -30,7 +30,7 @@ const GRUPOS: { titulo: string; texto: string; produtos: Produto[]; ciclos: Cicl
   {
     titulo: "Recursos sozinhos",
     texto: "Para quem quer só um recurso, e o combo de dois.",
-    produtos: ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras", "combo"],
+    produtos: ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras", "agenda", "combo"],
     ciclos: ["MONTHLY", "QUARTERLY"],
   },
 ];
@@ -52,6 +52,8 @@ const SUGESTAO: Record<Produto, Partial<Record<Ciclo, number>>> = {
   salarios: { MONTHLY: 29.9, QUARTERLY: 76 },
   // a Página de carreiras sozinha (decisão de 10/11/2026: R$ 19,90 por mês)
   carreiras: { MONTHLY: 19.9, QUARTERLY: 51 },
+  // as Entrevistas pelo WhatsApp (decisão de 27/11/2026: R$ 49 por mês; 3 vagas grátis por mês)
+  agenda: { MONTHLY: 49, QUARTERLY: 125 },
   // os planos por faixa (lançamento, 10/11/2026; o Plano Empresa subiu para R$ 79 e R$ 199, com 15% no trimestre).
   // Desde 17/11/2026 (migração 20270715120000), a empresa_5 vale até 20 vagas e a empresa_20, até 50
   empresa_5: { MONTHLY: 79, QUARTERLY: 201, YEARLY: 711, AVULSO: 99 },
