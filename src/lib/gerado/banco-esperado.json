@@ -430,7 +430,8 @@
   "20271012120000_convite_publica_no_whatsapp",
   "20271013120000_entrevista_marcada",
   "20271014120000_agenda_no_painel",
-  "20271015120000_entrevistas_pelo_whatsapp_paga"
+  "20271015120000_entrevistas_pelo_whatsapp_paga",
+  "20271016120000_log_dos_convites_whatsapp"
  ],
  "objetos": {
   "c|privado.aberturas_anuncio.anuncio_id": "80d056fc62",
@@ -3423,7 +3424,7 @@
   "f|public.admin_convites_email()": "1c1537db05",
   "f|public.admin_convites_email_por_dia(p_por_dia integer)": "3b79a58d7b",
   "f|public.admin_convites_por_email()": "8cf55d39cd",
-  "f|public.admin_convites_whatsapp(p_ligado boolean, p_por_dia integer)": "8faa063557",
+  "f|public.admin_convites_whatsapp(p_ligado boolean, p_por_dia integer)": "d61243ff89",
   "f|public.admin_copiloto_contas()": "80259cfd8f",
   "f|public.admin_corrigir_nome(p_usuario uuid, p_nome text)": "96d0459471",
   "f|public.admin_cortesia_plano_agencia(p_conta uuid, p_liberar boolean)": "372d612f5a",

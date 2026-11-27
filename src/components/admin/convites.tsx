@@ -1405,7 +1405,48 @@ export type SituacaoConvitesWhatsapp = {
   prontos: number;
   indicados: number;
   indicados_semana: number;
+  /** migração 20271016120000: o modelo na Meta, o horário, as mudanças e os últimos envios */
+  modelo?: string | null;
+  no_horario?: boolean;
+  mudancas?: { em: string; acao: string | null; dados: { ligado?: boolean | null; por_dia?: number | null } }[];
+  ultimos?: {
+    em: string;
+    convite: string;
+    nome: string;
+    vaga: string | null;
+    final: string;
+    falhou: string | null;
+    status: string | null;
+    status_erro: string | null;
+    virou_conta: boolean;
+  }[];
 };
+
+const STATUS_DA_META: Record<string, { nome: string; tom: "neutro" | "match" | "perigo" | "contorno" }> = {
+  sent: { nome: "Enviada", tom: "contorno" },
+  delivered: { nome: "Entregue", tom: "neutro" },
+  read: { nome: "Lida", tom: "match" },
+  failed: { nome: "Erro na Meta", tom: "perigo" },
+};
+
+/** "27/11 14h05" (Brasília) */
+function quandoCurto(iso: string) {
+  const d = new Date(new Date(iso).getTime() - 3 * 3600_000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${d.getUTCHours()}h${p(d.getUTCMinutes())}`;
+}
+
+/** Por que os prontos não estão saindo agora (null: estão, ou não há prontos). */
+function porQueNaoSai(s: SituacaoConvitesWhatsapp) {
+  if (!s.ligado || s.prontos === 0) return null;
+  if (s.modelo !== undefined && s.modelo !== "APPROVED")
+    return s.modelo === "PENDING" || s.modelo === null
+      ? "O modelo da mensagem (publike_convite_vaga_pronta) ainda está em análise na Meta: os prontos esperam e saem sozinhos quando ela aprovar."
+      : `A Meta não aprovou o modelo da mensagem (situação: ${s.modelo}). Os prontos esperam: é preciso ajustar o modelo e mandar de novo.`;
+  if (s.no_horario === false) return "Fora do horário: os convites saem das 9h às 18h, de segunda a sábado.";
+  if (s.hoje >= s.por_dia) return "O teto do dia foi atingido: os próximos saem amanhã.";
+  return null;
+}
 
 /**
  * O envio do convite pelo WhatsApp oficial do Publike (migração 20271011120000): o mesmo convite da vaga pronta, em lote,
@@ -1434,6 +1475,11 @@ export function EnvioPeloWhatsappOficial({ s }: { s: SituacaoConvitesWhatsapp })
           {s.ligado ? "Desligar o envio" : "Ligar o envio"}
         </Botao>
       </div>
+      {porQueNaoSai(s) && (
+        <Aviso tipo="alerta" titulo="Nada sai agora">
+          {porQueNaoSai(s)}
+        </Aviso>
+      )}
       <p className="text-body-sm">
         Prontos para sair: <strong>{s.prontos}</strong> · enviados hoje: <strong>{s.hoje}</strong> · no total:{" "}
         <strong>{s.total}</strong>, {s.contas} {s.contas === 1 ? "virou conta" : "viraram conta"} · mandados por
@@ -1462,6 +1508,51 @@ export function EnvioPeloWhatsappOficial({ s }: { s: SituacaoConvitesWhatsapp })
         </Botao>
       </form>
       {mensagem}
+      {s.ultimos && (
+        <details className="rounded-md border border-line bg-surface-100 p-3" open={s.ultimos.length > 0}>
+          <summary className="cursor-pointer text-label">
+            Os envios ({s.ultimos.length === 30 ? "os 30 últimos" : s.ultimos.length})
+          </summary>
+          {s.ultimos.length === 0 ? (
+            <p className="mt-2 text-body-sm text-ink-muted">Nenhum convite saiu pelo WhatsApp do Publike ainda.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col divide-y divide-line">
+              {s.ultimos.map((u) => {
+                const meta = u.status ? STATUS_DA_META[u.status] : null;
+                return (
+                  <li key={`${u.convite}-${u.em}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-body-sm">
+                    <span className="tabular-nums text-ink-muted">{quandoCurto(u.em)}</span>
+                    <span className="font-semibold">{u.nome}</span>
+                    {u.vaga && <span className="text-ink-muted">· {u.vaga}</span>}
+                    <span className="text-ink-muted">· final {u.final}</span>
+                    {u.falhou ? (
+                      <Selo variante="perigo">Não saiu: {u.falhou}</Selo>
+                    ) : meta ? (
+                      <Selo variante={meta.tom}>{meta.nome}</Selo>
+                    ) : (
+                      <Selo variante="contorno">Saiu</Selo>
+                    )}
+                    {u.status_erro && <span className="text-danger">{u.status_erro}</span>}
+                    {u.virou_conta && <Selo variante="match">Virou conta</Selo>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </details>
+      )}
+      {s.mudancas && s.mudancas.length > 0 && (
+        <p className="text-caption text-ink-muted">
+          Mudanças:{" "}
+          {s.mudancas
+            .slice(0, 5)
+            .map(
+              (m) =>
+                `${quandoCurto(m.em)} ${m.acao === "ligou" ? "ligado" : m.acao === "desligou" ? "desligado" : `teto ${m.dados?.por_dia ?? ""}`}`,
+            )
+            .join(" · ")}
+        </p>
+      )}
     </section>
   );
 }
