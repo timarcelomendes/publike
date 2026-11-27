@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, NotebookPen } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useOptimistic, useState } from "react";
 import { salvarEtapaCandidato } from "@/lib/acoes/curtidas";
 import { ETAPAS_CANDIDATO, etapasDoTipo, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
 import { ContratacaoPublica } from "../social/botoes";
@@ -43,7 +43,11 @@ export function EtapaDoCandidato({
   publico?: { okEmpresa: boolean; okPessoa: boolean; nome: string } | null;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
-  const [etapa, setEtapa] = useState<EtapaCandidato>(etapaInicial);
+  // a etapa salva (a que vem do servidor), com a escolhida por cima só enquanto salva: o campo nunca guarda uma etapa
+  // própria (27/11/2026; Marcelo: "o candidato está em entrevista e o campo aparece como novo"). Antes, o useState
+  // ficava com a etapa da primeira pessoa aberta na ficha e não via a mudança feita pelos outros botões; se não salvar,
+  // volta sozinho para a salva.
+  const [etapa, escolherEtapa] = useOptimistic(etapaInicial);
   const [nota, setNota] = useState(notaInicial ?? "");
   // no cartão compacto a anotação já aparece escrita no cartão: o campo abre só para editar
   const [anotar, setAnotar] = useState(!compacto && Boolean(notaInicial));
@@ -60,15 +64,12 @@ export function EtapaDoCandidato({
   };
 
   function trocarEtapa(nova: EtapaCandidato) {
-    const antes = etapa;
-    setEtapa(nova);
-    // a etapa salva na hora; a anotação vai junto como está salva. Se não salvar, volta.
-    rodar(
-      () => salvarEtapaCandidato(anuncioId, perfilId, nova, notaInicial),
-      (r) => {
-        if (!r.ok) setEtapa(antes);
-      },
-    );
+    // a etapa salva na hora; a anotação vai junto como está salva. A escolha aparece já (dentro da ação, que é a
+    // transição) e, se não salvar, o campo volta para a etapa salva.
+    rodar(() => {
+      escolherEtapa(nova);
+      return salvarEtapaCandidato(anuncioId, perfilId, nova, notaInicial);
+    });
   }
 
   return (

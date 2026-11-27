@@ -292,7 +292,10 @@ export async function MesaDeCandidatos({
             />
           )}
           {aberto ? (
+            // uma ficha por pessoa: trocar de candidato (outra aba, outro nome, anterior e próximo) começa a ficha do
+            // zero, sem levar a etapa, a anotação ou o rascunho da pessoa aberta antes
             <FichaCandidato
+              key={`ficha:${aberto.chave}`}
               c={aberto}
               empresas={empresas}
               direto={direto}
