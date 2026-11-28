@@ -178,12 +178,12 @@ function rodape(
   return {
     // no texto, um link por linha (o ponto final não gruda no endereço)
     texto: [
-      "Você recebeu este aviso porque tem uma conta no Publike.",
+      "Você recebeu este aviso porque tem uma conta no Publike. Este endereço não recebe respostas.",
       `Para parar de receber este tipo de aviso por e-mail: ${parar}`,
       `Para escolher o que chega no e-mail e no celular: ${escolher}`,
     ].join("\n"),
     html:
-      `${escaparHtml("Você recebeu este aviso porque tem uma conta no Publike.")} ` +
+      `${escaparHtml("Você recebeu este aviso porque tem uma conta no Publike. Este endereço não recebe respostas.")} ` +
       `${link(parar, "Parar de receber este tipo de aviso por e-mail")}. ` +
       `${escaparHtml("Para escolher o que chega no e-mail e no celular, abra ")}${link(escolher, "Preferências")}.`,
   };

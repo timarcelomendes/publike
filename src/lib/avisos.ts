@@ -19,6 +19,14 @@ export const GRUPOS_DE_AVISO = [
     email: true,
   },
   {
+    // migração 20271021120000: separadas do andamento, para desligar uma sem perder os matches e as entrevistas
+    valor: "perguntas",
+    nome: "Perguntas do Publike",
+    ajuda: "“Deu certo com a empresa?”, “A empresa te respondeu?”, “Quem você contratou?” e “A vaga ainda está aberta?”.",
+    celular: true,
+    email: true,
+  },
+  {
     valor: "conexoes",
     nome: "Pedidos de conexão",
     ajuda: "Quando alguém quer se conectar com você ou aceita o seu pedido.",
