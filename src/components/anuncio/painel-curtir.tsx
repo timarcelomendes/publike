@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Heart, HeartCrack, MessagesSquare, PartyPopper, Star, Zap } from "lucide-react";
+import { FileText, Heart, HeartCrack, Hourglass, MessagesSquare, PartyPopper, Star, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -11,6 +11,7 @@ import { avisarPassoDoImpulso } from "@/lib/impulso-passos";
 import {
   curtirAnuncio,
   descurtirAnuncio,
+  responderReserva,
   salvarMeuWhatsapp,
   type AvisoLigado,
   type ContatoDaCurtida,
@@ -75,6 +76,10 @@ type Props = {
   contatoDireto?: boolean;
   /** a vaga é só pelo chat do Publike: depois do match, a conversa é no chat (sem o WhatsApp de quem publicou) */
   soChat?: boolean;
+  /** vaga sempre aberta, o banco de reserva (migração 20271017120000): curtir é entrar na fila */
+  reserva?: boolean;
+  /** na reserva: quando a empresa chamou ("ainda tem interesse?"); null, ainda não chamou */
+  chamadaEm?: string | null;
 };
 
 /** As curtidas que já saíram sozinhas nesta visita (o quadro aparece duas vezes e o efeito pode rodar de novo). */
@@ -109,6 +114,8 @@ export function PainelCurtir({
   entrevista = null,
   contatoDireto = false,
   soChat = false,
+  reserva = false,
+  chamadaEm = null,
 }: Props) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -437,6 +444,67 @@ export function PainelCurtir({
     );
   }
 
+  // na reserva da vaga sempre aberta: a fila, o chamado ("ainda tem interesse?") e sair quando quiser
+  if (status === "reserva") {
+    const responder = (tenho: boolean) => {
+      setErro(null);
+      iniciar(async () => {
+        const r = await chamarAcao(() => responderReserva(anuncioId, tenho));
+        if (!r.ok) setErro(r.erro);
+      });
+    };
+    return (
+      <div className="flex flex-col gap-3 rounded-lg bg-like-soft p-5 text-ink">
+        <p className="flex items-center gap-2 font-display text-h3 text-like-text">
+          <Hourglass aria-hidden className="size-5" />
+          {chamadaEm ? `${quem} abriu a vaga!` : "Você está na reserva"}
+        </p>
+        {chamadaEm ? (
+          <>
+            <p className="text-body">
+              {quem} precisa de gente agora e chamou quem está na reserva. <strong>Ainda tem interesse?</strong> Quem
+              confirma primeiro é visto primeiro.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Botao variante="primario" onClick={() => responder(true)} disabled={pendente}>
+                <Heart aria-hidden />
+                Tenho interesse
+              </Botao>
+              <Botao variante="fantasma" onClick={() => responder(false)} disabled={pendente}>
+                Não procuro mais
+              </Botao>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-body-sm">
+              Esta é uma vaga sempre aberta: {quem} junta interessados e chama quando abre vaga. Quando isso acontecer,
+              você recebe um aviso para confirmar se ainda tem interesse.
+            </p>
+            {!servico && temCurriculo === false && (
+              <PassoDoCurriculo anuncioId={anuncioId} quem={autorNome} jeito="quadro" pede={pedeCurriculo} />
+            )}
+            {!servico && temCurriculo && <p className="text-body-sm">Seu currículo está junto, para a hora do chamado.</p>}
+            {!servico && (
+              <AceiteWhatsapp
+                origem="curtir"
+                rotulo="Quero receber pelo WhatsApp quando abrir a vaga e as vagas que combinam comigo"
+                esconderSeAceito
+              />
+            )}
+            <div>
+              <Botao variante="fantasma" tamanho="sm" onClick={desfazer} disabled={pendente}>
+                Sair da reserva
+              </Botao>
+            </div>
+          </>
+        )}
+        {!servico && <NuncaPague />}
+        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      </div>
+    );
+  }
+
   if (status === "pendente") {
     return (
       <div className="flex flex-col gap-3 rounded-lg bg-like-soft p-5 text-ink">
@@ -502,7 +570,19 @@ export function PainelCurtir({
       )}
       <div>
         <p className="font-display text-h3">{servico ? "Quer contratar?" : "Quer se candidatar?"}</p>
-        {contatoDireto && !passoDoCurriculo ? (
+        {reserva && !servico ? (
+          // o banco de reserva: deixar claro que não é emprego para já (quem procura não fica esperando resposta)
+          <div className="mt-3 flex items-start gap-3 rounded-md border-2 border-ink/20 bg-surface-100 p-3.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-ink text-surface-200">
+              <Hourglass aria-hidden className="size-5" />
+            </span>
+            <p className="min-w-0 text-body">
+              <span className="block text-label">Banco de reserva</span>
+              <strong className="font-semibold">{quem}</strong> contrata para esta função o tempo todo. Ao curtir, você
+              entra na fila e é chamado quando abrir vaga: aí é só confirmar que ainda tem interesse.
+            </p>
+          </div>
+        ) : contatoDireto && !passoDoCurriculo ? (
           // o que mais pesa na decisão: em destaque, no verde do match
           <div className="mt-3 flex items-start gap-3 rounded-md border-2 border-cerrado bg-cerrado/10 p-3.5">
             <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-cerrado text-on-cerrado">
@@ -624,7 +704,9 @@ export function PainelCurtir({
             ? `Salvar e ${servico ? "pedir o serviço" : "curtir a vaga"}`
             : servico
               ? "Quero contratar"
-              : "Curtir a vaga"}
+              : reserva
+                ? "Entrar na reserva"
+                : "Curtir a vaga"}
       </button>
       {!logado && <p className="text-center text-body-sm text-ink-muted">Entrar é rápido, sem senha e grátis.</p>}
       {!servico && <NuncaPague />}

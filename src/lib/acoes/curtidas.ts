@@ -306,6 +306,53 @@ export async function descurtirAnuncio(anuncioId: string): Promise<Resultado> {
   return { ok: true };
 }
 
+/**
+ * Quem está na reserva de uma vaga sempre aberta responde ao chamado (migração 20271017120000): "Tenho" vira a
+ * candidatura de verdade, e a empresa recebe o aviso; "Não procuro mais" tira a pessoa da fila.
+ */
+export async function responderReserva(anuncioId: string, tenho: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Anúncio não encontrado." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: `/entrar?next=/anuncio/${anuncioId}` };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("responder_reserva", { p_anuncio: anuncioId, p_tenho: tenho });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return {
+    ok: true,
+    mensagem: tenho ? "Pronto! A empresa já sabe que você tem interesse." : "Tudo bem, você saiu da reserva.",
+  };
+}
+
+/**
+ * A empresa chama da reserva as pessoas escolhidas (a ordem vem da tela: a nota, a distância, quem chegou mais
+ * recente). Cada uma recebe no sino, no celular e por e-mail "abriu a vaga: ainda tem interesse?".
+ */
+export async function chamarDaReserva(anuncioId: string, perfis: string[]): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const ids = [...new Set(perfis)].filter((p) => UUID.test(p));
+  if (!UUID.test(anuncioId) || !ids.length || ids.length > 30) return { ok: false, erro: "Escolha de 1 a 30 pessoas." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: `/entrar?next=/painel/anuncio/${anuncioId}` };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("chamar_da_reserva", { p_anuncio: anuncioId, p_perfis: ids });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  // o aviso por e-mail sai pela fila
+  after(processarFilas);
+  refresh();
+  const n = Number(data ?? 0);
+  return {
+    ok: true,
+    mensagem:
+      n === 0
+        ? "Ninguém foi chamado: essas pessoas já saíram da reserva."
+        : n === 1
+          ? "Chamamos 1 pessoa. Quando ela confirmar, aparece em Novos."
+          : `Chamamos ${n} pessoas. Quem confirmar aparece em Novos.`,
+  };
+}
+
 /** Quem publicou responde: dar match, dispensar ou desfazer a resposta. */
 export async function responderCurtida(
   anuncioId: string,

@@ -20,15 +20,18 @@ export function faltaColuna(erro: ErroBanco, coluna: string) {
  * com o chat e o WhatsApp, como antes da migração 20270221120000).
  */
 export async function gravarVaga<
-  R extends { comeca_ja?: boolean; contato_por?: string; dia_a_dia?: string[] },
+  R extends { comeca_ja?: boolean; contato_por?: string; dia_a_dia?: string[]; sempre_aberta?: boolean },
   T extends { error: ErroBanco },
 >(registro: R, gravar: (r: R) => PromiseLike<T>): Promise<T> {
   let r = await gravar(registro);
   const sem = { ...registro };
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     if (sem.dia_a_dia !== undefined && faltaColuna(r.error, "dia_a_dia")) {
       console.warn("Publike: falta a migração 20270309 (dia_a_dia); a vaga salvou sem o dia a dia.");
       delete sem.dia_a_dia;
+    } else if (sem.sempre_aberta !== undefined && faltaColuna(r.error, "sempre_aberta")) {
+      console.warn("Publike: falta a migração 20271017 (sempre_aberta); a vaga salvou sem o banco de reserva.");
+      delete sem.sempre_aberta;
     } else if (sem.comeca_ja !== undefined && faltaColuna(r.error, "comeca_ja")) {
       console.warn("Publike: falta a migração 20261212 (comeca_ja); a vaga salvou sem o “Começa já”.");
       delete sem.comeca_ja;
@@ -52,4 +55,27 @@ export async function comecaJaDaVaga(id: string, cliente?: ClienteBanco): Promis
   if (error && !faltaColuna(error, "comeca_ja"))
     console.warn(`Publike: não deu para ler o “Começa já”: ${error.message}`);
   return Boolean(data?.comeca_ja);
+}
+
+/** Se a vaga é sempre aberta, o banco de reserva (false sem a coluna, a migração 20271017120000, ou sem a vaga). */
+export async function sempreAbertaDaVaga(id: string, cliente?: ClienteBanco): Promise<boolean> {
+  if (MODO_DEMO || !UUID.test(id)) return false;
+  const supabase = cliente ?? (await criarClienteServidor());
+  const { data, error } = await supabase.from("anuncios").select("sempre_aberta").eq("id", id).maybeSingle();
+  if (error && !faltaColuna(error, "sempre_aberta"))
+    console.warn(`Publike: não deu para ler a vaga sempre aberta: ${error.message}`);
+  return Boolean(data?.sempre_aberta);
+}
+
+/** Na reserva da vaga sempre aberta: quando a empresa chamou a pessoa ("ainda tem interesse?"); null, ainda não. */
+export async function chamadoDaReserva(anuncioId: string, perfilId: string): Promise<string | null> {
+  if (MODO_DEMO || !UUID.test(anuncioId) || !UUID.test(perfilId)) return null;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("curtidas")
+    .select("reserva_chamada_em")
+    .eq("anuncio_id", anuncioId)
+    .eq("perfil_id", perfilId)
+    .maybeSingle();
+  return data?.reserva_chamada_em ?? null;
 }

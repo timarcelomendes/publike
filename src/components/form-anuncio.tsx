@@ -108,6 +108,8 @@ export type ValoresAnuncio = {
   link_candidatura?: string | null;
   /** vaga: precisa de alguém para começar logo (a etiqueta e o filtro "Começa já") */
   comeca_ja?: boolean;
+  /** vaga sempre aberta: o banco de reserva da função que se repete (migração 20271017120000) */
+  sempre_aberta?: boolean;
   /** em quantos dias a vaga sai do ar sozinha; null: sem prazo (fica até ser encerrada) */
   prazo_dias?: number | null;
   /** vaga de agência: a empresa que contrata (vazio quando é confidencial) */
@@ -1533,6 +1535,34 @@ export function FormAnuncio({
             <span className="mt-0.5 block text-body-sm text-ink">
               A vaga ganha a etiqueta “Começa já”, e quem pode começar na hora acha pelo filtro. Desmarque quando a
               pressa passar.
+            </span>
+          </span>
+        </label>
+      )}
+
+      {vaga && (
+        // o banco de reserva (claude/plano-concentrar-contratacoes.md, parte 3): para a função que se repete
+        <label
+          hidden={noSite}
+          className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4 has-[:checked]:border-ink has-[:checked]:shadow-raised"
+        >
+          {/* o servidor só mexe na vaga sempre aberta quando o formulário tem a caixa */}
+          <input type="hidden" name="sempre_aberta_enviado" value="1" />
+          <input
+            type="checkbox"
+            name="sempre_aberta"
+            defaultChecked={inicial.sempre_aberta ?? false}
+            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+          />
+          <span>
+            <span className="flex flex-wrap items-center gap-2 text-label">
+              Vaga sempre aberta: banco de reserva
+              <Selo variante="novo">Novo</Selo>
+            </span>
+            <span className="mt-0.5 block text-body-sm text-ink-muted">
+              Para a função que você contrata sempre (portaria, limpeza, atendente). A vaga não vence, quem se candidata
+              entra na fila, já filtrado pelas perguntas, e você chama quando precisar: o Publike pergunta às primeiras
+              pessoas se ainda têm interesse. O título ganha “(banco de reserva)”, e o contato direto fica desligado.
             </span>
           </span>
         </label>

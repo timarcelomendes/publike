@@ -23,6 +23,9 @@ export type EntrevistaMinha = Awaited<ReturnType<typeof minhasProximasEntrevista
 export function andamento(c: MinhaCurtida, etapa: EtapaCandidato | null, entrevista: EntrevistaMinha | undefined) {
   if (c.status === "dispensada") return { feitas: 1, atual: false, texto: "Não foi dessa vez", fim: true };
   if (c.status === "desfeito") return { feitas: 1, atual: false, texto: "Match desfeito", fim: true };
+  // a vaga sempre aberta (migração 20271017120000): na fila, até a empresa chamar
+  if (c.status === "reserva")
+    return { feitas: 1, atual: true, texto: `Na reserva: ${c.autor_nome} chama quando abrir vaga`, fim: false };
   if (etapa === "nao_seguiu") return { feitas: 2, atual: false, texto: "Encerrado", fim: true };
   if (etapa === "contratado") return { feitas: 4, atual: false, texto: "Contratado! Parabéns", fim: false };
   if (entrevista || etapa === "entrevista")

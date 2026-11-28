@@ -358,14 +358,34 @@ export async function aceitoEsperandoMeuCurriculo(anuncioId: string): Promise<bo
   return (await aceitasEsperandoCurriculo()).has(`${anuncioId}:${usuario.id}`);
 }
 
-export async function listarInteressados(anuncioId: string): Promise<Interessado[]> {
+/**
+ * Os candidatos de uma vaga minha. Quem está no banco de reserva (vaga sempre aberta) não entra: ainda não é
+ * candidato até a empresa chamar e a pessoa confirmar. `{ reserva: true }` traz só a reserva.
+ */
+export async function listarInteressados(anuncioId: string, { reserva = false } = {}): Promise<Interessado[]> {
   const supabase = await criarClienteServidor();
   const [{ data, error }, aceitas] = await Promise.all([
     supabase.rpc("interessados", { p_anuncio: anuncioId }),
     aceitasEsperandoCurriculo(),
   ]);
   if (error) falha("interessados", error);
-  return (data ?? []).map((l) => ({ ...l, aceita_em: aceitas.get(`${anuncioId}:${l.perfil_id}`) ?? null }));
+  return (data ?? [])
+    .filter((l) => (l.status === "reserva") === reserva)
+    .map((l) => ({ ...l, aceita_em: aceitas.get(`${anuncioId}:${l.perfil_id}`) ?? null }));
+}
+
+/** Quando cada pessoa da reserva foi chamada (vaga sempre aberta); sem a migração, ninguém. */
+export async function chamadasDaReserva(anuncioId: string): Promise<Map<string, string>> {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("curtidas")
+    .select("perfil_id, reserva_chamada_em")
+    .eq("anuncio_id", anuncioId)
+    .eq("status", "reserva")
+    .not("reserva_chamada_em", "is", null);
+  if (error) return new Map();
+  return new Map((data ?? []).map((l) => [l.perfil_id, l.reserva_chamada_em as string]));
 }
 
 /** Etapa e anotação de cada interessado de uma vaga minha (só eu vejo). */
@@ -529,7 +549,8 @@ export const listarMeusCandidatos = cache(async () => {
     console.error(`Publike: falha ao ler seus candidatos: ${error.message}`);
     return null;
   }
-  return (data ?? []).map((l) => ({
+  // a reserva da vaga sempre aberta não é candidato ainda (não conta em "Responder N candidatos")
+  return (data ?? []).filter((l) => l.status !== "reserva").map((l) => ({
     ...l,
     // esperando resposta, etapa adiante de "Em análise" não vale (ver etapaQueVale)
     etapa: etapaQueVale("vaga", l.status, (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato),

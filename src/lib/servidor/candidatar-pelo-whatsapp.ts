@@ -268,6 +268,14 @@ async function candidatar(ctx: Contexto, nome: string | null): Promise<Resposta>
       botao: { titulo: "Ver o contato", caminho },
     };
   }
+  if (r.status === "reserva") {
+    // a vaga sempre aberta (migração 20271017120000): a pessoa entra no banco de reserva; quando a empresa abrir a
+    // vaga, o Publike pergunta se ainda tem interesse
+    return {
+      texto: `Pronto! ✅ Você entrou no *banco de reserva* de ${titulo}. Essa vaga fica sempre aberta: quando a empresa precisar contratar, o Publike te avisa e pergunta se você ainda tem interesse.${semCurriculo ? `\n\n${pedidoDoCurriculo(pede, comBotoes)}` : ""}`,
+      ...(comBotoes ? { botoes: BOTOES_DO_CURRICULO } : {}),
+    };
+  }
   return {
     texto: `Pronto! ✅ Mandei a sua candidatura para ${titulo}. ${avisos}${semCurriculo ? `\n\n${pedidoDoCurriculo(pede, comBotoes)}` : ""}`,
     ...(comBotoes ? { botoes: BOTOES_DO_CURRICULO } : {}),

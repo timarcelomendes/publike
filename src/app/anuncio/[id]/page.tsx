@@ -131,7 +131,7 @@ import { chaveBairro } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
-import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
+import { chamadoDaReserva, comecaJaDaVaga, sempreAbertaDaVaga } from "@/lib/servidor/comeca-ja";
 import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { funcaoDaVaga } from "@/lib/servidor/paginas-funcao";
 import { caminhoDaFuncao, tituloDaFuncao } from "@/lib/funcoes-das-paginas";
@@ -367,6 +367,10 @@ async function DetalheAnuncio({
   // quem publicou já aceitou e falta o currículo (vaga que pede): o próximo passo é mandar
   const aceita =
     anuncio.minha_curtida === "pendente" && anuncio.pede_curriculo && (await aceitoEsperandoMeuCurriculo(anuncio.id));
+  // a vaga sempre aberta (migração 20271017120000): curtir é entrar na reserva; na reserva, se a empresa já chamou
+  const reserva = anuncio.tipo === "vaga" && (await sempreAbertaDaVaga(anuncio.id));
+  const chamadaEm =
+    anuncio.minha_curtida === "reserva" && usuario ? await chamadoDaReserva(anuncio.id, usuario.id) : null;
   const lugar = formatarLugar(anuncio.bairro, anuncio.cidade);
   const valor = valorDoAnuncio(anuncio);
   const vaga = anuncio.tipo === "vaga";
@@ -544,6 +548,8 @@ async function DetalheAnuncio({
         entrevista={entrevista}
         contatoDireto={anuncio.contato_direto && anuncio.status === "ativo"}
         soChat={soChat}
+        reserva={reserva}
+        chamadaEm={chamadaEm}
       />
     );
 

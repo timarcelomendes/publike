@@ -272,6 +272,8 @@ type ExtrasDaVaga = {
   ganhos_extras?: GanhoExtra[];
   /** "Começa já": precisa de alguém para começar logo (só quando o formulário tem a caixa) */
   comeca_ja?: boolean;
+  /** a vaga sempre aberta, o banco de reserva (migração 20271017120000; só quando o formulário tem a caixa) */
+  sempre_aberta?: boolean;
   /**
    * depois do match, como os candidatos falam com quem publicou: 'ambos' (o chat e o WhatsApp) ou 'chat' (só o chat do
    * Publike; claude/plano-so-chat-ou-whatsapp.md). Só quando o formulário tem a escolha.
@@ -346,6 +348,7 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     ...(d.horario_detalhe !== undefined ? { horario_detalhe: d.horario_detalhe } : {}),
     ...(d.ganhos_extras !== undefined ? { ganhos_extras: d.ganhos_extras } : {}),
     ...(d.comeca_ja !== undefined ? { comeca_ja: d.comeca_ja } : {}),
+    ...(d.sempre_aberta !== undefined ? { sempre_aberta: d.sempre_aberta } : {}),
     ...(d.contato_por !== undefined ? { contato_por: d.contato_por } : {}),
     ...(d.candidatura !== undefined
       ? { candidatura: d.candidatura, link_candidatura: d.candidatura === "site" ? (d.link_candidatura ?? null) : null }
@@ -509,6 +512,8 @@ function lerExtrasDaVaga(
   }
   // "Começa já": só o formulário que tem a caixa manda (o que não tem não mexe); serviço nunca
   if (formData.has("comeca_ja_enviado")) dados.comeca_ja = vaga && formData.get("comeca_ja") === "on";
+  // a vaga sempre aberta: também só o formulário que tem a caixa (serviço nunca)
+  if (formData.has("sempre_aberta_enviado")) dados.sempre_aberta = vaga && formData.get("sempre_aberta") === "on";
   // só pelo chat ou chat e WhatsApp: só o formulário que tem a escolha manda; serviço fica com os dois
   if (formData.has("contato_por"))
     dados.contato_por = vaga && formData.get("contato_por") === "chat" ? "chat" : "ambos";

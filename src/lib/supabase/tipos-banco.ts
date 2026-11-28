@@ -518,6 +518,7 @@ export type Database = {
           atende: string[];
           pede_curriculo: boolean;
           contato_direto: boolean;
+          sempre_aberta: boolean;
           /** depois do match: 'ambos' (chat e o contato de quem publicou) ou 'chat' (só o chat do Publike) */
           contato_por: string;
           dia_a_dia?: string[];
@@ -584,6 +585,7 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          sempre_aberta?: boolean;
           contato_por?: string;
           dia_a_dia?: string[];
           comeca_ja?: boolean;
@@ -634,6 +636,7 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          sempre_aberta?: boolean;
           contato_por?: string;
           dia_a_dia?: string[];
           comeca_ja?: boolean;
@@ -794,6 +797,8 @@ export type Database = {
           desfeito_futuro: boolean | null;
           respostas: Json;
           aceita_em: string | null;
+          reserva_desde: string | null;
+          reserva_chamada_em: string | null;
         };
         Insert: {
           anuncio_id: string;
@@ -2588,6 +2593,8 @@ export type Database = {
           etapa_em: string | null;
         }[];
       };
+      chamar_da_reserva: { Args: { p_anuncio: string; p_perfis: string[] }; Returns: number };
+      responder_reserva: { Args: { p_anuncio: string; p_tenho: boolean }; Returns: string };
       salvar_etapa_candidato: {
         Args: { p_anuncio: string; p_perfil: string; p_etapa: string; p_nota: string | null };
         Returns: undefined;

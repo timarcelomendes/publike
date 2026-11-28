@@ -69,6 +69,8 @@ export const metadata: Metadata = { title: "Candidaturas" };
  */
 const SITUACOES = {
   aguardando: { nome: "Aguardando aceite", vale: esperaResposta },
+  // a vaga sempre aberta (migração 20271017120000): na fila, até a empresa chamar
+  reserva: { nome: "Na reserva", vale: (c: MinhaCurtida) => c.status === "reserva" },
   curriculo: { nome: "Falta o currículo", vale: esperaCurriculo },
   match: { nome: "Deu match", vale: (c: MinhaCurtida) => c.status === "match" },
   encerradas: { nome: "Encerradas", vale: (c: MinhaCurtida) => c.status === "dispensada" || c.status === "desfeito" },
@@ -280,8 +282,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
         )}
         {(Object.keys(SITUACOES) as Situacao[]).map((s) => {
           const numero = doTipo.filter((c) => naSituacao(s, c)).length;
-          // "Falta o currículo" só aparece quando tem
-          if (s === "curriculo" && !numero && situacao !== s) return null;
+          // "Falta o currículo" e "Na reserva" só aparecem quando têm
+          if ((s === "curriculo" || s === "reserva") && !numero && situacao !== s) return null;
           return (
             <ChipFiltro
               key={s}
@@ -397,6 +399,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                     <div className="flex flex-wrap items-center gap-2">
                       {c.status === "match" && <Selo variante="match">Deu match</Selo>}
                       {esperaResposta(c) && <Selo variante="like">Aguardando aceite</Selo>}
+                      {c.status === "reserva" && <Selo variante="like">Na reserva</Selo>}
                       {vista && <Selo variante="contorno">Vista pela empresa</Selo>}
                       {esperaCurriculo(c) && <Selo variante="aviso">Falta o currículo</Selo>}
                       {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
