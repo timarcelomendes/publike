@@ -20,6 +20,7 @@ import { MesaDeCandidatos } from "@/components/painel/mesa-candidatos";
 import { CabecalhoDaVaga, OrdemPeloCopiloto, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
 import { AvisoDaModeracaoNaVaga } from "@/components/painel/vaga-na-moderacao";
 import { ReservaDaVaga } from "@/components/painel/reserva-da-vaga";
+import { AnterioresDaVaga } from "@/components/painel/anteriores-da-vaga";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -226,6 +227,12 @@ async function Conteudo({
 
       <AvisoDaModeracaoNaVaga status={status} anuncioId={id} servico={servico} />
       {!servico && <ReservaDaVaga anuncioId={id} />}
+      {!servico && (
+        <AnterioresDaVaga
+          anuncioId={id}
+          noAr={status === "ativo" && !anuncio.preenchida_em && new Date(anuncio.expira_em).getTime() > agora}
+        />
+      )}
 
       {todos.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -547,6 +554,10 @@ async function MesaDaVaga({
       <VistaDosCandidatos id={anuncio.id} atual="lista" />
       <AvisoDaModeracaoNaVaga status={anuncio.status} anuncioId={anuncio.id} />
       <ReservaDaVaga anuncioId={anuncio.id} />
+      <AnterioresDaVaga
+        anuncioId={anuncio.id}
+        noAr={anuncio.status === "ativo" && !anuncio.preenchida_em && new Date(anuncio.expira_em).getTime() > agora}
+      />
       {!todos ? (
         <Aviso tipo="alerta" titulo="Não deu para carregar os candidatos agora">
           Tente de novo em instantes.

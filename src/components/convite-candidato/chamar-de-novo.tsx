@@ -15,6 +15,8 @@ const ATE_ONDE: Record<CandidatoDeAntes["ate_onde"], string> = {
   finalista: "foi finalista",
   entrevista: "chegou à entrevista",
   match: "você aceitou",
+  dispensado: "você dispensou",
+  sem_resposta: "ficou sem resposta",
 };
 
 /**

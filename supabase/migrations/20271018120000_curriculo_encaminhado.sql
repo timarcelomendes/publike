@@ -28,6 +28,27 @@ alter table public.convites_candidato add constraint convites_candidato_origem_c
 
 -- 2. A conta do número e as vagas no ar ----------------------------------------------------------------------------
 
+-- A conta que contrata deste número: a do login pelo celular ou, sem ela (quem entra pelo e-mail), a do WhatsApp do
+-- perfil. Só empresa, comércio e agência.
+create or replace function privado.conta_que_contrata_do_numero(p_numero text)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    (select p.id from public.perfis p
+      where p.id = privado.conta_do_celular(p_numero) and p.tipo in ('empresa', 'comercio', 'agencia')),
+    (select p.id from public.contatos c join public.perfis p on p.id = c.perfil_id
+      where privado.chave_do_numero(c.whatsapp) = privado.chave_do_numero(p_numero)
+        and p.tipo in ('empresa', 'comercio', 'agencia')
+        and not privado.conta_da_equipe_publike(p.id)
+      order by p.criado_em desc
+      limit 1))
+$$;
+revoke all on function privado.conta_que_contrata_do_numero(text) from public, anon, authenticated;
+
 -- A conta que contrata deste número (empresa, comércio ou agência) e as vagas dela no ar, as mais novas primeiro.
 -- Sem conta que contrata: {"conta": null}, e o atendimento segue como antes (o currículo é da própria pessoa).
 create or replace function public.servidor_whatsapp_vagas_da_conta(p_chave text, p_conversa text)
@@ -48,7 +69,7 @@ begin
   if v_numero is null then
     return jsonb_build_object('conta', null);
   end if;
-  v_conta := privado.conta_do_celular(v_numero);
+  v_conta := privado.conta_que_contrata_do_numero(v_numero);
   select p.nome, p.tipo into v_nome, v_tipo from public.perfis p where p.id = v_conta;
   if v_conta is null or v_tipo is null or v_tipo not in ('empresa', 'comercio', 'agencia') then
     return jsonb_build_object('conta', null);
@@ -127,7 +148,7 @@ begin
   end if;
   -- quem toca é a mesma conta que encaminhou
   select c.numero into v_numero from privado.whatsapp_conversas c where c.chave = p_conversa;
-  if privado.conta_do_celular(v_numero) is distinct from e.conta then
+  if privado.conta_que_contrata_do_numero(v_numero) is distinct from e.conta then
     return jsonb_build_object('ok', false, 'erro', 'outra_conta');
   end if;
   select * into a from public.anuncios x where x.id = p_anuncio and x.autor_id = e.conta and x.tipo = 'vaga';

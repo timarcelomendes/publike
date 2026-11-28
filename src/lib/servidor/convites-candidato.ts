@@ -20,15 +20,18 @@ export async function convitesDaVaga(anuncioId: string): Promise<ConviteDaVaga[]
   return (data ?? []).map(({ curriculo, ...c }) => ({ ...c, tem_curriculo: curriculo !== null }));
 }
 
+const ATE_ONDE = ["finalista", "entrevista", "match", "dispensado", "sem_resposta"] as const;
+type AteOnde = (typeof ATE_ONDE)[number];
+
 export type CandidatoDeAntes = {
   perfil_id: string;
   nome: string;
   foto: string | null;
   cidade: string;
   bairro: string | null;
-  /** a vaga antiga e até onde a pessoa chegou nela */
+  /** a vaga antiga e até onde a pessoa chegou nela (dispensado e sem resposta: migração 20271020120000) */
   vaga: string;
-  ate_onde: "finalista" | "entrevista" | "match";
+  ate_onde: AteOnde;
   candidatou_em: string;
   convidado: boolean;
   /** o WhatsApp de quem já deu match com a conta (fora do "só pelo chat"), para chamar um por um */
@@ -36,8 +39,9 @@ export type CandidatoDeAntes = {
 };
 
 /**
- * Chamar de novo (migração 20270103120000): quem se candidatou a outra vaga minha nos últimos 6 meses, chegou ao
- * match, não foi contratado e deixou o currículo visível em Talentos. null: o banco ainda não tem a migração.
+ * Chamar de novo (migração 20270103120000): quem se candidatou a outra vaga minha nos últimos 6 meses, não foi
+ * contratado e deixou o currículo visível em Talentos. Desde a migração 20271020120000, também quem foi dispensado (menos
+ * quem faltou) e quem ficou sem resposta, com o histórico. null: o banco ainda não tem a migração.
  */
 export async function candidatosDeAntes(anuncioId: string): Promise<CandidatoDeAntes[] | null> {
   const supabase = await criarClienteServidor();
@@ -48,7 +52,7 @@ export async function candidatosDeAntes(anuncioId: string): Promise<CandidatoDeA
   }
   return (data ?? []).map((c) => ({
     ...c,
-    ate_onde: c.ate_onde === "finalista" || c.ate_onde === "entrevista" ? c.ate_onde : "match",
+    ate_onde: (ATE_ONDE as readonly string[]).includes(c.ate_onde) ? (c.ate_onde as AteOnde) : "match",
     whatsapp: c.whatsapp ?? null,
   }));
 }
