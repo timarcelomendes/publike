@@ -33,7 +33,7 @@ alter table public.convites_candidato add constraint convites_candidato_origem_c
 create or replace function public.servidor_whatsapp_vagas_da_conta(p_chave text, p_conversa text)
 returns jsonb
 language plpgsql
-stable
+volatile
 security definer
 set search_path = ''
 as $$

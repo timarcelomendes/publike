@@ -26,6 +26,7 @@ import {
   cobrarRespostasNoPrazo,
   calcularSelos,
   avisarCurriculosDaSemana,
+  avisarMesNoPublike,
   avisarProcuradas,
   perguntarRotas,
   liberarContatosParados,
@@ -118,6 +119,8 @@ export async function GET(request: Request) {
   const atendem = await comTempo(() => avisarQuemAtende());
   // o currículo na semana: empresas que abriram, convites e uma dica (migração 20270904120000; começa desligado)
   const curriculoSemana = await comTempo(() => avisarCurriculosDaSemana());
+  // o mês no Publike: na primeira terça, o ganho do mês, o "Contratou?" e o radar (migração 20271019120000; desligado)
+  const mesNoPublike = await comTempo(() => avisarMesNoPublike());
   // a rota do currículo: uma semana depois de entregar, "Alguém te chamou?" (migração 20270606120000)
   const rotas = await comTempo(() => perguntarRotas());
   // 7 dias depois do match (ou de ir para Contratado): "Deu certo?" para a pessoa e "Começou? Chamaria de novo?" para
@@ -267,6 +270,7 @@ export async function GET(request: Request) {
     procuradas.motivo,
     atendem.motivo,
     curriculoSemana.motivo,
+    mesNoPublike.motivo,
     rotas.motivo,
     conquistas.motivo,
     curriculos.motivo,
@@ -329,6 +333,7 @@ export async function GET(request: Request) {
       procuradas: procuradas.avisos,
       atendem: atendem.avisos,
       curriculo_semana: curriculoSemana.avisos,
+      mes_no_publike: mesNoPublike.avisos,
       rotas_perguntadas: rotas.perguntas,
       conquistas: conquistas.perguntas,
       curriculos_lembrados: curriculos.lembradas,

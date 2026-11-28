@@ -149,6 +149,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   interesse_local: Store,
   procura_na_regiao: UserSearch,
   curriculo_semana: FileText,
+  // o mês no Publike (migração 20271019120000)
+  mes_no_publike: CalendarClock,
   // quem atende a vaga e ainda não curtiu (migração 20270908120000)
   atendem_a_vaga: UserCheck,
   // a vaga ainda está aberta? A pergunta para quem publicou e a resposta para quem perguntou (migração 20271003120000)

@@ -989,6 +989,27 @@ export async function perguntarRotas(limite = 100): Promise<{ perguntas: number;
 }
 
 /**
+ * O mês no Publike (migração 20271019120000; claude/plano-concentrar-contratacoes.md, parte 4): na primeira terça do
+ * mês, das 10h às 18h, cada conta que contrata recebe o ganho do mês passado, o "Contratou?" e o radar da cidade. Sino,
+ * celular e e-mail. Começa desligado (privado.config_mes_no_publike). Sem a migração, nada.
+ */
+export async function avisarMesNoPublike(agora = false): Promise<{ avisos: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisos: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_mes_no_publike", {
+    p_chave: acesso.chave,
+    p_limite: 100,
+    p_agora: agora,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { avisos: 0 };
+    console.error("Publike: falha ao avisar o mês no Publike:", error.message);
+    return { avisos: 0, motivo: "Não foi possível avisar o mês no Publike." };
+  }
+  return { avisos: Number(data ?? 0) };
+}
+
+/**
  * O currículo na semana (migração 20270904120000; claude/plano-curriculo-otimizado.md, fase 2): uma vez por semana,
  * quem tem currículo fica sabendo quantas empresas abriram e quantos convites chegaram, com uma dica (contar falando o
  * que fazia, atualizar ou melhorar). Sino, celular e e-mail. Começa desligado (Admin › Qualificados). `agora`: o

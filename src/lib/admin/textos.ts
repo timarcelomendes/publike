@@ -114,6 +114,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   talentos_reativar: "Volte a contratar (sem vaga no ar)",
   procura_na_regiao: "Procuraram e não acharam vaga (a cada 3 pessoas a mais)",
   curriculo_semana: "O currículo na semana (toda semana)",
+  mes_no_publike: "O mês no Publike (primeira terça do mês, para quem contrata)",
   atendem_a_vaga: "Quem atende a vaga e não curtiu (a cada 3 pessoas novas)",
   vaga_continua: "A vaga ainda está aberta? (para quem publicou)",
   vaga_continua_sim: "A vaga continua aberta (para quem perguntou)",

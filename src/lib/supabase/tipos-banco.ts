@@ -3954,6 +3954,11 @@ export type Database = {
       servidor_whatsapp_candidatura_da_vez: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
       servidor_whatsapp_candidatura_cancelar: { Args: { p_chave: string; p_conversa: string }; Returns: boolean };
       servidor_whatsapp_candidatar: { Args: { p_chave: string; p_conversa: string; p_nome?: string | null }; Returns: Json };
+      // migração 20271019120000 (o mês no Publike)
+      servidor_avisar_mes_no_publike: {
+        Args: { p_chave: string; p_limite?: number; p_agora?: boolean };
+        Returns: number;
+      };
       // migração 20271018120000 (encaminhar o currículo pelo WhatsApp)
       servidor_whatsapp_vagas_da_conta: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
       servidor_whatsapp_guardar_encaminhado: {
