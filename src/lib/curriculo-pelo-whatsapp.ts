@@ -65,13 +65,25 @@ export const TEXTOS_DO_CURRICULO = {
     "• até que ano você estudou;\n• se fez algum curso (de qualquer coisa);\n• se tem carteira de motorista, e qual;\n• e quando você pode trabalhar (manhã, tarde, noite, fim de semana).",
     "O que não tiver, é só pular.",
   ].join("\n\n"),
-  previa: (previa: string) =>
+  /**
+   * A prévia, com o nome no alto (27/11/2026: o Carlos achou que o nome tinha ficado de fora, porque a prévia não
+   * mostrava). `nome.disse`: o nome completo que a pessoa escreveu na conversa; senão, o do WhatsApp (pode ser apelido).
+   * `nome.pediu`: ela falou do nome e não disse qual, então a pergunta vem antes de tudo.
+   */
+  previa: (previa: string, nome?: { nome: string | null; disse: boolean; pediu: boolean }) =>
     [
-      `${MARCAS_DO_CURRICULO.previa}`,
+      nome?.pediu
+        ? `Claro! *Qual é o seu nome completo?* Escreva do jeito que vai no currículo.\n\n${MARCAS_DO_CURRICULO.previa}`
+        : `${MARCAS_DO_CURRICULO.previa}`,
+      nome?.nome ? `*Nome:* ${nome.nome}` : "",
       previa,
-      "Escrevi só o que você me contou. Se quiser mudar ou acrescentar alguma coisa, é só me dizer aqui. Para mandar nos grupos ou imprimir, escreva *cartão* ou *PDF*.",
+      nome && !nome.disse && !nome.pediu
+        ? `${nome.nome ? `O nome veio do seu WhatsApp. Para mudar, escreva *meu nome é* e o nome completo.` : `Falta o seu nome: escreva *meu nome é* e o nome completo.`} Se quiser mudar ou acrescentar mais alguma coisa, é só me dizer aqui. Para mandar nos grupos ou imprimir, escreva *cartão* ou *PDF*.`
+        : "Escrevi só o que você me contou. Se quiser mudar ou acrescentar alguma coisa, é só me dizer aqui. Para mandar nos grupos ou imprimir, escreva *cartão* ou *PDF*.",
       `Se estiver bom, toque em *${TITULO_CONFERIR_E_SALVAR}*: você entra com este WhatsApp, sem digitar código, confere e salva. Aí as empresas da região já te acham. 😊`,
-    ].join("\n\n"),
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
   falha: `${MARCAS_DO_CURRICULO.falha} 😕 Me manda qualquer mensagem daqui a pouco que eu tento de novo, com tudo o que você já me contou.`,
   /** o que a pessoa contou não deu um currículo (nada de trabalho, estudo nem do que sabe fazer) */
   semNada: `${MARCAS_DO_CURRICULO.passo1} não consegui montar o currículo com o que você me contou. 😕 Me conta de novo, com calma: *que trabalho você procura e o que você já fez?* Vale bico e trabalho sem carteira. Pode mandar áudio.`,
@@ -294,6 +306,8 @@ export function querParar(texto: string) {
 // --- A prévia --------------------------------------------------------------------------------------------------------
 
 export type CurriculoMontado = {
+  /** o nome completo que a pessoa disse na conversa ("meu nome é…"); "" ou ausente: não disse */
+  nome?: string;
   titulo: string;
   resumo: string;
   habilidades: string[];
@@ -323,6 +337,23 @@ export function tempoDoTrabalho(x: { inicio: string; fim: string; atual: boolean
 }
 
 const cortar = (t: string, max: number) => (t.length <= max ? t : `${t.slice(0, max - 1).replace(/\s+\S*$/, "")}…`);
+
+/** A pessoa falou do nome ("esqueceu meu nome", "cadê o nome", "meu nome é…"). */
+export const falaDoNome = (texto: string) => /\bnome\b/i.test(texto);
+
+/** O nome que vai no currículo: letras, espaço, apóstrofo, ponto e hífen, até 60, com as iniciais maiúsculas. */
+export function nomeDoCurriculo(nome: string | null | undefined) {
+  const limpo = (nome ?? "")
+    // "VivianeBernardes" (o nome do WhatsApp sem espaço) vira "Viviane Bernardes"
+    .replace(/(\p{Ll})(\p{Lu})/gu, "$1 $2")
+    .replace(/[\uFE00-\uFE0F\u200D]/g, "")
+    .replace(/[^\p{L}\p{M} '.-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 60).trim();
+  if (limpo.length < 2) return null;
+  return limpo
+    .toLowerCase()
+    .replace(/(^|[\s'-])(\p{L})/gu, (_, a: string, b: string) => a + b.toUpperCase())
+    .replace(/ (Da|De|Do|Das|Dos|E)(?= )/g, (m) => m.toLowerCase());
+}
 
 /** A prévia que vai na conversa (até ~560 letras: a mensagem com botão vai até 1.000). */
 export function previaDoCurriculo(c: CurriculoMontado, hoje: string, max = 560) {

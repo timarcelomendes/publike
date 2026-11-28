@@ -10,6 +10,8 @@ import {
   type CurriculoMontado,
   passoDoCurriculo,
   pedeArquivo,
+  falaDoNome,
+  nomeDoCurriculo,
   previaDoCurriculo,
   querMontarCurriculo,
   passoPendente,
@@ -201,7 +203,8 @@ export async function seguirCurriculoPeloWhatsapp(p: {
     }
   }
   // depois da prévia: "ok", "obrigado", a pergunta ("e agora?") e o que não é texto seguem o atendimento normal
-  if (depois && (!escrito || p.textos.every(p.semConteudo) || escrito.endsWith("?"))) return false;
+  // (a pergunta sobre o nome, "cadê o meu nome?", refaz a prévia com a pergunta do nome)
+  if (depois && (!escrito || p.textos.every(p.semConteudo) || (escrito.endsWith("?") && !falaDoNome(escrito)))) return false;
   if (!escrito) {
     if (p.midias.includes("audio")) {
       await p.saida(TEXTOS_DO_CURRICULO.semAudio(passo), { perfil });
@@ -263,11 +266,17 @@ export async function seguirCurriculoPeloWhatsapp(p: {
     await p.saida(TEXTOS_DO_CURRICULO.semNada, { perfil });
     return true;
   }
+  // o nome do currículo (cartão e PDF): o completo que a pessoa disse na conversa; senão, o do WhatsApp
+  const disse = nomeDoCurriculo(montado.nome);
+  const nome = disse ?? nomeDoCurriculo(p.nome);
+  // o nome vai à parte (p_nome); os dados são os campos do formulário
+  const dados: CurriculoMontado = { ...montado };
+  delete dados.nome;
   const { data: token, error } = await p.banco.rpc("servidor_guardar_curriculo_preparado", {
     p_chave: p.chave,
     p_conversa: p.conversa,
-    p_dados: montado as unknown as Json,
-    p_nome: p.nome ?? "",
+    p_dados: dados as unknown as Json,
+    p_nome: nome ?? "",
     p_telefone: p.numero,
   });
   if (error || typeof token !== "string") {
@@ -278,7 +287,12 @@ export async function seguirCurriculoPeloWhatsapp(p: {
   // o "Conferir e salvar" entra com um toque, sem código (migração 20270920120000); sem ela, o link de antes
   const destino = `/perfil/curriculo?preparado=${token}`;
   const entrar = await caminhoDeEntrar(p.numero, destino);
-  await p.saida(TEXTOS_DO_CURRICULO.previa(previaDoCurriculo(montado, hoje)), {
+  // falou do nome e não disse qual ("esqueceu meu nome"): a pergunta vem antes da prévia
+  const pediu = !disse && falaDoNome(escrito);
+  const doNome = { nome, disse: Boolean(disse), pediu };
+  // a mensagem com botão vai até 1.000 letras: a prévia fica com o que sobra do resto do texto
+  const cabe = Math.min(560, 996 - TEXTOS_DO_CURRICULO.previa("", doNome).length);
+  await p.saida(TEXTOS_DO_CURRICULO.previa(previaDoCurriculo(montado, hoje, cabe), doNome), {
     perfil,
     botao: { titulo: TITULO_CONFERIR_E_SALVAR, caminho: entrar ?? destino },
   });

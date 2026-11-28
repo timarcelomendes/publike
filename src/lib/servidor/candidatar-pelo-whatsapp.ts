@@ -199,8 +199,12 @@ function respostaDoErro(erro: string | undefined, titulo: string | undefined, an
 /** A vaga pede o currículo (o "Pedir currículo" de quem publicou)? Na dúvida, não. */
 async function vagaPedeCurriculo(ctx: Contexto, anuncio: string | undefined) {
   if (!anuncio) return false;
-  const { data } = await ctx.banco.from("anuncios").select("pede_curriculo").eq("id", anuncio).maybeSingle();
-  return data?.pede_curriculo === true;
+  try {
+    const { data } = await ctx.banco.from("anuncios").select("pede_curriculo").eq("id", anuncio).maybeSingle();
+    return data?.pede_curriculo === true;
+  } catch {
+    return false;
+  }
 }
 
 /** O pedido do currículo depois da candidatura: mandar o pronto aqui mesmo, ou fazer junto por áudio. Com os botões

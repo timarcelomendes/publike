@@ -195,8 +195,8 @@ export async function perguntasDaFuncaoComIA(
 
 const ESQUEMA_DO_MONTADO = {
   ...ESQUEMA_DO_CURRICULO,
-  required: [...ESQUEMA_DO_CURRICULO.required, "resumo"],
-  properties: { ...ESQUEMA_DO_CURRICULO.properties, resumo: { type: "string" } },
+  required: [...ESQUEMA_DO_CURRICULO.required, "resumo", "nome"],
+  properties: { ...ESQUEMA_DO_CURRICULO.properties, resumo: { type: "string" }, nome: { type: "string" } },
 };
 
 function sistemaDoMontado(hoje: string) {
@@ -211,7 +211,8 @@ Regras:
 - "e_curriculo": false só se ela não contou nada de trabalho, estudo, curso nem do que sabe fazer.
 - Nunca ponha telefone, e-mail, endereço, link, CPF, RG, data de nascimento, idade, estado civil, filhos, saúde, religião nem nome de outras pessoas.
 - "titulo": o trabalho que ela procura, curto (até 60 letras): "Auxiliar de cozinha", "Motorista". Sem isso, o trabalho mais recente.
-- "experiencias": da mais recente para a mais antiga.
+- "nome": o nome completo da própria pessoa, só se ela disse na conversa ("meu nome é…", ou a resposta quando o Publike perguntou o nome), com maiúsculas e acentos arrumados; senão "". Nunca o nome de outra pessoa nem de empresa.
+- "experiencias": da mais recente para a mais antiga. Se ela saiu de uma empresa e voltou depois, cada passagem é uma experiência, com o tempo de cada uma (não deixe de fora a passagem mais antiga).
   * "cargo": o nome que o mercado usa para o que ela fazia ("Ajudante de pedreiro", "Diarista", "Vendedora", "Cozinheira"), sem exagerar o nível: quem ajudava é auxiliar ou ajudante, não chefe.
   * "onde": o nome do lugar; sem nome, o tipo de lugar ("Lanchonete", "Casa de família", "Obra"). Trabalho sem patrão: "Por conta própria". Bicos e diárias em vários lugares: "Diárias e bicos". Ajudando a família: "Negócio da família".
   * "inicio" e "fim" (AAAA-MM): conte a partir de hoje o que ela disse solto ("faz 2 anos", "saí no ano passado", "desde março", "uns 6 meses"). Só o ano: AAAA-01 no início e AAAA-12 no fim. Só a duração ("fiquei 2 anos", sem quando): use o fim mais provável que ela deu a entender; sem nada, deixe as datas vazias. "atual": true se ainda trabalha lá, com "fim" "".
@@ -246,5 +247,6 @@ export async function montarCurriculoDaConversa(conversa: string, modelo: string
   if (!r.e_curriculo) return null;
   const c = limparCurriculoLido(r, hoje);
   if (!c.titulo && !c.experiencias.length && !c.habilidades.length && !c.escolaridade && !c.cursos.length) return null;
-  return { ...c, resumo: resumoLimpo(r.resumo) };
+  const nome = typeof (r as { nome?: unknown }).nome === "string" ? ((r as { nome: string }).nome) : "";
+  return { ...c, resumo: resumoLimpo(r.resumo), nome };
 }

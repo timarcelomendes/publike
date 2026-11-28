@@ -160,8 +160,23 @@ Regras:
 
 const MES = /^(19|20)\d{2}-(0[1-9]|1[0-2])$/;
 
-function curto(v: unknown, max: number) {
-  return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max).trim() : "";
+/** Palavras que não fecham um texto cortado ("Controle de entrada de pessoas e"). */
+const SOLTAS = /\s+(de|da|do|das|dos|e|ou|em|no|na|nos|nas|a|o|as|os|com|por|para|pra|ao|aos|à|às|um|uma)$/i;
+
+/**
+ * O texto no tamanho do campo, cortado numa palavra inteira (27/11/2026: "Controle de entrada de pessoas e visitan"
+ * saía na prévia do Carlos). Sem uma palavra inteira que caiba, o corte seco.
+ */
+export function curto(v: unknown, max: number) {
+  if (typeof v !== "string") return "";
+  const t = v.replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  let r = t.slice(0, max + 1).replace(/\s+\S*$/, "");
+  for (let antes = ""; antes !== r; ) {
+    antes = r;
+    r = r.replace(/[\s,;:.(–-]+$/, "").replace(SOLTAS, "");
+  }
+  return r.length >= Math.min(8, max / 2) ? r : t.slice(0, max).trim();
 }
 
 /** Sem repetir (maiúscula e minúscula contam igual), sem contato e no tamanho certo. */

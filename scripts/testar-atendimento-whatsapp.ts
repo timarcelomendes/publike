@@ -1928,6 +1928,17 @@ async function main() {
     cvGuardados = [];
     r = await rodar("na lanchonete foram 3 anos", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "na lanchonete foram 3 anos" }] });
     conferir(corpo(r.msgs[0]).startsWith(M.previa) && cvGuardados.length === 1 && JSON.stringify(pedidosIA[0]).includes("foram 3 anos"), "a correção depois da prévia: monta de novo", corpo(r.msgs[0]));
+    // o nome (27/11/2026, o Carlos: "Vocês esqueceu de botar meu nome no currículo"): a prévia mostra o nome; quem
+    // reclama do nome e não diz qual ouve a pergunta; o nome dito vale no cartão e no PDF
+    conferir(previa.includes("*Nome:* ") && previa.includes("O nome veio do seu WhatsApp"), "a prévia mostra o nome do WhatsApp", previa);
+    cvGuardados = [];
+    r = await rodar("🎤 Vocês esqueceu de botar meu nome no currículo.", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "🎤 Vocês esqueceu de botar meu nome no currículo." }] });
+    conferir(corpo(r.msgs[0]).startsWith("Claro! *Qual é o seu nome completo?*") && corpo(r.msgs[0]).includes(M.previa) && corpo(r.msgs[0]).length <= 1000, "reclamou do nome: pergunta o nome completo, com a prévia", corpo(r.msgs[0]));
+    respostaIA = { ...respostaIA, nome: "CARLOS ALBERTO DE SOUZA" };
+    cvGuardados = [];
+    r = await rodar("meu nome é carlos alberto de souza", { perfil: "trabalho", historico: [...historicoAte3, pv, { de: "pessoa", texto: "meu nome é carlos alberto de souza" }] });
+    conferir(corpo(r.msgs[0]).includes("*Nome:* Carlos Alberto de Souza") && !corpo(r.msgs[0]).includes("veio do seu WhatsApp") && cvGuardados[0]?.p_nome === "Carlos Alberto de Souza" && !("nome" in (cvGuardados[0]?.p_dados ?? {})), "o nome dito: na prévia e no cartão, fora dos dados", { previa: corpo(r.msgs[0]), guardado: cvGuardados[0] });
+    delete respostaIA.nome;
     // a conversa sem nada de trabalho: volta ao passo 1
     respostaIA = { e_curriculo: false, titulo: "", habilidades: [], escolaridade: "", curso: "", outros_estudos: [], experiencias: [], cursos: [], cnh: "", disponibilidade: [], resumo: "" };
     r = await rodar(resposta3, { perfil: "trabalho", historico: historicoAte3 });
