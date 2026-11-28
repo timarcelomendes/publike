@@ -165,6 +165,11 @@ export async function tentarVagaPeloWhatsapp(p: {
   jaDisse?: string[];
   /** era um currículo: lê como currículo e manda o "Conferir e salvar" (migração 20270920120000); false, o texto de antes */
   curriculo?: (a: { imagens: string[]; pdf: string | null }) => Promise<boolean>;
+  /**
+   * o currículo que quem contrata encaminhou (migração 20271018120000): vira o convite do Candidato de fora; false, o
+   * número não é de quem contrata e segue para `curriculo`
+   */
+  deFora?: (a: { imagens: string[]; pdf: string | null; pdfs: number }) => Promise<boolean>;
 }): Promise<boolean> {
   if (!p.montada && !deveTentarVaga(p.textos, p.perfil)) return false;
   const config = await configVagasWhatsapp(p.banco, p.chave);
@@ -268,6 +273,8 @@ export async function tentarVagaPeloWhatsapp(p: {
 
   if (lida.tipo !== "vaga") {
     await registrar(lida.tipo, { empresa: lida.empresa.nome, motivo: lida.motivo, ms });
+    if (lida.tipo === "curriculo" && p.deFora && (imagens.length || arquivos.length) && (await p.deFora({ imagens, pdf: arquivos[0] ?? null, pdfs: arquivos.length })))
+      return true;
     if (lida.tipo === "curriculo" && p.curriculo && (imagens.length || arquivos.length) && (await p.curriculo({ imagens, pdf: arquivos[0] ?? null })))
       return true;
     if (lida.tipo === "curriculo")

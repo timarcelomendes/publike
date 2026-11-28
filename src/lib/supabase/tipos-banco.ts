@@ -161,6 +161,8 @@ export type Database = {
           autor_id: string;
           nome: string;
           curriculo: Json | null;
+          /** migração 20271018120000: "painel" ou "whatsapp" */
+          origem?: string;
           criado_em: string;
           expira_em: string;
           cancelado_em: string | null;
@@ -3952,6 +3954,16 @@ export type Database = {
       servidor_whatsapp_candidatura_da_vez: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
       servidor_whatsapp_candidatura_cancelar: { Args: { p_chave: string; p_conversa: string }; Returns: boolean };
       servidor_whatsapp_candidatar: { Args: { p_chave: string; p_conversa: string; p_nome?: string | null }; Returns: Json };
+      // migração 20271018120000 (encaminhar o currículo pelo WhatsApp)
+      servidor_whatsapp_vagas_da_conta: { Args: { p_chave: string; p_conversa: string }; Returns: Json };
+      servidor_whatsapp_guardar_encaminhado: {
+        Args: { p_chave: string; p_conversa: string; p_conta: string; p_nome: string; p_curriculo: Json | null };
+        Returns: string;
+      };
+      servidor_whatsapp_convite_de_fora: {
+        Args: { p_chave: string; p_conversa: string; p_anuncio: string; p_encaminhado?: string | null };
+        Returns: Json;
+      };
       // migração 20270926120000 (o tipo de contratação na conversa)
       servidor_whatsapp_regime_das_vagas: {
         Args: { p_chave: string; p_conversa: string; p_token: string | null; p_regime: string };

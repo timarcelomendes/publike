@@ -240,6 +240,9 @@ async function main() {
   // o tipo de contratação na conversa (migração 20270926120000)
   let regimes: any[] = [];
   let regimeN = 1;
+  // o currículo encaminhado por quem contrata (migração 20271018120000)
+  let conviteDeFora: any = null;
+  let pedidosDeFora: any[] = [];
   const base = (x: any) => ({
     chave: "557799255259",
     nova: false,
@@ -357,6 +360,10 @@ async function main() {
       if (nome === "servidor_whatsapp_candidatar") {
         candidaturas.push({ ...args, respostas: candidaturaDaVez?.respostas });
         return { data: resultadoCandidatar, error: null };
+      }
+      if (nome === "servidor_whatsapp_convite_de_fora") {
+        pedidosDeFora.push(args);
+        return { data: conviteDeFora, error: null };
       }
       if (nome === "servidor_whatsapp_regime_das_vagas") {
         regimes.push(args);
@@ -2797,6 +2804,44 @@ async function main() {
     candidaturaDaVez = null;
     candidatarLigadoMock = false;
     jaForamNoBanco = [];
+  }
+
+  // o currículo encaminhado por quem contrata (migração 20271018120000): o toque na vaga cria o convite, e a empresa
+  // recebe o texto e, separada, a mensagem pronta para mandar à pessoa
+  {
+    const vagaId = "11111111-2222-3333-4444-555555555555";
+    const pergunta = "Recebi o currículo de *Maria S.* (auxiliar de cozinha). Para qual vaga é esse candidato? Toque em *Escolher a vaga*.\n\n[Lista: Escolher a vaga]";
+    conviteDeFora = { ok: true, token: "c".repeat(64), nome: "Maria da Silva", titulo: "Auxiliar de cozinha", anuncio_id: vagaId, quem: "Padaria Pão Quente", com_curriculo: true };
+    pedidosDeFora = [];
+    let r = await rodar("Auxiliar de cozinha", {
+      perfil: "contratar",
+      historico: [{ de: "robo", texto: pergunta }, { de: "pessoa", texto: "Auxiliar de cozinha" }],
+    }, { payload: `a:fora:${vagaId}` });
+    conferir(pedidosDeFora.length === 1 && pedidosDeFora[0].p_anuncio === vagaId, "encaminhado: o toque cria o convite da vaga", pedidosDeFora);
+    conferir(
+      r.msgs.length === 2 && /convite de \*Maria S\.\* para \*Auxiliar de cozinha\*/.test(corpo(r.msgs[0])),
+      "encaminhado: o convite criado",
+      r.msgs.map(corpo),
+    );
+    conferir(
+      /^Olá, Maria! Aqui é da Padaria Pão Quente\./.test(corpo(r.msgs[1])) && corpo(r.msgs[1]).includes(`/candidatura/${"c".repeat(64)}`),
+      "encaminhado: a mensagem pronta para a pessoa, com o link",
+      corpo(r.msgs[1]),
+    );
+    // o currículo que passou da hora
+    conviteDeFora = { ok: false, erro: "sem_curriculo" };
+    r = await rodar("Auxiliar de cozinha", { perfil: "contratar", historico: [{ de: "robo", texto: pergunta }] }, { payload: `a:fora:${vagaId}` });
+    conferir(r.msgs.length === 1 && /já foi usado ou passou da hora/.test(corpo(r.msgs[0])), "encaminhado: o currículo vencido pede de novo", r.msgs.map(corpo));
+    // escreveu em vez de tocar: a dica, sem a IA
+    pedidosDeFora = [];
+    pedidosIA = [];
+    r = await rodar("a de cozinha", { perfil: "contratar", historico: [{ de: "robo", texto: pergunta }, { de: "pessoa", texto: "a de cozinha" }] });
+    conferir(
+      pedidosDeFora.length === 0 && r.msgs.length === 1 && /toque em \*Escolher a vaga\*/.test(corpo(r.msgs[0])),
+      "encaminhado: a resposta escrita ganha a dica de tocar na lista",
+      r.msgs.map(corpo),
+    );
+    conviteDeFora = null;
   }
 
   console.log(falhas ? `\n${falhas} de ${total} conferências falharam.` : `${total} conferências, todas certas.`);

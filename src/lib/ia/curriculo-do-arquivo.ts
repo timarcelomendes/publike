@@ -100,6 +100,15 @@ const ESQUEMA_DO_ARQUIVO = {
   properties: { ...ESQUEMA_DO_CURRICULO.properties, o_que_e: texto },
 };
 
+/** O currículo de outra pessoa (o que a empresa encaminhou): o mesmo, mais o nome de quem é. */
+const ESQUEMA_COM_NOME = {
+  ...ESQUEMA_DO_ARQUIVO,
+  required: [...ESQUEMA_DO_ARQUIVO.required, "nome_da_pessoa"],
+  properties: { ...ESQUEMA_DO_ARQUIVO.properties, nome_da_pessoa: { type: "string" } },
+};
+const REGRA_DO_NOME =
+  '- "nome_da_pessoa": o nome completo de quem é o currículo, como está escrito no alto da folha (até 80 letras), só o nome, sem número. Sem nome, "". Este é o único nome que pode sair; o de referências e empresas, nunca.';
+
 function instrucoes(hoje: string) {
   const escolaridades = ESCOLARIDADES.map((e) => `"${e.valor}" (${e.nome})`).join(", ");
   return `Você lê o currículo de uma pessoa que procura trabalho (um PDF ou fotos da folha) e preenche o currículo dela no Publike, um site gratuito de vagas de ${ONDE_FUNCIONA}. A pessoa confere tudo antes de salvar.
@@ -282,11 +291,16 @@ export async function lerCurriculoDoArquivoComMotivo(
   entrada: { pdf: { nome: string; dados: string } | null; fotos: string[] },
   modelo: string,
   hoje: string,
-): Promise<{ lido: CurriculoLido | null; oQueE: string }> {
+  /**
+   * o currículo de outra pessoa, que a empresa encaminhou pelo WhatsApp (migração 20271018120000): traz também o nome
+   * de quem é o currículo (o convite precisa dele)
+   */
+  { comNome = false } = {},
+): Promise<{ lido: CurriculoLido | null; oQueE: string; nome: string }> {
   const { texto: resposta, parada } = await chamarIA({
     uso: "curriculo_arquivo",
     modelo,
-    sistema: instrucoes(hoje),
+    sistema: comNome ? `${instrucoes(hoje)}\n${REGRA_DO_NOME}` : instrucoes(hoje),
     mensagem: entrada.pdf
       ? "O currículo está no PDF."
       : `O currículo está ${entrada.fotos.length > 1 ? `nestas ${entrada.fotos.length} fotos, na ordem das páginas` : "nesta foto"}.`,
@@ -295,15 +309,18 @@ export async function lerCurriculoDoArquivoComMotivo(
     // a letra de uma folha fotografada é miúda
     detalhe: "high",
     maxTokens: 3000,
-    esquema: { nome: "curriculo_do_arquivo", schema: ESQUEMA_DO_ARQUIVO },
+    esquema: { nome: "curriculo_do_arquivo", schema: comNome ? ESQUEMA_COM_NOME : ESQUEMA_DO_ARQUIVO },
     tempoLimite: 90_000,
   });
   if (parada === "recusa") throw new ErroIA("A IA não quis ler este arquivo.");
   if (parada === "limite") throw new ErroIA("A resposta da IA ficou incompleta.");
-  const r = lerJson<Partial<RespostaDoCurriculo> & { o_que_e?: unknown }>(resposta);
+  const r = lerJson<Partial<RespostaDoCurriculo> & { o_que_e?: unknown; nome_da_pessoa?: unknown }>(resposta);
   const oQueE = resumoDoQueE(curto(r.o_que_e, 120));
+  const nome = comNome ? curto(r.nome_da_pessoa, 80) : "";
   return {
     lido: r.e_curriculo ? limparCurriculoLido(r, hoje) : null,
+    // o nome sem número nem contato (o telefone a pessoa põe quando entrar)
+    nome: nome && !temContatoNoTexto(nome) && !/\d/.test(nome) ? nome : "",
     oQueE: oQueE && !temContatoNoTexto(oQueE) && !/\d{3}/.test(oQueE) ? oQueE : "",
   };
 }

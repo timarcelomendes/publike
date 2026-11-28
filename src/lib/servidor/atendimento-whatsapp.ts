@@ -74,6 +74,12 @@ import {
 } from "./curriculo-por-arquivo";
 import { emailCorrigido } from "@/lib/email-valido";
 import { MARCA_DOS_HORARIOS, respostaDaAgenda } from "./agenda-entrevistas";
+import {
+  encaminharCurriculo,
+  MARCA_DA_VAGA_DE_FORA,
+  respostaDoEncaminhado,
+  type RespostaDoEncaminhado,
+} from "./curriculo-encaminhado";
 import { caminhoDeEntrar, ultimoDestinoDeEntrar } from "./entrar-pelo-whatsapp";
 import {
   configVagasWhatsapp,
@@ -2300,6 +2306,13 @@ export async function atenderConversa(
         }
       : { texto, extra: { botao } };
 
+  // o currículo encaminhado por quem contrata (migração 20271018120000): o texto e, separada, a mensagem pronta para a
+  // empresa mandar à pessoa
+  const responderEncaminhado = async (r: RespostaDoEncaminhado, comeco = "") => {
+    await saida(`${comeco}${r.texto}`, { perfil: "contratar", lista: r.lista, botao: r.lista ? null : (r.botao ?? null) });
+    if (r.paraEncaminhar) await saida(r.paraEncaminhar, { perfil: "contratar" });
+  };
+
   // a oferta depois de publicar pelo WhatsApp: o "Sim, quero receber" é o aceite dos avisos (migração 20270806120000)
   const daOferta = await respostaDaOferta(banco, chave, e.chave, m.payload);
   if (daOferta) return saida(daOferta, { perfil: "contratar" });
@@ -2323,6 +2336,11 @@ export async function atenderConversa(
   // a entrevista marcada pelo WhatsApp (migração 20271013120000): os botões do convite, a lista dos horários e os
   // lembretes. Depois da lista, a resposta escrita ganha a dica de tocar nela (uma vez: a dica não tem a marca)
   {
+    // a vaga escolhida para o currículo encaminhado (migração 20271018120000)
+    const daVagaDeFora = await respostaDoEncaminhado(banco, chave, e.chave, m.payload);
+    if (daVagaDeFora) return responderEncaminhado(daVagaDeFora);
+    if (!m.payload && minhaUltima.includes(MARCA_DA_VAGA_DE_FORA) && !midias.some(Boolean))
+      return saida("Para eu criar o convite, toque em *Escolher a vaga* na mensagem acima e escolha uma. 🙂", { perfil: "contratar" });
     const daAgenda = await respostaDaAgenda(banco, chave, e.chave, m.payload);
     if (daAgenda) return saida(daAgenda.texto, { perfil: "trabalho", botoes: daAgenda.botoes, lista: daAgenda.lista });
     if (!m.payload && minhaUltima.includes(MARCA_DOS_HORARIOS) && !midias.some(Boolean))
@@ -2393,6 +2411,14 @@ export async function atenderConversa(
   const curriculoDoArquivo = async (a: { imagens: string[]; pdf: string | null }) => {
     if (!(await aceiteParaLer())) return true;
     return (await responderCurriculoDoArquivo({ ...comumDoCurriculo, ...a })).ok;
+  };
+  // o currículo que quem contrata encaminhou (migração 20271018120000): o convite do Candidato de fora, com a mensagem
+  // pronta para a empresa mandar à pessoa. false: o número não é de quem contrata
+  const curriculoDeFora = async (a: { imagens: string[]; pdf: string | null; pdfs: number }) => {
+    const r = await encaminharCurriculo({ banco, chave, conversa: e.chave, ...a, modelo: modeloDoLer, agora: opcoes.agora ?? new Date() });
+    if (!r) return false;
+    await responderEncaminhado(r, ola);
+    return true;
   };
   const curriculoMandado = () => lerCurriculoMandado({ ...comumDoCurriculo, cfg, wamid: m.wamid, aceite: aceiteParaLer });
   // o arquivo de quem procura trabalho que não virou currículo: o porquê, o que fazer e a oferta de montar conversando
@@ -2747,7 +2773,7 @@ export async function atenderConversa(
     // a foto ou o texto de uma vaga é de quem contrata: o Publicar pelo WhatsApp responde normal
     if (
       deveTentarVaga(textos, e.perfil) &&
-      (await tentarVagaPeloWhatsapp({ cfg, banco, chave, conversa: e.chave, numero: m.numero, wamid: m.wamid, perfil: e.perfil, textos, saida, comeco: ola, curriculo: curriculoDoArquivo }))
+      (await tentarVagaPeloWhatsapp({ cfg, banco, chave, conversa: e.chave, numero: m.numero, wamid: m.wamid, perfil: e.perfil, textos, saida, comeco: ola, curriculo: curriculoDoArquivo, deFora: curriculoDeFora }))
     )
       return;
     // o currículo em foto ou PDF de quem procura trabalho: lê mesmo no modo econômico (é o que mais traz gente); o que
@@ -2882,6 +2908,7 @@ export async function atenderConversa(
       saida,
       comeco: ola,
       curriculo: curriculoDoArquivo,
+      deFora: curriculoDeFora,
     }))
   )
     return;
