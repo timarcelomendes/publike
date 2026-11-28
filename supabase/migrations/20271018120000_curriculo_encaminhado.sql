@@ -20,6 +20,7 @@ create table if not exists privado.curriculos_encaminhados (
   criado_em timestamptz not null default now()
 );
 create index if not exists curriculos_encaminhados_conversa on privado.curriculos_encaminhados (conversa, criado_em desc);
+alter table privado.curriculos_encaminhados enable row level security;
 revoke all on privado.curriculos_encaminhados from public, anon, authenticated;
 
 alter table public.convites_candidato add column if not exists origem text not null default 'painel';
